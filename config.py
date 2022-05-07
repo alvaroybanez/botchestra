@@ -1,3 +1,3 @@
-api_key = '3yr0lD6ZRKPkmIL4o0DWKeikp9d0ApJfqG4ZebZS08eKkKCxxUzSCNEtNBVECsIS'
-api_secret = 'UE8rlG7gqkezhHcIWLQlG13ghtgG3P7iqSn2TKYvKd7BwBbvREyocnsosWAOnuSo'
+api_key = 'aFYuVp0Pmse4qbs7cUL5ErpU9ySkIc8532FiMNVCAGufUvQ0xK0J4vNLsQnoAwYv'
+api_secret = 'MC5O5Y8Q71AObvS3TYBlExOL8MOIGSM967Gab3ayPwtkuJTkEudnTLptF7jYfQRt'
 
