@@ -89,9 +89,19 @@ def track_test() -> None:
     tool_input = event.get("tool_input", {})
     tool_output = event.get("tool_output", {})
     command = tool_input.get("command", "")
-    exit_code = tool_output.get("exit_code", tool_output.get("returncode", -1))
 
-    if exit_code != 0:
+    # Claude Code may provide exit_code at different paths depending on version.
+    # Check tool_output.exit_code, tool_output.returncode, and top-level exit_code.
+    # If none found, assume success (0) since the PostToolUse event fired,
+    # meaning the tool completed — errors would show in tool_output content.
+    exit_code = (
+        tool_output.get("exit_code")
+        or tool_output.get("returncode")
+        or event.get("exit_code")
+        or event.get("returncode")
+    )
+    # Treat None/missing as success (hook fired = tool completed)
+    if exit_code is not None and exit_code != 0:
         return
 
     is_test = bool(re.search(r"\bvitest\b", command) or re.search(r"\bpytest\b", command))

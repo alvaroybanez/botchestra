@@ -1,0 +1,16 @@
+{
+  "name": "botchestra",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently --names web,convex \"bun run --filter @botchestra/web dev\" \"bunx convex dev\"",
+    "build": "bun run --filter '*' build",
+    "test": "vitest run",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.2",
+    "vitest": "^3.1.1"
+  }
+}

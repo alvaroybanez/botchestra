@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.output/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Convex
+.convex/
+
+# Claude Code local state
+.claude/review-loop.local.md
+.claude/review-loop.log
+.claude/review-loop.lock
+.claude/review-loop-run-codex.sh
+.claude/review-loop-codex-prompt.txt
+
+# Misc
+*.tsbuildinfo

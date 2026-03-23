@@ -1,0 +1,25 @@
+{
+  "name": "@botchestra/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5180",
+    "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@botchestra/shared": "workspace:*",
+    "@botchestra/ai": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.8.2",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.1"
+  }
+}
