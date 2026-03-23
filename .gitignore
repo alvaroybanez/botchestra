@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Agentics
+.agents
+.claude
+
 # Build output
 dist/
 .output/

@@ -2,6 +2,10 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    workspace: ["packages/*/vitest.config.ts", "apps/*/vitest.config.ts"],
+    workspace: [
+      "packages/*/vitest.config.ts",
+      "apps/*/vitest.config.ts",
+      "convex/vitest.config.ts",
+    ],
   },
 });
