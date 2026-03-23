@@ -104,9 +104,9 @@ Production acknowledgment enforced at the mutation level. All outcomes produce a
 
 ### ArtifactStore
 
-**Worker-side:** `uploadArtifact(runId, type, data): Promise<string>` — returns R2 key. Key scheme: `{orgId}/{studyId}/{runId}/{type}/{timestamp}.{ext}`. Retention class encoded in R2 metadata.
+**Worker-side:** `uploadArtifact(runId, type, data): Promise<string>` — returns R2 key. v1 preserves the existing `runs/{runId}/...` prefix established by BrowserExecutor so this PRD hardens artifact access without forcing a key migration. Retention class is encoded in R2 metadata.
 
-**Convex-side:** `getArtifactUrl(key): Promise<string>` — Convex action generating signed R2 URL (default 4-hour expiry). `getManifest(runId)` — query against `artifactManifests` table.
+**Convex-side:** `getArtifactUrl(key): Promise<string>` — Convex action generating signed R2 URL (default 4-hour expiry). `getManifest(runId)` resolves the manifest from `runs.artifactManifestKey` and related report records; no separate manifest table is required in v1.
 
 Frontend never constructs R2 keys directly.
 
@@ -128,12 +128,12 @@ Standardized infra error codes: `BROWSER_LEASE_TIMEOUT`, `CONTEXT_CREATION_FAILE
 
 ### Settings Schema
 
-One document per org:
+One document per org. This PRD extends the initial `settings` shape from PRD-0 rather than replacing it:
 - `domainAllowlist: string[]`
-- `defaultConcurrency`, `hardConcurrencyCap`
-- `modelConfig: Record<TaskCategory, { provider, modelId, maxTokens }>`
-- `budgetLimits: { maxTokensPerStudy, maxBrowserSecPerStudy }`
-- `browserPolicy: { blockAnalytics, blockHeavyMedia, screenshotFormat, screenshotMode }`
+- `maxConcurrency` plus optional `hardConcurrencyCap` override metadata when infra allows more than the default ceiling
+- `modelConfig: Record<TaskCategory, { provider, modelId, maxTokens }>` or an equivalent normalized encoding compatible with the Convex schema
+- `runBudgetCap` plus optional `budgetLimits: { maxTokensPerStudy, maxBrowserSecPerStudy }`
+- optional `browserPolicy: { blockAnalytics, blockHeavyMedia, screenshotFormat, screenshotMode }`
 - `signedUrlExpirySeconds` (default 14400)
 
 Separate `credentials` table with encrypted payloads never returned to frontend.
@@ -195,6 +195,6 @@ Separate `credentials` table with encrypted payloads never returned to frontend.
 
 ## Further Notes
 
-- **Dependencies**: Requires all prior PRDs functionally complete. Extends Convex schema with `auditEvents`, `metrics`, `guardrailEvents`, `artifactManifests` tables.
+- **Dependencies**: Requires all prior PRDs functionally complete. May add support tables such as `auditEvents`, `metrics`, and `guardrailEvents`, but should preserve the core product entities and artifact contracts established in earlier PRDs.
 - **Launch readiness gate**: Platform should not be used outside engineering until RBAC, guardrails, and audit logging are in place.
-- **Acceptance criterion 9**: "Guardrails block non-whitelisted domains and forbidden actions" is owned entirely by this PRD.
+- **Acceptance criterion 9**: "Guardrails block non-whitelisted domains and forbidden actions" is introduced functionally in BrowserExecutor and formalized, audited, and administrator-configurable in this PRD.

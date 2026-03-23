@@ -15,7 +15,7 @@ Researchers need a way to generate large, diverse, behaviorally coherent sets of
 
 ## Solution
 
-PersonaEngine is a deep Convex module that exposes a thin, stable interface for managing persona packs and generating validated variant sets. It hides all internal complexity: coverage sampling geometry, axis normalization, LLM prompt construction, structured output parsing, validation scoring, near-duplicate detection, and retry logic. Callers invoke `generateVariants(packId, budget)` and receive a summary; they never touch sampling math, prompt templates, or regeneration loops. The module writes all results to Convex tables and exposes a set of queries for the frontend to display pack state and variant grids in real time.
+PersonaEngine is a deep Convex module that exposes a thin, stable interface for managing persona packs and generating validated variant sets. It hides all internal complexity: coverage sampling geometry, axis normalization, LLM prompt construction, structured output parsing, validation scoring, near-duplicate detection, and retry logic. Researchers use `previewVariants(packId, budget)` to inspect the projected pack coverage, while StudyOrchestrator invokes `generateVariantsForStudy(studyId)` to materialize the accepted study-scoped variants that a launch will actually use. Callers never touch sampling math, prompt templates, or regeneration loops. The module writes all accepted variants to Convex tables and exposes a set of queries for the frontend to display pack state and variant grids in real time.
 
 ---
 
@@ -47,14 +47,14 @@ PersonaEngine is a deep Convex module that exposes a thin, stable interface for 
 
 ### Variant Generation
 
-16. As a Researcher, I want to call `generateVariants(packId, budget)` and have the system produce a full validated variant set, so that I do not need to understand sampling geometry or prompt engineering to prepare a study.
+16. As a Researcher, I want the system to generate a full validated variant set for a specific study from its selected pack and run budget, so that I do not need to understand sampling geometry or prompt engineering to prepare a launch.
 17. As a Researcher, I want the system to allocate variants evenly across proto-personas and distribute any remainder to higher-complexity proto-personas, so that every archetype has minimum representation and more complex archetypes get proportionally more exploration.
 18. As a Researcher, I want 70% of generated variants to be edge-heavy and 30% to be interior, so that the study achieves broad support coverage while still sampling central behavioral profiles.
 19. As a Researcher, I want minimum distance enforced between variants in axis space, so that the cohort is not dominated by near-duplicates.
 20. As a Researcher, I want each variant to include a `firstPersonBio` (80–150 words), 5–8 `behaviorRules`, and a `tensionSeed`, so that agents have enough behavioral grounding to act distinctively in a study.
 21. As a Researcher, I want the generation pipeline to automatically regenerate variants that fail validation, so that the final cohort always meets coherence and distinctness thresholds without manual intervention.
 22. As a Researcher, I want to call `previewVariants(packId, budget)` before committing, so that I can inspect the projected coverage distribution and axis spread without writing any variants to the database.
-23. As a Researcher, I want a summary returned from `generateVariants` that includes accepted count, rejected count, retry count, and coverage metrics, so that I can assess generation quality at a glance.
+23. As a Researcher, I want a summary returned from study variant generation that includes accepted count, rejected count, retry count, and coverage metrics, so that I can assess generation quality at a glance.
 24. As a Researcher, I want variant generation to respect a configurable run budget between 50 and 100, defaulting to 64, so that study sizing is controlled and within platform limits.
 
 ### Variant Review
@@ -69,11 +69,11 @@ PersonaEngine is a deep Convex module that exposes a thin, stable interface for 
 
 ### Module Boundary
 
-PersonaEngine is a deep module. The public interface is deliberately small: a set of Convex mutations for pack and proto-persona lifecycle, two generation actions (`generateVariants`, `previewVariants`), and a set of queries. Nothing about sampling algorithms, prompt text, validation thresholds, or retry counts is exposed. If those internals change, callers are unaffected.
+PersonaEngine is a deep module. The public interface is deliberately small: a set of Convex mutations for pack and proto-persona lifecycle, one pack-level preview action (`previewVariants`) and one orchestration-facing materialization action (`generateVariantsForStudy`), plus a set of queries. Nothing about sampling algorithms, prompt text, validation thresholds, or retry counts is exposed. If those internals change, callers are unaffected.
 
 ### Convex as Canonical Data Store
 
-All pack, proto-persona, and variant state lives in Convex. The schema is canonical. All function arguments use Zod validators via `convex-helpers`. Callers never write directly to `personaVariants` — they call `generateVariants` and the module owns all writes.
+All pack, proto-persona, and variant state lives in Convex. The schema is canonical. All function arguments use Zod validators via `convex-helpers`. Callers never write directly to `personaVariants` — StudyOrchestrator calls `generateVariantsForStudy(studyId)` and PersonaEngine owns all writes.
 
 ### Normalized `protoPersonas` Table
 
@@ -125,7 +125,7 @@ The following are tested as pure functions with no Convex or network dependency:
 
 - `createPack` / `updatePack` / `publishPack` / `archivePack` lifecycle: assert status transitions and that mutations on published packs are rejected.
 - `createProtoPersona` / `updateProtoPersona` / `deleteProtoPersona`: assert correct writes and that operations against a published pack's proto-personas are rejected.
-- `generateVariants` with a mocked AI layer: assert that the correct number of accepted variants is written to `personaVariants`, that allocation across proto-personas matches the rule, and that the summary returned reflects actual DB state.
+- `generateVariantsForStudy` with a mocked AI layer: assert that the correct number of accepted variants is written to `personaVariants` for the target `studyId`, that allocation across proto-personas matches the rule, and that the summary returned reflects actual DB state.
 - Validation gate retry: simulate LLM returning below-threshold variants on first N attempts and assert retries occur up to the limit and that the final accepted count is correct.
 - `previewVariants`: assert it returns coverage distribution without writing any rows to `personaVariants`.
 
@@ -138,7 +138,7 @@ The LLM prompt quality (bio coherence, rule relevance) is evaluated manually by 
 ## Out of Scope
 
 - **Transcript ingestion**: extracting proto-personas from uploaded user research transcripts is deferred to v1.1. The `sourceType: "transcript_derived"` field is reserved in the schema for future use.
-- **Study assignment**: associating a pack or variant set with a study is handled by the study creation module. PersonaEngine generates variants and writes them; it does not know about studies.
+- **Study lifecycle decisions**: PersonaEngine materializes study-scoped variants when given a `studyId`, but it does not decide when a study is ready, queued, or launchable. Those state transitions remain the responsibility of StudyOrchestrator.
 - **Browser execution**: PersonaEngine does not dispatch runs, manage browser leases, or interact with the Cloudflare Worker layer.
 - **Run summarization and issue clustering**: analysis-layer responsibilities.
 - **Report generation**: owned by the reporting module.
@@ -151,8 +151,9 @@ The LLM prompt quality (bio coherence, rule relevance) is evaluated manually by 
 ## Further Notes
 
 - **Version field on packs**: incremented on each `publishPack` call. It exists so studies can record which version of a pack was active when they were launched.
-- **`previewVariants` is not a cached artifact**: it runs the sampling stage (Stage 1) deterministically but does not run expansion. It returns the projected axis-space distribution, edge/interior counts per proto-persona, and estimated coverage metrics.
-- **Regeneration cap**: if retry limit is exhausted, `generateVariants` writes the best available variants marked `accepted: false`. The summary surfaces this so the researcher knows which proto-personas need attention. Generation does not fail hard.
+- **`previewVariants` is not a cached artifact**: it runs the sampling stage (Stage 1) deterministically but does not run expansion or write study-scoped variants. It returns the projected axis-space distribution, edge/interior counts per proto-persona, and estimated coverage metrics.
+- **Regeneration cap**: if retry limit is exhausted, `generateVariantsForStudy` writes the best available variants marked `accepted: false`. The summary surfaces this so the researcher knows which proto-personas need attention. Generation does not fail hard.
+- **Study-scoped variants are intentional:** `personaVariants` carry `studyId` so each study has an immutable cohort snapshot derived from a published pack version and budget at generation time.
 - **Frozen pack enforcement**: the published check is enforced inside each mutation using a shared `assertPackIsDraft(packId)` helper.
 - **No streaming**: persona expansion uses non-streaming structured generation. Variants are written to the DB in batch after all retries complete.
 - **Distinctness vs. near-duplicate**: distinctness score is a continuous metric (0–1). Near-duplicate detection is a hard binary threshold. Both can reject a variant independently.

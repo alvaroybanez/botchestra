@@ -117,7 +117,7 @@ HTML report rendered server-side via string templating. Self-contained with embe
 
 ### Analyst Notes
 
-`addNote` appends to `analystNotes` array on IssueCluster. Notes are immutable in v1 (no edit/delete). Included in exports.
+`addNote` appends immutable analyst notes to the issue-cluster record shape used by the findings and report views. This may be implemented as an additive field on `IssueCluster` or a tightly-coupled note record owned by the analysis module, but the external query shape exposed to the frontend stays the same.
 
 ---
 
@@ -160,7 +160,7 @@ HTML report rendered server-side via string templating. Self-contained with embe
 ## Further Notes
 
 - **Trigger dependency**: `analyzeStudy` is called exclusively by StudyOrchestrator after replay verification. Must fail fast if runs are still in non-terminal status.
-- **ArtifactStore dependency**: Reads R2 keys from Convex records. Does not upload artifacts.
+- **ArtifactStore dependency**: Reads manifest and evidence keys from existing run/report records and resolves shareable artifact URLs through the ArtifactStore boundary. AnalysisPipeline does not invent or depend on raw R2 key construction in the frontend.
 - **Model configurability**: All three task categories read model ID from settings at call time. Admin can switch models without code deployment.
 - **HTML report self-sufficiency**: Must be viewable without app access. Screenshots embedded or referenced via long-lived public URLs. Includes limitations verbatim.
 - **Note immutability**: Append-only in v1. Edit/delete is a v1.1 concern.

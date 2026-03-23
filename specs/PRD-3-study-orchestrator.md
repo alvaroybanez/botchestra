@@ -50,7 +50,7 @@ StudyOrchestrator is a Convex-backed deep module that owns the full lifecycle of
 ### Researcher — Launch Flow
 
 7. As a Researcher, I can call `launchStudy(id)` on a `ready` study and trust the system will dispatch waves without further input.
-8. As a Researcher, the study moves to `persona_review` if variants are not yet confirmed, blocking dispatch.
+8. As a Researcher, the study moves to `persona_review` if study-scoped variants have not yet been generated and confirmed for that study, blocking dispatch.
 9. As a Researcher, I see the study transition from `queued` to `running` when the first wave dispatches.
 10. As a Researcher, I am blocked from launching a `draft` study.
 11. As a Researcher, I cannot launch a study referencing an unpublished persona pack.
@@ -103,7 +103,7 @@ Transitions enforced inside Convex mutations. `persona_review` is a gate state. 
 
 ### Convex Workflow
 
-Study lifecycle implemented as a durable Convex Workflow handling: persona_review confirmation → wave dispatch via Workpool → waitForCohort → replayTopFailures → finalizeReport. Only the Workflow advances study state past `running`.
+Study lifecycle implemented as a durable Convex Workflow handling: persona_review confirmation → study-scoped variant materialization via PersonaEngine → wave dispatch via Workpool → waitForCohort → replayTopFailures → finalizeReport. Only the Workflow advances study state past `running`.
 
 ### Convex Workpool
 
@@ -111,11 +111,11 @@ Study lifecycle implemented as a durable Convex Workflow handling: persona_revie
 
 ### Run Dispatch Protocol
 
-`ExecuteRunRequest` from `packages/shared`. Worker acknowledges immediately. All progress arrives via `onRunProgress`.
+`ExecuteRunRequest` from `packages/shared`. In v1, the Worker call is a blocking HTTP action per run rather than an immediate acknowledge-and-detach RPC. Progress still arrives via `onRunProgress` during execution so the UI and watchdog logic do not depend on waiting for the terminal HTTP response alone.
 
 ### `onRunProgress` Callback Endpoint
 
-Single HTTP action endpoint. Validates `callbackToken`. Handles: heartbeat (update `lastHeartbeatAt`), milestone (append to run), completion (set status + write self-report), failure (set error status + code). Idempotent against replayed callbacks.
+Single HTTP action endpoint mounted at `callbackBaseUrl + '/api/run-progress'`. Validates `callbackToken`. Handles: heartbeat (update `lastHeartbeatAt`), milestone (append to run), completion (set status + write self-report), failure (set error status + code). Idempotent against replayed callbacks.
 
 ### Heartbeat Monitoring
 
@@ -192,9 +192,8 @@ Sets queued runs to `cancelled` immediately. Running runs get `cancellationReque
 
 ## Further Notes
 
-- **PersonaEngine dependency**: At launch, the Workflow reads confirmed variants. If not generated, enters `persona_review` gate.
+- **PersonaEngine dependency**: At launch, the Workflow requires a study-specific variant cohort. If that cohort has not yet been generated for the target `studyId`, it enters `persona_review`, invokes PersonaEngine to materialize the cohort from the study's selected pack and budget, and only then allows dispatch.
 - **BrowserExecutor dependency**: Communication via `ExecuteRunRequest` (outbound) and `RunProgressUpdate` (inbound) from `packages/shared`.
 - **Callback token security**: HMAC-signed, scoped to `runId`, includes expiry. Validated on every `onRunProgress` call.
 - **Audit log**: Append-only table with actor identity, study ID, action type, timestamp, and config snapshot.
 - **Convex reactivity**: Live monitor uses reactive queries (`getRunSummary`, `listRuns`). No polling.
-- **Schema versioning**: `ExecuteRunRequest` and `RunProgressUpdate` should include a `schemaVersion` field for forward compatibility.

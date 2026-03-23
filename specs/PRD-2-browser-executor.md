@@ -23,7 +23,7 @@ BrowserExecutor is a Cloudflare Worker deployed at `apps/browser-executor`. It e
 
 When Convex dispatches a run, BrowserExecutor:
 
-1. Accepts the `ExecuteRunRequest` payload and immediately acknowledges receipt.
+1. Accepts the `ExecuteRunRequest` payload, validates it, and begins execution in the same request context for v1.
 2. Acquires a browser lease from `BrowserLeaseDO`, respecting the hard concurrency cap.
 3. Opens a fresh incognito browser context via `@cloudflare/playwright` (Cloudflare Browser Rendering).
 4. Executes the persona-driven agent loop: observe → select action via OpenAI → execute → record milestones → check stop conditions → repeat.
@@ -39,11 +39,11 @@ When Convex dispatches a run, BrowserExecutor:
 
 ### Run Execution
 
-1. As the StudyOrchestrator, I can POST an `ExecuteRunRequest` to `/execute-run` and receive an immediate acknowledgement so that my Convex Workflow does not block waiting for the full browser session to complete.
+1. As the StudyOrchestrator, I can POST an `ExecuteRunRequest` to `/execute-run` and have the Worker start the run immediately, so that Convex can dispatch a single run without owning the browser lifecycle itself.
 2. As the StudyOrchestrator, I can include a signed, short-lived `callbackToken` and a `callbackBaseUrl` in the request so that BrowserExecutor can push progress back to the correct Convex environment.
 3. As the StudyOrchestrator, I can specify `taskSpec.maxSteps` and `taskSpec.maxDurationSec` so that runaway agent loops are bounded.
 4. As the StudyOrchestrator, I can specify `taskSpec.viewport` and `taskSpec.locale` so that runs reflect the target device and language environment.
-5. As the StudyOrchestrator, I can include optional `taskSpec.credentials` so that personas can authenticate without those credentials appearing in any artifact.
+5. As the StudyOrchestrator, I can include optional `taskSpec.credentialsRef` so that personas can authenticate without raw credentials appearing in the task payload or any artifact.
 6. As the StudyOrchestrator, I receive `heartbeat` progress updates at regular intervals during a run so that I can detect stalled runs.
 7. As the StudyOrchestrator, I receive `milestone` progress updates at significant navigation points.
 8. As the StudyOrchestrator, I receive a `completion` update with finalOutcome, selfReport, step count, duration, frustration count, and artifact manifest key.
@@ -96,6 +96,7 @@ When Convex dispatches a run, BrowserExecutor:
 - Single Cloudflare Worker in `apps/browser-executor`, two HTTP routes: `POST /execute-run` and `POST /health`.
 - Request dispatch in `index.ts`; all business logic in internal modules.
 - Runs in the Cloudflare Browser Rendering environment with `@cloudflare/playwright` binding.
+- In v1, `/execute-run` is a blocking Worker request that stays open for the life of one run while still emitting progress callbacks to Convex. A true acknowledge-and-detach model is deferred until the platform introduces a queue-backed execution path.
 
 ### BrowserLeaseDO (Durable Object)
 
@@ -117,6 +118,7 @@ When Convex dispatches a run, BrowserExecutor:
 - Each iteration: build observation → call OpenAI for action selection → apply guardrails → execute → check stop conditions → conditionally record milestone → update frustration counters.
 - Observation bundle caps visible text at a configured token budget.
 - Action selection prompt defined internally (not in `packages/ai`).
+- The loop must not rely on `ctx.waitUntil()` to keep browser execution alive after the response is sent; any `waitUntil()` usage is limited to best-effort non-critical work such as logging.
 
 ### Frustration Heuristics (`stepPolicy.ts`)
 
@@ -141,14 +143,14 @@ All implemented as pure functions:
 
 - `validateNavigation(url, allowedDomains)`: pure function, hostname check.
 - `validateAction(actionType, forbiddenActions)`: pure function.
-- `maskCredentials(text, credentials)`: pure function, replaces values with `[MASKED]`.
+- `maskCredentials(text, credentials)`: pure function, replaces resolved credential values with `[MASKED]`.
 - `validateCallbackToken(token, secret)`: HMAC signature + expiry verification.
 - Violations return structured results, not exceptions.
 
 ### Progress Reporting (`progressReporter.ts`)
 
 - Outbound callbacks to `callbackBaseUrl + '/api/run-progress'` with Bearer token.
-- Heartbeats every 30 seconds via `waitUntil` (non-blocking).
+- Heartbeats emitted inline during the run loop or from loop-adjacent timers while the request remains open.
 - Milestones sent synchronously after screenshot upload.
 - All payloads validated against `RunProgressUpdate` Zod schema before transmission.
 
@@ -173,7 +175,7 @@ All implemented as pure functions:
 ### Miniflare Tests (Worker integration)
 
 - `POST /health` returns 200 with correct shape.
-- `POST /execute-run` with mocked `BROWSER` binding — verify agent loop runs, milestones uploaded, completion callback sent.
+- `POST /execute-run` with mocked `BROWSER` binding — verify the blocking run path completes, milestones upload, completion callback is sent, and the final HTTP response matches the terminal run outcome.
 - `BrowserLeaseDO` directly: concurrency cap, lease release, alarm-based leak reclamation.
 
 ### Agent Loop Integration Tests (mocked browser)
@@ -211,3 +213,4 @@ Real Cloudflare Browser Rendering is not available in CI. All tests use `MockBro
 - **Cost**: OpenAI API calls dominate per-run cost. Milestone-only capture is the primary storage cost lever. Third-party analytics/media blocking reduces per-step duration.
 - **Callback token security**: HMAC-signed, scoped to specific `runId`, includes expiry timestamp. Signing secret injected as Worker secret.
 - **Artifact retention**: Single R2 bucket with manual lifecycle rules in v1. Two-tier retention is a v1.1 concern.
+- **Why v1 stays blocking:** Cloudflare `waitUntil()` only guarantees about 30 seconds of post-response execution, which is too brittle for multi-minute browser runs. The blocking request path is the simpler and safer v1 contract.
