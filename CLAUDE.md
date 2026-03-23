@@ -4,14 +4,14 @@
 
 Internal web app for validating web flows with synthetic persona-driven browser agents. See `specs/synthetic_persona_validation_platform_v1_final_spec.md` for the full spec and `specs/PRD-*.md` for implementation PRDs.
 
-## Architecture
+## Architecture (target — not all implemented yet)
 
-- **Frontend:** Vite + React 19 + TanStack Router + Tailwind v4 + shadcn/ui (`apps/web`)
-- **Backend:** Convex (control plane, system of record)
-- **Browser Executor:** Cloudflare Worker + `@cloudflare/playwright` (`apps/browser-executor`)
-- **AI:** OpenAI via `@ai-sdk/openai` through `packages/ai` wrapper
-- **Auth:** Convex Auth with password provider
-- **Monorepo:** Bun workspaces
+- **Frontend:** Vite + React 19 + TanStack Router + Tailwind v4 + shadcn/ui (`apps/web`) — *scaffolded, not yet functional*
+- **Backend:** Convex (control plane, system of record) — *schema defined, no functions yet*
+- **Browser Executor:** Cloudflare Worker + `@cloudflare/playwright` (`apps/browser-executor`) — *stub only*
+- **AI:** OpenAI via `@ai-sdk/openai` through `packages/ai` wrapper — *placeholder only*
+- **Auth:** Convex Auth with password provider — *not yet configured*
+- **Monorepo:** Bun workspaces — *implemented*
 
 ## Key Conventions
 

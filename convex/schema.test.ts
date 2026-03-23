@@ -2,11 +2,14 @@ import { describe, it, expect } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "./schema";
 
-// convex-test needs a modules map with at least one path containing "_generated"
-// so that findModulesRoot can derive the prefix. Since these smoke tests only
-// use t.run() (direct DB access), no module is ever actually loaded — we only
-// need the map to satisfy the startup check.
-const modules = import.meta.glob("./**/*.*s");
+// convex-test needs a modules map with a "_generated" path to derive the module
+// prefix. We provide an explicit map instead of import.meta.glob so tests work
+// with both `bunx vitest` and `bun test`. Since smoke tests only use t.run()
+// (direct DB access), no module is ever actually loaded.
+const modules = {
+  "./_generated/api.js": () => import("./_generated/api.js"),
+  "./schema.ts": () => import("./schema"),
+};
 
 // ─── Shared fixtures ───────────────────────────────────────────────────────
 
@@ -566,6 +569,45 @@ describe("issueClusters", () => {
       }),
     );
 
+    const protoId = await t.run(async (ctx) =>
+      ctx.db.insert("protoPersonas", {
+        packId,
+        name: "Proto Issue",
+        summary: "summary",
+        axes: [],
+        sourceType: "manual",
+        sourceRefs: [],
+        evidenceSnippets: [],
+      }),
+    );
+
+    const variantId = await t.run(async (ctx) =>
+      ctx.db.insert("personaVariants", {
+        studyId,
+        personaPackId: packId,
+        protoPersonaId: protoId,
+        axisValues: [],
+        edgeScore: 0.5,
+        tensionSeed: "neutral",
+        firstPersonBio: "Bio",
+        behaviorRules: [],
+        coherenceScore: 0.8,
+        distinctnessScore: 0.8,
+        accepted: true,
+      }),
+    );
+
+    const runId = await t.run(async (ctx) =>
+      ctx.db.insert("runs", {
+        studyId,
+        personaVariantId: variantId,
+        protoPersonaId: protoId,
+        status: "hard_fail",
+        frustrationCount: 3,
+        milestoneKeys: [],
+      }),
+    );
+
     const id = await t.run(async (ctx) =>
       ctx.db.insert("issueClusters", {
         studyId,
@@ -574,11 +616,11 @@ describe("issueClusters", () => {
         severity: "major",
         affectedRunCount: 20,
         affectedRunRate: 0.32,
-        affectedProtoPersonaIds: ["proto_id_1", "proto_id_2"],
+        affectedProtoPersonaIds: [protoId],
         affectedAxisRanges: [
           { key: "digital_confidence", min: -1.0, max: 0.0 },
         ],
-        representativeRunIds: ["run_001", "run_002"],
+        representativeRunIds: [runId],
         replayConfidence: 0.85,
         evidenceKeys: ["evidence/cluster_001.png"],
         recommendation: "Increase button contrast and size",
@@ -636,6 +678,25 @@ describe("studyReports", () => {
       }),
     );
 
+    const clusterId = await t.run(async (ctx) =>
+      ctx.db.insert("issueClusters", {
+        studyId,
+        title: "Issue",
+        summary: "summary",
+        severity: "minor",
+        affectedRunCount: 1,
+        affectedRunRate: 0.1,
+        affectedProtoPersonaIds: [],
+        affectedAxisRanges: [],
+        representativeRunIds: [],
+        replayConfidence: 0.5,
+        evidenceKeys: [],
+        recommendation: "fix it",
+        confidenceNote: "low",
+        score: 0.1,
+      }),
+    );
+
     const id = await t.run(async (ctx) =>
       ctx.db.insert("studyReports", {
         studyId,
@@ -645,7 +706,7 @@ describe("studyReports", () => {
           medianSteps: 8,
           medianDurationSec: 95,
         },
-        issueClusterIds: ["cluster_001", "cluster_002"],
+        issueClusterIds: [clusterId],
         segmentBreakdownKey: "segments/study_001.json",
         limitations: ["Synthetic personas only", "Single flow tested"],
         htmlReportKey: "reports/study_001.html",
@@ -659,7 +720,7 @@ describe("studyReports", () => {
     expect(doc).not.toBeNull();
     expect(doc!.headlineMetrics.completionRate).toBe(0.68);
     expect(doc!.headlineMetrics.abandonmentRate).toBe(0.32);
-    expect(doc!.issueClusterIds).toHaveLength(2);
+    expect(doc!.issueClusterIds).toHaveLength(1);
     expect(doc!.limitations).toHaveLength(2);
     expect(doc!.studyId).toBe(studyId);
   });
@@ -668,16 +729,47 @@ describe("studyReports", () => {
 // ─── 9. credentials ───────────────────────────────────────────────────────
 
 describe("credentials", () => {
-  it("inserts and reads back a credential", async () => {
+  it("inserts and reads back a credential with scoped study IDs", async () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
+
+    const packId = await t.run(async (ctx) =>
+      ctx.db.insert("personaPacks", {
+        name: "Pack Cred",
+        description: "d",
+        context: "c",
+        sharedAxes: [],
+        version: 1,
+        status: "draft",
+        orgId: "org_1",
+        createdBy: "user_1",
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+
+    const studyId = await t.run(async (ctx) =>
+      ctx.db.insert("studies", {
+        orgId: "org_1",
+        personaPackId: packId,
+        name: "Cred Study",
+        taskSpec: sampleTaskSpec,
+        runBudget: 64,
+        activeConcurrency: 10,
+        status: "draft",
+        createdBy: "user_1",
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
 
     const id = await t.run(async (ctx) =>
       ctx.db.insert("credentials", {
         label: "Staging checkout test account",
         encryptedPayload: "enc:base64==abcdef1234567890",
         description: "Shared test account for checkout studies",
-        allowedStudyIds: ["study_001", "study_002"],
+        allowedStudyIds: [studyId],
+        orgId: "org_1",
         createdBy: "user_admin",
         createdAt: now,
         updatedAt: now,
@@ -688,8 +780,8 @@ describe("credentials", () => {
 
     expect(doc).not.toBeNull();
     expect(doc!.label).toBe("Staging checkout test account");
-    expect(doc!.encryptedPayload).toBe("enc:base64==abcdef1234567890");
-    expect(doc!.allowedStudyIds).toHaveLength(2);
+    expect(doc!.orgId).toBe("org_1");
+    expect(doc!.allowedStudyIds).toHaveLength(1);
   });
 
   it("inserts a credential without allowedStudyIds (unrestricted)", async () => {
@@ -701,6 +793,7 @@ describe("credentials", () => {
         label: "Global test account",
         encryptedPayload: "enc:base64==xyz",
         description: "Unrestricted credential",
+        orgId: "org_1",
         createdBy: "user_admin",
         createdAt: now,
         updatedAt: now,

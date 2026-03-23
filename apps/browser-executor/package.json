@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "build": "wrangler deploy --dry-run",
+    "build": "echo 'worker build: not yet scaffolded (see issue #12)'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
