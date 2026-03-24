@@ -4,6 +4,7 @@ node_modules/
 # Agentics
 .agents
 .claude
+reviews
 
 # Build output
 dist/
@@ -34,6 +35,33 @@ Thumbs.db
 .claude/review-loop.lock
 .claude/review-loop-run-codex.sh
 .claude/review-loop-codex-prompt.txt
+
+# Convex-generated AI agent skills
+.augment/
+.codebuddy/
+.commandcode/
+.continue/
+.crush/
+.factory/
+.goose/
+.kilocode/
+.kiro/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.qoder/
+.qwen/
+.trae/
+.zed/
+.zencoder/
+.roo/
+.windsurf/
+skills/
+skills-lock.json
+AGENTS.md
+convex/_generated/ai/
 
 # Misc
 *.tsbuildinfo

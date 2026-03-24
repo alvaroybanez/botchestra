@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 // ─── Reusable validators ───────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ const taskSpecValidator = v.object({
 // ─── Schema ────────────────────────────────────────────────────────────────
 
 export default defineSchema({
+  ...authTables,
   // 1. personaPacks
   personaPacks: defineTable({
     name: v.string(),
