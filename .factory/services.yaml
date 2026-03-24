@@ -1,0 +1,29 @@
+commands:
+  install: bun install
+  typecheck: bun run typecheck
+  build: bun run build
+  test: bun run test
+  lint: echo "No lint configured"
+  dev: bun run dev
+
+services:
+  web:
+    start: cd apps/web && bun run dev
+    stop: lsof -ti :5180 | xargs kill -9 2>/dev/null || true
+    healthcheck: curl -sf http://localhost:5180
+    port: 5180
+    depends_on: []
+
+  convex:
+    start: bunx convex dev
+    stop: "ps aux | grep 'convex dev' | grep -v grep | awk '{print $2}' | xargs kill 2>/dev/null || true"
+    healthcheck: "true"
+    port: null
+    depends_on: []
+
+  browser-executor:
+    start: cd apps/browser-executor && bunx wrangler dev --port 8787
+    stop: lsof -ti :8787 | xargs kill -9 2>/dev/null || true
+    healthcheck: curl -sf -X POST http://localhost:8787/health
+    port: 8787
+    depends_on: []

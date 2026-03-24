@@ -14,6 +14,7 @@ dist/
 .env
 .env.*
 !.env.example
+.dev.vars
 
 # OS
 .DS_Store
@@ -42,7 +43,7 @@ Thumbs.db
 .commandcode/
 .continue/
 .crush/
-.factory/
+# .factory/ — NOT ignored, needed for mission infrastructure
 .goose/
 .kilocode/
 .kiro/
