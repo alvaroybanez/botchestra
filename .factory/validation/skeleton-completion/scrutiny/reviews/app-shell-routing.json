@@ -1,0 +1,25 @@
+{
+  "featureId": "app-shell-routing",
+  "reviewedAt": "2026-03-24T19:43:08.355120Z",
+  "commitId": "4b7122ad0bfb0fe20e2a0341ae7d8355ab2f893c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The routed app shell implementation matches the milestone contract: authenticated routes render inside a shared sidebar layout, unauthenticated access redirects to login with deep-link preservation, root redirects to /studies, login/signup live inside the router, and the authenticated fallback/placeholder routes are covered by tests and browser verification. No blocking or non-blocking code issues were identified in the reviewed commit.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "library",
+      "observation": "Convex password-auth verification also depends on JWT_PRIVATE_KEY and JWKS being configured on the Convex deployment; the shared environment notes only document root .env.local variables, so the worker had to discover and set the missing deployment keys during verification.",
+      "evidence": "app-shell-routing handoff skillFeedback notes that browser verification was blocked until JWT_PRIVATE_KEY and JWKS were configured; .factory/library/environment.md currently lists CONVEX_DEPLOYMENT, CONVEX_URL, and CONVEX_SITE_URL but not the auth signing keys."
+    },
+    {
+      "area": "skills",
+      "observation": "The fullstack-worker procedure assumes every fullstack feature should begin with backend-first Convex tests, but this routing-focused milestone task required mostly frontend routing work plus auth configuration, leading to a justified deviation.",
+      "evidence": "app-shell-routing handoff.skillFeedback.deviations[0] explains the routing task skipped new Convex tests; .factory/skills/fullstack-worker/SKILL.md step 3 mandates backend-first work before frontend."
+    }
+  ],
+  "addressesFailureFrom": null
+}

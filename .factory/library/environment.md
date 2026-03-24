@@ -14,6 +14,10 @@ Environment variables, external dependencies, and setup notes.
 - `CONVEX_URL` — Convex HTTP API URL
 - `CONVEX_SITE_URL` — Convex site URL (used by auth)
 
+### Convex deployment env vars
+- `JWT_PRIVATE_KEY` — required by `@convex-dev/auth` password flows so the dev deployment can mint auth tokens
+- `JWKS` — required by `@convex-dev/auth` alongside `JWT_PRIVATE_KEY` so login/signup verification works against the Convex deployment
+
 ### Worker `.dev.vars` (apps/browser-executor/.dev.vars)
 - `CALLBACK_SIGNING_SECRET` — HMAC signing secret for callback tokens
 - `OPENAI_API_KEY` — OpenAI API key for agent action selection

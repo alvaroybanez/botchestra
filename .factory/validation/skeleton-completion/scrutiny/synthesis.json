@@ -1,0 +1,52 @@
+{
+  "milestone": "skeleton-completion",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Documented in .factory/library/environment.md that Convex Auth password flows require JWT_PRIVATE_KEY and JWKS on the Convex deployment.",
+      "sourceFeature": "app-shell-routing"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "Skill: fullstack-worker",
+      "suggestion": "Clarify that routing-only or frontend-heavy features may skip backend-first Convex test creation when no Convex functions change, while still requiring frontend tests and browser verification.",
+      "evidence": "The app-shell-routing worker explicitly deviated from step 3 of .factory/skills/fullstack-worker/SKILL.md because the feature required router/auth-shell work rather than new Convex functions.",
+      "isSystemic": true
+    },
+    {
+      "target": "Skill: cf-worker",
+      "suggestion": "Add a note that module workers should avoid exporting extra named constants beyond the default worker and Durable Object classes because wrangler dev can fail to boot.",
+      "evidence": "The worker-stub handoff recorded a skill suggestion after wrangler startup issues caused by extra exports; the final worker entry point keeps only the default export, BrowserLeaseDO, and internal helpers.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
