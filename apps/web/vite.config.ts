@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 export default defineConfig({
+  envDir: path.resolve(__dirname, "../.."),
+  envPrefix: ["VITE_", "CONVEX_"],
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

@@ -81,8 +81,7 @@ describe("RunProgressUpdateSchema", () => {
 
     const result = RunProgressUpdateSchema.safeParse(input);
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.eventType).toBe("milestone");
+    if (result.success && result.data.eventType === "milestone") {
       expect(result.data.payload.stepIndex).toBe(3);
     }
   });
@@ -107,8 +106,7 @@ describe("RunProgressUpdateSchema", () => {
 
     const result = RunProgressUpdateSchema.safeParse(input);
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.eventType).toBe("completion");
+    if (result.success && result.data.eventType === "completion") {
       expect(result.data.payload.finalOutcome).toBe("SUCCESS");
     }
   });
@@ -122,8 +120,7 @@ describe("RunProgressUpdateSchema", () => {
 
     const result = RunProgressUpdateSchema.safeParse(input);
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.eventType).toBe("heartbeat");
+    if (result.success && result.data.eventType === "heartbeat") {
       expect(result.data.payload.timestamp).toBe(1711234567890);
     }
   });
@@ -179,8 +176,7 @@ describe("RunProgressUpdateSchema", () => {
 
     const result = RunProgressUpdateSchema.safeParse(input);
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.eventType).toBe("failure");
+    if (result.success && result.data.eventType === "failure") {
       expect(result.data.payload.errorCode).toBe("MAX_STEPS_EXCEEDED");
     }
   });

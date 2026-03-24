@@ -9,9 +9,10 @@ export const APP_NAME = "Botchestra" as const;
 
 const root = document.getElementById("root");
 if (root) {
-  const convex = new ConvexReactClient(
-    import.meta.env.VITE_CONVEX_URL as string,
-  );
+  const convexUrl = (
+    import.meta.env.VITE_CONVEX_URL ?? import.meta.env.CONVEX_URL
+  ) as string;
+  const convex = new ConvexReactClient(convexUrl);
 
   ReactDOM.createRoot(root).render(
     <React.StrictMode>

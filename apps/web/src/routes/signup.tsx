@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { Link, useRouter } from "@tanstack/react-router";
+import { useConvexAuth } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,13 +15,25 @@ import {
 } from "@/components/ui/card";
 
 export function SignupPage({
-  onNavigateToLogin,
+  redirectPath,
 }: {
-  onNavigateToLogin: () => void;
+  redirectPath: string;
 }) {
   const { signIn } = useAuthActions();
+  const { isAuthenticated } = useConvexAuth();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    void router.invalidate().then(() => {
+      router.history.push(redirectPath);
+    });
+  }, [isAuthenticated, redirectPath, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -98,13 +112,13 @@ export function SignupPage({
           >
             {loading ? "Creating account..." : "Sign up"}
           </Button>
-          <Button
-            variant="link"
-            type="button"
-            onClick={onNavigateToLogin}
+          <Link
+            className="text-sm text-primary underline-offset-4 hover:underline"
+            search={{ redirect: redirectPath }}
+            to="/login"
           >
             Already have an account? Log in
-          </Button>
+          </Link>
         </CardFooter>
       </Card>
     </div>

@@ -1,0 +1,135 @@
+import { act } from "react";
+import ReactDOM from "react-dom/client";
+import {
+  createMemoryHistory,
+  RouterProvider,
+} from "@tanstack/react-router";
+import {
+  afterEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { contentRoutePlaceholders } from "@/routes/placeholders";
+import {
+  createAppRouter,
+  getRouterLocationHref,
+  resolveRedirectPath,
+  type AppAuthState,
+} from "@/router";
+
+let mockedAuthState: AppAuthState = {
+  isAuthenticated: false,
+  isLoading: false,
+};
+
+vi.mock("@convex-dev/auth/react", () => ({
+  useAuthActions: () => ({
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+vi.mock("convex/react", () => ({
+  useConvexAuth: () => mockedAuthState,
+}));
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
+  .IS_REACT_ACT_ENVIRONMENT = true;
+
+const mountedRoots: ReactDOM.Root[] = [];
+
+afterEach(() => {
+  for (const root of mountedRoots.splice(0)) {
+    act(() => {
+      root.unmount();
+    });
+  }
+  document.body.innerHTML = "";
+});
+
+describe("@botchestra/web routing", () => {
+  it("renders 10 distinct authenticated placeholders", () => {
+    expect(contentRoutePlaceholders).toHaveLength(10);
+    expect(
+      new Set(contentRoutePlaceholders.map((placeholder) => placeholder.title))
+        .size,
+    ).toBe(10);
+    expect(
+      new Set(contentRoutePlaceholders.map((placeholder) => placeholder.detail))
+        .size,
+    ).toBe(10);
+  });
+
+  it("sanitizes redirect targets to local in-app paths", () => {
+    expect(resolveRedirectPath("/studies/test-id-123/report")).toBe(
+      "/studies/test-id-123/report",
+    );
+    expect(resolveRedirectPath("https://example.com/settings")).toBe("/studies");
+    expect(resolveRedirectPath("//example.com/settings")).toBe("/studies");
+  });
+
+  it("redirects authenticated users from root to /studies and renders the app shell", async () => {
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/"],
+    });
+
+    expect(getRouterLocationHref(router)).toBe("/studies");
+    expect(container.textContent).toContain("Validation Console");
+    expect(container.textContent).toContain("Studies");
+    expect(container.textContent).toContain("Browse every validation study");
+  });
+
+  it("redirects unauthenticated deep links to login while preserving the target route", async () => {
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: false, isLoading: false },
+      initialEntries: ["/studies/test-id-123/report"],
+    });
+
+    expect(getRouterLocationHref(router)).toBe(
+      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport",
+    );
+    expect(container.querySelector("#login-email")).not.toBeNull();
+    expect(container.textContent).toContain("Don't have an account? Sign up");
+    expect(container.textContent).not.toContain("Validation Console");
+  });
+
+  it("shows the authenticated fallback route for unknown URLs", async () => {
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/nonexistent"],
+    });
+
+    expect(getRouterLocationHref(router)).toBe("/nonexistent");
+    expect(container.textContent).toContain("Page not found");
+    expect(container.textContent).toContain("Validation Console");
+  });
+});
+
+async function renderRoute({
+  auth,
+  initialEntries,
+}: {
+  auth: AppAuthState;
+  initialEntries: string[];
+}) {
+  mockedAuthState = auth;
+  const history = createMemoryHistory({ initialEntries });
+  const router = createAppRouter({ history });
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = ReactDOM.createRoot(container);
+  mountedRoots.push(root);
+
+  await act(async () => {
+    root.render(<RouterProvider context={{ auth }} router={router} />);
+  });
+
+  await act(async () => {
+    await router.load();
+  });
+
+  return { container, router };
+}
