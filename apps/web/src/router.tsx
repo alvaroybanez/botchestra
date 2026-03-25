@@ -16,6 +16,7 @@ import {
   PersonaPackDetailPage as PersonaPackDetailRoutePage,
   PersonaPacksPage as PersonaPacksRoutePage,
 } from "@/routes/persona-pack-pages";
+import { StudyPersonasPage as StudyPersonasRoutePage } from "@/routes/study-personas-page";
 import {
   SettingsSkeletonPage,
   StudiesNewSkeletonPage,
@@ -322,14 +323,7 @@ function StudyOverviewPage() {
 
 function StudyPersonasPage() {
   const { studyId } = studyPersonasRoute.useParams();
-  return (
-    <StudyDetailSkeletonPage
-      activeTab="personas"
-      routePath={`/studies/${studyId}/personas`}
-      studyId={studyId}
-      tabIndex={3}
-    />
-  );
+  return <StudyPersonasRoutePage studyId={studyId} />;
 }
 
 function StudyRunsPage() {

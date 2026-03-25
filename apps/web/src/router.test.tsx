@@ -38,11 +38,53 @@ let mockedPackDetail:
 let mockedProtoPersonas:
   | Doc<"protoPersonas">[]
   | undefined = [];
+let mockedVariantReview:
+  | {
+      study: {
+        _id: string;
+        name: string;
+        status: string;
+        runBudget: number;
+        updatedAt: number;
+      };
+      pack: {
+        _id: string;
+        name: string;
+        status: string;
+        sharedAxes: {
+          key: string;
+          label: string;
+          description: string;
+          lowAnchor: string;
+          midAnchor: string;
+          highAnchor: string;
+          weight: number;
+        }[];
+      };
+      protoPersonas: {
+        _id: string;
+        name: string;
+        summary: string;
+      }[];
+      variants: {
+        _id: string;
+        protoPersonaId: string;
+        protoPersonaName: string;
+        axisValues: { key: string; value: number }[];
+        edgeScore: number;
+        coherenceScore: number;
+        distinctnessScore: number;
+        firstPersonBio: string;
+      }[];
+    }
+  | null
+  | undefined = undefined;
 const createDraftMock = vi.fn();
 const updateDraftMock = vi.fn();
 const createProtoPersonaMock = vi.fn();
 const publishMock = vi.fn();
 const archiveMock = vi.fn();
+const generateVariantsMock = vi.fn();
 
 vi.mock("@convex-dev/auth/react", () => ({
   useAuthActions: () => ({
@@ -78,6 +120,15 @@ vi.mock("convex/react", () => ({
 
     return vi.fn();
   },
+  useAction: (action: unknown) => {
+    const actionName = getFunctionName(action as never);
+
+    if (actionName === "personaVariantGeneration:generateVariantsForStudy") {
+      return generateVariantsMock;
+    }
+
+    return vi.fn();
+  },
   useQuery: (query: unknown) => {
     const queryName = getFunctionName(query as never);
 
@@ -91,6 +142,10 @@ vi.mock("convex/react", () => ({
 
     if (queryName === "personaPacks:listProtoPersonas") {
       return mockedProtoPersonas;
+    }
+
+    if (queryName === "personaVariantReview:getStudyVariantReview") {
+      return mockedVariantReview;
     }
 
     return undefined;
@@ -115,6 +170,7 @@ beforeEach(() => {
   mockedPackList = [];
   mockedPackDetail = null;
   mockedProtoPersonas = [];
+  mockedVariantReview = undefined;
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
   updateDraftMock.mockReset();
@@ -125,6 +181,12 @@ beforeEach(() => {
   publishMock.mockResolvedValue(undefined);
   archiveMock.mockReset();
   archiveMock.mockResolvedValue(undefined);
+  generateVariantsMock.mockReset();
+  generateVariantsMock.mockResolvedValue({
+    acceptedCount: 64,
+    rejectedCount: 0,
+    retryCount: 0,
+  });
 });
 
 describe("@botchestra/web routing", () => {
@@ -236,6 +298,104 @@ describe("@botchestra/web routing", () => {
         expect.objectContaining({ href: "/studies/demo-study/findings", text: "Findings" }),
         expect.objectContaining({ href: "/studies/demo-study/report", text: "Report" }),
       ]),
+    );
+  });
+
+  it("renders accepted variants with required review columns", async () => {
+    mockedVariantReview = makeVariantReview();
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/personas"],
+    });
+
+    expect(container.textContent).toContain("Persona Variant Review");
+    expect(container.textContent).toContain("Accepted variants");
+    expect(container.textContent).toContain("Proto-persona");
+    expect(container.textContent).toContain("Digital confidence");
+    expect(container.textContent).toContain("Edge score");
+    expect(container.textContent).toContain("Coherence score");
+    expect(container.textContent).toContain("Distinctness score");
+    expect(container.textContent).toContain("Bio preview");
+    expect(getVariantRows(container)).toHaveLength(3);
+  });
+
+  it("filters variants by proto-persona and axis range", async () => {
+    mockedVariantReview = makeVariantReview();
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/personas"],
+    });
+
+    await updateSelect(container, "#proto-persona-filter", "proto-cautious");
+    expect(getVariantRows(container)).toHaveLength(2);
+    expect(getVariantRows(container).every((row) => row.includes("Cautious checkout shopper"))).toBe(true);
+
+    await updateInput(container, "#minimum-axis-value", "0.5");
+    expect(getVariantRows(container)).toHaveLength(0);
+
+    await updateSelect(container, "#proto-persona-filter", "all");
+    expect(getVariantRows(container)).toHaveLength(1);
+    expect(firstVariantRowText(container)).toContain("Fast-moving repeat buyer");
+  });
+
+  it("sorts variants by each score column", async () => {
+    mockedVariantReview = makeVariantReview();
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/personas"],
+    });
+
+    expect(firstVariantRowText(container)).toContain("Budget-minded parent");
+
+    await clickButton(container, "Coherence score");
+    expect(firstVariantRowText(container)).toContain("Fast-moving repeat buyer");
+
+    await clickButton(container, "Distinctness score");
+    expect(firstVariantRowText(container)).toContain("Budget-minded parent");
+
+    await clickButton(container, "Edge score");
+    await clickButton(container, "Edge score");
+    expect(firstVariantRowText(container)).toContain("Fast-moving repeat buyer");
+  });
+
+  it("shows a loading indicator and disables generation while variants are generating", async () => {
+    mockedVariantReview = makeVariantReview();
+    let resolveGeneration: (() => void) | null = null;
+    generateVariantsMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveGeneration = () => resolve({
+            acceptedCount: 64,
+            rejectedCount: 0,
+            retryCount: 0,
+          });
+        }),
+    );
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/personas"],
+    });
+
+    await clickButton(container, "Generate variants");
+
+    const generateButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Generating variants...",
+    );
+    expect(generateButton).toBeDefined();
+    expect(generateButton).toHaveProperty("disabled", true);
+    expect(container.textContent).toContain("Generating variants...");
+    expect(generateVariantsMock).toHaveBeenCalledWith({ studyId: "study-live" });
+
+    await act(async () => {
+      resolveGeneration?.();
+    });
+
+    expect(container.textContent).toContain(
+      "Generated 64 accepted variants (0 rejected, 0 retries).",
     );
   });
 
@@ -501,6 +661,36 @@ async function updateInput(
   });
 }
 
+async function updateSelect(
+  container: HTMLDivElement,
+  selector: string,
+  value: string,
+) {
+  const select = container.querySelector<HTMLSelectElement>(selector);
+
+  expect(select).not.toBeNull();
+
+  await act(async () => {
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      HTMLSelectElement.prototype,
+      "value",
+    )?.set;
+    valueSetter?.call(select, value);
+    select!.dispatchEvent(new Event("input", { bubbles: true }));
+    select!.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+function getVariantRows(container: HTMLDivElement) {
+  return [...container.querySelectorAll<HTMLElement>('[data-testid="variant-row"]')].map(
+    (row) => row.textContent ?? "",
+  );
+}
+
+function firstVariantRowText(container: HTMLDivElement) {
+  return getVariantRows(container)[0] ?? "";
+}
+
 async function updateTextarea(
   container: HTMLDivElement,
   selector: string,
@@ -574,5 +764,98 @@ function makeProtoPersona(
     evidenceSnippets: ["Checks totals twice before placing an order."],
     notes: "Frequently cross-checks fees.",
     ...overrides,
+  };
+}
+
+function makeVariantReview() {
+  return {
+    study: {
+      _id: "study-live",
+      name: "Checkout usability benchmark",
+      status: "persona_review",
+      runBudget: 64,
+      updatedAt: Date.now(),
+    },
+    pack: {
+      _id: "pack-live",
+      name: "Customer Journey Stress Test Pack",
+      status: "published",
+      sharedAxes: [
+        {
+          key: "digital_confidence",
+          label: "Digital confidence",
+          description: "Comfort with unfamiliar digital tasks.",
+          lowAnchor: "Needs reassurance",
+          midAnchor: "Can continue with light support",
+          highAnchor: "Self-directed",
+          weight: 1,
+        },
+        {
+          key: "support_needs",
+          label: "Support needs",
+          description: "How much guidance or escalation the person expects.",
+          lowAnchor: "Prefers self-service",
+          midAnchor: "Requests help when stuck",
+          highAnchor: "Wants a human quickly",
+          weight: 1,
+        },
+      ],
+    },
+    protoPersonas: [
+      {
+        _id: "proto-cautious",
+        name: "Cautious checkout shopper",
+        summary: "Moves carefully and checks totals before submitting.",
+      },
+      {
+        _id: "proto-power",
+        name: "Goal-driven power user",
+        summary: "Moves fast and expects the flow to stay out of the way.",
+      },
+    ],
+    variants: [
+      {
+        _id: "variant-cautious-edge",
+        protoPersonaId: "proto-cautious",
+        protoPersonaName: "Cautious checkout shopper",
+        axisValues: [
+          { key: "digital_confidence", value: -0.68 },
+          { key: "support_needs", value: 0.74 },
+        ],
+        edgeScore: 0.93,
+        coherenceScore: 0.72,
+        distinctnessScore: 0.94,
+        firstPersonBio:
+          "Budget-minded parent who slows down at payment steps, checks totals twice, and looks for fee transparency before deciding whether to continue.",
+      },
+      {
+        _id: "variant-power-balanced",
+        protoPersonaId: "proto-power",
+        protoPersonaName: "Goal-driven power user",
+        axisValues: [
+          { key: "digital_confidence", value: 0.82 },
+          { key: "support_needs", value: -0.56 },
+        ],
+        edgeScore: 0.59,
+        coherenceScore: 0.96,
+        distinctnessScore: 0.62,
+        firstPersonBio:
+          "Fast-moving repeat buyer who expects autofill, skims familiar screens, and gets impatient when a checkout asks for information that should already be known.",
+      },
+      {
+        _id: "variant-cautious-interior",
+        protoPersonaId: "proto-cautious",
+        protoPersonaName: "Cautious checkout shopper",
+        axisValues: [
+          { key: "digital_confidence", value: 0.18 },
+          { key: "support_needs", value: 0.33 },
+        ],
+        edgeScore: 0.77,
+        coherenceScore: 0.84,
+        distinctnessScore: 0.88,
+        firstPersonBio:
+          "Methodical shopper who understands checkout basics, still pauses at ambiguous copy, and wants confidence-building cues before sharing payment details.",
+      },
+    ],
   };
 }

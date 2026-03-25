@@ -15,6 +15,7 @@ import type * as personaEngine_variantGeneration from "../personaEngine/variantG
 import type * as personaPacks from "../personaPacks.js";
 import type * as personaVariantGeneration from "../personaVariantGeneration.js";
 import type * as personaVariantGenerationModel from "../personaVariantGenerationModel.js";
+import type * as personaVariantReview from "../personaVariantReview.js";
 
 import type {
   ApiFromModules,
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   personaPacks: typeof personaPacks;
   personaVariantGeneration: typeof personaVariantGeneration;
   personaVariantGenerationModel: typeof personaVariantGenerationModel;
+  personaVariantReview: typeof personaVariantReview;
 }>;
 
 /**
