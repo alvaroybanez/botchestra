@@ -54,6 +54,7 @@ export type BrowserContextOptions = {
 
 export type BrowserPage = {
   snapshot(): Promise<BrowserPageSnapshot>;
+  screenshot(): Promise<Uint8Array>;
   goto(url: string): Promise<void>;
   click(selector: string): Promise<void>;
   type(selector: string, text: string): Promise<void>;
@@ -139,7 +140,7 @@ type RunExecutorDependencies = {
   now?: () => number;
   observationConfig?: Partial<BuildObservationConfig>;
   frustrationPolicy?: Partial<FrustrationPolicy>;
-  onMilestone?: (milestone: RunMilestone) => Promise<void> | void;
+  onMilestone?: (milestone: RunMilestone, screenshot: Uint8Array) => Promise<void> | void;
 };
 
 const DEFAULT_OBSERVATION_TOKEN_BUDGET = 256;
@@ -277,6 +278,7 @@ async function executeAction(page: BrowserPage, action: AgentAction) {
 
 async function maybeCaptureMilestone(
   dependencies: RunExecutorDependencies,
+  page: BrowserPage,
   stepState: MilestoneStepState,
   pageTitle: string,
   history: readonly StepSnapshot[],
@@ -302,7 +304,13 @@ async function maybeCaptureMilestone(
   };
 
   milestones.push(milestone);
-  await dependencies.onMilestone?.(milestone);
+
+  if (!dependencies.onMilestone) {
+    return;
+  }
+
+  const screenshot = await page.screenshot();
+  await dependencies.onMilestone(milestone, screenshot);
 }
 
 function hasExceededMaxDuration(
@@ -447,6 +455,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             const terminalStepState = toStepState(stepCount, action, pageSnapshot);
             await maybeCaptureMilestone(
               dependencies,
+              page,
               terminalStepState,
               pageSnapshot.title,
               history,
@@ -480,6 +489,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           const stepState = toStepState(stepCount, action, nextPageSnapshot);
           await maybeCaptureMilestone(
             dependencies,
+            page,
             stepState,
             nextPageSnapshot.title,
             history,

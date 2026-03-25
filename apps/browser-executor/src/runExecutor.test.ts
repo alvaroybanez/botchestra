@@ -17,6 +17,7 @@ class MockBrowserPage {
   readonly waitCalls: number[] = [];
   readonly backCalls: number[] = [];
   readonly snapshotCalls: number[] = [];
+  readonly screenshotCalls: number[] = [];
 
   private currentState: BrowserPageSnapshot;
 
@@ -33,6 +34,11 @@ class MockBrowserPage {
   async snapshot() {
     this.snapshotCalls.push(this.snapshotCalls.length);
     return structuredClone(this.currentState);
+  }
+
+  async screenshot() {
+    this.screenshotCalls.push(this.screenshotCalls.length);
+    return new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
   }
 
   async goto(url: string) {
