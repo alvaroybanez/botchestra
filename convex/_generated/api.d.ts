@@ -11,7 +11,10 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as personaEngine_pure from "../personaEngine/pure.js";
+import type * as personaEngine_variantGeneration from "../personaEngine/variantGeneration.js";
 import type * as personaPacks from "../personaPacks.js";
+import type * as personaVariantGeneration from "../personaVariantGeneration.js";
+import type * as personaVariantGenerationModel from "../personaVariantGenerationModel.js";
 
 import type {
   ApiFromModules,
@@ -23,7 +26,10 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   "personaEngine/pure": typeof personaEngine_pure;
+  "personaEngine/variantGeneration": typeof personaEngine_variantGeneration;
   personaPacks: typeof personaPacks;
+  personaVariantGeneration: typeof personaVariantGeneration;
+  personaVariantGenerationModel: typeof personaVariantGenerationModel;
 }>;
 
 /**

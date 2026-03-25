@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = {
@@ -58,7 +58,7 @@ describe("personaPacks", () => {
       pack: makeCreateDraftInput(),
     });
 
-    const pack = await t.run(async (ctx) => ctx.db.get(packId));
+    const pack = await getPackDoc(t, packId);
 
     expect(pack).not.toBeNull();
     expect(pack).toMatchObject({
@@ -155,7 +155,7 @@ describe("personaPacks", () => {
     const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
       pack: makeCreateDraftInput(),
     });
-    const beforeUpdate = await t.run(async (ctx) => ctx.db.get(packId));
+    const beforeUpdate = await getPackDoc(t, packId);
 
     await asResearcher.mutation(api.personaPacks.updateDraft, {
       packId,
@@ -174,14 +174,14 @@ describe("personaPacks", () => {
       },
     });
 
-    const afterUpdate = await t.run(async (ctx) => ctx.db.get(packId));
+    const afterUpdate = await getPackDoc(t, packId);
 
     expect(afterUpdate).toMatchObject({
       name: "Refined E-commerce Shoppers",
       description: "Updated description",
       context: "Updated context",
     });
-    expect(afterUpdate!.sharedAxes.map((axis) => axis.key)).toEqual([
+    expect(afterUpdate!.sharedAxes.map((axis: AxisInput) => axis.key)).toEqual([
       "digital_confidence",
       "patience",
     ]);
@@ -241,8 +241,8 @@ describe("personaPacks", () => {
       },
     });
 
-    const pack = await t.run(async (ctx) => ctx.db.get(packId));
-    expect(pack!.sharedAxes.map((axis) => axis.key)).toEqual([
+    const pack = await getPackDoc(t, packId);
+    expect(pack!.sharedAxes.map((axis: AxisInput) => axis.key)).toEqual([
       "patience",
       "risk_tolerance",
     ]);
@@ -277,9 +277,9 @@ describe("personaPacks", () => {
     });
     await insertProtoPersona(t, packId);
 
-    const beforePublish = await t.run(async (ctx) => ctx.db.get(packId));
+    const beforePublish = await getPackDoc(t, packId);
     await asResearcher.mutation(api.personaPacks.publish, { packId });
-    const afterPublish = await t.run(async (ctx) => ctx.db.get(packId));
+    const afterPublish = await getPackDoc(t, packId);
 
     expect(afterPublish!.status).toBe("published");
     expect(afterPublish!.version).toBe(beforePublish!.version + 1);
@@ -320,7 +320,7 @@ describe("personaPacks", () => {
 
     await asResearcher.mutation(api.personaPacks.archive, { packId });
 
-    const pack = await t.run(async (ctx) => ctx.db.get(packId));
+    const pack = await getPackDoc(t, packId);
     expect(pack!.status).toBe("archived");
   });
 
@@ -351,7 +351,9 @@ describe("personaPacks", () => {
     const packs = await asResearcher.query(api.personaPacks.list, {});
     const pack = await asResearcher.query(api.personaPacks.get, { packId: ownPackId });
 
-    expect(packs.map((item) => item._id)).toEqual([ownPackId]);
+    expect(packs.map((item: { _id: Id<"personaPacks"> }) => item._id)).toEqual([
+      ownPackId,
+    ]);
     expect(pack?._id).toBe(ownPackId);
   });
 
@@ -378,7 +380,7 @@ describe("personaPacks", () => {
       asResearcher.mutation(api.personaPacks.updateDraft, { packId, patch: patchB }),
     ]);
 
-    const pack = await t.run(async (ctx) => ctx.db.get(packId));
+    const pack = await getPackDoc(t, packId);
 
     expect(
       [patchA, patchB].some(
@@ -418,6 +420,13 @@ async function createPublishedPack(t: TestInstance) {
   await insertProtoPersona(t, packId);
   await asResearcher.mutation(api.personaPacks.publish, { packId });
   return packId;
+}
+
+async function getPackDoc(
+  t: TestInstance,
+  packId: Id<"personaPacks">,
+): Promise<Doc<"personaPacks"> | null> {
+  return await t.run(async (ctx) => (await ctx.db.get(packId)) as Doc<"personaPacks"> | null);
 }
 
 async function createArchivedPack(t: TestInstance) {

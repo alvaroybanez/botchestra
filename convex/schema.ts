@@ -127,7 +127,7 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     taskSpec: taskSpecValidator,
-    runBudget: v.number(),
+    runBudget: v.optional(v.number()),
     activeConcurrency: v.number(),
     status: v.union(
       v.literal("draft"),

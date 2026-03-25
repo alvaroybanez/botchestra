@@ -96,7 +96,9 @@ describe("proto persona CRUD", () => {
       "Prefers to verify totals twice before checkout.",
       "Reads return policy language carefully.",
     ]);
-    expect(protoPersonas.map((item) => item._id)).toEqual([protoPersonaId]);
+    expect(
+      protoPersonas.map((item: { _id: Id<"protoPersonas"> }) => item._id),
+    ).toEqual([protoPersonaId]);
   });
 
   it("rejects missing required name or summary", async () => {
@@ -161,7 +163,9 @@ describe("proto persona CRUD", () => {
       notes: "Updated after interview review",
       sourceType: "manual",
     });
-    expect(protoPersona?.axes.map((axis) => axis.key)).toEqual(["patience"]);
+    expect(
+      protoPersona?.axes.map((axis: { key: string }) => axis.key),
+    ).toEqual(["patience"]);
     expect(protoPersona?.evidenceSnippets).toEqual([
       "Abandons flows after unexpected fees.",
     ]);
