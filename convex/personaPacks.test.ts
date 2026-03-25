@@ -68,6 +68,7 @@ describe("personaPacks", () => {
       status: "draft",
       version: 1,
       createdBy: researchIdentity.tokenIdentifier,
+      updatedBy: researchIdentity.tokenIdentifier,
       orgId: researchIdentity.tokenIdentifier,
     });
     expect(pack!.createdAt).toBeGreaterThanOrEqual(before);
@@ -186,6 +187,37 @@ describe("personaPacks", () => {
       "patience",
     ]);
     expect(afterUpdate!.updatedAt).toBeGreaterThanOrEqual(beforeUpdate!.updatedAt);
+  });
+
+  it("tracks the last modifying actor separately from the creator", async () => {
+    const t = createTest();
+    const asCollaborator = t.withIdentity(collaboratorIdentity);
+    const packId = await t.run(async (ctx) =>
+      ctx.db.insert("personaPacks", {
+        ...makeCreateDraftInput(),
+        version: 1,
+        status: "draft",
+        orgId: collaboratorIdentity.tokenIdentifier,
+        createdBy: researchIdentity.tokenIdentifier,
+        updatedBy: researchIdentity.tokenIdentifier,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
+
+    await asCollaborator.mutation(api.personaPacks.updateDraft, {
+      packId,
+      patch: {
+        description: "Collaborator-updated description",
+      },
+    });
+
+    const pack = await getPackDoc(t, packId);
+    expect(pack).toMatchObject({
+      createdBy: researchIdentity.tokenIdentifier,
+      updatedBy: collaboratorIdentity.tokenIdentifier,
+      description: "Collaborator-updated description",
+    });
   });
 
   it("updateDraft supports adding and removing shared axes", async () => {

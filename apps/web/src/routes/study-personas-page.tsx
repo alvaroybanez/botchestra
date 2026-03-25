@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAction, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
+import {
+  PersonaVariantReviewGrid,
+  type VariantReviewData,
+} from "@/components/persona-variant-review-grid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
 
 const studyTabs = [
@@ -128,48 +130,6 @@ const demoReviewData: VariantReviewData = {
   ],
 };
 
-type VariantReviewData = {
-  study: {
-    _id: string;
-    name: string;
-    status: string;
-    runBudget: number;
-    updatedAt: number;
-  };
-  pack: {
-    _id: string;
-    name: string;
-    status: string;
-    sharedAxes: {
-      key: string;
-      label: string;
-      description: string;
-      lowAnchor: string;
-      midAnchor: string;
-      highAnchor: string;
-      weight: number;
-    }[];
-  };
-  protoPersonas: {
-    _id: string;
-    name: string;
-    summary: string;
-  }[];
-  variants: {
-    _id: string;
-    protoPersonaId: string;
-    protoPersonaName: string;
-    axisValues: { key: string; value: number }[];
-    edgeScore: number;
-    coherenceScore: number;
-    distinctnessScore: number;
-    firstPersonBio: string;
-  }[];
-};
-
-type SortKey = "edgeScore" | "coherenceScore" | "distinctnessScore";
-type SortDirection = "asc" | "desc";
-
 export function StudyPersonasPage({ studyId }: { studyId: string }) {
   if (studyId === DEMO_STUDY_ID) {
     return <DemoStudyPersonasPage />;
@@ -202,7 +162,11 @@ function DemoStudyPersonasPage() {
     <VariantReviewContent
       actionError={null}
       isGenerating={isGenerating}
-      reviewData={demoReviewData}
+      reviewData={
+        demoReviewData as VariantReviewData & {
+          study: NonNullable<VariantReviewData["study"]>;
+        }
+      }
       statusMessage={statusMessage}
       onGenerate={() => void handleGenerate()}
     />
@@ -259,7 +223,11 @@ function LiveStudyPersonasPage({ studyId }: { studyId: Id<"studies"> }) {
     <VariantReviewContent
       actionError={actionError}
       isGenerating={isGenerating}
-      reviewData={reviewData as VariantReviewData}
+      reviewData={
+        reviewData as VariantReviewData & {
+          study: NonNullable<VariantReviewData["study"]>;
+        }
+      }
       statusMessage={statusMessage}
       onGenerate={() => void handleGenerate()}
     />
@@ -273,85 +241,14 @@ function VariantReviewContent({
   actionError,
   onGenerate,
 }: {
-  reviewData: VariantReviewData;
+  reviewData: VariantReviewData & {
+    study: NonNullable<VariantReviewData["study"]>;
+  };
   isGenerating: boolean;
   statusMessage: string | null;
   actionError: string | null;
   onGenerate: () => void;
 }) {
-  const [selectedProtoPersonaId, setSelectedProtoPersonaId] = useState("all");
-  const [selectedAxisKey, setSelectedAxisKey] = useState(
-    reviewData.pack.sharedAxes[0]?.key ?? "",
-  );
-  const [minimumAxisValue, setMinimumAxisValue] = useState("");
-  const [maximumAxisValue, setMaximumAxisValue] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("edgeScore");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-
-  function handleSort(nextSortKey: SortKey) {
-    setSortDirection((currentDirection) =>
-      sortKey === nextSortKey && currentDirection === "desc" ? "asc" : "desc",
-    );
-    setSortKey(nextSortKey);
-  }
-
-  useEffect(() => {
-    setSelectedProtoPersonaId((current) =>
-      current === "all" ||
-      reviewData.protoPersonas.some((protoPersona) => protoPersona._id === current)
-        ? current
-        : "all",
-    );
-    setSelectedAxisKey((current) =>
-      reviewData.pack.sharedAxes.some((axis) => axis.key === current)
-        ? current
-        : (reviewData.pack.sharedAxes[0]?.key ?? ""),
-    );
-  }, [reviewData.pack._id, reviewData.pack.sharedAxes, reviewData.protoPersonas]);
-
-  const filteredVariants = useMemo(() => {
-    const minimum = parseNumericFilter(minimumAxisValue);
-    const maximum = parseNumericFilter(maximumAxisValue);
-
-    return [...reviewData.variants]
-      .filter((variant) => {
-        if (
-          selectedProtoPersonaId !== "all" &&
-          variant.protoPersonaId !== selectedProtoPersonaId
-        ) {
-          return false;
-        }
-
-        if (!selectedAxisKey) {
-          return true;
-        }
-
-        const axisValue = getAxisValue(variant.axisValues, selectedAxisKey);
-
-        if (minimum !== null && axisValue < minimum) {
-          return false;
-        }
-
-        if (maximum !== null && axisValue > maximum) {
-          return false;
-        }
-
-        return true;
-      })
-      .sort((left, right) => {
-        const directionMultiplier = sortDirection === "desc" ? -1 : 1;
-        return (left[sortKey] - right[sortKey]) * directionMultiplier;
-      });
-  }, [
-    maximumAxisValue,
-    minimumAxisValue,
-    reviewData.variants,
-    selectedAxisKey,
-    selectedProtoPersonaId,
-    sortDirection,
-    sortKey,
-  ]);
-
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -407,11 +304,11 @@ function VariantReviewContent({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <div className="space-y-6">
+        <div className="space-y-6 xl:col-span-2">
           <Card>
             <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
-                <CardTitle>{reviewData.study.name}</CardTitle>
+                <CardTitle>{reviewData.study?.name ?? "Persona review"}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Pack: {reviewData.pack.name} · {reviewData.variants.length} accepted
                   variants visible
@@ -430,14 +327,21 @@ function VariantReviewContent({
               </div>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-3">
-              <SummaryValue label="Study status" value={reviewData.study.status} />
+              <SummaryValue
+                label="Study status"
+                value={reviewData.study?.status ?? "unknown"}
+              />
               <SummaryValue
                 label="Run budget"
-                value={String(reviewData.study.runBudget)}
+                value={String(reviewData.study?.runBudget ?? 0)}
               />
               <SummaryValue
                 label="Last updated"
-                value={formatTimestamp(reviewData.study.updatedAt)}
+                value={
+                  reviewData.study
+                    ? formatTimestamp(reviewData.study.updatedAt)
+                    : "Unknown"
+                }
               />
             </CardContent>
           </Card>
@@ -449,254 +353,11 @@ function VariantReviewContent({
             <p className="text-sm text-emerald-700">{statusMessage}</p>
           ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Filter accepted variants</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-4">
-              <div className="grid gap-2">
-                <Label htmlFor="proto-persona-filter">Proto-persona filter</Label>
-                <select
-                  aria-label="Proto-persona filter"
-                  className={selectClassName}
-                  id="proto-persona-filter"
-                  value={selectedProtoPersonaId}
-                  onChange={(event) => setSelectedProtoPersonaId(event.target.value)}
-                >
-                  <option value="all">All proto-personas</option>
-                  {reviewData.protoPersonas.map((protoPersona) => (
-                    <option key={protoPersona._id} value={protoPersona._id}>
-                      {protoPersona.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="axis-filter">Axis filter</Label>
-                <select
-                  aria-label="Axis filter"
-                  className={selectClassName}
-                  id="axis-filter"
-                  value={selectedAxisKey}
-                  onChange={(event) => setSelectedAxisKey(event.target.value)}
-                >
-                  {reviewData.pack.sharedAxes.map((axis) => (
-                    <option key={axis.key} value={axis.key}>
-                      {axis.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="minimum-axis-value">Minimum axis value</Label>
-                <Input
-                  aria-label="Minimum axis value"
-                  id="minimum-axis-value"
-                  max="1"
-                  min="-1"
-                  placeholder="-1.00"
-                  step="0.01"
-                  type="number"
-                  value={minimumAxisValue}
-                  onChange={(event) => setMinimumAxisValue(event.target.value)}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="maximum-axis-value">Maximum axis value</Label>
-                <Input
-                  aria-label="Maximum axis value"
-                  id="maximum-axis-value"
-                  max="1"
-                  min="-1"
-                  placeholder="1.00"
-                  step="0.01"
-                  type="number"
-                  value={maximumAxisValue}
-                  onChange={(event) => setMaximumAxisValue(event.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Accepted variants</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredVariants.length === 0 ? (
-                <div className="rounded-lg border border-dashed bg-background p-6">
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    No accepted variants match the current filters. Adjust the
-                    proto-persona or axis range to review a broader slice of the
-                    cohort.
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <HeaderCell>Proto-persona</HeaderCell>
-                        {reviewData.pack.sharedAxes.map((axis) => (
-                          <HeaderCell key={axis.key}>{axis.label}</HeaderCell>
-                        ))}
-                        <SortableHeader
-                          label="Edge score"
-                          sortDirection={sortDirection}
-                          sortKey="edgeScore"
-                          activeSortKey={sortKey}
-                          onSort={handleSort}
-                        />
-                        <SortableHeader
-                          label="Coherence score"
-                          sortDirection={sortDirection}
-                          sortKey="coherenceScore"
-                          activeSortKey={sortKey}
-                          onSort={handleSort}
-                        />
-                        <SortableHeader
-                          label="Distinctness score"
-                          sortDirection={sortDirection}
-                          sortKey="distinctnessScore"
-                          activeSortKey={sortKey}
-                          onSort={handleSort}
-                        />
-                        <HeaderCell>Bio preview</HeaderCell>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredVariants.map((variant) => (
-                        <tr
-                          key={variant._id}
-                          className="border-b align-top last:border-b-0"
-                          data-testid="variant-row"
-                        >
-                          <BodyCell>
-                            <div className="space-y-1">
-                              <p className="font-medium">{variant.protoPersonaName}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {reviewData.protoPersonas.find(
-                                  (protoPersona) =>
-                                    protoPersona._id === variant.protoPersonaId,
-                                )?.summary ?? "Synthetic persona variant"}
-                              </p>
-                            </div>
-                          </BodyCell>
-                          {reviewData.pack.sharedAxes.map((axis) => (
-                            <BodyCell key={`${variant._id}-${axis.key}`}>
-                              {formatAxisValue(
-                                getAxisValue(variant.axisValues, axis.key),
-                              )}
-                            </BodyCell>
-                          ))}
-                          <BodyCell>{formatScore(variant.edgeScore)}</BodyCell>
-                          <BodyCell>{formatScore(variant.coherenceScore)}</BodyCell>
-                          <BodyCell>{formatScore(variant.distinctnessScore)}</BodyCell>
-                          <BodyCell className="max-w-md text-muted-foreground">
-                            {truncateBio(variant.firstPersonBio)}
-                          </BodyCell>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Review checklist</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>• Confirm each proto-persona is represented in the accepted set.</p>
-              <p>• Spot-check outliers with high edge scores.</p>
-              <p>• Compare coherence and distinctness before launching the study.</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Selected axis anchors</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {reviewData.pack.sharedAxes
-                .filter((axis) => axis.key === selectedAxisKey)
-                .map((axis) => (
-                  <div key={axis.key} className="space-y-2 text-sm">
-                    <p className="font-medium">{axis.label}</p>
-                    <p className="text-muted-foreground">{axis.description}</p>
-                    <div className="grid gap-3">
-                      <SummaryValue label="Low anchor" value={axis.lowAnchor} />
-                      <SummaryValue label="Mid anchor" value={axis.midAnchor} />
-                      <SummaryValue label="High anchor" value={axis.highAnchor} />
-                    </div>
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
+          <PersonaVariantReviewGrid reviewData={reviewData} />
         </div>
       </div>
     </section>
   );
-}
-
-function SortableHeader({
-  label,
-  sortKey,
-  activeSortKey,
-  sortDirection,
-  onSort,
-}: {
-  label: string;
-  sortKey: SortKey;
-  activeSortKey: SortKey;
-  sortDirection: SortDirection;
-  onSort: (sortKey: SortKey) => void;
-}) {
-  return (
-    <HeaderCell>
-      <button
-        aria-label={
-          activeSortKey === sortKey
-            ? `${label} (${sortDirection})`
-            : label
-        }
-        className="font-medium text-foreground hover:text-primary"
-        type="button"
-        onClick={() => onSort(sortKey)}
-      >
-        {label}
-      </button>
-    </HeaderCell>
-  );
-}
-
-function HeaderCell({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return (
-    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-      {children}
-    </th>
-  );
-}
-
-function BodyCell({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return <td className={`px-4 py-4 ${className}`}>{children}</td>;
 }
 
 function SummaryValue({ label, value }: { label: string; value: string }) {
@@ -727,45 +388,11 @@ function ReviewStateCard({
   );
 }
 
-function getAxisValue(
-  axisValues: { key: string; value: number }[],
-  axisKey: string,
-) {
-  return axisValues.find((axisValue) => axisValue.key === axisKey)?.value ?? 0;
-}
-
-function parseNumericFilter(value: string) {
-  if (!value.trim()) {
-    return null;
-  }
-
-  const parsedValue = Number(value);
-  return Number.isFinite(parsedValue) ? parsedValue : null;
-}
-
-function formatAxisValue(value: number) {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
-}
-
-function formatScore(value: number) {
-  return value.toFixed(2);
-}
-
 function formatTimestamp(timestamp: number) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(timestamp);
-}
-
-function truncateBio(value: string) {
-  const normalizedValue = value.trim();
-
-  if (normalizedValue.length <= 120) {
-    return normalizedValue;
-  }
-
-  return `${normalizedValue.slice(0, 117)}...`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -784,6 +411,3 @@ function getErrorMessage(error: unknown, fallback: string) {
 
   return fallback;
 }
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

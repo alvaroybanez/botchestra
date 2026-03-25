@@ -38,48 +38,60 @@ let mockedPackDetail:
 let mockedProtoPersonas:
   | Doc<"protoPersonas">[]
   | undefined = [];
-let mockedVariantReview:
-  | {
-      study: {
-        _id: string;
-        name: string;
-        status: string;
-        runBudget: number;
-        updatedAt: number;
-      };
-      pack: {
-        _id: string;
-        name: string;
-        status: string;
-        sharedAxes: {
-          key: string;
-          label: string;
-          description: string;
-          lowAnchor: string;
-          midAnchor: string;
-          highAnchor: string;
-          weight: number;
-        }[];
-      };
-      protoPersonas: {
-        _id: string;
-        name: string;
-        summary: string;
-      }[];
-      variants: {
-        _id: string;
-        protoPersonaId: string;
-        protoPersonaName: string;
-        axisValues: { key: string; value: number }[];
-        edgeScore: number;
-        coherenceScore: number;
-        distinctnessScore: number;
-        firstPersonBio: string;
-      }[];
+type ReviewStudy = {
+  _id: string;
+  name: string;
+  status: string;
+  runBudget: number;
+  updatedAt: number;
+};
+
+type ReviewData = {
+  study: ReviewStudy;
+  pack: {
+    _id: string;
+    name: string;
+    status: string;
+    sharedAxes: {
+      key: string;
+      label: string;
+      description: string;
+      lowAnchor: string;
+      midAnchor: string;
+      highAnchor: string;
+      weight: number;
+    }[];
+  };
+  protoPersonas: {
+    _id: string;
+    name: string;
+    summary: string;
+  }[];
+  variants: {
+    _id: string;
+    protoPersonaId: string;
+    protoPersonaName: string;
+    axisValues: { key: string; value: number }[];
+    edgeScore: number;
+    coherenceScore: number;
+    distinctnessScore: number;
+    firstPersonBio: string;
+  }[];
+};
+
+type PackReviewData = ReviewData & {
+  selectedStudy: ReviewStudy | null;
+  studies: Array<
+    ReviewStudy & {
+      acceptedVariantCount: number;
     }
-  | null
-  | undefined = undefined;
+  >;
+};
+
+let mockedVariantReview: ReviewData | null | undefined = undefined;
+let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
 const createDraftMock = vi.fn();
+const importJsonMock = vi.fn();
 const updateDraftMock = vi.fn();
 const createProtoPersonaMock = vi.fn();
 const publishMock = vi.fn();
@@ -123,6 +135,10 @@ vi.mock("convex/react", () => ({
   useAction: (action: unknown) => {
     const actionName = getFunctionName(action as never);
 
+    if (actionName === "personaPacks:importJson") {
+      return importJsonMock;
+    }
+
     if (actionName === "personaVariantGeneration:generateVariantsForStudy") {
       return generateVariantsMock;
     }
@@ -148,6 +164,10 @@ vi.mock("convex/react", () => ({
       return mockedVariantReview;
     }
 
+    if (queryName === "personaVariantReview:getPackVariantReview") {
+      return mockedPackVariantReview;
+    }
+
     return undefined;
   },
 }));
@@ -171,8 +191,11 @@ beforeEach(() => {
   mockedPackDetail = null;
   mockedProtoPersonas = [];
   mockedVariantReview = undefined;
+  mockedPackVariantReview = undefined;
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
+  importJsonMock.mockReset();
+  importJsonMock.mockResolvedValue("imported-pack-id" as Id<"personaPacks">);
   updateDraftMock.mockReset();
   updateDraftMock.mockResolvedValue(undefined);
   createProtoPersonaMock.mockReset();
@@ -490,14 +513,17 @@ describe("@botchestra/web routing", () => {
       description: "Focused on account recovery and support escalations",
       context: "US fintech support",
       status: "draft",
+      updatedBy: "reviewer|org-a",
     });
     mockedProtoPersonas = [
       makeProtoPersona({
         _id: "proto-1" as Id<"protoPersonas">,
         name: "Anxious new customer",
         summary: "Worried about losing access to payroll deposits.",
+        sourceType: "json_import",
       }),
     ];
+    mockedPackVariantReview = makePackVariantReview();
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
@@ -509,8 +535,47 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Digital confidence");
     expect(container.textContent).toContain("Proto-Personas");
     expect(container.textContent).toContain("Anxious new customer");
+    expect(container.textContent).toContain("Source: json_import");
     expect(container.textContent).toContain("Audit Trail");
     expect(container.textContent).toContain("researcher|org-a");
+    expect(container.textContent).toContain("reviewer|org-a");
+    expect(container.textContent).toContain("Last modified by");
+    expect(container.textContent).toContain("Variant Review");
+    expect(container.textContent).toContain("Linked study");
+    expect(container.textContent).toContain("Open study personas page");
+    expect(getVariantRows(container)).toHaveLength(3);
+  });
+
+  it("imports a pack JSON from the list page and redirects to the imported pack", async () => {
+    mockedPackList = [];
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs"],
+    });
+
+    await clickButton(container, "Import Pack");
+    await updateTextarea(
+      container,
+      "#import-pack-json",
+      '{"name":"Imported Pack","description":"Loaded from JSON"}',
+    );
+
+    const importForm = [...container.querySelectorAll("form")].find((form) =>
+      form.querySelector("#import-pack-json"),
+    );
+    expect(importForm).not.toBeNull();
+
+    await act(async () => {
+      importForm!.dispatchEvent(
+        new Event("submit", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(importJsonMock).toHaveBeenCalledWith({
+      json: '{"name":"Imported Pack","description":"Loaded from JSON"}',
+    });
+    expect(getRouterLocationHref(router)).toBe("/persona-packs/imported-pack-id");
   });
 
   it("creates a new pack from the list page and redirects to the detail route", async () => {
@@ -759,6 +824,7 @@ function makePack(overrides: Partial<Doc<"personaPacks">> = {}): Doc<"personaPac
     status: "draft",
     orgId: "researcher|org-a",
     createdBy: "researcher|org-a",
+    updatedBy: "researcher|org-a",
     createdAt: 1,
     updatedAt: 2,
     ...overrides,
@@ -881,6 +947,21 @@ function makeVariantReview() {
         distinctnessScore: 0.88,
         firstPersonBio:
           "Methodical shopper who understands checkout basics, still pauses at ambiguous copy, and wants confidence-building cues before sharing payment details.",
+      },
+    ],
+  };
+}
+
+function makePackVariantReview() {
+  const review = makeVariantReview();
+
+  return {
+    ...review,
+    selectedStudy: review.study,
+    studies: [
+      {
+        ...review.study,
+        acceptedVariantCount: review.variants.length,
       },
     ],
   };

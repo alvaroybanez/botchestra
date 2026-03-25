@@ -151,6 +151,7 @@ export const createDraft = zMutation({
       status: "draft",
       orgId: identity.tokenIdentifier,
       createdBy: identity.tokenIdentifier,
+      updatedBy: identity.tokenIdentifier,
       createdAt: now,
       updatedAt: now,
     });
@@ -208,6 +209,7 @@ export const updateDraft = zMutation({
 
     await ctx.db.patch(args.packId, {
       ...args.patch,
+      updatedBy: identity.tokenIdentifier,
       updatedAt: Date.now(),
     });
 
@@ -248,6 +250,7 @@ export const publish = zMutation({
     await ctx.db.patch(args.packId, {
       status: "published",
       version: pack.version + 1,
+      updatedBy: identity.tokenIdentifier,
       updatedAt: Date.now(),
     });
 
@@ -273,6 +276,7 @@ export const archive = zMutation({
 
     await ctx.db.patch(args.packId, {
       status: "archived",
+      updatedBy: identity.tokenIdentifier,
       updatedAt: Date.now(),
     });
 
@@ -293,7 +297,7 @@ export const createProtoPersona = zMutation({
     assertProtoPersonaAxisKeys(pack.sharedAxes, args.protoPersona.axes);
     await assertProtoPersonaCapacity(ctx, args.packId);
 
-    return await ctx.db.insert("protoPersonas", {
+    const protoPersonaId = await ctx.db.insert("protoPersonas", {
       packId: args.packId,
       name: args.protoPersona.name,
       summary: args.protoPersona.summary,
@@ -305,6 +309,10 @@ export const createProtoPersona = zMutation({
         ? { notes: args.protoPersona.notes }
         : {}),
     });
+
+    await touchPack(ctx, args.packId, identity.tokenIdentifier);
+
+    return protoPersonaId;
   },
 });
 
@@ -330,6 +338,7 @@ export const updateProtoPersona = zMutation({
     await ctx.db.patch(args.protoPersonaId, {
       ...args.patch,
     });
+    await touchPack(ctx, pack._id, identity.tokenIdentifier);
 
     return args.protoPersonaId;
   },
@@ -350,6 +359,7 @@ export const deleteProtoPersona = zMutation({
     assertPackIsDraft(pack);
 
     await ctx.db.delete(args.protoPersonaId);
+    await touchPack(ctx, pack._id, identity.tokenIdentifier);
 
     return args.protoPersonaId;
   },
@@ -435,6 +445,7 @@ export const persistImportedPack = zInternalMutation({
       status: "draft",
       orgId: args.orgId,
       createdBy: args.createdBy,
+      updatedBy: args.createdBy,
       createdAt: now,
       updatedAt: now,
     });
@@ -647,6 +658,17 @@ function formatZodIssues(issues: z.ZodIssue[]) {
 
 export type PersonaPackStatus = z.infer<typeof draftStatusSchema>;
 type ImportedPackJson = z.infer<typeof importedPackJsonSchema>;
+
+async function touchPack(
+  ctx: MutationCtx,
+  packId: Id<"personaPacks">,
+  actorId: string,
+) {
+  await ctx.db.patch(packId, {
+    updatedAt: Date.now(),
+    updatedBy: actorId,
+  });
+}
 
 async function listProtoPersonasForPack(
   ctx: QueryCtx | MutationCtx,

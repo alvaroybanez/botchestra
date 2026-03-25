@@ -32,6 +32,9 @@ Environment variables, external dependencies, and setup notes.
 ## Package Manager
 Always use `bun`, never `npm` or `npx`. Use `bunx` instead of `npx`.
 
+## Local Dev Notes
+- On 2026-03-25, `bun run dev` fell back from port 5180 to 5183 because 5180 was already occupied by an existing local Botchestra server. Before manual browser validation, check whether `http://localhost:5180` is already serving the app so you can reuse it instead of launching a second Vite instance.
+
 ## Key Dependencies Not Yet Installed
 - `@convex-dev/workflow` — needed for Milestone 4 (StudyOrchestrator)
 - `@convex-dev/workpool` — needed for Milestone 4 (StudyOrchestrator)

@@ -85,6 +85,7 @@ export default defineSchema({
     ),
     orgId: v.string(),
     createdBy: v.string(),
+    updatedBy: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_orgId", ["orgId"]),
@@ -148,7 +149,7 @@ export default defineSchema({
     createdBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  }).index("by_personaPackId", ["personaPackId"]),
 
   // 5. runs
   runs: defineTable({

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
+import {
+  PersonaVariantReviewGrid,
+  type VariantReviewData,
+} from "@/components/persona-variant-review-grid";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +55,15 @@ type ConfirmationState =
       confirmLabel: string;
     };
 
+type PackVariantReviewData = VariantReviewData & {
+  selectedStudy: VariantReviewData["study"];
+  studies: Array<
+    NonNullable<VariantReviewData["study"]> & {
+      acceptedVariantCount: number;
+    }
+  >;
+};
+
 const emptyAxis = (): AxisFormValue => ({
   key: "",
   label: "",
@@ -78,10 +91,15 @@ const emptyProtoPersonaForm = (): ProtoPersonaFormValue => ({
 export function PersonaPacksPage() {
   const packs = useQuery(api.personaPacks.list, {});
   const createDraft = useMutation(api.personaPacks.createDraft);
+  const importJson = useAction(api.personaPacks.importJson);
   const navigate = useNavigate({ from: "/persona-packs" });
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importJsonText, setImportJsonText] = useState("");
   const [form, setForm] = useState<PackFormValue>(emptyPackForm);
 
   const packList = packs ?? [];
@@ -116,6 +134,26 @@ export function PersonaPacksPage() {
     }
   }
 
+  async function handleImportPack(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setImportError(null);
+    setIsImporting(true);
+
+    try {
+      const packId = await importJson({ json: importJsonText });
+      setImportJsonText("");
+      setIsImportDialogOpen(false);
+      await navigate({
+        params: { packId },
+        to: "/persona-packs/$packId",
+      });
+    } catch (error) {
+      setImportError(getErrorMessage(error, "Could not import persona pack."));
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   if (packs === undefined) {
     return <LoadingCard body="Loading persona packs..." title="Persona Packs" />;
   }
@@ -134,9 +172,20 @@ export function PersonaPacksPage() {
           </p>
         </div>
 
-        <Button onClick={() => setIsCreateFormOpen((current) => !current)}>
-          {isCreateFormOpen ? "Close form" : "Create Pack"}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setImportError(null);
+              setIsImportDialogOpen(true);
+            }}
+          >
+            Import Pack
+          </Button>
+          <Button onClick={() => setIsCreateFormOpen((current) => !current)}>
+            {isCreateFormOpen ? "Close form" : "Create Pack"}
+          </Button>
+        </div>
       </div>
 
       {isCreateFormOpen ? (
@@ -198,6 +247,16 @@ export function PersonaPacksPage() {
           </div>
         </details>
       ) : null}
+
+      <ImportPackDialog
+        error={importError}
+        isOpen={isImportDialogOpen}
+        isSubmitting={isImporting}
+        json={importJsonText}
+        onCancel={() => setIsImportDialogOpen(false)}
+        onChange={setImportJsonText}
+        onSubmit={handleImportPack}
+      />
     </section>
   );
 }
@@ -208,6 +267,13 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
   const protoPersonas = useQuery(api.personaPacks.listProtoPersonas, {
     packId: typedPackId,
   });
+  const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
+  const packVariantReview = useQuery(
+    api.personaVariantReview.getPackVariantReview,
+    selectedStudyId === null
+      ? { packId: typedPackId }
+      : { packId: typedPackId, studyId: selectedStudyId as Id<"studies"> },
+  ) as PackVariantReviewData | null | undefined;
   const updateDraft = useMutation(api.personaPacks.updateDraft);
   const createProtoPersona = useMutation(api.personaPacks.createProtoPersona);
   const publishPack = useMutation(api.personaPacks.publish);
@@ -236,6 +302,22 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     setOptimisticStatus(pack.status);
   }, [pack?._id, pack?.updatedAt, pack?.status]);
 
+  useEffect(() => {
+    if (!packVariantReview) {
+      return;
+    }
+
+    const resolvedStudyId =
+      packVariantReview.selectedStudy?._id ?? packVariantReview.study?._id ?? null;
+
+    setSelectedStudyId((current) =>
+      current !== null &&
+      packVariantReview.studies.some((study) => study._id === current)
+        ? current
+        : resolvedStudyId,
+    );
+  }, [packVariantReview]);
+
   const resolvedStatus = optimisticStatus ?? pack?.status;
   const isDraft = resolvedStatus === "draft";
   const protoPersonaList = protoPersonas ?? [];
@@ -250,6 +332,8 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     isDraft && protoPersonas !== undefined && protoPersonaList.length === 0
       ? "Add at least one proto-persona before publishing this pack."
       : null;
+  const selectedStudySummary =
+    packVariantReview?.selectedStudy ?? packVariantReview?.study ?? null;
 
   async function handleSaveDraft(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -644,6 +728,10 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
               <CardContent className="grid gap-4">
                 <SummaryValue label="Created by" value={pack.createdBy} />
                 <SummaryValue
+                  label="Last modified by"
+                  value={pack.updatedBy ?? pack.createdBy}
+                />
+                <SummaryValue
                   label="Created at"
                   value={formatTimestamp(pack.createdAt)}
                 />
@@ -660,6 +748,120 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
             </Card>
           </div>
         </div>
+
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-2xl font-semibold tracking-tight">
+              Variant Review
+            </h3>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              Review accepted variants generated for studies that use this pack.
+              Use the study selector to inspect the latest published-pack cohorts.
+            </p>
+          </div>
+
+          {packVariantReview === undefined ? (
+            <LoadingCard
+              title="Variant Review"
+              body="Loading linked studies and accepted variants..."
+            />
+          ) : packVariantReview === null ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Variant review unavailable</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  This pack&apos;s variant review data could not be loaded for the
+                  current organization.
+                </p>
+              </CardContent>
+            </Card>
+          ) : packVariantReview.studies.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>No studies linked to this pack</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Generate variants from a study that uses this published pack,
+                  then return here to review the accepted cohort.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle>
+                      {selectedStudySummary?.name ?? "Select a linked study"}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedStudySummary
+                        ? `${packVariantReview.variants.length} accepted variants available for review.`
+                        : "Choose a linked study to review its accepted variants."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:min-w-72">
+                    <div className="grid gap-2">
+                      <Label htmlFor="pack-variant-study-filter">
+                        Linked study
+                      </Label>
+                      <select
+                        className={selectClassName}
+                        id="pack-variant-study-filter"
+                        value={selectedStudyId ?? ""}
+                        onChange={(event) =>
+                          setSelectedStudyId(event.target.value || null)
+                        }
+                      >
+                        {packVariantReview.studies.map((study) => (
+                          <option key={study._id} value={study._id}>
+                            {study.name} ({study.acceptedVariantCount} accepted)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedStudySummary ? (
+                      <Button asChild variant="outline">
+                        <Link
+                          params={{ studyId: selectedStudySummary._id }}
+                          to="/studies/$studyId/personas"
+                        >
+                          Open study personas page
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardHeader>
+                {selectedStudySummary ? (
+                  <CardContent className="grid gap-4 sm:grid-cols-3">
+                    <SummaryValue
+                      label="Study status"
+                      value={selectedStudySummary.status}
+                    />
+                    <SummaryValue
+                      label="Run budget"
+                      value={String(selectedStudySummary.runBudget)}
+                    />
+                    <SummaryValue
+                      label="Last updated"
+                      value={formatTimestamp(selectedStudySummary.updatedAt)}
+                    />
+                  </CardContent>
+                ) : null}
+              </Card>
+
+              <PersonaVariantReviewGrid
+                emptyMessage="No accepted variants are available for the selected study yet. Generate variants from the study personas page first."
+                reviewData={packVariantReview}
+              />
+            </div>
+          )}
+        </section>
       </section>
 
       <ConfirmationDialog
@@ -940,9 +1142,7 @@ function ProtoPersonaCard({ protoPersona }: { protoPersona: ProtoPersonaDoc }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h4 className="text-lg font-semibold">{protoPersona.name}</h4>
-          <p className="text-sm text-muted-foreground">
-            Source: {protoPersona.sourceType.replaceAll("_", " ")}
-          </p>
+          <p className="text-sm text-muted-foreground">Source: {protoPersona.sourceType}</p>
         </div>
         <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
           {protoPersona.axes.length} axes
@@ -977,6 +1177,70 @@ function ProtoPersonaCard({ protoPersona }: { protoPersona: ProtoPersonaDoc }) {
           </p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ImportPackDialog({
+  isOpen,
+  isSubmitting,
+  json,
+  error,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  isOpen: boolean;
+  isSubmitting: boolean;
+  json: string;
+  error: string | null;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <form
+        aria-modal="true"
+        className="w-full max-w-2xl space-y-4 rounded-xl border bg-background p-6 shadow-xl"
+        role="dialog"
+        onSubmit={onSubmit}
+      >
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold">Import persona pack JSON</h3>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Paste a valid exported persona pack JSON payload to create a new
+            draft pack and review its imported proto-personas.
+          </p>
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="import-pack-json">Pack JSON</Label>
+          <textarea
+            id="import-pack-json"
+            className={`${textareaClassName} min-h-64 font-mono`}
+            placeholder='{"name":"Imported Pack","description":"..."}'
+            required
+            value={json}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </div>
+
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Importing..." : "Import pack"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -1164,3 +1428,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 const textareaClassName =
   "min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
+const selectClassName =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

@@ -158,7 +158,9 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     });
 
     expect(review).not.toBeNull();
-    expect(review?.study.name).toBe("Checkout review");
+    expect(review?.study).not.toBeNull();
+    expect(review?.study?._id).toBe(studyId);
+    expect(review?.study?.name).toBe("Checkout review");
     expect(review?.pack.name).toBe("Checkout Pack");
     expect(review?.protoPersonas).toHaveLength(2);
     expect(review?.variants).toHaveLength(2);
@@ -227,6 +229,101 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     );
 
     expect(review).toBeNull();
+  });
+
+  it("returns pack-scoped review data with linked studies for pack detail pages", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const sharedAxes = [makeAxis(0), makeAxis(1)];
+    const packId = await t.run(async (ctx) =>
+      ctx.db.insert("personaPacks", {
+        orgId: researchIdentity.tokenIdentifier,
+        name: "Published Checkout Pack",
+        description: "Pack for linked-study review",
+        context: "Checkout flows",
+        sharedAxes,
+        version: 2,
+        status: "published",
+        createdBy: researchIdentity.tokenIdentifier,
+        updatedBy: researchIdentity.tokenIdentifier,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
+    const protoPersonaId = await t.run(async (ctx) =>
+      ctx.db.insert("protoPersonas", {
+        packId,
+        name: "Careful shopper",
+        summary: "Checks totals before continuing.",
+        axes: sharedAxes,
+        sourceType: "manual",
+        sourceRefs: [],
+        evidenceSnippets: ["Reads each line item"],
+      }),
+    );
+    const studyId = await t.run(async (ctx) =>
+      ctx.db.insert("studies", {
+        orgId: researchIdentity.tokenIdentifier,
+        personaPackId: packId,
+        name: "Linked study",
+        description: "Pack detail review study",
+        taskSpec: {
+          scenario: "Purchase a subscription",
+          goal: "Complete checkout",
+          startingUrl: "https://example.com/checkout",
+          allowedDomains: ["example.com"],
+          allowedActions: ["goto", "click", "type", "finish"],
+          forbiddenActions: [],
+          successCriteria: ["Order submitted"],
+          stopConditions: ["Blocked by guardrail"],
+          postTaskQuestions: ["How confident did you feel?"],
+          maxSteps: 25,
+          maxDurationSec: 600,
+          environmentLabel: "staging",
+          locale: "en-US",
+          viewport: { width: 1440, height: 900 },
+        },
+        runBudget: 64,
+        activeConcurrency: 4,
+        status: "persona_review",
+        createdBy: researchIdentity.tokenIdentifier,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+    );
+
+    await insertVariant(t, {
+      studyId,
+      packId,
+      protoPersonaId,
+      axisValues: [
+        { key: "axis_1", value: -0.55 },
+        { key: "axis_2", value: 0.48 },
+      ],
+      edgeScore: 0.87,
+      coherenceScore: 0.79,
+      distinctnessScore: 0.82,
+      accepted: true,
+      firstPersonBio:
+        "Careful buyer who wants clarity around totals, notices missing context quickly, and pauses whenever a checkout flow feels ambiguous.",
+    });
+
+    const review = await asResearcher.query(
+      api.personaVariantReview.getPackVariantReview,
+      { packId },
+    );
+
+    expect(review).not.toBeNull();
+    expect(review?.pack.name).toBe("Published Checkout Pack");
+    expect(review?.studies).toHaveLength(1);
+    expect(review?.studies[0]).toMatchObject({
+      _id: studyId,
+      name: "Linked study",
+      acceptedVariantCount: 1,
+    });
+    expect(review?.selectedStudy?._id).toBe(studyId);
+    expect(review?.variants).toHaveLength(1);
+    expect(review?.variants[0]?.protoPersonaName).toBe("Careful shopper");
   });
 });
 
