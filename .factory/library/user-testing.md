@@ -52,3 +52,9 @@ Testing surface, required tools, and resource cost classification.
 - Stay within browser-visible behavior: verify pages, links, redirects, loading states, and error messages through the UI rather than code inspection.
 - Prefer visible navigation over manual URL entry unless an assertion explicitly requires deep-link or direct-entry behavior.
 - Save screenshots and any other user-surface evidence under the subagent's assigned evidence directory only.
+
+## Persona-engine rerun notes (2026-03-25)
+
+- `/persona-packs` now exposes an **Import Pack** dialog on the real browser surface; importing a valid payload redirects to a pack detail page whose proto-persona cards visibly show `Source: json_import`.
+- Pack detail audit trails now visibly include **Last modified by** in addition to **Created by**.
+- `VAL-PERSONA-057` remains blocked for fresh authenticated orgs: imported/test packs show **No studies linked to this pack**, and visible study navigation still only reaches the demo personas route with 3 accepted variants.

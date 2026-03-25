@@ -1,0 +1,44 @@
+{
+  "groupId": "rerun-blocked-assertions",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-PERSONA-028",
+      "status": "pass",
+      "reason": "The /persona-packs library now exposes an Import Pack button and dialog. Importing a valid JSON payload redirected to a new pack detail page where both imported proto-personas visibly rendered with the label `Source: json_import`.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/rerun-blocked-assertions/persona-packs-page.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/rerun-blocked-assertions/import-dialog.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/rerun-blocked-assertions/imported-pack-detail-full.png",
+        "Visible page text on the imported pack detail showed \u201cProto Persona 1 Source: json_import\u201d and \u201cProto Persona 2 Source: json_import\u201d."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-057",
+      "status": "blocked",
+      "reason": "A real linked-study cohort is still not reachable from the actual persona-engine user surface for this authenticated user. The imported pack detail variant-review section states \u201cNo studies linked to this pack\u201d, while the only visible study navigation remains the demo route `/studies/demo-study/personas`, which still shows 3 accepted demo variants instead of a live generated cohort.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/rerun-blocked-assertions/imported-pack-detail-full.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/rerun-blocked-assertions/studies-page.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/rerun-blocked-assertions/demo-study-personas-full.png",
+        "Visible route text at http://localhost:5180/studies/demo-study/personas showed \u201cPack: Customer Journey Stress Test Pack \u00b7 3 accepted variants visible\u201d with run budget 64."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-067",
+      "status": "pass",
+      "reason": "The pack detail audit trail now visibly exposes both `Created by` and `Last modified by`. After editing the imported draft pack through the UI, the audit section still displayed the modifier identity, removing the prior browser-surface blocker caused by missing modifier attribution.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/rerun-blocked-assertions/imported-pack-detail-full.png",
+        "Visible audit-trail text on the pack detail page showed both \u201cCreated by \u2026\u201d and \u201cLast modified by \u2026\u201d entries for the imported pack after saving a draft edit."
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [],
+  "blockers": [
+    "Fresh authenticated orgs still have no browser-visible path to a linked real study cohort for pack-detail variant review; visible study navigation only reaches the demo study personas page."
+  ]
+}

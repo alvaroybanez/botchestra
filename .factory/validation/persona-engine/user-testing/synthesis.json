@@ -1,46 +1,30 @@
 {
   "milestone": "persona-engine",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "assertionsSummary": {
-    "total": 19,
-    "passed": 16,
+    "total": 3,
+    "passed": 2,
     "failed": 0,
-    "blocked": 3
+    "blocked": 1
   },
   "passedAssertions": [
-    "VAL-PERSONA-081",
-    "VAL-PERSONA-063",
-    "VAL-PERSONA-061",
-    "VAL-PERSONA-012",
-    "VAL-PERSONA-064",
-    "VAL-PERSONA-065",
-    "VAL-PERSONA-062",
-    "VAL-PERSONA-006",
-    "VAL-PERSONA-019",
-    "VAL-PERSONA-027",
-    "VAL-PERSONA-011",
-    "VAL-PERSONA-018",
-    "VAL-PERSONA-058",
-    "VAL-PERSONA-059",
-    "VAL-PERSONA-060",
-    "VAL-PERSONA-082"
+    "VAL-PERSONA-028",
+    "VAL-PERSONA-067"
   ],
   "failedAssertions": [],
   "blockedAssertions": [
     {
-      "id": "VAL-PERSONA-028",
-      "blockedBy": "The browser surface exposes manual proto-persona creation but no JSON import UI or imported persona example, so the json_import source-type behavior is not user-testable here."
-    },
-    {
       "id": "VAL-PERSONA-057",
-      "blockedBy": "Visible navigation only reaches the demo study persona-review route with 3 sample variants; no live 64-variant study cohort can be created from the current user surface."
-    },
-    {
-      "id": "VAL-PERSONA-067",
-      "blockedBy": "The UI shows Created by and Last updated, but it does not expose modifier identity or cross-user attribution needed to validate creator/modifier audit behavior from the browser surface."
+      "blockedBy": "Fresh authenticated orgs still have no browser-visible path to a linked real study cohort; pack detail shows \u201cNo studies linked to this pack\u201d and visible study navigation still reaches only the demo 3-variant personas route."
     }
   ],
-  "appliedUpdates": [],
-  "previousRound": null
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Recorded persona-engine rerun findings: Import Pack UI now validates VAL-PERSONA-028, audit trail now exposes Last modified by for VAL-PERSONA-067, and VAL-PERSONA-057 remains blocked because fresh orgs still lack a browser-visible linked study cohort.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": ".factory/validation/persona-engine/user-testing/synthesis.round-1.json"
 }
