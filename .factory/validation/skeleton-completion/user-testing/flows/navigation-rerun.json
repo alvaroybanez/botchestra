@@ -1,0 +1,38 @@
+{
+  "groupId": "navigation-rerun",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-006",
+      "status": "pass",
+      "reason": "Starting from /studies after signup, every authenticated content route exposed by the app was reachable through sidebar or in-page links only; no manual URL entry was needed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-006-studies-list-links.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-006-create-study.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-006-study-overview.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-006-study-report.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-006-persona-packs.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-006-persona-pack-detail.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-006-settings.png",
+        "Visited via visible links only: /studies, /studies/new, /studies/demo-study/overview, /studies/demo-study/personas, /studies/demo-study/runs, /studies/demo-study/findings, /studies/demo-study/report, /persona-packs, /persona-packs/demo-pack, /settings.",
+        "agent-browser errors output was empty after the navigation rerun; agent-browser network requests reported no captured requests."
+      ]
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "status": "pass",
+      "reason": "Signing up with the assigned account landed on /studies and showed a first-visit empty state with a clear CTA.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-007-signup-form.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/navigation-rerun/VAL-CROSS-007-post-signup-studies.png",
+        "Observed redirect after signup: http://localhost:5180/studies.",
+        "Visible studies-page text after first signup: 'No studies yet' and 'Create your first study', with supporting empty-state copy explaining the next action."
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [],
+  "blockers": []
+}

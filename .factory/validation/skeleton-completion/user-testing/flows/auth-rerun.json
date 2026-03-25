@@ -1,0 +1,33 @@
+{
+  "groupId": "auth-rerun",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-AUTH-013",
+      "status": "pass",
+      "reason": "Second signup attempt with the same email stayed on the signup page, showed 'Could not create account', and did not authenticate the user.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/auth-rerun/VAL-AUTH-013-signup-form-rerun.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/auth-rerun/VAL-AUTH-013-duplicate-email-result-rerun.png",
+        "Visible page text after the duplicate signup attempt included 'Could not create account' and the URL remained http://localhost:5180/signup?redirect=%2Fstudies.",
+        "Console recorded Convex auth rejection: 'Account already exists'."
+      ]
+    },
+    {
+      "id": "VAL-AUTH-021",
+      "status": "pass",
+      "reason": "An authenticated refresh showed a centered 'Loading\u2026' state before the authenticated settings shell rendered, with no login-form flash captured.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/auth-rerun/VAL-AUTH-021-refresh-rerun.webm",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/auth-rerun/frames/VAL-AUTH-021-refresh-frame-01.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/skeleton-completion/auth-rerun/frames/VAL-AUTH-021-refresh-frame-06.png",
+        "Refresh video frames 01-05 show only a centered 'Loading\u2026' message; frame 06 shows the authenticated /settings shell. No page errors were reported during the refresh capture."
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [],
+  "blockers": []
+}

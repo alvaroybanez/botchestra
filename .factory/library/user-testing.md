@@ -43,3 +43,12 @@ Testing surface, required tools, and resource cost classification.
 - Worker stub (Milestone 1) and browser executor (Milestone 3): no browser UI, validated by automated tests only
 - Convex Workflow/Workpool (Milestone 4): cannot be tested end-to-end without deployed Worker
 - Browser Rendering not available (Free plan) — all agent loop tests use MockBrowserPage
+
+## Flow Validator Guidance: Browser
+
+- Validate against `http://localhost:5180` only.
+- Reuse an already-healthy dev server on port 5180 when present; do not start parallel web servers on other ports.
+- Use a dedicated test account per subagent so auth/session state and empty-state expectations do not interfere across runs.
+- Stay within browser-visible behavior: verify pages, links, redirects, loading states, and error messages through the UI rather than code inspection.
+- Prefer visible navigation over manual URL entry unless an assertion explicitly requires deep-link or direct-entry behavior.
+- Save screenshots and any other user-surface evidence under the subagent's assigned evidence directory only.
