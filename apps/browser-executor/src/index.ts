@@ -1,17 +1,10 @@
 import { ExecuteRunRequestSchema } from "@botchestra/shared";
+import { BrowserLeaseDO } from "./browserLeaseDO";
 import { validateCallbackToken } from "./guardrails";
 
 type BrowserExecutorEnv = {
   CALLBACK_SIGNING_SECRET?: string;
 };
-
-export class BrowserLeaseDO {
-  constructor(_state: DurableObjectState, _env: unknown) {}
-
-  async fetch(): Promise<Response> {
-    return Response.json({ error: "not_implemented" }, { status: 501 });
-  }
-}
 
 function json(body: unknown, status: number) {
   return Response.json(body, { status });
@@ -99,4 +92,5 @@ const worker = {
   },
 };
 
+export { BrowserLeaseDO };
 export default worker;
