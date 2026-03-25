@@ -1,0 +1,22 @@
+{
+  "featureId": "run-executor-integration",
+  "reviewedAt": "2026-03-25T19:22:53Z",
+  "commitId": "d5a0317402e7bdb92ebc8e7e89e92aa654622ecc",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The lifecycle integration commit successfully connects the HTTP entry point to leasing, artifact uploads, ordered callbacks, and terminal HTTP responses. However, the integrated failure path omits the required post-task self-report for failed runs, so the feature does not fully satisfy the browser-executor contract.",
+    "issues": [
+      {
+        "file": "apps/browser-executor/src/executeRunHandler.ts",
+        "line": 270,
+        "severity": "blocking",
+        "description": "On `!result.ok`, the handler sends a failure callback and returns the HTTP failure response immediately (lines 270-281). The only call to `reportGenerator(...)` is inside the success branch at line 284, so failed runs never generate a self-report. VAL-EXEC-036 and PRD-2 require a post-task self-report after success, failure, or abandonment, which means failed runs currently omit required evidence."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the mission docs, handoff, transcript evidence, and commit `d5a0317402e7bdb92ebc8e7e89e92aa654622ecc` for `run-executor-integration`. The end-to-end wiring is close, but I marked it fail because failed runs do not emit the required self-report data."
+}

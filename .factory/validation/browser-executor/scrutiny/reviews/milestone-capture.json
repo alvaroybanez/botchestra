@@ -1,0 +1,15 @@
+{
+  "featureId": "milestone-capture",
+  "reviewedAt": "2026-03-25T19:22:53Z",
+  "commitId": "6df5c3ed7f130427bd3353477a86d34ccbb67ad3",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The pure milestone policy helpers correctly encode the always-capture and conditional-capture rules described in the validation contract, including first/finish/abort/error triggers plus branch, loop, and dead-end detection. The implementation is small, clear, and adequately tested, so I found no issues in this feature.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the mission docs, handoff, transcript evidence, and commit `6df5c3ed7f130427bd3353477a86d34ccbb67ad3` for `milestone-capture`. The pure milestone-capture policy is implemented correctly and passes review."
+}

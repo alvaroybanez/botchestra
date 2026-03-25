@@ -1,0 +1,21 @@
+{
+  "featureId": "self-report-gen",
+  "reviewedAt": "2026-03-25T19:22:53Z",
+  "commitId": "c989a8bdb35714c551aa65e21ea065f622844579",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The self-report generator itself is robust: it builds a persona-aware prompt, parses structured JSON with keyed answers, and falls back deterministically when model output is invalid. The shared contract and AI-runtime support changes are consistent with the feature goal, and I did not find defects in the reviewed diff.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `cf-worker` skill should explicitly allow narrowly-scoped updates in shared workspace packages when the assigned Worker feature changes a cross-workspace contract.",
+      "evidence": "The `self-report-gen` handoff had to update `packages/shared` and `packages/ai` so browser-executor completion payloads could carry keyed self-report answers and still run in the Worker runtime, but the skill procedure is written as if all changes stay inside the Worker workspace."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the mission docs, handoff, transcript evidence, and commit `c989a8bdb35714c551aa65e21ea065f622844579` for `self-report-gen`. The self-report generation feature is implemented correctly and passes code review."
+}

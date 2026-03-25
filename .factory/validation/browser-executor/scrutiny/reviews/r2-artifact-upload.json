@@ -1,0 +1,15 @@
+{
+  "featureId": "r2-artifact-upload",
+  "reviewedAt": "2026-03-25T19:22:53Z",
+  "commitId": "fae95b6d1154ff6dd937f98b131c77b0a77058c2",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The artifact uploader generates the expected run-scoped milestone and manifest keys, records uploaded artifact metadata, and deliberately treats upload failures as non-fatal so run execution can continue. The reviewed diff matches the feature description and I did not find any additional issues in this feature beyond the upstream screenshot-format concern already noted against the agent loop integration.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the mission docs, handoff, transcript evidence, and commit `fae95b6d1154ff6dd937f98b131c77b0a77058c2` for `r2-artifact-upload`. The uploader behavior matches the milestone contract and passes review."
+}

@@ -1,0 +1,34 @@
+{
+  "featureId": "agent-loop-core",
+  "reviewedAt": "2026-03-25T19:22:53Z",
+  "commitId": "3e0132fe034a131c5992488590e23afdee3b009d",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The agent loop wires together leasing, observations, guardrails, action execution, milestone hooks, and finally cleanup, and the test coverage is strong for success/failure cleanup paths. However, the milestone-capture integration inside `runExecutor.ts` misses required evidence states from the PRD/spec, so I am marking the feature fail.",
+    "issues": [
+      {
+        "file": "apps/browser-executor/src/runExecutor.ts",
+        "line": 376,
+        "severity": "blocking",
+        "description": "The executor never captures the starting page before the first action. After `page.goto(request.taskSpec.startingUrl)` at line 376, `maybeCaptureMilestone(...)` is only called in the terminal branch at line 456 or after a non-terminal action has already executed at line 490. PRD-2 artifact capture and the platform spec require the first page to be captured unconditionally, so a step-0 action that immediately changes the page loses the required initial evidence screenshot."
+      },
+      {
+        "file": "apps/browser-executor/src/runExecutor.ts",
+        "line": 380,
+        "severity": "blocking",
+        "description": "Several terminal failure paths return immediately without forcing a milestone capture of the final/error state. The early `return failure(...)` branches at lines 380, 417, 428, 444, 479, 522, and 532 can end a run with no final screenshot, even though PRD-2 and the platform spec require fatal error states and final states to always be captured."
+      },
+      {
+        "file": "apps/browser-executor/src/runExecutor.ts",
+        "line": 312,
+        "severity": "non_blocking",
+        "description": "The browser abstraction only exposes `page.screenshot()` with no way to request JPEG output, but downstream artifact storage labels the bytes as `image/jpeg` and stores them under a `.jpg` key. If the eventual browser binding returns PNG bytes by default (as Playwright does), the uploaded content type and extension will not match the actual image encoding."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the mission docs, handoff, transcript evidence, and commit `3e0132fe034a131c5992488590e23afdee3b009d` for `agent-loop-core`. The loop implementation is substantial, but it fails scrutiny because milestone capture is not guaranteed for the required initial and terminal error states."
+}

@@ -1,0 +1,70 @@
+{
+  "milestone": "browser-executor",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 11,
+    "passed": 9,
+    "failed": 2,
+    "failedFeatures": [
+      "agent-loop-core",
+      "run-executor-integration"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "agent-loop-core",
+      "severity": "blocking",
+      "description": "The run executor only captures milestones after terminal finish/abort or after a non-terminal action has already executed, so the required initial starting page can be skipped entirely."
+    },
+    {
+      "featureId": "agent-loop-core",
+      "severity": "blocking",
+      "description": "Multiple failure paths return a terminal result without forcing a final milestone capture, so fatal error and other terminal failure states can finish without the required evidence screenshot."
+    },
+    {
+      "featureId": "run-executor-integration",
+      "severity": "blocking",
+      "description": "The integrated execute-run handler only generates self-reports for `result.ok` outcomes, so failed runs omit the required post-task self-report data."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "Skill: cf-worker",
+      "suggestion": "Document that when the required wrangler port 8787 is already occupied by a pre-existing listener, workers may rely on passing automated integration tests plus `lsof`/`curl` diagnostics after recording the conflict in `.factory/library/environment.md` instead of killing the process.",
+      "evidence": "The `worker-entry-point` and `run-executor-integration` handoffs both encountered an existing `workerd` listener on 8787 and had to skip live wrangler verification; the environment note now exists, but the skill still assumes wrangler can always bind the mission-approved port.",
+      "isSystemic": true
+    },
+    {
+      "target": "Skill: cf-worker",
+      "suggestion": "Clarify that Worker features may require narrowly-scoped updates in shared workspace packages when the feature changes a cross-workspace protocol.",
+      "evidence": "The `self-report-gen` handoff had to update `packages/shared` and `packages/ai` so browser-executor completion payloads could carry keyed self-report answers and still run in the Worker runtime.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Root `vitest.config.ts` still uses the deprecated `test.workspace` option.",
+      "reason": "Rejected because this is a normal repository maintenance task, not a shared-state documentation or worker-guidance update."
+    }
+  ],
+  "previousRound": null
+}

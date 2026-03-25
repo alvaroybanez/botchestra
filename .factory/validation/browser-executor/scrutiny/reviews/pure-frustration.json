@@ -1,0 +1,15 @@
+{
+  "featureId": "pure-frustration",
+  "reviewedAt": "2026-03-25T19:22:53Z",
+  "commitId": "be0ffee14706ec79ba23b9bda5f54afce3b93220",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The frustration policy module implements the eight requested detectors as pure functions and exposes an aggregate update helper that preserves deterministic threshold behavior. The tests cover the required window, repetition, contradictory-navigation, and abandonment boundaries, and I did not find defects in the reviewed implementation.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the mission docs, handoff, transcript evidence, and commit `be0ffee14706ec79ba23b9bda5f54afce3b93220` for `pure-frustration`. The pure frustration heuristics match the contract and pass code review."
+}
