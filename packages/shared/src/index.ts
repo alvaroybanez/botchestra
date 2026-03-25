@@ -98,6 +98,17 @@ const MilestoneSchema = z.object({
   }),
 });
 
+export const SelfReportAnswerSchema = z.union([z.string(), z.number(), z.boolean()]);
+
+export const SelfReportSchema = z.object({
+  perceivedSuccess: z.boolean(),
+  hardestPart: z.string().optional(),
+  confusion: z.string().optional(),
+  confidence: z.number().optional(),
+  suggestedChange: z.string().optional(),
+  answers: z.record(SelfReportAnswerSchema).optional(),
+});
+
 const CompletionSchema = z.object({
   runId: z.string(),
   eventType: z.literal("completion"),
@@ -106,15 +117,7 @@ const CompletionSchema = z.object({
     stepCount: z.number().int().nonnegative(),
     durationSec: z.number().nonnegative(),
     frustrationCount: z.number().int().nonnegative(),
-    selfReport: z
-      .object({
-        perceivedSuccess: z.boolean(),
-        hardestPart: z.string().optional(),
-        confusion: z.string().optional(),
-        confidence: z.number().optional(),
-        suggestedChange: z.string().optional(),
-      })
-      .optional(),
+    selfReport: SelfReportSchema.optional(),
     artifactManifestKey: z.string().optional(),
   }),
 });
@@ -136,3 +139,5 @@ export const RunProgressUpdateSchema = z.discriminatedUnion("eventType", [
 ]);
 
 export type RunProgressUpdate = z.infer<typeof RunProgressUpdateSchema>;
+export type SelfReport = z.infer<typeof SelfReportSchema>;
+export type SelfReportAnswer = z.infer<typeof SelfReportAnswerSchema>;

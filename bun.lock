@@ -22,6 +22,7 @@
       "name": "@botchestra/browser-executor",
       "version": "0.0.0",
       "dependencies": {
+        "@botchestra/ai": "workspace:*",
         "@botchestra/shared": "workspace:*",
       },
       "devDependencies": {

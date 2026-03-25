@@ -8,6 +8,7 @@ import {
   RUN_FAILURE_ERROR_CODES,
   createProgressReporterFromRequest,
 } from "./progressReporter";
+import { generateSelfReport } from "./selfReport";
 
 const executionContext = {} as ExecutionContext;
 const env = { CALLBACK_SIGNING_SECRET: "test-callback-secret" };
@@ -258,6 +259,87 @@ describe("browser executor worker entry point", () => {
         durationSec: 8.4,
         frustrationCount: 1,
         artifactManifestKey: `runs/${validExecuteRunRequest.runId}/manifest.json`,
+      },
+    });
+  });
+
+  it("includes a generated selfReport keyed to postTaskQuestions in the completion callback", async () => {
+    const callbackFetch = createFetchMock();
+    const workerWithSelfReport = createWorker({
+      executeRun: async (executeRunRequest) => {
+        const progressReporter = createProgressReporterFromRequest(executeRunRequest, {
+          fetch: callbackFetch.fetch,
+        });
+        const selfReport = await generateSelfReport({
+          request: executeRunRequest,
+          result: {
+            ok: true,
+            finalOutcome: "SUCCESS",
+            stepCount: 2,
+            durationSec: 8.4,
+            frustrationCount: 1,
+            milestones: [
+              {
+                stepIndex: 1,
+                url: "https://staging.example.com/checkout",
+                title: "Checkout",
+                actionType: "click",
+                rationaleShort: "Selected checkout",
+                captureReason: "always",
+              },
+            ],
+          },
+          generateText: async () => ({
+            text: JSON.stringify({
+              perceivedSuccess: true,
+              hardestPart: "Finding the checkout CTA",
+              confusion: "The shipping step looked optional at first.",
+              confidence: 0.86,
+              suggestedChange: "Make the checkout CTA more prominent.",
+              answers: {
+                "Did you feel the checkout was straightforward?": true,
+                "What was the hardest part?": "Finding the checkout CTA",
+              },
+            }),
+          }),
+        });
+
+        await progressReporter.sendCompletion({
+          finalOutcome: "SUCCESS",
+          stepCount: 2,
+          durationSec: 8.4,
+          frustrationCount: 1,
+          selfReport,
+        });
+
+        return Response.json({ finalOutcome: "SUCCESS" }, { status: 200 });
+      },
+    });
+    const validExecuteRunRequest = await createValidExecuteRunRequest();
+
+    const response = await workerWithSelfReport.fetch(
+      new Request("https://example.com/execute-run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(validExecuteRunRequest),
+      }),
+      env,
+      executionContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(callbackFetch.calls).toHaveLength(1);
+
+    const callbackBody = getPostedUpdate(callbackFetch);
+    expect(callbackBody.payload.selfReport).toEqual({
+      perceivedSuccess: true,
+      hardestPart: "Finding the checkout CTA",
+      confusion: "The shipping step looked optional at first.",
+      confidence: 0.86,
+      suggestedChange: "Make the checkout CTA more prominent.",
+      answers: {
+        "Did you feel the checkout was straightforward?": true,
+        "What was the hardest part?": "Finding the checkout CTA",
       },
     });
   });

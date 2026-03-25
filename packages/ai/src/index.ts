@@ -22,9 +22,17 @@ export const MODEL_CONFIG: Record<TaskCategory, string> = {
 
 // -- Model resolution --------------------------------------------------------
 
+function getEnvValue(key: string) {
+  if (typeof process === "undefined") {
+    return undefined;
+  }
+
+  return process.env[key];
+}
+
 export function resolveModel(category: TaskCategory): string {
   const envKey = `BOTCHESTRA_MODEL_${category.toUpperCase()}`;
-  return process.env[envKey] || MODEL_CONFIG[category];
+  return getEnvValue(envKey) || MODEL_CONFIG[category];
 }
 
 // -- generateWithModel -------------------------------------------------------

@@ -119,6 +119,10 @@ describe("progressReporter", () => {
         perceivedSuccess: true,
         hardestPart: "Finding the checkout CTA",
         confidence: 0.9,
+        answers: {
+          "Do you think you completed the task?": true,
+          "What was the hardest part?": "Finding the checkout CTA",
+        },
       },
       artifactManifestKey: "runs/run_completion/manifest.json",
     });
@@ -137,6 +141,10 @@ describe("progressReporter", () => {
           perceivedSuccess: true,
           hardestPart: "Finding the checkout CTA",
           confidence: 0.9,
+          answers: {
+            "Do you think you completed the task?": true,
+            "What was the hardest part?": "Finding the checkout CTA",
+          },
         },
         artifactManifestKey: "runs/run_completion/manifest.json",
       },

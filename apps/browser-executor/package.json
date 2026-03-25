@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@botchestra/ai": "workspace:*",
     "@botchestra/shared": "workspace:*"
   },
   "devDependencies": {

@@ -99,6 +99,11 @@ describe("RunProgressUpdateSchema", () => {
           perceivedSuccess: true,
           hardestPart: "Finding the checkout button",
           confidence: 0.9,
+          answers: {
+            "Did you feel the checkout was straightforward?": true,
+            "What was the hardest part?": "Finding the checkout button",
+            "How confident are you that you did the right thing?": 0.9,
+          },
         },
         artifactManifestKey: "runs/run_abc123/manifest.json",
       },
@@ -108,6 +113,11 @@ describe("RunProgressUpdateSchema", () => {
     expect(result.success).toBe(true);
     if (result.success && result.data.eventType === "completion") {
       expect(result.data.payload.finalOutcome).toBe("SUCCESS");
+      expect(result.data.payload.selfReport?.answers).toEqual({
+        "Did you feel the checkout was straightforward?": true,
+        "What was the hardest part?": "Finding the checkout button",
+        "How confident are you that you did the right thing?": 0.9,
+      });
     }
   });
 
