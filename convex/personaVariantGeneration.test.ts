@@ -328,7 +328,7 @@ describe("generateVariantsForStudy", () => {
     expect(variants.every((variant) => variant.accepted)).toBe(true);
   });
 
-  it("stores exhausted variants with accepted=false and reports the shortfall", async () => {
+  it("heals exhausted slots until the study has exactly the run budget of accepted variants", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createPublishedPack(t, { protoPersonaCount: 1 });
@@ -356,12 +356,62 @@ describe("generateVariantsForStudy", () => {
         .collect(),
     );
 
-    expect(summary.acceptedCount).toBe(49);
+    expect(summary.acceptedCount).toBe(50);
     expect(summary.rejectedCount).toBe(1);
     expect(summary.retryCount).toBe(3);
-    expect(variants).toHaveLength(50);
-    expect(variants.filter((variant) => variant.accepted)).toHaveLength(49);
+    expect(variants).toHaveLength(51);
+    expect(variants.filter((variant) => variant.accepted)).toHaveLength(50);
     expect(variants.filter((variant) => !variant.accepted)).toHaveLength(1);
+  });
+
+  it("clamps rejected fallback coherence scores into the persisted [0, 1] range", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createPublishedPack(t, { protoPersonaCount: 1 });
+    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    let callCount = 0;
+
+    mockedGenerateWithModel.mockImplementation(async () => {
+      callCount += 1;
+
+      if (callCount <= 4) {
+        return createAiResult(
+          makeCandidate({
+            firstPersonBio: makeBio(40),
+            coherenceScore: Number.NaN,
+          }),
+        );
+      }
+
+      if (callCount <= 8) {
+        return createAiResult(
+          makeCandidate({
+            firstPersonBio: makeBio(40),
+            coherenceScore: 1.7,
+          }),
+        );
+      }
+
+      return createAiResult(makeCandidate());
+    });
+
+    const summary = await asResearcher.action(
+      variantGenerationApi.generateVariantsForStudy,
+      { studyId },
+    );
+
+    const variants = await t.run(async (ctx) =>
+      ctx.db
+        .query("personaVariants")
+        .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
+        .collect(),
+    );
+    const rejectedVariants = variants.filter((variant) => !variant.accepted);
+
+    expect(summary.acceptedCount).toBe(50);
+    expect(summary.rejectedCount).toBe(2);
+    expect(rejectedVariants).toHaveLength(2);
+    expect(rejectedVariants.map((variant) => variant.coherenceScore)).toEqual([0, 1]);
   });
 
   it("requires a published pack and enforces budget bounds plus the default budget", async () => {
@@ -459,7 +509,7 @@ describe("generateVariantsForStudy", () => {
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createPublishedPack(t, {
       protoPersonaCount: 1,
-      axisCount: 15,
+      axisCount: 16,
     });
     const studyId = await insertStudy(t, packId, { runBudget: 50 });
 
@@ -480,7 +530,7 @@ describe("generateVariantsForStudy", () => {
 
     expect(summary.acceptedCount).toBe(50);
     expect(variants).toHaveLength(50);
-    expect(variants.every((variant) => variant.axisValues.length === 15)).toBe(true);
+    expect(variants.every((variant) => variant.axisValues.length === 16)).toBe(true);
     expect(
       variants.every((variant) =>
         variant.axisValues.every(

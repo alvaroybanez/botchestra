@@ -107,15 +107,15 @@ export function sampleEdgeHeavy(
   assertAxisKeys(axisKeys);
   assertBandThreshold(edgeBandStart, "Edge band start");
 
-  const signPatternCount = 2 ** Math.min(axisKeys.length, 15);
-  const signPatternIndex = sequenceIndex % signPatternCount;
-  const withinPatternIndex = Math.floor(sequenceIndex / signPatternCount);
+  const normalizedSequenceIndex = BigInt(Math.max(0, Math.trunc(sequenceIndex)));
+  const signPatternCount = 1n << BigInt(axisKeys.length);
+  const signPatternIndex = normalizedSequenceIndex % signPatternCount;
+  const withinPatternIndex = Number(normalizedSequenceIndex / signPatternCount);
 
   return Object.fromEntries(
     axisKeys.map((axisKey, axisIndex) => {
-      const direction = Math.floor(signPatternIndex / 2 ** axisIndex) % 2 === 0
-        ? -1
-        : 1;
+      const direction =
+        ((signPatternIndex >> BigInt(axisIndex)) & 1n) === 0n ? -1 : 1;
       const distanceWithinBand =
         (1 - edgeBandStart) *
         halton(

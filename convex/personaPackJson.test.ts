@@ -187,6 +187,39 @@ describe("persona pack JSON import/export", () => {
     expect(protoPersonas).toHaveLength(0);
   });
 
+  it("rejects proto-personas whose axis keys are not present in sharedAxes", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+
+    await expect(
+      asResearcher.action(api.personaPacks.importJson, {
+        json: JSON.stringify(
+          makeImportPayload({
+            protoPersonas: [
+              makeProtoPersona(0, {
+                axes: [
+                  makeAxis({
+                    key: "missing_axis",
+                    label: "Missing axis",
+                    description: "Not included in shared axes",
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ),
+      }),
+    ).rejects.toThrow(/shared pack axis keys/i);
+
+    const packs = await t.run(async (ctx) => ctx.db.query("personaPacks").collect());
+    const protoPersonas = await t.run(async (ctx) =>
+      ctx.db.query("protoPersonas").collect(),
+    );
+
+    expect(packs).toHaveLength(0);
+    expect(protoPersonas).toHaveLength(0);
+  });
+
   it("rejects malformed JSON before validation or writes", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);

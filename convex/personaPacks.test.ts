@@ -313,6 +313,45 @@ describe("personaPacks", () => {
     ).rejects.toThrow(/archived/i);
   });
 
+  it("publish rejects packs whose proto-persona axes drifted after shared axis removal", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
+      pack: makeCreateDraftInput({
+        sharedAxes: [
+          makeAxis({ key: "digital_confidence" }),
+          makeAxis({
+            key: "patience",
+            label: "Patience",
+            description: "Tolerance for friction",
+          }),
+        ],
+      }),
+    });
+
+    await insertProtoPersona(t, packId, {
+      axes: [
+        makeAxis({ key: "digital_confidence" }),
+        makeAxis({
+          key: "patience",
+          label: "Patience",
+          description: "Tolerance for friction",
+        }),
+      ],
+    });
+
+    await asResearcher.mutation(api.personaPacks.updateDraft, {
+      packId,
+      patch: {
+        sharedAxes: [makeAxis({ key: "digital_confidence" })],
+      },
+    });
+
+    await expect(
+      asResearcher.mutation(api.personaPacks.publish, { packId }),
+    ).rejects.toThrow(/shared pack axis keys/i);
+  });
+
   it("archive transitions a published pack to archived", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
@@ -439,6 +478,7 @@ async function createArchivedPack(t: TestInstance) {
 async function insertProtoPersona(
   t: TestInstance,
   packId: Id<"personaPacks">,
+  overrides: Partial<Doc<"protoPersonas">> = {},
 ) {
   await t.run(async (ctx) =>
     ctx.db.insert("protoPersonas", {
@@ -449,6 +489,7 @@ async function insertProtoPersona(
       sourceType: "manual",
       sourceRefs: [],
       evidenceSnippets: ["Evidence snippet"],
+      ...overrides,
     }),
   );
 }

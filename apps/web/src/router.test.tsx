@@ -411,7 +411,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Create your first pack");
   });
 
-  it("renders persona packs with status badges and detail links", async () => {
+  it("renders active persona packs separately from archived packs", async () => {
     mockedPackList = [
       makePack({
         _id: "pack-draft" as Id<"personaPacks">,
@@ -442,8 +442,12 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("draft");
     expect(container.textContent).toContain("Mobile Banking Pack");
     expect(container.textContent).toContain("published");
-    expect(container.textContent).toContain("Legacy Support Pack");
-    expect(container.textContent).toContain("archived");
+    expect(container.textContent).toContain("Archived packs (1)");
+
+    const archivedSection = container.querySelector("details");
+    expect(archivedSection).not.toBeNull();
+    expect(archivedSection?.textContent).toContain("Legacy Support Pack");
+    expect(archivedSection?.textContent).toContain("archived");
 
     const links = [...container.querySelectorAll("a")].map((link) =>
       link.getAttribute("href"),
@@ -454,6 +458,28 @@ describe("@botchestra/web routing", () => {
         "/persona-packs/pack-published",
         "/persona-packs/pack-archived",
       ]),
+    );
+  });
+
+  it("shows an active-pack empty state when only archived packs remain", async () => {
+    mockedPackList = [
+      makePack({
+        _id: "pack-archived-only" as Id<"personaPacks">,
+        name: "Legacy Support Pack",
+        status: "archived",
+        version: 3,
+      }),
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs"],
+    });
+
+    expect(container.textContent).toContain("No active persona packs");
+    expect(container.textContent).toContain("Archived packs (1)");
+    expect(container.querySelector("details")?.textContent).toContain(
+      "Legacy Support Pack",
     );
   });
 

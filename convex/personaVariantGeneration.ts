@@ -97,7 +97,12 @@ export const generateVariantsForStudy = zAction({
       },
     );
 
-    if (generationContext.existingVariants.length > 0) {
+    const budget = resolveRunBudget(generationContext.resolvedBudget);
+    const acceptedExistingVariants = generationContext.existingVariants.filter(
+      (variant) => variant.accepted,
+    );
+
+    if (acceptedExistingVariants.length >= budget) {
       return await ctx.runMutation(
         internal.personaVariantGenerationModel.persistVariantsIfAbsent,
         {
@@ -120,7 +125,6 @@ export const generateVariantsForStudy = zAction({
       );
     }
 
-    const budget = resolveRunBudget(generationContext.resolvedBudget);
     const protoPersonasForAllocation: ProtoPersonaForAllocation[] =
       generationContext.protoPersonas.map((protoPersona) => ({
         id: protoPersona._id,
@@ -128,85 +132,115 @@ export const generateVariantsForStudy = zAction({
         evidenceSnippets: protoPersona.evidenceSnippets,
         axisKeys: generationContext.pack.sharedAxes.map((axis) => axis.key),
       }));
-    const variantPlans = planVariants(protoPersonasForAllocation, budget);
     const acceptedAxisValues = new Map<string, Record<string, number>>();
+
+    acceptedExistingVariants.forEach((variant, index) => {
+      acceptedAxisValues.set(`existing:${index}`, toAxisRecord(variant.axisValues));
+    });
+
     const persistedVariants: PersistedVariant[] = [];
     let retryCount = 0;
+    let acceptedCount = acceptedExistingVariants.length;
+    let passIndex = 0;
 
-    for (const variantPlan of variantPlans) {
-      const protoPersona = generationContext.protoPersonas.find(
-        (candidate) => candidate._id === variantPlan.protoPersonaId,
+    while (acceptedCount < budget) {
+      const acceptedCountAtStartOfPass = acceptedCount;
+      const remainingBudget = budget - acceptedCount;
+      const variantPlans = planVariants(
+        protoPersonasForAllocation,
+        remainingBudget,
+        undefined,
+        Array.from(acceptedAxisValues.values()),
+        passIndex * 100_000,
       );
 
-      if (!protoPersona) {
-        throw new ConvexError(`Proto-persona ${variantPlan.protoPersonaId} not found.`);
-      }
+      for (const variantPlan of variantPlans) {
+        const protoPersona = generationContext.protoPersonas.find(
+          (candidate) => candidate._id === variantPlan.protoPersonaId,
+        );
 
-      let bestCandidate: PersistedVariant | null = null;
-      let acceptedVariantGenerated = false;
-
-      for (
-        let attemptIndex = 0;
-        attemptIndex <= MAX_RETRIES_PER_VARIANT;
-        attemptIndex += 1
-      ) {
-        if (attemptIndex > 0) {
-          retryCount += 1;
+        if (!protoPersona) {
+          throw new ConvexError(
+            `Proto-persona ${variantPlan.protoPersonaId} not found.`,
+          );
         }
 
-        const generatedCandidate = await generateCandidate(
-          generationContext.pack,
-          protoPersona,
-          variantPlan.axisValues,
-        );
+        let bestCandidate: PersistedVariant | null = null;
+        let acceptedVariantGenerated = false;
 
-        const distinctness = evaluateDistinctness(
-          variantPlan.axisValues,
-          Array.from(acceptedAxisValues.values()),
-        );
-        const validation = validateGeneratedVariantCandidate(generatedCandidate);
-        const accepted = validation.accepted && isDistinctEnough(distinctness);
-        const persistedVariant = toPersistedVariant({
-          studyId: generationContext.study._id,
-          personaPackId: generationContext.pack._id,
-          protoPersonaId: protoPersona._id,
-          axisValues: variantPlan.axisValues,
-          edgeScore: variantPlan.edgeScore,
-          candidate: generatedCandidate,
-          distinctnessScore: distinctness.distinctnessScore,
-          accepted,
-        });
-
-        if (
-          bestCandidate === null ||
-          persistedVariant.coherenceScore + persistedVariant.distinctnessScore >
-            bestCandidate.coherenceScore + bestCandidate.distinctnessScore
+        for (
+          let attemptIndex = 0;
+          attemptIndex <= MAX_RETRIES_PER_VARIANT;
+          attemptIndex += 1
         ) {
-          bestCandidate = persistedVariant;
-        }
+          if (attemptIndex > 0) {
+            retryCount += 1;
+          }
 
-        if (accepted) {
-          persistedVariants.push(persistedVariant);
-          acceptedAxisValues.set(
-            `${protoPersona._id}:${persistedVariants.length}`,
+          const generatedCandidate = await generateCandidate(
+            generationContext.pack,
+            protoPersona,
             variantPlan.axisValues,
           );
-          acceptedVariantGenerated = true;
-          break;
+
+          const distinctness = evaluateDistinctness(
+            variantPlan.axisValues,
+            Array.from(acceptedAxisValues.values()),
+          );
+          const validation = validateGeneratedVariantCandidate(generatedCandidate);
+          const accepted = validation.accepted && isDistinctEnough(distinctness);
+          const persistedVariant = toPersistedVariant({
+            studyId: generationContext.study._id,
+            personaPackId: generationContext.pack._id,
+            protoPersonaId: protoPersona._id,
+            axisValues: variantPlan.axisValues,
+            edgeScore: variantPlan.edgeScore,
+            candidate: generatedCandidate,
+            coherenceScore: validation.coherenceScore,
+            distinctnessScore: distinctness.distinctnessScore,
+            accepted,
+          });
+
+          if (
+            bestCandidate === null ||
+            persistedVariant.coherenceScore + persistedVariant.distinctnessScore >
+              bestCandidate.coherenceScore + bestCandidate.distinctnessScore
+          ) {
+            bestCandidate = persistedVariant;
+          }
+
+          if (accepted) {
+            persistedVariants.push(persistedVariant);
+            acceptedAxisValues.set(
+              `${protoPersona._id}:${acceptedAxisValues.size}`,
+              variantPlan.axisValues,
+            );
+            acceptedCount += 1;
+            acceptedVariantGenerated = true;
+            break;
+          }
+        }
+
+        if (!acceptedVariantGenerated && bestCandidate !== null) {
+          persistedVariants.push({
+            ...bestCandidate,
+            accepted: false,
+          });
         }
       }
 
-      if (!acceptedVariantGenerated && bestCandidate !== null) {
-        persistedVariants.push({
-          ...bestCandidate,
-          accepted: false,
-        });
+      if (acceptedCount === acceptedCountAtStartOfPass) {
+        break;
       }
+
+      passIndex += 1;
     }
 
-    const acceptedCount = persistedVariants.filter((variant) => variant.accepted).length;
-    const rejectedCount = persistedVariants.length - acceptedCount;
-    const edgeCount = persistedVariants.filter((variant) => variant.edgeScore >= 0.65).length;
+    const allVariants = [...generationContext.existingVariants, ...persistedVariants];
+    const acceptedVariants = allVariants.filter((variant) => variant.accepted);
+    const rejectedCount = allVariants.length - acceptedVariants.length;
+    const edgeCount = acceptedVariants.filter((variant) => variant.edgeScore >= 0.65)
+      .length;
 
     return await ctx.runMutation(
       internal.personaVariantGenerationModel.persistVariantsIfAbsent,
@@ -215,17 +249,17 @@ export const generateVariantsForStudy = zAction({
         orgId: identity.tokenIdentifier,
         variants: persistedVariants,
         summary: {
-          acceptedCount,
+          acceptedCount: acceptedVariants.length,
           rejectedCount,
           retryCount,
           coverage: {
             budget,
             edgeCount,
-            interiorCount: persistedVariants.length - edgeCount,
+            interiorCount: acceptedVariants.length - edgeCount,
             minimumPairwiseDistance: calculateMinimumPairwiseDistance(
-              persistedVariants.filter((variant) => variant.accepted),
+              acceptedVariants,
             ),
-            perProtoPersona: summarizePerProtoPersona(persistedVariants),
+            perProtoPersona: summarizePerProtoPersona(allVariants),
           },
         },
       },
@@ -271,6 +305,7 @@ function toPersistedVariant({
   axisValues,
   edgeScore,
   candidate,
+  coherenceScore,
   distinctnessScore,
   accepted,
 }: {
@@ -280,6 +315,7 @@ function toPersistedVariant({
   axisValues: Record<string, number>;
   edgeScore: number;
   candidate: GeneratedVariantCandidate;
+  coherenceScore: number;
   distinctnessScore: number;
   accepted: boolean;
 }) {
@@ -292,7 +328,7 @@ function toPersistedVariant({
     tensionSeed: candidate.tensionSeed.trim(),
     firstPersonBio: candidate.firstPersonBio.trim(),
     behaviorRules: candidate.behaviorRules.map((rule) => rule.trim()),
-    coherenceScore: candidate.coherenceScore,
+    coherenceScore,
     distinctnessScore,
     accepted,
   };

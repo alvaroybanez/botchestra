@@ -85,6 +85,8 @@ export function PersonaPacksPage() {
   const [form, setForm] = useState<PackFormValue>(emptyPackForm);
 
   const packList = packs ?? [];
+  const activePackList = packList.filter((pack) => pack.status !== "archived");
+  const archivedPackList = packList.filter((pack) => pack.status === "archived");
 
   async function handleCreatePack(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -166,45 +168,36 @@ export function PersonaPacksPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : activePackList.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No active persona packs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              All of your persona packs are archived. Expand the archived section
+              below to review them or create a new pack for active work.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid gap-4">
-          {packList.map((pack) => (
-            <Link
-              key={pack._id}
-              className="block rounded-xl border bg-card p-6 shadow-sm transition-colors hover:border-primary hover:bg-muted/30"
-              params={{ packId: pack._id }}
-              to="/persona-packs/$packId"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-xl font-semibold tracking-tight">
-                      {pack.name}
-                    </h3>
-                    <StatusBadge status={pack.status} />
-                  </div>
-                  <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                    {pack.description}
-                  </p>
-                </div>
-
-                <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:min-w-72">
-                  <SummaryValue label="Version" value={`v${pack.version}`} />
-                  <SummaryValue
-                    label="Created"
-                    value={formatTimestamp(pack.createdAt)}
-                  />
-                  <SummaryValue
-                    label="Updated"
-                    value={formatTimestamp(pack.updatedAt)}
-                  />
-                  <SummaryValue label="Axes" value={String(pack.sharedAxes.length)} />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <PackGrid packs={activePackList} />
       )}
+
+      {archivedPackList.length > 0 ? (
+        <details className="rounded-xl border bg-card p-4">
+          <summary className="cursor-pointer list-none text-sm font-semibold">
+            Archived packs ({archivedPackList.length})
+          </summary>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Archived packs stay out of the main library grid but remain available
+            for audit trails, exports, and reference.
+          </p>
+          <div className="mt-4">
+            <PackGrid packs={archivedPackList} />
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }
@@ -1046,6 +1039,40 @@ function LoadingCard({ title, body }: { title: string; body: string }) {
         <p className="text-sm text-muted-foreground">{body}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function PackGrid({ packs }: { packs: PersonaPackDoc[] }) {
+  return (
+    <div className="grid gap-4">
+      {packs.map((pack) => (
+        <Link
+          key={pack._id}
+          className="block rounded-xl border bg-card p-6 shadow-sm transition-colors hover:border-primary hover:bg-muted/30"
+          params={{ packId: pack._id }}
+          to="/persona-packs/$packId"
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="text-xl font-semibold tracking-tight">{pack.name}</h3>
+                <StatusBadge status={pack.status} />
+              </div>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                {pack.description}
+              </p>
+            </div>
+
+            <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:min-w-72">
+              <SummaryValue label="Version" value={`v${pack.version}`} />
+              <SummaryValue label="Created" value={formatTimestamp(pack.createdAt)} />
+              <SummaryValue label="Updated" value={formatTimestamp(pack.updatedAt)} />
+              <SummaryValue label="Axes" value={String(pack.sharedAxes.length)} />
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }
 

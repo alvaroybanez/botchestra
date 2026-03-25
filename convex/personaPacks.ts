@@ -239,6 +239,12 @@ export const publish = zMutation({
       );
     }
 
+    const protoPersonas = await listProtoPersonasForPack(ctx, args.packId);
+
+    for (const protoPersona of protoPersonas) {
+      assertProtoPersonaAxisKeys(pack.sharedAxes, protoPersona.axes);
+    }
+
     await ctx.db.patch(args.packId, {
       status: "published",
       version: pack.version + 1,
@@ -284,7 +290,7 @@ export const createProtoPersona = zMutation({
     const pack = await getPackForIdentity(ctx, args.packId, identity.tokenIdentifier);
 
     assertPackIsDraft(pack);
-    assertProtoPersonaAxisKeys(pack, args.protoPersona.axes);
+    assertProtoPersonaAxisKeys(pack.sharedAxes, args.protoPersona.axes);
     await assertProtoPersonaCapacity(ctx, args.packId);
 
     return await ctx.db.insert("protoPersonas", {
@@ -318,7 +324,7 @@ export const updateProtoPersona = zMutation({
     assertPackIsDraft(pack);
 
     if (args.patch.axes !== undefined) {
-      assertProtoPersonaAxisKeys(pack, args.patch.axes);
+      assertProtoPersonaAxisKeys(pack.sharedAxes, args.patch.axes);
     }
 
     await ctx.db.patch(args.protoPersonaId, {
@@ -566,10 +572,10 @@ async function getProtoPersonaForIdentity(
 }
 
 function assertProtoPersonaAxisKeys(
-  pack: Doc<"personaPacks">,
+  sharedAxes: readonly { key: string }[],
   axes: readonly { key: string }[],
 ) {
-  const validAxisKeys = new Set(pack.sharedAxes.map((axis) => axis.key));
+  const validAxisKeys = new Set(sharedAxes.map((axis) => axis.key));
 
   if (!axes.every((axis) => validAxisKeys.has(axis.key))) {
     throw new ConvexError(
@@ -582,10 +588,7 @@ async function packHasProtoPersonas(
   ctx: MutationCtx,
   packId: Id<"personaPacks">,
 ) {
-  const protoPersonas = await ctx.db
-    .query("protoPersonas")
-    .withIndex("by_packId", (q) => q.eq("packId", packId))
-    .take(1);
+  const protoPersonas = await listProtoPersonasForPack(ctx, packId, 1);
 
   return protoPersonas.length > 0;
 }
@@ -594,10 +597,11 @@ async function assertProtoPersonaCapacity(
   ctx: MutationCtx,
   packId: Id<"personaPacks">,
 ) {
-  const protoPersonas = await ctx.db
-    .query("protoPersonas")
-    .withIndex("by_packId", (q) => q.eq("packId", packId))
-    .take(MAX_PROTO_PERSONAS_PER_PACK);
+  const protoPersonas = await listProtoPersonasForPack(
+    ctx,
+    packId,
+    MAX_PROTO_PERSONAS_PER_PACK,
+  );
 
   if (protoPersonas.length >= MAX_PROTO_PERSONAS_PER_PACK) {
     throw new ConvexError(
@@ -625,6 +629,10 @@ function parseImportedPackJson(json: string): ImportedPackJson {
     );
   }
 
+  for (const protoPersona of parsedPack.data.protoPersonas) {
+    assertProtoPersonaAxisKeys(parsedPack.data.sharedAxes, protoPersona.axes);
+  }
+
   return parsedPack.data;
 }
 
@@ -639,3 +647,14 @@ function formatZodIssues(issues: z.ZodIssue[]) {
 
 export type PersonaPackStatus = z.infer<typeof draftStatusSchema>;
 type ImportedPackJson = z.infer<typeof importedPackJsonSchema>;
+
+async function listProtoPersonasForPack(
+  ctx: QueryCtx | MutationCtx,
+  packId: Id<"personaPacks">,
+  limit = MAX_PROTO_PERSONAS_PER_PACK,
+) {
+  return await ctx.db
+    .query("protoPersonas")
+    .withIndex("by_packId", (q) => q.eq("packId", packId))
+    .take(limit);
+}

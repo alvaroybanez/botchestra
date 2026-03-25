@@ -176,6 +176,27 @@ describe("coverage sampling", () => {
     expect(isInteriorSample(sample)).toBe(false);
   });
 
+  it("sampleEdgeHeavy varies the sign pattern for packs with 16+ axes", () => {
+    const manyAxisKeys = Array.from(
+      { length: 16 },
+      (_, index) => `axis_${index + 1}`,
+    );
+
+    const firstSample = sampleEdgeHeavy(manyAxisKeys, 0);
+    const secondPatternSample = sampleEdgeHeavy(manyAxisKeys, 2 ** 15);
+
+    expect(Object.keys(firstSample)).toHaveLength(16);
+    expect(Object.keys(secondPatternSample)).toHaveLength(16);
+    expect(
+      Object.values(firstSample).every((value) => Math.abs(value) >= 0.65),
+    ).toBe(true);
+    expect(
+      Object.values(secondPatternSample).every((value) => Math.abs(value) >= 0.65),
+    ).toBe(true);
+    expect(Math.sign(firstSample.axis_16)).toBe(-1);
+    expect(Math.sign(secondPatternSample.axis_16)).toBe(1);
+  });
+
   it("sampleInterior generates axis values in the middle range", () => {
     const sample = sampleInterior(axisKeys, 3);
 

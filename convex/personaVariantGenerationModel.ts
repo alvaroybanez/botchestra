@@ -160,10 +160,14 @@ export const persistVariantsIfAbsent = zInternalMutation({
       .withIndex("by_studyId", (q) => q.eq("studyId", args.studyId))
       .collect();
 
-    if (existingVariants.length > 0) {
-      const resolvedBudget = resolveRunBudget(
-        (study as { runBudget?: number }).runBudget ?? DEFAULT_RUN_BUDGET,
-      );
+    const resolvedBudget = resolveRunBudget(
+      (study as { runBudget?: number }).runBudget ?? DEFAULT_RUN_BUDGET,
+    );
+    const acceptedExistingCount = existingVariants.filter(
+      (variant) => variant.accepted,
+    ).length;
+
+    if (args.variants.length === 0 || acceptedExistingCount >= resolvedBudget) {
       return buildSummary(existingVariants, resolvedBudget);
     }
 
@@ -184,9 +188,11 @@ export function buildSummary(
   }[],
   budget: number,
 ) {
-  const acceptedCount = variants.filter((variant) => variant.accepted).length;
+  const acceptedVariants = variants.filter((variant) => variant.accepted);
+  const acceptedCount = acceptedVariants.length;
   const rejectedCount = variants.length - acceptedCount;
-  const edgeCount = variants.filter((variant) => variant.edgeScore >= 0.65).length;
+  const edgeCount = acceptedVariants.filter((variant) => variant.edgeScore >= 0.65)
+    .length;
   const perProtoPersona = Array.from(
     variants.reduce((map, variant) => {
       const entry = map.get(variant.protoPersonaId) ?? {
@@ -215,8 +221,8 @@ export function buildSummary(
     coverage: {
       budget,
       edgeCount,
-      interiorCount: variants.length - edgeCount,
-      minimumPairwiseDistance: minimumPairwiseDistance(variants),
+      interiorCount: acceptedVariants.length - edgeCount,
+      minimumPairwiseDistance: minimumPairwiseDistance(acceptedVariants),
       perProtoPersona,
     },
   };

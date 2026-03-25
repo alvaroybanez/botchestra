@@ -64,6 +64,8 @@ export function planVariants(
   protoPersonas: readonly ProtoPersonaForAllocation[],
   budget: number,
   minimumDistanceThreshold = MINIMUM_DISTANCE_THRESHOLD,
+  existingAxisValues: readonly VariantAxisValues[] = [],
+  sequenceOffset = 0,
 ): VariantPlan[] {
   const allocations = allocateVariants(protoPersonas, budget);
   const plans: VariantPlan[] = [];
@@ -78,7 +80,7 @@ export function planVariants(
     }
 
     const edgeSlots = Math.round(allocation.variantCount * 0.7);
-    let sequenceIndex = protoIndex * 10_000;
+    let sequenceIndex = sequenceOffset + protoIndex * 10_000;
 
     for (let slotIndex = 0; slotIndex < allocation.variantCount; slotIndex += 1) {
       const sampleType = slotIndex < edgeSlots ? "edge" : "interior";
@@ -97,6 +99,11 @@ export function planVariants(
         sequenceIndex += 1;
 
         if (
+          existingAxisValues.every(
+            (existingValues) =>
+              calculateAxisDistance(existingValues, candidate) >=
+              minimumDistanceThreshold,
+          ) &&
           plans.every(
             (existingPlan) =>
               calculateAxisDistance(existingPlan.axisValues, candidate) >=
