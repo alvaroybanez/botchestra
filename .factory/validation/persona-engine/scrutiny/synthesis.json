@@ -1,0 +1,103 @@
+{
+  "milestone": "persona-engine",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bun run test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 9,
+    "passed": 4,
+    "failed": 5,
+    "failedFeatures": [
+      "coverage-sampler",
+      "json-import-export",
+      "pack-crud",
+      "pack-pages-frontend",
+      "variant-generation"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "coverage-sampler",
+      "severity": "blocking",
+      "description": "`sampleEdgeHeavy` hard-caps sign-pattern coverage at 15 axes, so valid packs with 16+ shared axes never sample positive boundaries for higher-index axes."
+    },
+    {
+      "featureId": "json-import-export",
+      "severity": "blocking",
+      "description": "JSON import accepts proto-persona axis keys that are missing from the pack's `sharedAxes`, allowing invalid persona packs to be persisted."
+    },
+    {
+      "featureId": "pack-crud",
+      "severity": "blocking",
+      "description": "`publish` freezes packs without revalidating proto-persona axis keys against the current `sharedAxes`, so drift introduced during draft edits can be published."
+    },
+    {
+      "featureId": "pack-pages-frontend",
+      "severity": "blocking",
+      "description": "Archived packs remain in the same active grid without any real demotion, so the UI does not satisfy the archive-demotion requirement."
+    },
+    {
+      "featureId": "variant-generation",
+      "severity": "blocking",
+      "description": "Generation can terminate with fewer than `runBudget` accepted variants and then stay permanently short because reruns early-return when rows already exist."
+    },
+    {
+      "featureId": "variant-generation",
+      "severity": "blocking",
+      "description": "Rejected fallback variants can persist out-of-range `coherenceScore` values, violating the required `[0,1]` invariant and skewing best-candidate selection."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Removed stale guidance from `.factory/library/environment.md` that still listed `convex-helpers` as not yet installed.",
+      "sourceFeature": "pack-crud"
+    },
+    {
+      "target": "library",
+      "description": "Documented in `.factory/library/architecture.md` that frontend tests can use `getFunctionName` from `convex/server` to discriminate generated Convex function refs at runtime.",
+      "sourceFeature": "pack-pages-frontend"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "Skill: pure-logic-worker",
+      "suggestion": "Allow a targeted failing test run to satisfy the RED step, with full-suite validation still required before handoff.",
+      "evidence": "The `persona-pure-logic` review found the worker established RED with `bun run test convex/personaEngine/pure.test.ts`, which matched efficient TDD practice even though the skill currently requires a full `bun run test` for RED.",
+      "isSystemic": true
+    },
+    {
+      "target": "Skill: backend-worker",
+      "suggestion": "Allow focused failing test-file runs to satisfy the RED step when the worker is adding backend coverage in an existing green repository, while keeping final full-suite validation mandatory.",
+      "evidence": "The `preview-variants` review found the worker had to prove RED with `bunx vitest run convex/personaVariantGeneration.test.ts` after the full suite initially passed, showing the current RED wording is too rigid for incremental backend work.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Document a 15-axis shared-axis ceiling for edge sampling.",
+      "reason": "Rejected because the review evidence describes an implementation bug, not a stable product constraint that should be documented as shared knowledge."
+    },
+    {
+      "observation": "Update `.factory/services.yaml` healthchecks because `curl` is unavailable in this environment.",
+      "reason": "Rejected because current environment data shows `curl` is installed and the observation conflicts with the verified system context."
+    }
+  ],
+  "previousRound": null
+}

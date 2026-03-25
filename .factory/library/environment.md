@@ -35,4 +35,3 @@ Always use `bun`, never `npm` or `npx`. Use `bunx` instead of `npx`.
 ## Key Dependencies Not Yet Installed
 - `@convex-dev/workflow` — needed for Milestone 4 (StudyOrchestrator)
 - `@convex-dev/workpool` — needed for Milestone 4 (StudyOrchestrator)
-- `convex-helpers` — needed for Zod validation in Convex functions

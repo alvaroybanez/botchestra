@@ -29,6 +29,7 @@ packages/ai           — AI model config wrapper (per-task model resolution)
 - shadcn/ui components in apps/web/src/components/ui/
 - Tailwind v4 with CSS-first config (no tailwind.config.ts)
 - ConvexAuthProvider wraps RouterProvider
+- In frontend tests that mock generated Convex function references, use `getFunctionName` from `convex/server` to distinguish `api.*` refs at runtime
 - Dev server on port 5180
 
 ## Convex Conventions
