@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as personaEngine_pure from "../personaEngine/pure.js";
+import type * as personaPacks from "../personaPacks.js";
 
 import type {
   ApiFromModules,
@@ -22,6 +23,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   "personaEngine/pure": typeof personaEngine_pure;
+  personaPacks: typeof personaPacks;
 }>;
 
 /**

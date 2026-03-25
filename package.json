@@ -17,6 +17,8 @@
     "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.91",
     "convex": "^1.34.0",
-    "convex-test": "^0.0.43"
+    "convex-helpers": "^0.1.114",
+    "convex-test": "^0.0.43",
+    "zod": "^3.25.76"
   }
 }
