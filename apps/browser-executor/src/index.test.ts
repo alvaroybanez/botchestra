@@ -1,9 +1,21 @@
-import { describe, expect, it } from "vitest";
-import type { ExecuteRunRequest } from "@botchestra/shared";
-import worker from "./index";
+import { describe, expect, it, vi } from "vitest";
+import {
+  RunProgressUpdateSchema,
+  type ExecuteRunRequest,
+} from "@botchestra/shared";
+import worker, { createWorker } from "./index";
+import {
+  RUN_FAILURE_ERROR_CODES,
+  createProgressReporterFromRequest,
+} from "./progressReporter";
 
 const executionContext = {} as ExecutionContext;
 const env = { CALLBACK_SIGNING_SECRET: "test-callback-secret" };
+
+type FetchMock = {
+  calls: Array<{ input: RequestInfo | URL; init?: RequestInit }>;
+  fetch: typeof fetch;
+};
 
 function encodeBase64Url(value: string) {
   return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -76,6 +88,26 @@ async function createValidExecuteRunRequest(overrides: Partial<ExecuteRunRequest
     callbackToken:
       overrides.callbackToken ?? (await createCallbackToken(runId, env.CALLBACK_SIGNING_SECRET)),
   };
+}
+
+function getPostedUpdate(fetchMock: FetchMock) {
+  const body = fetchMock.calls[0]?.init?.body;
+
+  if (typeof body !== "string") {
+    throw new Error("expected progress callback body to be a JSON string");
+  }
+
+  return JSON.parse(body);
+}
+
+function createFetchMock(): FetchMock {
+  const calls: FetchMock["calls"] = [];
+  const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ input, init });
+    return new Response(null, { status: 204 });
+  }) as unknown as typeof globalThis.fetch;
+
+  return { calls, fetch };
 }
 
 describe("browser executor worker entry point", () => {
@@ -179,6 +211,98 @@ describe("browser executor worker entry point", () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ error: "invalid_callback_token" });
+  });
+
+  it("reports the completion callback body after a successful execute-run", async () => {
+    const callbackFetch = createFetchMock();
+    const workerWithProgressReporter = createWorker({
+      executeRun: async (executeRunRequest) => {
+        const progressReporter = createProgressReporterFromRequest(executeRunRequest, {
+          fetch: callbackFetch.fetch,
+        });
+
+        await progressReporter.sendCompletion({
+          finalOutcome: "SUCCESS",
+          stepCount: 2,
+          durationSec: 8.4,
+          frustrationCount: 1,
+          artifactManifestKey: `runs/${executeRunRequest.runId}/manifest.json`,
+        });
+
+        return Response.json({ finalOutcome: "SUCCESS" }, { status: 200 });
+      },
+    });
+    const validExecuteRunRequest = await createValidExecuteRunRequest();
+
+    const response = await workerWithProgressReporter.fetch(
+      new Request("https://example.com/execute-run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(validExecuteRunRequest),
+      }),
+      env,
+      executionContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(callbackFetch.calls).toHaveLength(1);
+
+    const callbackBody = getPostedUpdate(callbackFetch);
+    expect(RunProgressUpdateSchema.safeParse(callbackBody).success).toBe(true);
+    expect(callbackBody).toEqual({
+      runId: validExecuteRunRequest.runId,
+      eventType: "completion",
+      payload: {
+        finalOutcome: "SUCCESS",
+        stepCount: 2,
+        durationSec: 8.4,
+        frustrationCount: 1,
+        artifactManifestKey: `runs/${validExecuteRunRequest.runId}/manifest.json`,
+      },
+    });
+  });
+
+  it.each(RUN_FAILURE_ERROR_CODES)("reports failure callback bodies for %s", async (errorCode) => {
+    const callbackFetch = createFetchMock();
+    const workerWithProgressReporter = createWorker({
+      executeRun: async (executeRunRequest) => {
+        const progressReporter = createProgressReporterFromRequest(executeRunRequest, {
+          fetch: callbackFetch.fetch,
+        });
+
+        await progressReporter.sendFailure({
+          errorCode,
+          message: `${errorCode} occurred`,
+        });
+
+        return Response.json({ errorCode }, { status: 500 });
+      },
+    });
+    const validExecuteRunRequest = await createValidExecuteRunRequest();
+
+    const response = await workerWithProgressReporter.fetch(
+      new Request("https://example.com/execute-run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(validExecuteRunRequest),
+      }),
+      env,
+      executionContext,
+    );
+
+    expect(response.status).toBe(500);
+    expect(callbackFetch.calls).toHaveLength(1);
+
+    const callbackBody = getPostedUpdate(callbackFetch);
+    expect(RunProgressUpdateSchema.safeParse(callbackBody).success).toBe(true);
+    expect(callbackBody).toEqual({
+      runId: validExecuteRunRequest.runId,
+      eventType: "failure",
+      payload: {
+        errorCode,
+        message: `${errorCode} occurred`,
+      },
+    });
   });
 
   it.each([

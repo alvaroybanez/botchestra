@@ -1,0 +1,141 @@
+import {
+  RunProgressUpdateSchema,
+  type ExecuteRunRequest,
+  type RunProgressUpdate,
+} from "@botchestra/shared";
+
+export const RUN_FAILURE_ERROR_CODES = [
+  "LEASE_UNAVAILABLE",
+  "MAX_STEPS_EXCEEDED",
+  "MAX_DURATION_EXCEEDED",
+  "GUARDRAIL_VIOLATION",
+  "BROWSER_ERROR",
+] as const;
+
+export type RunFailureErrorCode = (typeof RUN_FAILURE_ERROR_CODES)[number];
+
+type FetchLike = typeof fetch;
+
+type ProgressReporterOptions = {
+  runId: string;
+  callbackBaseUrl: string;
+  callbackToken: string;
+  fetch?: FetchLike;
+};
+
+type ProgressReporterRequest = Pick<ExecuteRunRequest, "runId" | "callbackBaseUrl" | "callbackToken">;
+
+type RunProgressPayload<TEventType extends RunProgressUpdate["eventType"]> = Extract<
+  RunProgressUpdate,
+  { eventType: TEventType }
+>["payload"];
+
+type FailurePayload = Omit<RunProgressPayload<"failure">, "errorCode"> & {
+  errorCode: RunFailureErrorCode;
+};
+
+function getProgressCallbackUrl(callbackBaseUrl: string) {
+  return new URL("/api/run-progress", callbackBaseUrl).toString();
+}
+
+function getFetchImplementation(fetchImplementation?: FetchLike) {
+  if (fetchImplementation) {
+    return fetchImplementation;
+  }
+
+  if (typeof globalThis.fetch !== "function") {
+    throw new Error("Global fetch is unavailable for progress reporting");
+  }
+
+  return globalThis.fetch.bind(globalThis);
+}
+
+function toValidationMessage(update: RunProgressUpdate) {
+  return `Invalid run progress update: ${update.eventType}`;
+}
+
+function validateRunProgressUpdate(update: RunProgressUpdate) {
+  const result = RunProgressUpdateSchema.safeParse(update);
+
+  if (!result.success) {
+    throw new Error(toValidationMessage(update));
+  }
+
+  return result.data;
+}
+
+async function postUpdate(
+  fetchImplementation: FetchLike,
+  callbackUrl: string,
+  callbackToken: string,
+  update: RunProgressUpdate,
+) {
+  const validatedUpdate = validateRunProgressUpdate(update);
+  const response = await fetchImplementation(callbackUrl, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${callbackToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(validatedUpdate),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Run progress callback failed with status ${response.status}`);
+  }
+
+  return validatedUpdate;
+}
+
+export function createProgressReporter(options: ProgressReporterOptions) {
+  const fetchImplementation = getFetchImplementation(options.fetch);
+  const callbackUrl = getProgressCallbackUrl(options.callbackBaseUrl);
+
+  return {
+    callbackUrl,
+    sendHeartbeat(payload: Partial<RunProgressPayload<"heartbeat">> = {}) {
+      return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
+        runId: options.runId,
+        eventType: "heartbeat",
+        payload: {
+          timestamp: payload.timestamp ?? Date.now(),
+        },
+      });
+    },
+    sendMilestone(payload: RunProgressPayload<"milestone">) {
+      return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
+        runId: options.runId,
+        eventType: "milestone",
+        payload,
+      });
+    },
+    sendCompletion(payload: RunProgressPayload<"completion">) {
+      return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
+        runId: options.runId,
+        eventType: "completion",
+        payload,
+      });
+    },
+    sendFailure(payload: FailurePayload) {
+      return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
+        runId: options.runId,
+        eventType: "failure",
+        payload,
+      });
+    },
+  };
+}
+
+export function createProgressReporterFromRequest(
+  request: ProgressReporterRequest,
+  options: Pick<ProgressReporterOptions, "fetch"> = {},
+) {
+  return createProgressReporter({
+    runId: request.runId,
+    callbackBaseUrl: request.callbackBaseUrl,
+    callbackToken: request.callbackToken,
+    fetch: options.fetch,
+  });
+}
+
+export type ProgressReporter = ReturnType<typeof createProgressReporter>;

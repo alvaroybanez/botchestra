@@ -1,10 +1,18 @@
-import { ExecuteRunRequestSchema } from "@botchestra/shared";
+import {
+  type ExecuteRunRequest,
+  ExecuteRunRequestSchema,
+} from "@botchestra/shared";
 import { BrowserLeaseDO } from "./browserLeaseDO";
 import { validateCallbackToken } from "./guardrails";
 
-type BrowserExecutorEnv = {
+export type BrowserExecutorEnv = {
   CALLBACK_SIGNING_SECRET?: string;
 };
+
+export type ExecuteRunHandler = (
+  request: ExecuteRunRequest,
+  env: BrowserExecutorEnv,
+) => Promise<Response>;
 
 function json(body: unknown, status: number) {
   return Response.json(body, { status });
@@ -30,8 +38,22 @@ function misconfiguredWorker() {
   return json({ error: "misconfigured_worker" }, 500);
 }
 
+async function defaultExecuteRunHandler(request: ExecuteRunRequest) {
+  return json(
+    {
+      status: "accepted",
+      runId: request.runId,
+      studyId: request.studyId,
+    },
+    202,
+  );
+}
 
-async function handleExecuteRun(request: Request, env: BrowserExecutorEnv) {
+async function handleExecuteRun(
+  request: Request,
+  env: BrowserExecutorEnv,
+  executeRun: ExecuteRunHandler,
+) {
   if (!env.CALLBACK_SIGNING_SECRET) {
     return misconfiguredWorker();
   }
@@ -62,17 +84,14 @@ async function handleExecuteRun(request: Request, env: BrowserExecutorEnv) {
     return invalidCallbackToken();
   }
 
-  return json(
-    {
-      status: "accepted",
-      runId: result.data.runId,
-      studyId: result.data.studyId,
-    },
-    202,
-  );
+  return executeRun(result.data, env);
 }
 
-async function routeRequest(request: Request, env: BrowserExecutorEnv) {
+async function routeRequest(
+  request: Request,
+  env: BrowserExecutorEnv,
+  executeRun: ExecuteRunHandler,
+) {
   const { pathname } = new URL(request.url);
 
   if (request.method === "POST" && pathname === "/health") {
@@ -80,17 +99,23 @@ async function routeRequest(request: Request, env: BrowserExecutorEnv) {
   }
 
   if (request.method === "POST" && pathname === "/execute-run") {
-    return handleExecuteRun(request, env);
+    return handleExecuteRun(request, env, executeRun);
   }
 
   return notFound();
 }
 
-const worker = {
-  async fetch(request: Request, env: BrowserExecutorEnv, _ctx: ExecutionContext): Promise<Response> {
-    return routeRequest(request, env);
-  },
-};
+export function createWorker(options: { executeRun?: ExecuteRunHandler } = {}) {
+  const executeRun = options.executeRun ?? defaultExecuteRunHandler;
+
+  return {
+    async fetch(request: Request, env: BrowserExecutorEnv, _ctx: ExecutionContext): Promise<Response> {
+      return routeRequest(request, env, executeRun);
+    },
+  };
+}
+
+const worker = createWorker();
 
 export { BrowserLeaseDO };
 export default worker;
