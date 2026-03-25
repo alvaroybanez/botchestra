@@ -132,13 +132,24 @@ describe("previewVariants", () => {
     expect(preview.coverage.perProtoPersona).toHaveLength(4);
     expect(
       preview.coverage.perProtoPersona.reduce(
-        (sum, allocation) => sum + allocation.projectedCount,
+        (
+          sum: number,
+          allocation: {
+            projectedCount: number;
+            edgeCount: number;
+            interiorCount: number;
+          },
+        ) => sum + allocation.projectedCount,
         0,
       ),
     ).toBe(64);
     expect(
       preview.coverage.perProtoPersona.every(
-        (allocation) =>
+        (allocation: {
+          projectedCount: number;
+          edgeCount: number;
+          interiorCount: number;
+        }) =>
           allocation.projectedCount === allocation.edgeCount + allocation.interiorCount,
       ),
     ).toBe(true);
@@ -205,7 +216,14 @@ describe("previewVariants", () => {
       );
       expect(
         preview.coverage.perProtoPersona.reduce(
-          (sum, allocation) => sum + allocation.projectedCount,
+          (
+            sum: number,
+            allocation: {
+              projectedCount: number;
+              edgeCount: number;
+              interiorCount: number;
+            },
+          ) => sum + allocation.projectedCount,
           0,
         ),
       ).toBe(budget);

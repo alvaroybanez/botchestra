@@ -103,7 +103,7 @@ function constantTimeEqual(left: Uint8Array, right: Uint8Array) {
   let diff = 0;
 
   for (let index = 0; index < left.length; index += 1) {
-    diff |= left[index] ^ right[index];
+    diff |= left[index]! ^ right[index]!;
   }
 
   return diff === 0;

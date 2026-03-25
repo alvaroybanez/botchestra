@@ -315,7 +315,7 @@ function buildExpansionPrompt(
 }
 
 function summarizeProjectedPerProtoPersona(
-  variants: readonly PreviewSummary["projectedVariants"],
+  variants: PreviewSummary["projectedVariants"],
 ) {
   return Array.from(
     variants.reduce((map, variant) => {

@@ -13,8 +13,10 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { LoginPage } from "@/routes/login";
 import { NotFoundPlaceholder } from "@/routes/placeholders";
 import {
-  PersonaPackDetailSkeletonPage,
-  PersonaPacksSkeletonPage,
+  PersonaPackDetailPage as PersonaPackDetailRoutePage,
+  PersonaPacksPage as PersonaPacksRoutePage,
+} from "@/routes/persona-pack-pages";
+import {
   SettingsSkeletonPage,
   StudiesNewSkeletonPage,
   StudiesSkeletonPage,
@@ -367,12 +369,12 @@ function StudyReportPage() {
 }
 
 function PersonaPacksPage() {
-  return <PersonaPacksSkeletonPage />;
+  return <PersonaPacksRoutePage />;
 }
 
 function PersonaPackDetailPage() {
   const { packId } = personaPackDetailRoute.useParams();
-  return <PersonaPackDetailSkeletonPage packId={packId} />;
+  return <PersonaPackDetailRoutePage packId={packId} />;
 }
 
 function SettingsPage() {
