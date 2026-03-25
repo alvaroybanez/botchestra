@@ -1,14 +1,29 @@
 import { ConvexError } from "convex/values";
 import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomMutation, zCustomQuery, zid } from "convex-helpers/server/zod";
+import {
+  zCustomAction,
+  zCustomMutation,
+  zCustomQuery,
+  zid,
+} from "convex-helpers/server/zod";
 import { z } from "zod";
 
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 
+const zAction = zCustomAction(action, NoOp);
 const zMutation = zCustomMutation(mutation, NoOp);
 const zQuery = zCustomQuery(query, NoOp);
+const zInternalMutation = zCustomMutation(internalMutation, NoOp);
+const zInternalQuery = zCustomQuery(internalQuery, NoOp);
 
 const draftStatusSchema = z.enum(["draft", "published", "archived"]);
 
@@ -107,6 +122,21 @@ const updateProtoPersonaSchema = z
     "At least one proto-persona field must be provided.",
   );
 
+const importedPackJsonSchema = z.object({
+  name: requiredString("Pack name"),
+  description: requiredString("Pack description"),
+  context: requiredString("Pack context"),
+  status: draftStatusSchema.optional(),
+  version: z.number().int().positive().optional(),
+  sharedAxes: sharedAxesSchema,
+  protoPersonas: z
+    .array(protoPersonaSchema)
+    .max(
+      MAX_PROTO_PERSONAS_PER_PACK,
+      `A pack may contain a maximum of ${MAX_PROTO_PERSONAS_PER_PACK} proto-personas.`,
+    ),
+});
+
 export const createDraft = zMutation({
   args: {
     pack: createDraftSchema,
@@ -124,6 +154,44 @@ export const createDraft = zMutation({
       createdAt: now,
       updatedAt: now,
     });
+  },
+});
+
+export const importJson = zAction({
+  args: {
+    json: z.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    const importedPack = parseImportedPackJson(args.json);
+    const packId: Id<"personaPacks"> = await ctx.runMutation(
+      internal.personaPacks.persistImportedPack,
+      {
+        importedPack,
+        orgId: identity.tokenIdentifier,
+        createdBy: identity.tokenIdentifier,
+      },
+    );
+
+    return packId;
+  },
+});
+
+export const exportJson = zAction({
+  args: {
+    packId: zid("personaPacks"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    const exportedPack: ImportedPackJson = await ctx.runQuery(
+      internal.personaPacks.getExportPayload,
+      {
+        packId: args.packId,
+        orgId: identity.tokenIdentifier,
+      },
+    );
+
+    return JSON.stringify(exportedPack, null, 2);
   },
 });
 
@@ -344,6 +412,77 @@ export const listProtoPersonas = zQuery({
   },
 });
 
+export const persistImportedPack = zInternalMutation({
+  args: {
+    importedPack: importedPackJsonSchema,
+    orgId: z.string(),
+    createdBy: z.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const packId = await ctx.db.insert("personaPacks", {
+      name: args.importedPack.name,
+      description: args.importedPack.description,
+      context: args.importedPack.context,
+      sharedAxes: args.importedPack.sharedAxes,
+      version: 1,
+      status: "draft",
+      orgId: args.orgId,
+      createdBy: args.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    for (const protoPersona of args.importedPack.protoPersonas) {
+      await ctx.db.insert("protoPersonas", {
+        packId,
+        name: protoPersona.name,
+        summary: protoPersona.summary,
+        axes: protoPersona.axes,
+        sourceType: "json_import",
+        sourceRefs: [],
+        evidenceSnippets: protoPersona.evidenceSnippets,
+        ...(protoPersona.notes !== undefined
+          ? { notes: protoPersona.notes }
+          : {}),
+      });
+    }
+
+    return packId;
+  },
+});
+
+export const getExportPayload = zInternalQuery({
+  args: {
+    packId: zid("personaPacks"),
+    orgId: z.string(),
+  },
+  handler: async (ctx, args) => {
+    const pack = await getPackForOrg(ctx, args.packId, args.orgId);
+    const protoPersonas = await ctx.db
+      .query("protoPersonas")
+      .withIndex("by_packId", (q) => q.eq("packId", args.packId))
+      .take(MAX_PROTO_PERSONAS_PER_PACK);
+
+    return {
+      name: pack.name,
+      description: pack.description,
+      context: pack.context,
+      status: pack.status,
+      sharedAxes: pack.sharedAxes,
+      protoPersonas: protoPersonas.map((protoPersona) => ({
+        name: protoPersona.name,
+        summary: protoPersona.summary,
+        axes: protoPersona.axes,
+        evidenceSnippets: protoPersona.evidenceSnippets,
+        ...(protoPersona.notes !== undefined
+          ? { notes: protoPersona.notes }
+          : {}),
+      })),
+    };
+  },
+});
+
 export function assertPackIsDraft(pack: Doc<"personaPacks">): void {
   if (pack.status === "published") {
     throw new ConvexError("Published persona packs are frozen.");
@@ -354,7 +493,7 @@ export function assertPackIsDraft(pack: Doc<"personaPacks">): void {
   }
 }
 
-async function requireIdentity(ctx: QueryCtx | MutationCtx) {
+async function requireIdentity(ctx: QueryCtx | MutationCtx | ActionCtx) {
   const identity = await ctx.auth.getUserIdentity();
 
   if (identity === null) {
@@ -365,6 +504,14 @@ async function requireIdentity(ctx: QueryCtx | MutationCtx) {
 }
 
 async function getPackForIdentity(
+  ctx: QueryCtx | MutationCtx,
+  packId: Id<"personaPacks">,
+  orgId: string,
+) {
+  return await getPackForOrg(ctx, packId, orgId);
+}
+
+async function getPackForOrg(
   ctx: QueryCtx | MutationCtx,
   packId: Id<"personaPacks">,
   orgId: string,
@@ -459,4 +606,36 @@ async function assertProtoPersonaCapacity(
   }
 }
 
+function parseImportedPackJson(json: string): ImportedPackJson {
+  let parsedJson: unknown;
+
+  try {
+    parsedJson = JSON.parse(json);
+  } catch (error) {
+    throw new ConvexError(
+      `Malformed persona pack JSON: ${error instanceof Error ? error.message : "Unable to parse JSON."}`,
+    );
+  }
+
+  const parsedPack = importedPackJsonSchema.safeParse(parsedJson);
+
+  if (!parsedPack.success) {
+    throw new ConvexError(
+      `Invalid persona pack JSON: ${formatZodIssues(parsedPack.error.issues)}`,
+    );
+  }
+
+  return parsedPack.data;
+}
+
+function formatZodIssues(issues: z.ZodIssue[]) {
+  return issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "root";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
+}
+
 export type PersonaPackStatus = z.infer<typeof draftStatusSchema>;
+type ImportedPackJson = z.infer<typeof importedPackJsonSchema>;
