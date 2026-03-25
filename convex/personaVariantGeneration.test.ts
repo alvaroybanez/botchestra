@@ -101,6 +101,131 @@ describe("variant generation validation gate", () => {
   });
 });
 
+describe("previewVariants", () => {
+  beforeEach(() => {
+    mockedGenerateWithModel.mockReset();
+  });
+
+  it("returns projected coverage without writing personaVariants rows", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createDraftPack(t, { protoPersonaCount: 4 });
+
+    const beforeCount = await t.run(async (ctx) =>
+      ctx.db.query("personaVariants").collect(),
+    );
+
+    const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
+      packId,
+      budget: 64,
+    });
+
+    const afterCount = await t.run(async (ctx) =>
+      ctx.db.query("personaVariants").collect(),
+    );
+
+    expect(beforeCount).toHaveLength(0);
+    expect(afterCount).toHaveLength(0);
+    expect(preview.projectedVariants).toHaveLength(64);
+    expect(preview.coverage.budget).toBe(64);
+    expect(preview.coverage.edgeCount + preview.coverage.interiorCount).toBe(64);
+    expect(preview.coverage.perProtoPersona).toHaveLength(4);
+    expect(
+      preview.coverage.perProtoPersona.reduce(
+        (sum, allocation) => sum + allocation.projectedCount,
+        0,
+      ),
+    ).toBe(64);
+    expect(
+      preview.coverage.perProtoPersona.every(
+        (allocation) =>
+          allocation.projectedCount === allocation.edgeCount + allocation.interiorCount,
+      ),
+    ).toBe(true);
+  });
+
+  it("supports both draft and published packs", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const draftPackId = await createDraftPack(t, { protoPersonaCount: 1 });
+    const publishedPackId = await createPublishedPack(t, { protoPersonaCount: 1 });
+
+    const draftPreview = await asResearcher.action(variantGenerationApi.previewVariants, {
+      packId: draftPackId,
+      budget: 50,
+    });
+    const publishedPreview = await asResearcher.action(
+      variantGenerationApi.previewVariants,
+      {
+        packId: publishedPackId,
+        budget: 50,
+      },
+    );
+
+    expect(draftPreview.projectedVariants).toHaveLength(50);
+    expect(publishedPreview.projectedVariants).toHaveLength(50);
+    expect(draftPreview.coverage.perProtoPersona).toHaveLength(1);
+    expect(publishedPreview.coverage.perProtoPersona).toHaveLength(1);
+  });
+
+  it("reflects the 70/30 edge-interior split in the preview output", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createDraftPack(t, { protoPersonaCount: 1 });
+
+    const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
+      packId,
+      budget: 64,
+    });
+
+    expect(preview.coverage.edgeCount).toBe(45);
+    expect(preview.coverage.interiorCount).toBe(19);
+    expect(preview.coverage.perProtoPersona[0]).toMatchObject({
+      projectedCount: 64,
+      edgeCount: 45,
+      interiorCount: 19,
+    });
+  });
+
+  it("respects the requested budget", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createPublishedPack(t, { protoPersonaCount: 3 });
+
+    for (const budget of [50, 64, 100]) {
+      const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
+        packId,
+        budget,
+      });
+
+      expect(preview.coverage.budget).toBe(budget);
+      expect(preview.projectedVariants).toHaveLength(budget);
+      expect(preview.coverage.edgeCount + preview.coverage.interiorCount).toBe(
+        budget,
+      );
+      expect(
+        preview.coverage.perProtoPersona.reduce(
+          (sum, allocation) => sum + allocation.projectedCount,
+          0,
+        ),
+      ).toBe(budget);
+    }
+  });
+
+  it("requires at least one proto-persona", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createDraftPack(t, { protoPersonaCount: 0 });
+
+    await expect(
+      asResearcher.action(variantGenerationApi.previewVariants, {
+        packId,
+        budget: 50,
+      }),
+    ).rejects.toThrow(/at least one proto-persona/i);
+  });
+});
+
 describe("generateVariantsForStudy", () => {
   beforeEach(() => {
     mockedGenerateWithModel.mockReset();

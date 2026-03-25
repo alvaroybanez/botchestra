@@ -107,6 +107,40 @@ export const getGenerationContext = zInternalQuery({
   },
 });
 
+export const getPreviewContext = zInternalQuery({
+  args: {
+    packId: zid("personaPacks"),
+    orgId: z.string(),
+  },
+  handler: async (ctx, args) => {
+    const pack = await ctx.db.get(args.packId);
+
+    if (pack === null || pack.orgId !== args.orgId) {
+      throw new ConvexError("Persona pack not found.");
+    }
+
+    if (pack.status !== "draft" && pack.status !== "published") {
+      throw new ConvexError(
+        "Variant preview requires a draft or published persona pack.",
+      );
+    }
+
+    const protoPersonas = await ctx.db
+      .query("protoPersonas")
+      .withIndex("by_packId", (q) => q.eq("packId", pack._id))
+      .take(10);
+
+    if (protoPersonas.length === 0) {
+      throw new ConvexError("At least one proto-persona is required.");
+    }
+
+    return {
+      pack,
+      protoPersonas,
+    };
+  },
+});
+
 export const persistVariantsIfAbsent = zInternalMutation({
   args: {
     studyId: zid("studies"),

@@ -24,6 +24,60 @@ import {
 
 const zAction = zCustomAction(action, NoOp);
 
+export const previewVariants = zAction({
+  args: {
+    packId: zid("personaPacks"),
+    budget: z.number().int(),
+  },
+  handler: async (ctx, args): Promise<PreviewSummary> => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (identity === null) {
+      throw new ConvexError("Not authenticated.");
+    }
+
+    const previewContext: PreviewContext = await ctx.runQuery(
+      internal.personaVariantGenerationModel.getPreviewContext,
+      {
+        packId: args.packId,
+        orgId: identity.tokenIdentifier,
+      },
+    );
+
+    const budget = resolveRunBudget(args.budget);
+    const protoPersonasForAllocation: ProtoPersonaForAllocation[] =
+      previewContext.protoPersonas.map((protoPersona) => ({
+        id: protoPersona._id,
+        axes: protoPersona.axes,
+        evidenceSnippets: protoPersona.evidenceSnippets,
+        axisKeys: previewContext.pack.sharedAxes.map((axis) => axis.key),
+      }));
+
+    const projectedVariants = planVariants(protoPersonasForAllocation, budget).map(
+      (variantPlan) => ({
+        protoPersonaId: variantPlan.protoPersonaId as Id<"protoPersonas">,
+        axisValues: axisValuesToArray(variantPlan.axisValues),
+        sampleType: variantPlan.sampleType,
+        edgeScore: variantPlan.edgeScore,
+      }),
+    );
+
+    return {
+      coverage: {
+        budget,
+        edgeCount: projectedVariants.filter((variant) => variant.sampleType === "edge")
+          .length,
+        interiorCount: projectedVariants.filter(
+          (variant) => variant.sampleType === "interior",
+        ).length,
+        minimumPairwiseDistance: calculateMinimumPairwiseDistance(projectedVariants),
+        perProtoPersona: summarizeProjectedPerProtoPersona(projectedVariants),
+      },
+      projectedVariants,
+    };
+  },
+});
+
 export const generateVariantsForStudy = zAction({
   args: {
     studyId: zid("studies"),
@@ -260,6 +314,37 @@ function buildExpansionPrompt(
   ].join("\n");
 }
 
+function summarizeProjectedPerProtoPersona(
+  variants: readonly PreviewSummary["projectedVariants"],
+) {
+  return Array.from(
+    variants.reduce((map, variant) => {
+      const entry = map.get(variant.protoPersonaId) ?? {
+        protoPersonaId: variant.protoPersonaId,
+        projectedCount: 0,
+        edgeCount: 0,
+        interiorCount: 0,
+      };
+
+      entry.projectedCount += 1;
+
+      if (variant.sampleType === "edge") {
+        entry.edgeCount += 1;
+      } else {
+        entry.interiorCount += 1;
+      }
+
+      map.set(variant.protoPersonaId, entry);
+      return map;
+    }, new Map<Id<"protoPersonas">, {
+      protoPersonaId: Id<"protoPersonas">;
+      projectedCount: number;
+      edgeCount: number;
+      interiorCount: number;
+    }>()),
+  ).map(([, value]) => value);
+}
+
 function summarizePerProtoPersona(variants: readonly PersistedVariant[]) {
   return Array.from(
     variants.reduce((map, variant) => {
@@ -358,10 +443,36 @@ type GenerationSummary = {
   };
 };
 
+type PreviewSummary = {
+  coverage: {
+    budget: number;
+    edgeCount: number;
+    interiorCount: number;
+    minimumPairwiseDistance: number;
+    perProtoPersona: {
+      protoPersonaId: Id<"protoPersonas">;
+      projectedCount: number;
+      edgeCount: number;
+      interiorCount: number;
+    }[];
+  };
+  projectedVariants: {
+    protoPersonaId: Id<"protoPersonas">;
+    axisValues: { key: string; value: number }[];
+    sampleType: "edge" | "interior";
+    edgeScore: number;
+  }[];
+};
+
 type GenerationContext = {
   study: Doc<"studies">;
   pack: Doc<"personaPacks">;
   protoPersonas: Doc<"protoPersonas">[];
   existingVariants: PersistedVariant[];
   resolvedBudget: number;
+};
+
+type PreviewContext = {
+  pack: Doc<"personaPacks">;
+  protoPersonas: Doc<"protoPersonas">[];
 };
