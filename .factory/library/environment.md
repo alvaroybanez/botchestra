@@ -34,6 +34,7 @@ Always use `bun`, never `npm` or `npx`. Use `bunx` instead of `npx`.
 
 ## Local Dev Notes
 - On 2026-03-25, `bun run dev` fell back from port 5180 to 5183 because 5180 was already occupied by an existing local Botchestra server. Before manual browser validation, check whether `http://localhost:5180` is already serving the app so you can reuse it instead of launching a second Vite instance.
+- On 2026-03-25, `bunx wrangler dev --port 8787` for `apps/browser-executor` failed with `Address already in use` because an existing `workerd` process was already bound to `127.0.0.1:8787`, and `curl` requests to that listener timed out. Check `lsof -nP -iTCP:8787 -sTCP:LISTEN` before starting a new Worker instance, and do not kill the process unless you started it yourself.
 
 ## Key Dependencies Not Yet Installed
 - `@convex-dev/workflow` — needed for Milestone 4 (StudyOrchestrator)
