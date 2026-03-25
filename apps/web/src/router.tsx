@@ -11,11 +11,15 @@ import {
 } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
 import { LoginPage } from "@/routes/login";
+import { NotFoundPlaceholder } from "@/routes/placeholders";
 import {
-  contentRoutePlaceholders,
-  NotFoundPlaceholder,
-  RoutePlaceholder,
-} from "@/routes/placeholders";
+  PersonaPackDetailSkeletonPage,
+  PersonaPacksSkeletonPage,
+  SettingsSkeletonPage,
+  StudiesNewSkeletonPage,
+  StudiesSkeletonPage,
+  StudyDetailSkeletonPage,
+} from "@/routes/skeleton-pages";
 import { SignupPage } from "@/routes/signup";
 
 export type AppAuthState = {
@@ -254,6 +258,14 @@ function AuthenticatedLayout() {
   const { auth } = authenticatedRoute.useRouteContext();
   const location = useLocation();
 
+  if (auth.isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
   if (!auth.isAuthenticated) {
     return (
       <Navigate
@@ -287,134 +299,86 @@ function SignupRouteComponent() {
 }
 
 function StudiesPage() {
-  const placeholder = withoutKey(contentRoutePlaceholders[0]);
-
-  return (
-    <RoutePlaceholder
-      {...placeholder}
-      routePath="/studies"
-    />
-  );
+  return <StudiesSkeletonPage />;
 }
 
 function StudiesNewPage() {
-  const placeholder = withoutKey(contentRoutePlaceholders[1]);
-
-  return (
-    <RoutePlaceholder
-      {...placeholder}
-      routePath="/studies/new"
-    />
-  );
+  return <StudiesNewSkeletonPage />;
 }
 
 function StudyOverviewPage() {
   const { studyId } = studyOverviewRoute.useParams();
-  const placeholder = withoutKey(contentRoutePlaceholders[2]);
-
   return (
-    <RoutePlaceholder
-      {...placeholder}
-      params={{ "Study ID": studyId }}
+    <StudyDetailSkeletonPage
+      activeTab="overview"
       routePath={`/studies/${studyId}/overview`}
+      studyId={studyId}
+      tabIndex={2}
     />
   );
 }
 
 function StudyPersonasPage() {
   const { studyId } = studyPersonasRoute.useParams();
-  const placeholder = withoutKey(contentRoutePlaceholders[3]);
-
   return (
-    <RoutePlaceholder
-      {...placeholder}
-      params={{ "Study ID": studyId }}
+    <StudyDetailSkeletonPage
+      activeTab="personas"
       routePath={`/studies/${studyId}/personas`}
+      studyId={studyId}
+      tabIndex={3}
     />
   );
 }
 
 function StudyRunsPage() {
   const { studyId } = studyRunsRoute.useParams();
-  const placeholder = withoutKey(contentRoutePlaceholders[4]);
-
   return (
-    <RoutePlaceholder
-      {...placeholder}
-      params={{ "Study ID": studyId }}
+    <StudyDetailSkeletonPage
+      activeTab="runs"
       routePath={`/studies/${studyId}/runs`}
+      studyId={studyId}
+      tabIndex={4}
     />
   );
 }
 
 function StudyFindingsPage() {
   const { studyId } = studyFindingsRoute.useParams();
-  const placeholder = withoutKey(contentRoutePlaceholders[5]);
-
   return (
-    <RoutePlaceholder
-      {...placeholder}
-      params={{ "Study ID": studyId }}
+    <StudyDetailSkeletonPage
+      activeTab="findings"
       routePath={`/studies/${studyId}/findings`}
+      studyId={studyId}
+      tabIndex={5}
     />
   );
 }
 
 function StudyReportPage() {
   const { studyId } = studyReportRoute.useParams();
-  const placeholder = withoutKey(contentRoutePlaceholders[6]);
-
   return (
-    <RoutePlaceholder
-      {...placeholder}
-      params={{ "Study ID": studyId }}
+    <StudyDetailSkeletonPage
+      activeTab="report"
       routePath={`/studies/${studyId}/report`}
+      studyId={studyId}
+      tabIndex={6}
     />
   );
 }
 
 function PersonaPacksPage() {
-  const placeholder = withoutKey(contentRoutePlaceholders[7]);
-
-  return (
-    <RoutePlaceholder
-      {...placeholder}
-      routePath="/persona-packs"
-    />
-  );
+  return <PersonaPacksSkeletonPage />;
 }
 
 function PersonaPackDetailPage() {
   const { packId } = personaPackDetailRoute.useParams();
-  const placeholder = withoutKey(contentRoutePlaceholders[8]);
-
-  return (
-    <RoutePlaceholder
-      {...placeholder}
-      params={{ "Pack ID": packId }}
-      routePath={`/persona-packs/${packId}`}
-    />
-  );
+  return <PersonaPackDetailSkeletonPage packId={packId} />;
 }
 
 function SettingsPage() {
-  const placeholder = withoutKey(contentRoutePlaceholders[9]);
-
-  return (
-    <RoutePlaceholder
-      {...placeholder}
-      routePath="/settings"
-    />
-  );
+  return <SettingsSkeletonPage />;
 }
 
 export function getRouterLocationHref(routerInstance: AnyRouter) {
   return routerInstance.state.location.href;
-}
-
-function withoutKey({
-  key: _key,
-  ...placeholder
-}: (typeof contentRoutePlaceholders)[number]) {
-  return placeholder;
 }

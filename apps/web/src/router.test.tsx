@@ -96,6 +96,92 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).not.toContain("Validation Console");
   });
 
+  it("shows a loading message while auth state is resolving", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: false, isLoading: true },
+      initialEntries: ["/studies"],
+    });
+
+    expect(container.textContent).toContain("Loading...");
+    expect(container.textContent).not.toContain("Validation Console");
+    expect(container.querySelector("#login-email")).toBeNull();
+  });
+
+  it("renders an empty state CTA and in-page navigation links on /studies", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies"],
+    });
+
+    expect(container.textContent).toContain("Create your first study");
+    expect(container.textContent).toContain("Create Study");
+
+    const links = [...container.querySelectorAll("a")].map((link) => ({
+      href: link.getAttribute("href"),
+      text: link.textContent,
+    }));
+
+    expect(links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: "/studies/new",
+          text: expect.stringContaining("Create Study"),
+        }),
+        expect.objectContaining({
+          href: "/studies/new",
+          text: expect.stringContaining("Create your first study"),
+        }),
+        expect.objectContaining({
+          href: "/studies/demo-study/overview",
+          text: expect.stringContaining("Checkout usability benchmark"),
+        }),
+      ]),
+    );
+  });
+
+  it("renders study tab navigation for the demo study detail routes", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/demo-study/overview"],
+    });
+
+    const links = [...container.querySelectorAll("a")].map((link) => ({
+      href: link.getAttribute("href"),
+      text: link.textContent,
+    }));
+
+    expect(links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ href: "/studies/demo-study/overview", text: "Overview" }),
+        expect.objectContaining({ href: "/studies/demo-study/personas", text: "Personas" }),
+        expect.objectContaining({ href: "/studies/demo-study/runs", text: "Runs" }),
+        expect.objectContaining({ href: "/studies/demo-study/findings", text: "Findings" }),
+        expect.objectContaining({ href: "/studies/demo-study/report", text: "Report" }),
+      ]),
+    );
+  });
+
+  it("renders a visible sample pack link on /persona-packs", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs"],
+    });
+
+    const links = [...container.querySelectorAll("a")].map((link) => ({
+      href: link.getAttribute("href"),
+      text: link.textContent,
+    }));
+
+    expect(links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: "/persona-packs/demo-pack",
+          text: expect.stringContaining("Customer Journey Stress Test Pack"),
+        }),
+      ]),
+    );
+  });
+
   it("shows the authenticated fallback route for unknown URLs", async () => {
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
