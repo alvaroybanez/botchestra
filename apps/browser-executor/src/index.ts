@@ -2,10 +2,15 @@ import {
   type ExecuteRunRequest,
   ExecuteRunRequestSchema,
 } from "@botchestra/shared";
+import {
+  createExecuteRunHandler,
+  type ExecuteRunHandlerEnv,
+  type ExecuteRunIntegrationOptions,
+} from "./executeRunHandler";
 import { BrowserLeaseDO } from "./browserLeaseDO";
 import { validateCallbackToken } from "./guardrails";
 
-export type BrowserExecutorEnv = {
+export type BrowserExecutorEnv = ExecuteRunHandlerEnv & {
   CALLBACK_SIGNING_SECRET?: string;
 };
 
@@ -36,17 +41,6 @@ function invalidCallbackToken() {
 
 function misconfiguredWorker() {
   return json({ error: "misconfigured_worker" }, 500);
-}
-
-async function defaultExecuteRunHandler(request: ExecuteRunRequest) {
-  return json(
-    {
-      status: "accepted",
-      runId: request.runId,
-      studyId: request.studyId,
-    },
-    202,
-  );
 }
 
 async function handleExecuteRun(
@@ -105,8 +99,8 @@ async function routeRequest(
   return notFound();
 }
 
-export function createWorker(options: { executeRun?: ExecuteRunHandler } = {}) {
-  const executeRun = options.executeRun ?? defaultExecuteRunHandler;
+export function createWorker(options: { executeRun?: ExecuteRunHandler; runtime?: ExecuteRunIntegrationOptions } = {}) {
+  const executeRun = options.executeRun ?? createExecuteRunHandler(options.runtime);
 
   return {
     async fetch(request: Request, env: BrowserExecutorEnv, _ctx: ExecutionContext): Promise<Response> {

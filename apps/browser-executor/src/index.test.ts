@@ -125,7 +125,17 @@ describe("browser executor worker entry point", () => {
 
   it("dispatches valid POST /execute-run requests to the handler", async () => {
     const validExecuteRunRequest = await createValidExecuteRunRequest();
-    const response = await worker.fetch(
+    const executeRun = vi.fn(async (request: ExecuteRunRequest) =>
+      Response.json(
+        {
+          status: "accepted",
+          runId: request.runId,
+          studyId: request.studyId,
+        },
+        { status: 202 },
+      ));
+    const workerWithExecuteRun = createWorker({ executeRun });
+    const response = await workerWithExecuteRun.fetch(
       new Request("https://example.com/execute-run", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -141,6 +151,7 @@ describe("browser executor worker entry point", () => {
       runId: validExecuteRunRequest.runId,
       studyId: validExecuteRunRequest.studyId,
     });
+    expect(executeRun).toHaveBeenCalledWith(validExecuteRunRequest, env);
   });
 
   it.each([

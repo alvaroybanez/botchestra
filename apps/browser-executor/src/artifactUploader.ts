@@ -57,7 +57,7 @@ export function createArtifactUploader(options: ArtifactUploaderOptions) {
   return {
     async handleMilestone(milestone: RunMilestone, screenshot: Uint8Array) {
       if (!options.bucket) {
-        return;
+        return undefined;
       }
 
       const key = getMilestoneScreenshotKey(options.runId, milestone);
@@ -76,8 +76,9 @@ export function createArtifactUploader(options: ArtifactUploaderOptions) {
           rationaleShort: milestone.rationaleShort,
           captureReason: milestone.captureReason,
         });
+        return key;
       } catch {
-        return;
+        return undefined;
       }
     },
 

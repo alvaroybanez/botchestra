@@ -140,7 +140,7 @@ type RunExecutorDependencies = {
   now?: () => number;
   observationConfig?: Partial<BuildObservationConfig>;
   frustrationPolicy?: Partial<FrustrationPolicy>;
-  onMilestone?: (milestone: RunMilestone, screenshot: Uint8Array) => Promise<void> | void;
+  onMilestone?: (milestone: RunMilestone, screenshot: Uint8Array) => Promise<unknown> | unknown;
 };
 
 const DEFAULT_OBSERVATION_TOKEN_BUDGET = 256;
