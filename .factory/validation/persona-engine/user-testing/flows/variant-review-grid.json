@@ -1,0 +1,63 @@
+{
+  "groupId": "variant-review-grid",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-PERSONA-057",
+      "status": "blocked",
+      "reason": "The personas route rendered the expected table/columns, but only the demo study at /studies/demo-study/personas with 3 sample variants was reachable from visible navigation; the browser surface did not expose a live 64-row generated cohort to validate end-to-end.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/demo-study-overview.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/personas-page-initial.png",
+        "Visible route content identified the path as the demo study and showed \u201cPack: Customer Journey Stress Test Pack \u00b7 3 accepted variants visible\u201d while Run budget remained 64."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-058",
+      "status": "pass",
+      "reason": "Selecting the Cautious checkout shopper filter reduced the grid to 2 rows, and both visible rows belonged to that proto-persona.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/filter-proto-cautious.png",
+        "Observed row count after filter: 2, with both rows labeled \u201cCautious checkout shopper\u201d."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-059",
+      "status": "pass",
+      "reason": "Setting the Digital confidence minimum filter to 0.5 reduced the grid to the single row whose visible value was +0.82.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/filter-axis-min-0.5.png",
+        "Observed row count after filter: 1, leaving only the Goal-driven power user row with Digital confidence +0.82."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-060",
+      "status": "pass",
+      "reason": "Score sorting changed the visible row order consistently with the displayed scores: Coherence put the Goal-driven row first, while Distinctness and Edge restored the cautious variant(s) to the top.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/sort-coherence.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/sort-distinctness-edge.png",
+        "Observed row orders: Coherence desc -> [\"Goal-driven power user\", \"Cautious checkout shopper\", \"Cautious checkout shopper\"]; Distinctness desc -> [\"Cautious checkout shopper\", \"Cautious checkout shopper\", \"Goal-driven power user\"]; Edge desc -> [\"Cautious checkout shopper\", \"Cautious checkout shopper\", \"Goal-driven power user\"]."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-082",
+      "status": "pass",
+      "reason": "Clicking Generate variants immediately disabled the button, changed its label to \u201cGenerating variants...\u201d, showed a loading status line, and then restored the button with a completion message.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/generate-loading.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/variant-review-grid/generate-complete.png",
+        "During loading the button label became \u201cGenerating variants...\u201d and snapshot showed it disabled; afterward the page showed \u201cDemo refresh complete. 3 accepted variants remain ready for review.\u201d"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [
+    "After signup the preserved redirect reopened a stale protected persona-pack route; reaching the intended validation surface required one explicit click on the Studies sidebar link."
+  ],
+  "blockers": [
+    "Only the demo-study persona-review route was reachable from visible navigation; no live study creation surface exists yet, so a generated 64-variant cohort could not be validated end-to-end."
+  ]
+}

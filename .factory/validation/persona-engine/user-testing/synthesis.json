@@ -1,0 +1,46 @@
+{
+  "milestone": "persona-engine",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 19,
+    "passed": 16,
+    "failed": 0,
+    "blocked": 3
+  },
+  "passedAssertions": [
+    "VAL-PERSONA-081",
+    "VAL-PERSONA-063",
+    "VAL-PERSONA-061",
+    "VAL-PERSONA-012",
+    "VAL-PERSONA-064",
+    "VAL-PERSONA-065",
+    "VAL-PERSONA-062",
+    "VAL-PERSONA-006",
+    "VAL-PERSONA-019",
+    "VAL-PERSONA-027",
+    "VAL-PERSONA-011",
+    "VAL-PERSONA-018",
+    "VAL-PERSONA-058",
+    "VAL-PERSONA-059",
+    "VAL-PERSONA-060",
+    "VAL-PERSONA-082"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [
+    {
+      "id": "VAL-PERSONA-028",
+      "blockedBy": "The browser surface exposes manual proto-persona creation but no JSON import UI or imported persona example, so the json_import source-type behavior is not user-testable here."
+    },
+    {
+      "id": "VAL-PERSONA-057",
+      "blockedBy": "Visible navigation only reaches the demo study persona-review route with 3 sample variants; no live 64-variant study cohort can be created from the current user surface."
+    },
+    {
+      "id": "VAL-PERSONA-067",
+      "blockedBy": "The UI shows Created by and Last updated, but it does not expose modifier identity or cross-user attribution needed to validate creator/modifier audit behavior from the browser surface."
+    }
+  ],
+  "appliedUpdates": [],
+  "previousRound": null
+}

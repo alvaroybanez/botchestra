@@ -1,0 +1,88 @@
+{
+  "groupId": "pack-detail-proto",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-PERSONA-062",
+      "status": "pass",
+      "reason": "The pack detail route rendered the expected metadata editor, shared-axis summary, proto-persona section, pack summary, and audit-trail panel for the created pack.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/pack-detail-created.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/proto-persona-added.png",
+        "Observed route: http://localhost:5180/persona-packs/ks782mc2zd5a9zxyvkn70v0pan83jz2e"
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-006",
+      "status": "pass",
+      "reason": "Editing draft fields showed \u201cDraft changes saved.\u201d and the updated name, context, description, and axis copy rendered immediately on the detail page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/pack-detail-edited.png",
+        "Updated visible values included \u201cUT detail pack revised\u201d, \u201cSupport escalation revised\u201d, and the revised axis label \u201cClarity expectations\u201d."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-019",
+      "status": "pass",
+      "reason": "Submitting the Add proto-persona form created a new proto-persona card on the draft pack detail page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/proto-persona-added.png",
+        "The created card \u201cUT detail proto\u201d appeared immediately under Proto-Personas for the same pack detail route."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-027",
+      "status": "pass",
+      "reason": "Evidence snippets entered as two separate lines were rendered back in order under the proto-persona card\u2019s Evidence snippets section.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/proto-persona-added.png",
+        "Visible evidence entries appeared in order: \u201cReads every hint before continuing\u201d then \u201cLooks for support links when unsure\u201d."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-028",
+      "status": "blocked",
+      "reason": "The browser surface confirmed manual creation shows \u201cSource: manual\u201d, but no JSON import control or imported persona example was exposed, so the json_import half of the assertion could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/proto-persona-added.png",
+        "Observed only the manual source label \u201cSource: manual\u201d; no import UI was reachable from /persona-packs or the pack detail page."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-011",
+      "status": "pass",
+      "reason": "Publishing the revised draft changed the visible status to published and the version to v2 on the same detail page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/published-readonly-pack.png",
+        "Visible pack summary after publish showed Status published and Version v2."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-018",
+      "status": "pass",
+      "reason": "After publishing, the editable inputs and Add proto-persona control disappeared and the page became read-only aside from navigation/archive actions.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/published-readonly-pack.png",
+        "The published page showed static Name/Version/Description/Context summaries and only Back to list + Archive actions."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-067",
+      "status": "blocked",
+      "reason": "The UI exposed Created by and a last-updated timestamp, but it did not expose modifier identity or any cross-user attribution flow, so the creator/modifier split could not be proven through the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/pack-detail-created.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/pack-detail-edited.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-detail-proto/published-readonly-pack.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [],
+  "blockers": [
+    "No browser-visible JSON import surface was available for persona packs.",
+    "The audit trail UI does not expose modifier identity for cross-user attribution checks."
+  ]
+}

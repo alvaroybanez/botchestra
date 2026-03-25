@@ -1,0 +1,68 @@
+{
+  "groupId": "pack-library-lifecycle",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-PERSONA-081",
+      "status": "pass",
+      "reason": "A fresh account saw the /persona-packs empty state with the headline \u201cNo persona packs yet\u201d and a visible \u201cCreate your first pack\u201d CTA.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/persona-packs-empty-state.png",
+        "Observed URL: http://localhost:5180/persona-packs with empty-state copy \u201cNo persona packs yet\u201d and \u201cCreate your first pack\u201d."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-063",
+      "status": "pass",
+      "reason": "Opening the create-pack form from the empty state and saving required fields redirected directly to the new pack detail route.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/create-pack-form-annotated.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/draft-pack-detail-no-proto.png",
+        "Observed redirect after save: http://localhost:5180/persona-packs/ks7eef3a4e6kg9hnddm73mh7fs83j00d"
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-061",
+      "status": "pass",
+      "reason": "The library list displayed simultaneous draft and published pack cards in the main grid and moved the archived pack into a separate \u201cArchived packs (1)\u201d section with its own archived badge.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/persona-pack-list-statuses.png",
+        "Visible list text included \u201cUT library active draft pack\u201d (draft), \u201cUT library draft pack\u201d (published), and \u201cUT library archived pack\u201d under \u201cArchived packs (1)\u201d."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-012",
+      "status": "pass",
+      "reason": "Before any proto-persona was added, the draft detail page disabled the Publish button and showed helper copy requiring at least one proto-persona.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/draft-pack-detail-no-proto.png",
+        "Visible helper text: \u201cAdd at least one proto-persona before publishing this pack.\u201d while the Publish button was disabled."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-064",
+      "status": "pass",
+      "reason": "Publishing opened a confirmation dialog; cancelling kept the pack in draft/v1, and confirming changed the visible state to published/v2.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/publish-dialog.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/published-pack-detail.png",
+        "After cancelling, the same pack still showed status draft and version v1; after confirming, the page showed status published and version v2."
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-065",
+      "status": "pass",
+      "reason": "Archiving opened a confirmation dialog; confirming changed the pack status to archived and demoted it into the archived-only list section.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/archive-dialog.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/archived-pack-detail.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/persona-engine/pack-library-lifecycle/persona-pack-list-statuses.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [],
+  "blockers": []
+}
