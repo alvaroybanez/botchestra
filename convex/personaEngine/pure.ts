@@ -23,6 +23,24 @@ export type NearDuplicateVariantPair = {
   distance: number;
 };
 
+export type CoverageSamplerOptions = {
+  axisKeys: readonly string[];
+  count: number;
+  minimumDistanceThreshold: number;
+  edgeRatio?: number;
+  edgeBandStart?: number;
+  interiorBandLimit?: number;
+  maxAttemptsPerSample?: number;
+};
+
+const DEFAULT_EDGE_RATIO = 0.7;
+const DEFAULT_EDGE_BAND_START = 0.65;
+const DEFAULT_INTERIOR_BAND_LIMIT = 0.35;
+const DEFAULT_MAX_ATTEMPTS_PER_SAMPLE = 512;
+const HALTON_PRIMES = [
+  2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
+] as const;
+
 export function allocateVariants(
   protoPersonas: readonly ProtoPersonaAllocationInput[],
   budget: number,
@@ -81,6 +99,79 @@ export function normalizeAxisValue(value: number): number {
   return Math.min(1, Math.max(-1, value));
 }
 
+export function sampleEdgeHeavy(
+  axisKeys: readonly string[],
+  sequenceIndex: number,
+  edgeBandStart = DEFAULT_EDGE_BAND_START,
+): VariantAxisValues {
+  assertAxisKeys(axisKeys);
+  assertBandThreshold(edgeBandStart, "Edge band start");
+
+  const signPatternCount = 2 ** Math.min(axisKeys.length, 15);
+  const signPatternIndex = sequenceIndex % signPatternCount;
+  const withinPatternIndex = Math.floor(sequenceIndex / signPatternCount);
+
+  return Object.fromEntries(
+    axisKeys.map((axisKey, axisIndex) => {
+      const direction = Math.floor(signPatternIndex / 2 ** axisIndex) % 2 === 0
+        ? -1
+        : 1;
+      const distanceWithinBand =
+        (1 - edgeBandStart) *
+        halton(
+          withinPatternIndex + axisIndex * 37 + 19,
+          primeForIndex(axisIndex + 1),
+        );
+      const magnitude = normalizeAxisValue(1 - distanceWithinBand);
+      const value = direction * magnitude;
+
+      return [axisKey, value];
+    }),
+  );
+}
+
+export function sampleInterior(
+  axisKeys: readonly string[],
+  sequenceIndex: number,
+  interiorBandLimit = DEFAULT_INTERIOR_BAND_LIMIT,
+): VariantAxisValues {
+  assertAxisKeys(axisKeys);
+  assertBandThreshold(interiorBandLimit, "Interior band limit");
+
+  return Object.fromEntries(
+    axisKeys.map((axisKey, axisIndex) => {
+      const midpointOffset =
+        halton(sequenceIndex + axisIndex * 37 + 11, primeForIndex(axisIndex + 2)) *
+          2 -
+        1;
+
+      return [axisKey, normalizeAxisValue(midpointOffset * interiorBandLimit)];
+    }),
+  );
+}
+
+export function isEdgeHeavySample(
+  axisValues: VariantAxisValues,
+  edgeBandStart = DEFAULT_EDGE_BAND_START,
+): boolean {
+  assertBandThreshold(edgeBandStart, "Edge band start");
+
+  return Object.values(axisValues).some(
+    (value) => Math.abs(normalizeAxisValue(value)) >= edgeBandStart,
+  );
+}
+
+export function isInteriorSample(
+  axisValues: VariantAxisValues,
+  interiorBandLimit = DEFAULT_INTERIOR_BAND_LIMIT,
+): boolean {
+  assertBandThreshold(interiorBandLimit, "Interior band limit");
+
+  return Object.values(axisValues).every(
+    (value) => Math.abs(normalizeAxisValue(value)) <= interiorBandLimit,
+  );
+}
+
 export function calculateAxisDistance(
   leftAxisValues: VariantAxisValues,
   rightAxisValues: VariantAxisValues,
@@ -99,6 +190,84 @@ export function calculateAxisDistance(
   }
 
   return Math.sqrt(squaredDistance);
+}
+
+export function generateCoverageSamples({
+  axisKeys,
+  count,
+  minimumDistanceThreshold,
+  edgeRatio = DEFAULT_EDGE_RATIO,
+  edgeBandStart = DEFAULT_EDGE_BAND_START,
+  interiorBandLimit = DEFAULT_INTERIOR_BAND_LIMIT,
+  maxAttemptsPerSample = DEFAULT_MAX_ATTEMPTS_PER_SAMPLE,
+}: CoverageSamplerOptions): VariantAxisValues[] {
+  assertAxisKeys(axisKeys);
+
+  if (!Number.isInteger(count) || count < 0) {
+    throw new RangeError("Coverage sample count must be a non-negative integer.");
+  }
+
+  if (minimumDistanceThreshold < 0) {
+    throw new RangeError("Minimum distance threshold must be non-negative.");
+  }
+
+  if (edgeRatio < 0 || edgeRatio > 1) {
+    throw new RangeError("Edge ratio must be between 0 and 1.");
+  }
+
+  if (!Number.isInteger(maxAttemptsPerSample) || maxAttemptsPerSample <= 0) {
+    throw new RangeError("Max attempts per sample must be a positive integer.");
+  }
+
+  assertBandThreshold(edgeBandStart, "Edge band start");
+  assertBandThreshold(interiorBandLimit, "Interior band limit");
+
+  const acceptedSamples: VariantAxisValues[] = [];
+  const edgeCount = Math.round(count * edgeRatio);
+  const coveragePlan = [
+    ...Array.from({ length: edgeCount }, () => "edge" as const),
+    ...Array.from({ length: count - edgeCount }, () => "interior" as const),
+  ];
+
+  let candidateSequenceIndex = 0;
+
+  for (const sampleType of coveragePlan) {
+    let acceptedSample: VariantAxisValues | null = null;
+
+    for (
+      let attemptIndex = 0;
+      attemptIndex < maxAttemptsPerSample;
+      attemptIndex += 1
+    ) {
+      const candidate =
+        sampleType === "edge"
+          ? sampleEdgeHeavy(axisKeys, candidateSequenceIndex, edgeBandStart)
+          : sampleInterior(axisKeys, candidateSequenceIndex, interiorBandLimit);
+
+      candidateSequenceIndex += 1;
+
+      if (
+        acceptedSamples.every(
+          (existingSample) =>
+            calculateAxisDistance(existingSample, candidate) >=
+            minimumDistanceThreshold,
+        )
+      ) {
+        acceptedSample = candidate;
+        break;
+      }
+    }
+
+    if (acceptedSample === null) {
+      throw new RangeError(
+        `Unable to generate a ${sampleType} sample with minimum distance ${minimumDistanceThreshold}.`,
+      );
+    }
+
+    acceptedSamples.push(acceptedSample);
+  }
+
+  return acceptedSamples;
 }
 
 export function detectNearDuplicateVariants(
@@ -136,4 +305,34 @@ export function detectNearDuplicateVariants(
   }
 
   return duplicatePairs;
+}
+
+function assertAxisKeys(axisKeys: readonly string[]): void {
+  if (axisKeys.length === 0) {
+    throw new RangeError("At least one axis key is required.");
+  }
+}
+
+function assertBandThreshold(value: number, label: string): void {
+  if (value < 0 || value > 1) {
+    throw new RangeError(`${label} must be between 0 and 1.`);
+  }
+}
+
+function primeForIndex(index: number): number {
+  return HALTON_PRIMES[index % HALTON_PRIMES.length]!;
+}
+
+function halton(index: number, base: number): number {
+  let remaining = Math.max(1, Math.trunc(index) + 1);
+  let fraction = 1 / base;
+  let result = 0;
+
+  while (remaining > 0) {
+    result += fraction * (remaining % base);
+    remaining = Math.floor(remaining / base);
+    fraction /= base;
+  }
+
+  return result;
 }

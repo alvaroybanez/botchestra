@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   allocateVariants,
+  calculateAxisDistance,
   detectNearDuplicateVariants,
+  generateCoverageSamples,
+  isEdgeHeavySample,
+  isInteriorSample,
   normalizeAxisValue,
+  sampleEdgeHeavy,
+  sampleInterior,
 } from "./pure";
 
 const axis = (key: string) => ({
@@ -146,6 +152,94 @@ describe("normalizeAxisValue", () => {
 
   it("maps NaN to a safe midpoint value", () => {
     expect(normalizeAxisValue(Number.NaN)).toBe(0);
+  });
+});
+
+describe("coverage sampling", () => {
+  const axisKeys = ["confidence", "patience", "riskTolerance"] as const;
+
+  it("sampleEdgeHeavy generates axis values near the boundaries", () => {
+    const sample = sampleEdgeHeavy(axisKeys, 3);
+
+    expect(sample).toMatchObject({
+      confidence: expect.any(Number),
+      patience: expect.any(Number),
+      riskTolerance: expect.any(Number),
+    });
+    expect(Object.values(sample).every((value) => Math.abs(value) >= 0.65)).toBe(
+      true,
+    );
+    expect(Object.values(sample).every((value) => Math.abs(value) <= 1)).toBe(
+      true,
+    );
+    expect(isEdgeHeavySample(sample)).toBe(true);
+    expect(isInteriorSample(sample)).toBe(false);
+  });
+
+  it("sampleInterior generates axis values in the middle range", () => {
+    const sample = sampleInterior(axisKeys, 3);
+
+    expect(sample).toMatchObject({
+      confidence: expect.any(Number),
+      patience: expect.any(Number),
+      riskTolerance: expect.any(Number),
+    });
+    expect(Object.values(sample).every((value) => Math.abs(value) <= 0.35)).toBe(
+      true,
+    );
+    expect(isInteriorSample(sample)).toBe(true);
+    expect(isEdgeHeavySample(sample)).toBe(false);
+  });
+
+  it("maintains the 70/30 edge-heavy to interior split within tolerance", () => {
+    const samples = generateCoverageSamples({
+      axisKeys,
+      count: 64,
+      minimumDistanceThreshold: 0.2,
+    });
+
+    const edgeCount = samples.filter((sample) => isEdgeHeavySample(sample)).length;
+    const interiorCount = samples.filter((sample) =>
+      isInteriorSample(sample),
+    ).length;
+
+    expect(samples).toHaveLength(64);
+    expect(edgeCount + interiorCount).toBe(64);
+    expect(edgeCount / samples.length).toBeGreaterThanOrEqual(0.65);
+    expect(edgeCount / samples.length).toBeLessThanOrEqual(0.75);
+    expect(interiorCount / samples.length).toBeGreaterThanOrEqual(0.25);
+    expect(interiorCount / samples.length).toBeLessThanOrEqual(0.35);
+  });
+
+  it("enforces the minimum Euclidean distance between accepted samples", () => {
+    const minimumDistanceThreshold = 0.25;
+    const samples = generateCoverageSamples({
+      axisKeys,
+      count: 24,
+      minimumDistanceThreshold,
+    });
+
+    for (let leftIndex = 0; leftIndex < samples.length; leftIndex += 1) {
+      for (
+        let rightIndex = leftIndex + 1;
+        rightIndex < samples.length;
+        rightIndex += 1
+      ) {
+        expect(
+          calculateAxisDistance(samples[leftIndex]!, samples[rightIndex]!),
+        ).toBeGreaterThanOrEqual(minimumDistanceThreshold);
+      }
+    }
+  });
+
+  it("rejects sampling requests without axis keys", () => {
+    expect(() =>
+      generateCoverageSamples({
+        axisKeys: [],
+        count: 1,
+        minimumDistanceThreshold: 0.1,
+      }),
+    ).toThrowError("At least one axis key is required.");
   });
 });
 
