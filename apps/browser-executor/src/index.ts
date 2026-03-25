@@ -1,12 +1,8 @@
 import { ExecuteRunRequestSchema } from "@botchestra/shared";
+import { validateCallbackToken } from "./guardrails";
 
 type BrowserExecutorEnv = {
   CALLBACK_SIGNING_SECRET?: string;
-};
-
-type CallbackTokenPayload = {
-  runId: string;
-  exp: number;
 };
 
 export class BrowserLeaseDO {
@@ -41,61 +37,6 @@ function misconfiguredWorker() {
   return json({ error: "misconfigured_worker" }, 500);
 }
 
-function encodeBase64Url(bytes: Uint8Array) {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function decodeBase64Url(value: string) {
-  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
-
-async function importHmacKey(secret: string, usages: KeyUsage[]) {
-  return crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    usages,
-  );
-}
-
-async function validateCallbackToken(token: string, secret: string, runId: string) {
-  const [encodedPayload, encodedSignature] = token.split(".");
-
-  if (!encodedPayload || !encodedSignature) {
-    return false;
-  }
-
-  let payload: CallbackTokenPayload;
-  try {
-    payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(encodedPayload)));
-  } catch {
-    return false;
-  }
-
-  if (payload.runId !== runId || !Number.isFinite(payload.exp) || payload.exp <= Date.now()) {
-    return false;
-  }
-
-  try {
-    const key = await importHmacKey(secret, ["verify"]);
-    return crypto.subtle.verify(
-      "HMAC",
-      key,
-      decodeBase64Url(encodedSignature),
-      new TextEncoder().encode(encodedPayload),
-    );
-  } catch {
-    return false;
-  }
-}
 
 async function handleExecuteRun(request: Request, env: BrowserExecutorEnv) {
   if (!env.CALLBACK_SIGNING_SECRET) {
@@ -119,12 +60,12 @@ async function handleExecuteRun(request: Request, env: BrowserExecutorEnv) {
     );
   }
 
-  const callbackTokenIsValid = await validateCallbackToken(
+  const callbackTokenValidation = await validateCallbackToken(
     result.data.callbackToken,
     env.CALLBACK_SIGNING_SECRET,
-    result.data.runId,
+    { expectedRunId: result.data.runId },
   );
-  if (!callbackTokenIsValid) {
+  if (!callbackTokenValidation.ok) {
     return invalidCallbackToken();
   }
 
