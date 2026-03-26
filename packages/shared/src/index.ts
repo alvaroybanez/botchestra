@@ -128,6 +128,7 @@ const FailureSchema = z.object({
   payload: z.object({
     errorCode: z.string(),
     message: z.string().optional(),
+    selfReport: SelfReportSchema.optional(),
   }),
 });
 

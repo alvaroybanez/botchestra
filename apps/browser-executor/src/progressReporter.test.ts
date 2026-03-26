@@ -163,6 +163,13 @@ describe("progressReporter", () => {
     await progressReporter.sendFailure({
       errorCode,
       message: `${errorCode} occurred`,
+      selfReport: {
+        perceivedSuccess: false,
+        confidence: 0.2,
+        answers: {
+          "Did you complete the task?": false,
+        },
+      },
     });
 
     const update = getPostedUpdate(fetchMock);
@@ -173,6 +180,13 @@ describe("progressReporter", () => {
       payload: {
         errorCode,
         message: `${errorCode} occurred`,
+        selfReport: {
+          perceivedSuccess: false,
+          confidence: 0.2,
+          answers: {
+            "Did you complete the task?": false,
+          },
+        },
       },
     });
   });

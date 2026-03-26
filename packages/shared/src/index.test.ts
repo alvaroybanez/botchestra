@@ -181,6 +181,13 @@ describe("RunProgressUpdateSchema", () => {
       payload: {
         errorCode: "MAX_STEPS_EXCEEDED",
         message: "Run exceeded 50 step limit",
+        selfReport: {
+          perceivedSuccess: false,
+          confidence: 0.1,
+          answers: {
+            "Did you complete the task?": false,
+          },
+        },
       },
     };
 
@@ -188,6 +195,9 @@ describe("RunProgressUpdateSchema", () => {
     expect(result.success).toBe(true);
     if (result.success && result.data.eventType === "failure") {
       expect(result.data.payload.errorCode).toBe("MAX_STEPS_EXCEEDED");
+      expect(result.data.payload.selfReport?.answers).toEqual({
+        "Did you complete the task?": false,
+      });
     }
   });
 });

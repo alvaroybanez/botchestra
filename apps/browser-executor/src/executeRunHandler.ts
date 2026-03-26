@@ -265,26 +265,27 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
 
       const result = await runExecutor.execute(request);
       const artifactManifestKey = await uploader.writeManifest(result);
+      const selfReport = await reportGenerator({
+        request,
+        result,
+      });
 
       if (!result.ok) {
         await progressReporter.sendFailure({
           errorCode: result.errorCode,
           message: result.message,
+          selfReport,
         });
 
         return json(
           {
             ...result,
+            selfReport,
             artifactManifestKey,
           },
           getFailureStatus(result.errorCode),
         );
       }
-
-      const selfReport = await reportGenerator({
-        request,
-        result,
-      });
 
       await progressReporter.sendCompletion({
         finalOutcome: result.finalOutcome,

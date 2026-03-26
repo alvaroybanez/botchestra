@@ -168,13 +168,21 @@ describe("artifactUploader", () => {
       finalOutcome: "SUCCESS",
       stepCount: 1,
     });
-    expect(page.screenshot).toHaveBeenCalledTimes(1);
+    expect(page.screenshot).toHaveBeenCalledTimes(2);
     expect(bucket.put).toHaveBeenNthCalledWith(
       1,
+      "runs/run_123/milestones/0_start.jpg",
+      expect.any(Uint8Array),
+      { httpMetadata: { contentType: "image/jpeg" } },
+    );
+    expect(bucket.put).toHaveBeenNthCalledWith(
+      2,
       "runs/run_123/milestones/0_finish.jpg",
       expect.any(Uint8Array),
       { httpMetadata: { contentType: "image/jpeg" } },
     );
+    expect(page.screenshot).toHaveBeenNthCalledWith(1, { type: "jpeg", quality: 80 });
+    expect(page.screenshot).toHaveBeenNthCalledWith(2, { type: "jpeg", quality: 80 });
     expect(manifestKey).toBe("runs/run_123/manifest.json");
   });
 
@@ -185,16 +193,16 @@ describe("artifactUploader", () => {
 
     await runWithArtifacts({ bucket });
 
-    expect(bucket.put).toHaveBeenCalledTimes(2);
+    expect(bucket.put).toHaveBeenCalledTimes(3);
 
     expect(bucket.put).toHaveBeenNthCalledWith(
-      2,
+      3,
       "runs/run_123/manifest.json",
       expect.any(String),
       { httpMetadata: { contentType: "application/json" } },
     );
 
-    const manifestBody = bucket.put.mock.calls[1]![1];
+    const manifestBody = bucket.put.mock.calls[2]![1];
     expect(typeof manifestBody).toBe("string");
 
     const manifest = JSON.parse(manifestBody as string) as {
@@ -207,6 +215,11 @@ describe("artifactUploader", () => {
       runId: "run_123",
       finalOutcome: "SUCCESS",
       artifacts: [
+        {
+          key: "runs/run_123/milestones/0_start.jpg",
+          stepIndex: 0,
+          actionType: "start",
+        },
         {
           key: "runs/run_123/milestones/0_finish.jpg",
           stepIndex: 0,
@@ -230,7 +243,12 @@ describe("artifactUploader", () => {
       finalOutcome: "SUCCESS",
       stepCount: 1,
     });
-    expect(page.screenshot).toHaveBeenCalledTimes(1);
+    expect(page.screenshot).toHaveBeenCalledTimes(2);
+    expect(bucket.put).toHaveBeenCalledWith(
+      "runs/run_123/milestones/0_start.jpg",
+      expect.any(Uint8Array),
+      { httpMetadata: { contentType: "image/jpeg" } },
+    );
     expect(bucket.put).toHaveBeenCalledWith(
       "runs/run_123/milestones/0_finish.jpg",
       expect.any(Uint8Array),

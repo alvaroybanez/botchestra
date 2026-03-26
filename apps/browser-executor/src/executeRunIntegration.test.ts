@@ -16,7 +16,7 @@ type MockActionMethod = "goto" | "click" | "type" | "select" | "scroll" | "wait"
 class MockBrowserPage {
   readonly gotoCalls: string[] = [];
   readonly clickCalls: string[] = [];
-  readonly screenshotCalls: number[] = [];
+  readonly screenshotCalls: Array<{ type: "jpeg"; quality: number } | undefined> = [];
 
   private currentState: BrowserPageSnapshot;
 
@@ -34,8 +34,8 @@ class MockBrowserPage {
     return structuredClone(this.currentState);
   }
 
-  async screenshot() {
-    this.screenshotCalls.push(this.screenshotCalls.length);
+  async screenshot(options?: { type: "jpeg"; quality: number }) {
+    this.screenshotCalls.push(options);
     return new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
   }
 
@@ -289,28 +289,39 @@ describe("execute-run integration", () => {
     expect(leaseClient.acquire).toHaveBeenCalledTimes(1);
     expect(leaseClient.release).toHaveBeenCalledWith("lease-1");
     expect(context.close).toHaveBeenCalledTimes(1);
-    expect(bucket.put.mock.calls.slice(0, 2).map((call) => call[0])).toEqual([
+    expect(bucket.put.mock.calls.slice(0, 3).map((call) => call[0])).toEqual([
+      `runs/${request.runId}/milestones/0_start.jpg`,
       `runs/${request.runId}/milestones/0_click.jpg`,
       `runs/${request.runId}/milestones/1_finish.jpg`,
     ]);
     expect(bucket.put.mock.calls[0]?.[1]).toBeInstanceOf(Uint8Array);
     expect(bucket.put.mock.calls[1]?.[1]).toBeInstanceOf(Uint8Array);
+    expect(bucket.put.mock.calls[2]?.[1]).toBeInstanceOf(Uint8Array);
     expect(bucket.put.mock.calls[0]?.[2]).toEqual({
       httpMetadata: { contentType: "image/jpeg" },
     });
     expect(bucket.put.mock.calls[1]?.[2]).toEqual({
       httpMetadata: { contentType: "image/jpeg" },
     });
+    expect(bucket.put.mock.calls[2]?.[2]).toEqual({
+      httpMetadata: { contentType: "image/jpeg" },
+    });
     expect(bucket.put).toHaveBeenNthCalledWith(
-      3,
+      4,
       `runs/${request.runId}/manifest.json`,
       expect.any(String),
       { httpMetadata: { contentType: "application/json" } },
     );
+    expect(page.screenshotCalls).toEqual([
+      { type: "jpeg", quality: 80 },
+      { type: "jpeg", quality: 80 },
+      { type: "jpeg", quality: 80 },
+    ]);
 
     const updates = getPostedUpdates(callbackFetch);
     expect(updates.map((update) => update.eventType)).toEqual([
       "heartbeat",
+      "milestone",
       "milestone",
       "milestone",
       "completion",
@@ -320,11 +331,20 @@ describe("execute-run integration", () => {
       eventType: "milestone",
       payload: {
         stepIndex: 0,
+        actionType: "start",
+        screenshotKey: `runs/${request.runId}/milestones/0_start.jpg`,
+      },
+    });
+    expect(updates[2]).toMatchObject({
+      runId: request.runId,
+      eventType: "milestone",
+      payload: {
+        stepIndex: 0,
         actionType: "click",
         screenshotKey: `runs/${request.runId}/milestones/0_click.jpg`,
       },
     });
-    expect(updates[2]).toMatchObject({
+    expect(updates[3]).toMatchObject({
       runId: request.runId,
       eventType: "milestone",
       payload: {
@@ -333,7 +353,7 @@ describe("execute-run integration", () => {
         screenshotKey: `runs/${request.runId}/milestones/1_finish.jpg`,
       },
     });
-    expect(updates[3]).toMatchObject({
+    expect(updates[4]).toMatchObject({
       runId: request.runId,
       eventType: "completion",
       payload: {
@@ -356,12 +376,20 @@ describe("execute-run integration", () => {
     const bucket = {
       put: vi.fn(async (_key: string, _value: unknown, _options?: unknown) => undefined),
     };
+    const selfReport = {
+      perceivedSuccess: false,
+      confidence: 0.15,
+      answers: {
+        "Did you complete the task?": false,
+      },
+    };
     const worker = createWorker({
       runtime: {
         browser,
         leaseClient,
         selectAction: vi.fn(async () => ({ type: "click", selector: "#checkout" })),
         fetch: callbackFetch.fetch,
+        generateSelfReport: vi.fn(async () => selfReport),
       },
     });
     const request = await createValidExecuteRunRequest();
@@ -383,13 +411,18 @@ describe("execute-run integration", () => {
     await expect(response.json()).resolves.toMatchObject({
       ok: false,
       errorCode: "BROWSER_ERROR",
+      selfReport,
       artifactManifestKey: `runs/${request.runId}/manifest.json`,
     });
     expect(leaseClient.acquire).toHaveBeenCalledTimes(1);
     expect(leaseClient.release).toHaveBeenCalledWith("lease-1");
     expect(context.close).toHaveBeenCalledTimes(1);
-    expect(bucket.put).toHaveBeenCalledTimes(1);
-    expect(bucket.put).toHaveBeenCalledWith(
+    expect(bucket.put).toHaveBeenCalledTimes(3);
+    expect(bucket.put.mock.calls.slice(0, 2).map((call) => call[0])).toEqual([
+      `runs/${request.runId}/milestones/0_start.jpg`,
+      `runs/${request.runId}/milestones/0_browser_error.jpg`,
+    ]);
+    expect(bucket.put).toHaveBeenLastCalledWith(
       `runs/${request.runId}/manifest.json`,
       expect.any(String),
       { httpMetadata: { contentType: "application/json" } },
@@ -398,14 +431,82 @@ describe("execute-run integration", () => {
     const updates = getPostedUpdates(callbackFetch);
     expect(updates.map((update) => update.eventType)).toEqual([
       "heartbeat",
+      "milestone",
+      "milestone",
       "failure",
     ]);
-    expect(updates[1]).toMatchObject({
+    expect(updates[3]).toMatchObject({
       runId: request.runId,
       eventType: "failure",
       payload: {
         errorCode: "BROWSER_ERROR",
         message: "browser crashed",
+        selfReport,
+      },
+    });
+  });
+
+  it("sends a completion callback with self-report for abandoned runs", async () => {
+    const page = new MockBrowserPage(createPageState());
+    const { browser, context } = createMockBrowser(page);
+    const leaseClient = createLeaseClient();
+    const callbackFetch = createFetchMock();
+    const bucket = {
+      put: vi.fn(async (_key: string, _value: unknown, _options?: unknown) => undefined),
+    };
+    const selfReport = {
+      perceivedSuccess: false,
+      confidence: 0.22,
+      answers: {
+        "Did you complete the task?": false,
+      },
+    };
+    const worker = createWorker({
+      runtime: {
+        browser,
+        leaseClient,
+        selectAction: vi.fn(async () => ({ type: "abort", rationale: "The flow became too confusing." })),
+        fetch: callbackFetch.fetch,
+        generateSelfReport: vi.fn(async () => selfReport),
+      },
+    });
+    const request = await createValidExecuteRunRequest();
+
+    const response = await worker.fetch(
+      new Request("https://example.com/execute-run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+      }),
+      {
+        ...env,
+        ARTIFACTS: bucket,
+      },
+      executionContext,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      finalOutcome: "ABANDONED",
+      selfReport,
+    });
+    expect(leaseClient.release).toHaveBeenCalledWith("lease-1");
+    expect(context.close).toHaveBeenCalledTimes(1);
+
+    const updates = getPostedUpdates(callbackFetch);
+    expect(updates.map((update) => update.eventType)).toEqual([
+      "heartbeat",
+      "milestone",
+      "milestone",
+      "completion",
+    ]);
+    expect(updates[3]).toMatchObject({
+      runId: request.runId,
+      eventType: "completion",
+      payload: {
+        finalOutcome: "ABANDONED",
+        selfReport,
       },
     });
   });

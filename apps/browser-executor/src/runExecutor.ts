@@ -52,9 +52,14 @@ export type BrowserContextOptions = {
   viewport: ExecuteRunRequest["taskSpec"]["viewport"];
 };
 
+export type BrowserScreenshotOptions = {
+  type: "jpeg";
+  quality: number;
+};
+
 export type BrowserPage = {
   snapshot(): Promise<BrowserPageSnapshot>;
-  screenshot(): Promise<Uint8Array>;
+  screenshot(options?: BrowserScreenshotOptions): Promise<Uint8Array>;
   goto(url: string): Promise<void>;
   click(selector: string): Promise<void>;
   type(selector: string, text: string): Promise<void>;
@@ -144,6 +149,10 @@ type RunExecutorDependencies = {
 };
 
 const DEFAULT_OBSERVATION_TOKEN_BUDGET = 256;
+const JPEG_SCREENSHOT_OPTIONS: BrowserScreenshotOptions = {
+  type: "jpeg",
+  quality: 80,
+};
 
 function getNow(dependencies: RunExecutorDependencies) {
   return dependencies.now ?? Date.now;
@@ -205,7 +214,9 @@ function getObservationConfig(config: Partial<BuildObservationConfig> | undefine
 }
 
 function getCompletedMilestones(milestones: readonly RunMilestone[]) {
-  return milestones.map((milestone) => `${milestone.actionType} @ step ${milestone.stepIndex + 1}`);
+  return milestones
+    .filter((milestone) => milestone.actionType !== "start")
+    .map((milestone) => `${milestone.actionType} @ step ${milestone.stepIndex + 1}`);
 }
 
 function toActionHistoryEntry(stepIndex: number, action: AgentAction): ObservationActionHistoryEntry {
@@ -303,14 +314,70 @@ async function maybeCaptureMilestone(
     captureReason,
   };
 
+  await captureMilestone(dependencies, page, milestone, milestones);
+}
+
+async function captureMilestone(
+  dependencies: RunExecutorDependencies,
+  page: BrowserPage,
+  milestone: RunMilestone,
+  milestones: RunMilestone[],
+) {
   milestones.push(milestone);
 
   if (!dependencies.onMilestone) {
     return;
   }
 
-  const screenshot = await page.screenshot();
+  const screenshot = await page.screenshot(JPEG_SCREENSHOT_OPTIONS);
   await dependencies.onMilestone(milestone, screenshot);
+}
+
+async function getLatestSnapshot(
+  page: BrowserPage,
+  fallbackSnapshot: BrowserPageSnapshot | null,
+) {
+  try {
+    return await page.snapshot();
+  } catch {
+    return fallbackSnapshot;
+  }
+}
+
+async function captureTerminalMilestone(
+  dependencies: RunExecutorDependencies,
+  page: BrowserPage | null,
+  milestones: RunMilestone[],
+  fallbackSnapshot: BrowserPageSnapshot | null,
+  milestone: Pick<RunMilestone, "stepIndex" | "actionType" | "rationaleShort">,
+) {
+  if (!page) {
+    return;
+  }
+
+  try {
+    const snapshot = await getLatestSnapshot(page, fallbackSnapshot);
+
+    if (!snapshot) {
+      return;
+    }
+
+    await captureMilestone(
+      dependencies,
+      page,
+      {
+        stepIndex: milestone.stepIndex,
+        url: snapshot.url,
+        title: snapshot.title,
+        actionType: milestone.actionType,
+        rationaleShort: milestone.rationaleShort,
+        captureReason: "always",
+      },
+      milestones,
+    );
+  } catch {
+    // Preserve the original terminal result if evidence capture fails.
+  }
 }
 
 function hasExceededMaxDuration(
@@ -334,6 +401,8 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
       let stepCount = 0;
       let leaseId: string | null = null;
       let context: BrowserContext | null = null;
+      let page: BrowserPage | null = null;
+      let lastPageSnapshot: BrowserPageSnapshot | null = null;
 
       try {
         const lease = await dependencies.leaseClient.acquire({
@@ -357,13 +426,18 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           viewport: request.taskSpec.viewport,
         });
 
-        const page = await context.newPage();
+        page = await context.newPage();
         const startingNavigation = validateNavigation(
           request.taskSpec.startingUrl,
           request.taskSpec.allowedDomains,
         );
 
         if (!startingNavigation.ok) {
+          await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+            stepIndex: stepCount,
+            actionType: "guardrail_violation",
+            rationaleShort: startingNavigation.message,
+          });
           return failure("GUARDRAIL_VIOLATION", startingNavigation.message, {
             startedAt,
             now,
@@ -374,9 +448,28 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
         }
 
         await page.goto(request.taskSpec.startingUrl);
+        lastPageSnapshot = await page.snapshot();
+        await captureMilestone(
+          dependencies,
+          page,
+          {
+            stepIndex: stepCount,
+            url: lastPageSnapshot.url,
+            title: lastPageSnapshot.title,
+            actionType: "start",
+            rationaleShort: "Loaded the starting page.",
+            captureReason: "always",
+          },
+          milestones,
+        );
 
         while (stepCount < request.taskSpec.maxSteps) {
           if (hasExceededMaxDuration(request, startedAt, now)) {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+              stepIndex: stepCount,
+              actionType: "max_duration_exceeded",
+              rationaleShort: "Run exceeded the configured duration limit",
+            });
             return failure("MAX_DURATION_EXCEEDED", "Run exceeded the configured duration limit", {
               startedAt,
               now,
@@ -387,6 +480,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           }
 
           const pageSnapshot = await page.snapshot();
+          lastPageSnapshot = pageSnapshot;
           const observation = buildObservation(
             {
               url: pageSnapshot.url,
@@ -414,6 +508,11 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           });
 
           if (!isActionAllowed(action.type, request.taskSpec.allowedActions)) {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+              stepIndex: stepCount,
+              actionType: "guardrail_violation",
+              rationaleShort: `Action ${action.type} is not allowed for this task`,
+            });
             return failure("GUARDRAIL_VIOLATION", `Action ${action.type} is not allowed for this task`, {
               startedAt,
               now,
@@ -425,6 +524,11 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
 
           const actionValidation = validateAction(action.type, request.taskSpec.forbiddenActions);
           if (!actionValidation.ok) {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+              stepIndex: stepCount,
+              actionType: "guardrail_violation",
+              rationaleShort: actionValidation.message,
+            });
             return failure("GUARDRAIL_VIOLATION", actionValidation.message, {
               startedAt,
               now,
@@ -441,6 +545,11 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             );
 
             if (!navigationValidation.ok) {
+              await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+                stepIndex: stepCount,
+                actionType: "guardrail_violation",
+                rationaleShort: navigationValidation.message,
+              });
               return failure("GUARDRAIL_VIOLATION", navigationValidation.message, {
                 startedAt,
                 now,
@@ -476,6 +585,11 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           await executeAction(page, action);
 
           if (hasExceededMaxDuration(request, startedAt, now)) {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+              stepIndex: stepCount,
+              actionType: "max_duration_exceeded",
+              rationaleShort: "Run exceeded the configured duration limit",
+            });
             return failure("MAX_DURATION_EXCEEDED", "Run exceeded the configured duration limit", {
               startedAt,
               now,
@@ -486,6 +600,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           }
 
           const nextPageSnapshot = await page.snapshot();
+          lastPageSnapshot = nextPageSnapshot;
           const stepState = toStepState(stepCount, action, nextPageSnapshot);
           await maybeCaptureMilestone(
             dependencies,
@@ -509,6 +624,11 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           stepCount += 1;
 
           if (frustrationState.shouldAbort) {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+              stepIndex: stepCount,
+              actionType: "abandon",
+              rationaleShort: "Repeated friction caused the run to be abandoned.",
+            });
             return success("ABANDONED", {
               startedAt,
               now,
@@ -519,6 +639,11 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           }
         }
 
+        await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+          stepIndex: stepCount,
+          actionType: "max_steps_exceeded",
+          rationaleShort: "Run exceeded the configured maximum step count",
+        });
         return failure("MAX_STEPS_EXCEEDED", "Run exceeded the configured maximum step count", {
           startedAt,
           now,
@@ -528,6 +653,11 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown browser execution error";
+        await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+          stepIndex: stepCount,
+          actionType: "browser_error",
+          rationaleShort: message,
+        });
 
         return failure("BROWSER_ERROR", message, {
           startedAt,

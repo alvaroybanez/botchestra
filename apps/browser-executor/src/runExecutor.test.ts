@@ -17,7 +17,7 @@ class MockBrowserPage {
   readonly waitCalls: number[] = [];
   readonly backCalls: number[] = [];
   readonly snapshotCalls: number[] = [];
-  readonly screenshotCalls: number[] = [];
+  readonly screenshotCalls: Array<{ type: "jpeg"; quality: number } | undefined> = [];
 
   private currentState: BrowserPageSnapshot;
 
@@ -36,8 +36,8 @@ class MockBrowserPage {
     return structuredClone(this.currentState);
   }
 
-  async screenshot() {
-    this.screenshotCalls.push(this.screenshotCalls.length);
+  async screenshot(options?: { type: "jpeg"; quality: number }) {
+    this.screenshotCalls.push(options);
     return new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
   }
 
@@ -436,5 +436,147 @@ describe("runExecutor", () => {
     });
     expect(contexts).toHaveLength(2);
     expect(contexts[0]).not.toBe(contexts[1]);
+  });
+
+  it("captures the initial page as a start milestone with JPEG screenshots", async () => {
+    const page = new MockBrowserPage(createPageState());
+    const { browser } = createMockBrowser([page]);
+    const onMilestone = vi.fn(async () => undefined);
+    const runExecutor = createRunExecutor({
+      browser,
+      leaseClient: createLeaseClient(),
+      onMilestone,
+      selectAction: vi.fn(async () => ({ type: "finish", rationale: "The task is complete." })),
+    });
+
+    const result = await runExecutor.execute(createExecuteRunRequest());
+
+    expect(result).toMatchObject({
+      ok: true,
+      finalOutcome: "SUCCESS",
+      stepCount: 1,
+    });
+    expect(onMilestone).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        stepIndex: 0,
+        actionType: "start",
+        captureReason: "always",
+        url: "https://shop.example.com/cart",
+        title: "Cart",
+      }),
+      expect.any(Uint8Array),
+    );
+    expect(page.screenshotCalls).toEqual([
+      { type: "jpeg", quality: 80 },
+      { type: "jpeg", quality: 80 },
+    ]);
+  });
+
+  it("captures a final terminal milestone when a guardrail violation stops the run", async () => {
+    const page = new MockBrowserPage(createPageState());
+    const { browser } = createMockBrowser([page]);
+    const onMilestone = vi.fn(async () => undefined);
+    const runExecutor = createRunExecutor({
+      browser,
+      leaseClient: createLeaseClient(),
+      onMilestone,
+      selectAction: vi.fn(async () => ({
+        type: "payment_submission",
+        rationale: "Try to submit the order directly.",
+      })),
+    });
+
+    const result = await runExecutor.execute(
+      createExecuteRunRequest({
+        taskSpec: {
+          ...createExecuteRunRequest().taskSpec,
+          forbiddenActions: ["payment_submission"],
+        },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "GUARDRAIL_VIOLATION",
+      stepCount: 0,
+    });
+    expect(onMilestone).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stepIndex: 0,
+        actionType: "guardrail_violation",
+        captureReason: "always",
+      }),
+      expect.any(Uint8Array),
+    );
+  });
+
+  it("captures a final terminal milestone when the run exceeds max steps", async () => {
+    const page = new MockBrowserPage(createPageState());
+    const { browser } = createMockBrowser([page]);
+    const onMilestone = vi.fn(async () => undefined);
+    const runExecutor = createRunExecutor({
+      browser,
+      leaseClient: createLeaseClient(),
+      onMilestone,
+      selectAction: vi.fn(async () => ({ type: "wait", durationMs: 25 })),
+    });
+
+    const result = await runExecutor.execute(
+      createExecuteRunRequest({
+        taskSpec: {
+          ...createExecuteRunRequest().taskSpec,
+          maxSteps: 1,
+        },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "MAX_STEPS_EXCEEDED",
+      stepCount: 1,
+    });
+    expect(onMilestone).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stepIndex: 1,
+        actionType: "max_steps_exceeded",
+        captureReason: "always",
+      }),
+      expect.any(Uint8Array),
+    );
+  });
+
+  it("captures a final terminal milestone when browser execution throws", async () => {
+    const page = new MockBrowserPage(createPageState(), {
+      throwOn: {
+        click: new Error("browser crashed"),
+      },
+    });
+    const { browser } = createMockBrowser([page]);
+    const onMilestone = vi.fn(async () => undefined);
+    const runExecutor = createRunExecutor({
+      browser,
+      leaseClient: createLeaseClient(),
+      onMilestone,
+      selectAction: vi.fn(async () => ({
+        type: "click",
+        selector: "#checkout",
+      })),
+    });
+
+    const result = await runExecutor.execute(createExecuteRunRequest());
+
+    expect(result).toMatchObject({
+      ok: false,
+      errorCode: "BROWSER_ERROR",
+    });
+    expect(onMilestone).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stepIndex: 0,
+        actionType: "browser_error",
+        captureReason: "always",
+      }),
+      expect.any(Uint8Array),
+    );
   });
 });
