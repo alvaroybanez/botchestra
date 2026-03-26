@@ -426,16 +426,19 @@ async function markRunAsInfraError(
   }
 
   const now = Date.now();
-  await ctx.db.patch(run._id, {
-    status: "infra_error",
-    endedAt: now,
-    ...(run.startedAt !== undefined
-      ? {
-          durationSec: Math.max(0, Math.round((now - run.startedAt) / 1000)),
-        }
-      : {}),
-    finalOutcome: "FAILED",
-    errorCode: RUN_DISPATCH_FAILURE_ERROR_CODE,
+  await ctx.runMutation(internal.runs.settleRunFromCallback, {
+    runId: run._id,
+    nextStatus: "infra_error",
+    patch: {
+      endedAt: now,
+      ...(run.startedAt !== undefined
+        ? {
+            durationSec: Math.max(0, Math.round((now - run.startedAt) / 1000)),
+          }
+        : {}),
+      finalOutcome: "FAILED",
+      errorCode: RUN_DISPATCH_FAILURE_ERROR_CODE,
+    },
   });
 }
 

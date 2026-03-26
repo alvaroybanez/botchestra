@@ -11,6 +11,7 @@ const modules = {
   "./http.ts": () => import("./http"),
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),
+  "./studies.ts": () => import("./studies"),
 };
 
 const CALLBACK_SECRET = "test-callback-secret";

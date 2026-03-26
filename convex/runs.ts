@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { internalMutation, query } from "./_generated/server";
 
 const zQuery = zCustomQuery(query, NoOp);
@@ -102,7 +103,15 @@ export const transitionRunState = zInternalMutation({
     assertValidRunTransition(run.status, args.nextStatus);
 
     await ctx.db.patch(args.runId, buildTransitionPatch(run, args.nextStatus));
-    return await getRunById(ctx, args.runId);
+    const updatedRun = await getRunById(ctx, args.runId);
+
+    if (isTerminalRunStatus(updatedRun.status)) {
+      await ctx.runMutation(internal.studies.finalizeCancelledStudyIfComplete, {
+        studyId: updatedRun.studyId,
+      });
+    }
+
+    return updatedRun;
   },
 });
 
@@ -161,7 +170,12 @@ export const settleRunFromCallback = zInternalMutation({
         : {}),
     });
 
-    return await getRunById(ctx, args.runId);
+    const updatedRun = await getRunById(ctx, args.runId);
+    await ctx.runMutation(internal.studies.finalizeCancelledStudyIfComplete, {
+      studyId: updatedRun.studyId,
+    });
+
+    return updatedRun;
   },
 });
 

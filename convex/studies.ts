@@ -57,6 +57,13 @@ const studyStatusSchema = z.enum([
   "cancelled",
 ]);
 
+const cancellableStudyStatusSchema = z.enum([
+  "persona_review",
+  "queued",
+  "running",
+  "replaying",
+]);
+
 const requiredString = (label: string) =>
   z.string().trim().min(1, `${label} is required.`);
 
@@ -123,14 +130,15 @@ export const DEFAULT_POST_TASK_QUESTIONS = [
 
 export const DEFAULT_STUDY_RUN_BUDGET = 64;
 export const ACTIVE_CONCURRENCY_HARD_CAP = 30;
+export const DEFAULT_CANCELLATION_REASON = "Cancelled by user.";
 
 const VALID_STUDY_TRANSITIONS: Record<StudyStatus, readonly StudyStatus[]> = {
   draft: ["persona_review"],
-  persona_review: ["ready"],
+  persona_review: ["ready", "cancelled"],
   ready: ["queued"],
   queued: ["running", "cancelled"],
   running: ["replaying", "failed", "cancelled"],
-  replaying: ["analyzing", "failed"],
+  replaying: ["analyzing", "failed", "cancelled"],
   analyzing: ["completed", "failed"],
   completed: [],
   failed: [],
@@ -298,6 +306,84 @@ export const launchStudy = zMutation({
   },
 });
 
+export const cancelStudy = zMutation({
+  args: {
+    studyId: zid("studies"),
+    reason: requiredString("Cancellation reason").optional(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+
+    if (isTerminalStudyStatus(study.status)) {
+      throw new ConvexError(
+        `Cannot cancel a study that is already ${study.status}.`,
+      );
+    }
+
+    if (!canCancelStudy(study.status)) {
+      throw new ConvexError(`Cannot cancel a study while it is ${study.status}.`);
+    }
+
+    const cancellationRequestedAt = Date.now();
+    const cancellationReason = args.reason ?? DEFAULT_CANCELLATION_REASON;
+
+    if (study.status === "persona_review") {
+      await ctx.db.patch(study._id, {
+        status: "cancelled",
+        cancellationRequestedAt,
+        cancellationReason,
+        updatedAt: cancellationRequestedAt,
+      });
+      await ctx.runMutation(internal.auditEvents.recordAuditEvent, {
+        studyId: study._id,
+        actorId: identity.tokenIdentifier,
+        eventType: "study.cancelled",
+        reason: cancellationReason,
+        timestamp: cancellationRequestedAt,
+      });
+
+      return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
+    }
+
+    const runs = await listRunsForStudy(ctx, study._id);
+    for (const run of runs) {
+      if (run.status === "queued") {
+        await ctx.db.patch(run._id, {
+          status: "cancelled",
+          endedAt: cancellationRequestedAt,
+          cancellationRequestedAt,
+        });
+        continue;
+      }
+
+      if (run.status === "dispatching" || run.status === "running") {
+        await ctx.db.patch(run._id, {
+          cancellationRequestedAt,
+        });
+      }
+    }
+
+    await ctx.db.patch(study._id, {
+      cancellationRequestedAt,
+      cancellationReason,
+      updatedAt: cancellationRequestedAt,
+    });
+    await ctx.runMutation(internal.auditEvents.recordAuditEvent, {
+      studyId: study._id,
+      actorId: identity.tokenIdentifier,
+      eventType: "study.cancelled",
+      reason: cancellationReason,
+      timestamp: cancellationRequestedAt,
+    });
+    await ctx.runMutation(internal.studies.finalizeCancelledStudyIfComplete, {
+      studyId: study._id,
+    });
+
+    return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
+  },
+});
+
 export const getStudy = zQuery({
   args: {
     studyId: zid("studies"),
@@ -352,6 +438,15 @@ export const transitionStudyState = zInternalMutation({
   },
 });
 
+export const finalizeCancelledStudyIfComplete = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    return await finalizeCancelledStudyIfCompleteInPlace(ctx, args.studyId);
+  },
+});
+
 export function isValidStudyTransition(
   currentStatus: StudyStatus,
   nextStatus: StudyStatus,
@@ -370,6 +465,10 @@ function assertValidStudyTransition(
   }
 }
 
+function canCancelStudy(status: StudyStatus): status is z.infer<typeof cancellableStudyStatusSchema> {
+  return cancellableStudyStatusSchema.safeParse(status).success;
+}
+
 function normalizeTaskSpec(taskSpec: StudyTaskSpecInput): StudyTaskSpec {
   return {
     ...taskSpec,
@@ -383,6 +482,14 @@ function normalizeTaskSpec(taskSpec: StudyTaskSpecInput): StudyTaskSpec {
 
 function capActiveConcurrency(activeConcurrency: number) {
   return Math.min(activeConcurrency, ACTIVE_CONCURRENCY_HARD_CAP);
+}
+
+function isTerminalStudyStatus(status: StudyStatus) {
+  return status === "completed" || status === "failed" || status === "cancelled";
+}
+
+function isActiveRunStatus(status: Doc<"runs">["status"]) {
+  return status === "queued" || status === "dispatching" || status === "running";
 }
 
 async function hasEnoughAcceptedVariants(
@@ -455,6 +562,45 @@ async function getPackForOrg(
   }
 
   return pack;
+}
+
+async function listRunsForStudy(
+  ctx: QueryCtx | MutationCtx,
+  studyId: Id<"studies">,
+) {
+  return await ctx.db
+    .query("runs")
+    .withIndex("by_studyId", (query) => query.eq("studyId", studyId))
+    .take(200);
+}
+
+async function finalizeCancelledStudyIfCompleteInPlace(
+  ctx: MutationCtx,
+  studyId: Id<"studies">,
+) {
+  const study = await getStudyById(ctx, studyId);
+
+  if (study.status === "cancelled") {
+    return study;
+  }
+
+  if (study.cancellationRequestedAt === undefined) {
+    return study;
+  }
+
+  const runs = await listRunsForStudy(ctx, studyId);
+
+  if (runs.some((run) => isActiveRunStatus(run.status))) {
+    return study;
+  }
+
+  const cancelledAt = Date.now();
+  await ctx.db.patch(studyId, {
+    status: "cancelled",
+    updatedAt: cancelledAt,
+  });
+
+  return await getStudyById(ctx, studyId);
 }
 
 type StudyStatus = z.infer<typeof studyStatusSchema>;

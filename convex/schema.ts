@@ -145,6 +145,7 @@ export default defineSchema({
     launchRequestedBy: v.optional(v.string()),
     launchedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    cancellationRequestedAt: v.optional(v.number()),
     cancellationReason: v.optional(v.string()),
     createdBy: v.string(),
     createdAt: v.number(),
@@ -194,6 +195,7 @@ export default defineSchema({
       }),
     ),
     lastHeartbeatAt: v.optional(v.number()),
+    cancellationRequestedAt: v.optional(v.number()),
     frustrationCount: v.number(),
     milestoneKeys: v.array(v.string()),
     artifactManifestKey: v.optional(v.string()),
@@ -262,7 +264,20 @@ export default defineSchema({
     createdAt: v.number(),
   }),
 
-  // 9. credentials
+  // 9. auditEvents
+  auditEvents: defineTable({
+    orgId: v.string(),
+    actorId: v.string(),
+    eventType: v.string(),
+    studyId: v.id("studies"),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_studyId_and_createdAt", ["studyId", "createdAt"])
+    .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
+    .index("by_eventType_and_createdAt", ["eventType", "createdAt"]),
+
+  // 10. credentials
   credentials: defineTable({
     label: v.string(),
     encryptedPayload: v.string(),
@@ -274,7 +289,7 @@ export default defineSchema({
     updatedAt: v.number(),
   }),
 
-  // 10. settings
+  // 11. settings
   settings: defineTable({
     orgId: v.string(),
     domainAllowlist: v.array(v.string()),

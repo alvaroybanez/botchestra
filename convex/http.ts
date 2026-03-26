@@ -66,11 +66,14 @@ http.route({
 
     switch (parseResult.data.eventType) {
       case "heartbeat":
-        await ctx.runMutation(internal.runProgress.recordRunHeartbeat, {
+        const heartbeatAck = await ctx.runMutation(internal.runProgress.recordRunHeartbeat, {
           runId: parseResult.data.runId as never,
           timestamp: parseResult.data.payload.timestamp,
         });
-        return Response.json({ ok: true }, { status: 200 });
+        return Response.json(
+          { ok: true, shouldStop: heartbeatAck.shouldStop },
+          { status: 200 },
+        );
 
       case "milestone":
         await ctx.runMutation(internal.runProgress.appendRunMilestone, {

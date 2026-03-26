@@ -39,14 +39,22 @@ export const recordRunHeartbeat = zInternalMutation({
     const run = await getRunById(ctx, args.runId);
 
     if (isCallbackClosed(run.status)) {
-      return run;
+      return {
+        run,
+        shouldStop: false,
+      };
     }
 
     await ctx.db.patch(args.runId, {
       lastHeartbeatAt: args.timestamp,
     });
 
-    return await getRunById(ctx, args.runId);
+    const updatedRun = await getRunById(ctx, args.runId);
+
+    return {
+      run: updatedRun,
+      shouldStop: updatedRun.cancellationRequestedAt !== undefined,
+    };
   },
 });
 
