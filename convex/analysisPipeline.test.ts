@@ -736,7 +736,7 @@ describe("analysisPipeline clustering", () => {
     const clusters = await listIssueClusters(t, studyId);
     const clustersById = new Map(clusters.map((cluster) => [cluster._id, cluster]));
     const orderedTitles = report.issueClusterIds.map(
-      (clusterId) => clustersById.get(clusterId)?.title,
+      (clusterId: Id<"issueClusters">) => clustersById.get(clusterId)?.title,
     );
 
     expect(report.issueClusterIds).toHaveLength(2);
