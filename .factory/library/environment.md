@@ -17,6 +17,7 @@ Environment variables, external dependencies, and setup notes.
 ### Convex deployment env vars
 - `JWT_PRIVATE_KEY` — required by `@convex-dev/auth` password flows so the dev deployment can mint auth tokens
 - `JWKS` — required by `@convex-dev/auth` alongside `JWT_PRIVATE_KEY` so login/signup verification works against the Convex deployment
+- `ARTIFACT_BASE_URL` — optional override for analysis report/export artifact links. If unset, `convex/artifactResolver.ts` falls back to the local browser-executor proxy at `http://localhost:8787`.
 
 ### Worker `.dev.vars` (apps/browser-executor/.dev.vars)
 - `CALLBACK_SIGNING_SECRET` — HMAC signing secret for callback tokens
