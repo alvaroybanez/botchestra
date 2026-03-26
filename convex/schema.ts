@@ -248,7 +248,15 @@ export default defineSchema({
     score: v.number(),
   }).index("by_studyId", ["studyId"]),
 
-  // 8. studyReports
+  // 8. issueClusterNotes
+  issueClusterNotes: defineTable({
+    issueClusterId: v.id("issueClusters"),
+    authorId: v.string(),
+    note: v.string(),
+    createdAt: v.number(),
+  }).index("by_issueClusterId", ["issueClusterId"]),
+
+  // 9. studyReports
   studyReports: defineTable({
     studyId: v.id("studies"),
     headlineMetrics: v.object({
@@ -265,7 +273,7 @@ export default defineSchema({
     createdAt: v.number(),
   }),
 
-  // 9. auditEvents
+  // 10. auditEvents
   auditEvents: defineTable({
     orgId: v.string(),
     actorId: v.string(),
@@ -278,7 +286,7 @@ export default defineSchema({
     .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
     .index("by_eventType_and_createdAt", ["eventType", "createdAt"]),
 
-  // 10. credentials
+  // 11. credentials
   credentials: defineTable({
     label: v.string(),
     encryptedPayload: v.string(),

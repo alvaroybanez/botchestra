@@ -13,6 +13,7 @@ import type * as analysis_pure from "../analysis/pure.js";
 import type * as analysis_ranking from "../analysis/ranking.js";
 import type * as analysis_reportArtifacts from "../analysis/reportArtifacts.js";
 import type * as analysis_runSummaries from "../analysis/runSummaries.js";
+import type * as analysisNotes from "../analysisNotes.js";
 import type * as analysisPipeline from "../analysisPipeline.js";
 import type * as analysisPipelineModel from "../analysisPipelineModel.js";
 import type * as auditEvents from "../auditEvents.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   "analysis/ranking": typeof analysis_ranking;
   "analysis/reportArtifacts": typeof analysis_reportArtifacts;
   "analysis/runSummaries": typeof analysis_runSummaries;
+  analysisNotes: typeof analysisNotes;
   analysisPipeline: typeof analysisPipeline;
   analysisPipelineModel: typeof analysisPipelineModel;
   auditEvents: typeof auditEvents;
