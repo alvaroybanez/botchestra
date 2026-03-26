@@ -14,6 +14,10 @@ export type StudyDetailSearch = {
   runId: string | undefined;
 };
 
+export type StudyReportSearch = StudyDetailSearch & {
+  shared: boolean;
+};
+
 export const emptyStudyDetailSearch: StudyDetailSearch = {
   outcome: undefined,
   protoPersonaId: undefined,
@@ -65,6 +69,15 @@ export function validateStudyDetailSearch(search: Record<string, unknown>) {
     axisMax: normalizeOptionalNumber(search.axisMax),
     urlPrefix: normalizeOptionalString(search.urlPrefix),
     runId: normalizeOptionalString(search.runId),
+  };
+}
+
+export function validateStudyReportSearch(
+  search: Record<string, unknown>,
+): StudyReportSearch {
+  return {
+    ...validateStudyDetailSearch(search),
+    shared: normalizeSharedFlag(search.shared),
   };
 }
 
@@ -230,4 +243,8 @@ function normalizeOptionalNumber(value: unknown) {
   const parsedValue = Number(normalizedValue);
 
   return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
+function normalizeSharedFlag(value: unknown) {
+  return value === true || value === 1 || value === "1" || value === "true";
 }

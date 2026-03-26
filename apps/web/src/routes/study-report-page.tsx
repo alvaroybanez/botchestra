@@ -1,6 +1,6 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   type DemoStudySummary,
 } from "@/routes/study-demo-data";
 import {
+  emptyStudyDetailSearch,
   StudyOverviewLinkButton,
   StudyStatusBadge,
   StudyTabsNav,
@@ -44,22 +45,46 @@ type RunSummary = {
   terminalCount: number;
 };
 
+type ReportExportArtifact = {
+  studyId: Id<"studies">;
+  artifactKey: string;
+  contentType: string;
+  fileName: string;
+  content: string;
+};
+
+type ReportActionFeedback =
+  | {
+    tone: "default";
+    text: string;
+  }
+  | {
+    tone: "error";
+    text: string;
+  };
+
 export function StudyReportPage({
   detailSearch,
+  isSharedView = false,
   studyId,
 }: {
   detailSearch: StudyDetailSearch;
+  isSharedView?: boolean;
   studyId: string;
 }) {
   if (studyId === DEMO_STUDY_ID) {
     return (
-      <DemoStudyReportPage detailSearch={detailSearch} />
+      <DemoStudyReportPage
+        detailSearch={detailSearch}
+        isSharedView={isSharedView}
+      />
     );
   }
 
   return (
     <LiveStudyReportPage
       detailSearch={detailSearch}
+      isSharedView={isSharedView}
       studyId={studyId}
     />
   );
@@ -67,13 +92,16 @@ export function StudyReportPage({
 
 function DemoStudyReportPage({
   detailSearch,
+  isSharedView,
 }: {
   detailSearch: StudyDetailSearch;
+  isSharedView: boolean;
 }) {
   return (
     <ResolvedStudyReportPage
       detailSearch={detailSearch}
       findings={demoFindings}
+      isSharedView={isSharedView}
       report={demoStudyReport}
       runSummary={{
         queuedCount: 0,
@@ -88,9 +116,11 @@ function DemoStudyReportPage({
 
 function LiveStudyReportPage({
   detailSearch,
+  isSharedView,
   studyId,
 }: {
   detailSearch: StudyDetailSearch;
+  isSharedView: boolean;
   studyId: string;
 }) {
   const study = useQuery(api.studies.getStudy, {
@@ -128,6 +158,7 @@ function LiveStudyReportPage({
     return (
       <ReportShell
         detailSearch={detailSearch}
+        isSharedView={isSharedView}
         rightColumn={
           <Card>
             <CardHeader>
@@ -157,6 +188,7 @@ function LiveStudyReportPage({
     <LiveStudyReportContent
       detailSearch={detailSearch}
       findings={findings as DemoFinding[]}
+      isSharedView={isSharedView}
       report={report}
       runSummary={runSummary as RunSummary | undefined}
       study={study}
@@ -167,12 +199,14 @@ function LiveStudyReportPage({
 function LiveStudyReportContent({
   detailSearch,
   findings,
+  isSharedView,
   report,
   runSummary,
   study,
 }: {
   detailSearch: StudyDetailSearch;
   findings: DemoFinding[];
+  isSharedView: boolean;
   report: ReportRecord;
   runSummary: RunSummary | undefined;
   study: ReportStudySummary;
@@ -209,6 +243,7 @@ function LiveStudyReportContent({
     <ResolvedStudyReportPage
       detailSearch={detailSearch}
       findings={findings}
+      isSharedView={isSharedView}
       report={report}
       resolvedArtifactUrls={resolvedArtifactUrls}
       runSummary={runSummary}
@@ -223,6 +258,7 @@ function ResolvedStudyReportPage({
   findings,
   runSummary,
   detailSearch,
+  isSharedView,
   resolvedArtifactUrls = {},
 }: {
   study: ReportStudySummary;
@@ -230,6 +266,7 @@ function ResolvedStudyReportPage({
   findings: DemoFinding[];
   runSummary: RunSummary | undefined;
   detailSearch: StudyDetailSearch;
+  isSharedView: boolean;
   resolvedArtifactUrls?: Record<string, string>;
 }) {
   const orderedFindings = useMemo(() => {
@@ -264,6 +301,7 @@ function ResolvedStudyReportPage({
   return (
     <ReportShell
       detailSearch={detailSearch}
+      isSharedView={isSharedView}
       rightColumn={
         <div className="space-y-6">
           <Card>
@@ -382,57 +420,192 @@ function ResolvedStudyReportPage({
 function ReportShell({
   study,
   detailSearch,
+  isSharedView,
   children,
   rightColumn,
 }: {
   study: ReportStudySummary;
   detailSearch: StudyDetailSearch;
+  isSharedView: boolean;
   children: ReactNode;
   rightColumn: ReactNode;
 }) {
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Ranked report
-          </p>
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-3xl font-semibold tracking-tight">
-                Study report
-              </h2>
-              <StudyStatusBadge status={study.status} />
+      {isSharedView ? (
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-3">
+              <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Shared report
+              </p>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-semibold tracking-tight">
+                    Study report
+                  </h1>
+                  <StudyStatusBadge status={study.status} />
+                </div>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                  You&apos;re viewing the focused shared report surface. The link
+                  still requires authentication, but the rest of the workspace
+                  chrome stays hidden for review.
+                </p>
+              </div>
             </div>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review the final headline metrics, ranked issue clusters, replay
-              evidence, and analyst notes for this study in one place.
-            </p>
+
+            <ReportActionButtons isSharedView studyId={study._id} />
           </div>
         </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-3">
+              <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Ranked report
+              </p>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-3xl font-semibold tracking-tight">
+                    Study report
+                  </h2>
+                  <StudyStatusBadge status={study.status} />
+                </div>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                  Review the final headline metrics, ranked issue clusters, replay
+                  evidence, and analyst notes for this study in one place.
+                </p>
+              </div>
+            </div>
 
-        <div className="flex flex-wrap gap-3">
-          <StudyOverviewLinkButton
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <ReportActionButtons isSharedView={false} studyId={study._id} />
+              <div className="flex flex-wrap gap-3">
+                <StudyOverviewLinkButton
+                  detailSearch={detailSearch}
+                  studyId={study._id}
+                />
+                <Button asChild variant="outline">
+                  <Link to="/studies">Back to Studies</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <StudyTabsNav
+            activeTab="report"
             detailSearch={detailSearch}
             studyId={study._id}
           />
-          <Button asChild variant="outline">
-            <Link to="/studies">Back to Studies</Link>
-          </Button>
-        </div>
-      </div>
-
-      <StudyTabsNav
-        activeTab="report"
-        detailSearch={detailSearch}
-        studyId={study._id}
-      />
+        </>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <div className="space-y-6">{children}</div>
         <div className="space-y-6">{rightColumn}</div>
       </div>
     </section>
+  );
+}
+
+function ReportActionButtons({
+  isSharedView,
+  studyId,
+}: {
+  isSharedView: boolean;
+  studyId: string;
+}) {
+  const exportJson = useAction(api.reportExports.exportJson);
+  const exportHtml = useAction(api.reportExports.exportHtml);
+  const [pendingExport, setPendingExport] = useState<"json" | "html" | null>(
+    null,
+  );
+  const [feedback, setFeedback] = useState<ReportActionFeedback | null>(null);
+
+  async function handleExport(format: "json" | "html") {
+    setFeedback(null);
+    setPendingExport(format);
+
+    try {
+      const exportedArtifact =
+        format === "json"
+          ? await exportJson({ studyId: studyId as Id<"studies"> })
+          : await exportHtml({ studyId: studyId as Id<"studies"> });
+
+      downloadReportArtifact(exportedArtifact);
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: getActionFeedback(error, "Could not export the study report."),
+      });
+    } finally {
+      setPendingExport(null);
+    }
+  }
+
+  async function handleCopyLink() {
+    setFeedback(null);
+
+    try {
+      await copySharedReportLink(studyId as Id<"studies">);
+      setFeedback({
+        tone: "default",
+        text: "Shared link copied.",
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        text: getActionFeedback(error, "Could not copy the shared report link."),
+      });
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <div className="flex flex-wrap gap-3">
+        <Button
+          disabled={pendingExport !== null}
+          onClick={() => void handleExport("json")}
+          variant={isSharedView ? "default" : "outline"}
+        >
+          {pendingExport === "json" ? "Exporting JSON..." : "Export JSON"}
+        </Button>
+        <Button
+          disabled={pendingExport !== null}
+          onClick={() => void handleExport("html")}
+          variant="outline"
+        >
+          {pendingExport === "html" ? "Exporting HTML..." : "Export HTML"}
+        </Button>
+        {isSharedView ? (
+          <Button asChild variant="outline">
+            <Link
+              params={{ studyId }}
+              search={{ ...emptyStudyDetailSearch, shared: false }}
+              to="/studies/$studyId/report"
+            >
+              Open full report
+            </Link>
+          </Button>
+        ) : (
+          <Button onClick={() => void handleCopyLink()} variant="outline">
+            Copy Link
+          </Button>
+        )}
+      </div>
+
+      {feedback ? (
+        <p
+          className={
+            feedback.tone === "error"
+              ? "text-sm text-destructive"
+              : "text-sm text-muted-foreground"
+          }
+        >
+          {feedback.text}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -708,4 +881,39 @@ function toArtifactHref(
 
 function unique(values: string[]) {
   return [...new Set(values)];
+}
+
+function buildSharedReportLink(studyId: Id<"studies">) {
+  return `/studies/${studyId}/report?shared=1`;
+}
+
+async function copySharedReportLink(studyId: Id<"studies">) {
+  if (!navigator.clipboard?.writeText) {
+    throw new Error("Clipboard is unavailable.");
+  }
+
+  await navigator.clipboard.writeText(buildSharedReportLink(studyId));
+}
+
+function downloadReportArtifact(artifact: ReportExportArtifact) {
+  const blob = new Blob([artifact.content], {
+    type: artifact.contentType,
+  });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = objectUrl;
+  link.download = artifact.fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+function getActionFeedback(error: unknown, fallbackMessage: string) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallbackMessage;
 }

@@ -343,6 +343,43 @@ const createProtoPersonaMock = vi.fn();
 const publishMock = vi.fn();
 const archiveMock = vi.fn();
 const generateVariantsMock = vi.fn();
+const exportJsonReportMock = vi.fn();
+const exportHtmlReportMock = vi.fn();
+const clipboardWriteTextMock = vi.fn();
+const createObjectURLMock = vi.fn();
+const revokeObjectURLMock = vi.fn();
+const clickedDownloads: Array<{ download: string; href: string }> = [];
+const downloadedBlobs = new Map<string, Blob>();
+
+Object.defineProperty(navigator, "clipboard", {
+  configurable: true,
+  value: {
+    writeText: clipboardWriteTextMock,
+  },
+});
+
+Object.defineProperty(URL, "createObjectURL", {
+  configurable: true,
+  writable: true,
+  value: createObjectURLMock,
+});
+
+Object.defineProperty(URL, "revokeObjectURL", {
+  configurable: true,
+  writable: true,
+  value: revokeObjectURLMock,
+});
+
+Object.defineProperty(HTMLAnchorElement.prototype, "click", {
+  configurable: true,
+  writable: true,
+  value: function click(this: HTMLAnchorElement) {
+    clickedDownloads.push({
+      download: this.download,
+      href: this.href,
+    });
+  },
+});
 
 vi.mock("@convex-dev/auth/react", () => ({
   useAuthActions: () => ({
@@ -403,6 +440,14 @@ vi.mock("convex/react", () => ({
 
     if (actionName === "personaVariantGeneration:generateVariantsForStudy") {
       return generateVariantsMock;
+    }
+
+    if (actionName === "reportExports:exportJson") {
+      return exportJsonReportMock;
+    }
+
+    if (actionName === "reportExports:exportHtml") {
+      return exportHtmlReportMock;
     }
 
     return vi.fn();
@@ -625,6 +670,21 @@ beforeEach(() => {
     rejectedCount: 0,
     retryCount: 0,
   });
+  exportJsonReportMock.mockReset();
+  exportJsonReportMock.mockResolvedValue(makeReportJsonExportArtifact());
+  exportHtmlReportMock.mockReset();
+  exportHtmlReportMock.mockResolvedValue(makeReportHtmlExportArtifact());
+  clipboardWriteTextMock.mockReset();
+  clipboardWriteTextMock.mockResolvedValue(undefined);
+  createObjectURLMock.mockReset();
+  createObjectURLMock.mockImplementation((blob: Blob) => {
+    const href = `blob:mock-${downloadedBlobs.size + 1}`;
+    downloadedBlobs.set(href, blob);
+    return href;
+  });
+  revokeObjectURLMock.mockReset();
+  downloadedBlobs.clear();
+  clickedDownloads.length = 0;
 });
 
 describe("@botchestra/web routing", () => {
@@ -671,6 +731,19 @@ describe("@botchestra/web routing", () => {
     );
     expect(container.querySelector("#login-email")).not.toBeNull();
     expect(container.textContent).toContain("Don't have an account? Sign up");
+    expect(container.textContent).not.toContain("Validation Console");
+  });
+
+  it("redirects unauthenticated shared report links to login while preserving the shared query", async () => {
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: false, isLoading: false },
+      initialEntries: ["/studies/test-id-123/report?shared=1"],
+    });
+
+    expect(getRouterLocationHref(router)).toBe(
+      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport%3Fshared%3D1",
+    );
+    expect(container.querySelector("#login-email")).not.toBeNull();
     expect(container.textContent).not.toContain("Validation Console");
   });
 
@@ -1687,6 +1760,104 @@ describe("@botchestra/web routing", () => {
     );
   });
 
+  it("exports JSON and HTML artifacts and copies the internal shared report link", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "completed",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live", {
+        totalRuns: 12,
+        terminalCount: 12,
+        runningCount: 0,
+        queuedCount: 0,
+      }),
+    };
+    mockedFindingsByStudyId = {
+      "study-live": makeFindings(),
+    };
+    mockedReportsByStudyId = {
+      "study-live": makeStudyReport(),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/report"],
+    });
+
+    await clickButton(container, "Export JSON");
+
+    expect(exportJsonReportMock).toHaveBeenCalledWith({ studyId: "study-live" });
+    expect(clickedDownloads).toHaveLength(1);
+    expect(clickedDownloads[0]).toEqual({
+      download: "study-report-study-live.json",
+      href: "blob:mock-1",
+    });
+    expect(JSON.parse(await downloadedBlobs.get("blob:mock-1")!.text())).toMatchObject({
+      studyId: "study-live",
+      issueClusterIds: ["finding-address", "finding-payment"],
+    });
+
+    await clickButton(container, "Export HTML");
+
+    expect(exportHtmlReportMock).toHaveBeenCalledWith({ studyId: "study-live" });
+    expect(clickedDownloads).toHaveLength(2);
+    expect(clickedDownloads[1]).toEqual({
+      download: "study-report-study-live.html",
+      href: "blob:mock-2",
+    });
+    expect(await downloadedBlobs.get("blob:mock-2")!.text()).toContain(
+      "<!DOCTYPE html>",
+    );
+
+    await clickButton(container, "Copy Link");
+
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith(
+      "/studies/study-live/report?shared=1",
+    );
+    expect(container.textContent).toContain("Shared link copied.");
+  });
+
+  it("renders the shared report with minimal chrome after authentication", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "completed",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live", {
+        totalRuns: 12,
+        terminalCount: 12,
+        runningCount: 0,
+        queuedCount: 0,
+      }),
+    };
+    mockedFindingsByStudyId = {
+      "study-live": makeFindings(),
+    };
+    mockedReportsByStudyId = {
+      "study-live": makeStudyReport({
+        issueClusterIds: ["finding-payment", "finding-address"],
+      }),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/report?shared=1"],
+    });
+
+    expect(container.textContent).toContain("Shared report");
+    expect(container.textContent).toContain("Study report");
+    expect(container.textContent).toContain("Open full report");
+    expect(container.textContent).not.toContain("Validation Console");
+    expect(container.textContent).not.toContain("Study detail tabs");
+    expect(container.textContent).not.toContain("Go to Overview");
+    expect(container.textContent).not.toContain("Back to Studies");
+  });
+
   it("renders working Go to Overview links across demo runs, findings, and report tabs", async () => {
     for (const initialEntry of [
       "/studies/demo-study/runs",
@@ -2547,6 +2718,33 @@ function makeStudyReport(
     jsonReportKey: "study-reports/study-live/report.json",
     createdAt: 1_700_000_000_000,
     ...overrides,
+  };
+}
+
+function makeReportJsonExportArtifact() {
+  return {
+    studyId: "study-live" as Id<"studies">,
+    artifactKey: "study-reports/study-live/report.json",
+    contentType: "application/json",
+    fileName: "study-report-study-live.json",
+    content: JSON.stringify({
+      studyId: "study-live",
+      issueClusterIds: ["finding-address", "finding-payment"],
+      limitations: [
+        "Findings are synthetic and directional.",
+      ],
+    }),
+  };
+}
+
+function makeReportHtmlExportArtifact() {
+  return {
+    studyId: "study-live" as Id<"studies">,
+    artifactKey: "study-reports/study-live/report.html",
+    contentType: "text/html; charset=utf-8",
+    fileName: "study-report-study-live.html",
+    content:
+      "<!DOCTYPE html><html><head><title>Study Report</title></head><body><h1>Study report</h1><p>This HTML report is self-contained.</p></body></html>",
   };
 }
 
