@@ -226,7 +226,7 @@ describe("POST /api/run-progress", () => {
 
     const run = await getRunDoc(t, runId);
     expect(run?.status).toBe("infra_error");
-    expect(run?.errorCode).toBe("BROWSER_ERROR");
+    expect(run?.errorCode).toBe("WORKER_INTERNAL_ERROR");
   });
 });
 

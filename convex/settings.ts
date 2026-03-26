@@ -7,6 +7,7 @@ import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { listCredentialSummariesForOrg } from "./credentials";
+import { recordAuditEvent } from "./observability";
 import { ADMIN_ROLES, requireRole } from "./rbac";
 
 const zMutation = zCustomMutation(mutation, NoOp);
@@ -243,6 +244,15 @@ async function upsertSettingsForOrg(
   } else {
     await ctx.db.replace(existing._id, nextSettings);
   }
+
+  await recordAuditEvent(ctx, {
+    orgId,
+    actorId,
+    eventType: "settings.updated",
+    resourceType: "settings",
+    resourceId: orgId,
+    createdAt: nextSettings.updatedAt,
+  });
 
   return await loadEffectiveSettingsForOrg(ctx, orgId);
 }

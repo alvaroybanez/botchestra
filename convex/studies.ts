@@ -21,6 +21,10 @@ import {
   capStudyRunBudget,
   loadEffectiveSettingsForOrg,
 } from "./settings";
+import {
+  recordAuditEvent,
+  recordMetric,
+} from "./observability";
 import { workflow } from "./workflow";
 
 const zMutation = zCustomMutation(mutation, NoOp);
@@ -396,6 +400,14 @@ export const launchStudy = zMutation({
         updatedAt: launchTimestamp,
       });
     }
+    await recordAuditEvent(ctx, {
+      actorId: identity.tokenIdentifier,
+      eventType: "study.launched",
+      studyId: study._id,
+      resourceType: "study",
+      resourceId: String(study._id),
+      createdAt: launchTimestamp,
+    });
     await workflow.start(
       ctx,
       internal.studyLifecycleWorkflow.runStudyLifecycle,
@@ -443,12 +455,14 @@ export const cancelStudy = zMutation({
         cancellationReason,
         updatedAt: cancellationRequestedAt,
       });
-      await ctx.runMutation(internal.auditEvents.recordAuditEvent, {
-        studyId: study._id,
+      await recordAuditEvent(ctx, {
         actorId: identity.tokenIdentifier,
         eventType: "study.cancelled",
+        studyId: study._id,
+        resourceType: "study",
+        resourceId: String(study._id),
         reason: cancellationReason,
-        timestamp: cancellationRequestedAt,
+        createdAt: cancellationRequestedAt,
       });
 
       return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
@@ -477,12 +491,14 @@ export const cancelStudy = zMutation({
       cancellationReason,
       updatedAt: cancellationRequestedAt,
     });
-    await ctx.runMutation(internal.auditEvents.recordAuditEvent, {
-      studyId: study._id,
+    await recordAuditEvent(ctx, {
       actorId: identity.tokenIdentifier,
       eventType: "study.cancelled",
+      studyId: study._id,
+      resourceType: "study",
+      resourceId: String(study._id),
       reason: cancellationReason,
-      timestamp: cancellationRequestedAt,
+      createdAt: cancellationRequestedAt,
     });
     await ctx.runMutation(internal.studies.finalizeCancelledStudyIfComplete, {
       studyId: study._id,
@@ -545,6 +561,17 @@ export const transitionStudyState = zInternalMutation({
         : {}),
       updatedAt: transitionTimestamp,
     });
+
+    if (args.nextStatus === "completed") {
+      await recordMetric(ctx, {
+        studyId: args.studyId,
+        metricType: "study.completed",
+        value: 1,
+        unit: "count",
+        status: args.nextStatus,
+        recordedAt: transitionTimestamp,
+      });
+    }
 
     return await getStudyById(ctx, args.studyId);
   },

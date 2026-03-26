@@ -22,6 +22,7 @@ import {
   ACTIVE_CONCURRENCY_HARD_CAP,
   DEFAULT_STUDY_RUN_BUDGET,
 } from "./studies";
+import { recordMetric } from "./observability";
 import {
   mapCompletionOutcomeToRunStatus,
   mapFailureCodeToRunStatus,
@@ -308,6 +309,15 @@ async function dispatchAvailableRuns(
     });
   }
 
+  if (workIds.length > 0) {
+    await recordMetric(ctx, {
+      studyId,
+      metricType: "wave.dispatched_runs",
+      value: workIds.length,
+      unit: "count",
+    });
+  }
+
   return workIds;
 }
 
@@ -414,6 +424,7 @@ async function settleRunFromWorkerResponse(
       finalOutcome: response.finalOutcome,
       frustrationCount: response.frustrationCount,
       errorCode: response.errorCode,
+      errorMessage: response.message,
       ...(response.artifactManifestKey !== undefined
         ? { artifactManifestKey: response.artifactManifestKey }
         : {}),
@@ -442,6 +453,7 @@ async function markRunAsInfraError(
         : {}),
       finalOutcome: "FAILED",
       errorCode: RUN_DISPATCH_FAILURE_ERROR_CODE,
+      errorMessage: "Worker dispatch could not create the browser execution context.",
     },
   });
 }

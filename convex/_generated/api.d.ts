@@ -24,6 +24,7 @@ import type * as credentials from "../credentials.js";
 import type * as crons from "../crons.js";
 import type * as heartbeatMonitor from "../heartbeatMonitor.js";
 import type * as http from "../http.js";
+import type * as observability from "../observability.js";
 import type * as personaEngine_pure from "../personaEngine/pure.js";
 import type * as personaEngine_variantGeneration from "../personaEngine/variantGeneration.js";
 import type * as personaPacks from "../personaPacks.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   heartbeatMonitor: typeof heartbeatMonitor;
   http: typeof http;
+  observability: typeof observability;
   "personaEngine/pure": typeof personaEngine_pure;
   "personaEngine/variantGeneration": typeof personaEngine_variantGeneration;
   personaPacks: typeof personaPacks;

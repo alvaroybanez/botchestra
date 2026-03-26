@@ -34,6 +34,7 @@ import {
   collectIssueClusterArtifactKeys,
   resolveArtifactUrlsForStudy,
 } from "./artifactResolver";
+import { recordAuditEvent } from "./observability";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
 
@@ -486,6 +487,16 @@ export const insertStudyLifecycleReport = zInternalMutation({
     if (report === null) {
       throw new ConvexError("Study report was not created.");
     }
+
+    const study = await getStudyById(ctx, args.report.studyId);
+    await recordAuditEvent(ctx, {
+      actorId: study.launchRequestedBy ?? study.createdBy,
+      eventType: "report.published",
+      studyId: study._id,
+      resourceType: "studyReport",
+      resourceId: String(report._id),
+      createdAt: args.report.createdAt,
+    });
 
     return report;
   },

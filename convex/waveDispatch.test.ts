@@ -9,6 +9,7 @@ import schema from "./schema";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
+  "./observability.ts": () => import("./observability"),
   "./schema.ts": () => import("./schema"),
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),
@@ -81,6 +82,12 @@ describe("waveDispatch.dispatchStudyWave", () => {
     });
     const study = await getStudyDoc(t, studyId);
     const runs = await listRuns(t, studyId);
+    const metrics = await t.run(async (ctx) =>
+      ctx.db
+        .query("metrics")
+        .withIndex("by_studyId_and_recordedAt", (q) => q.eq("studyId", studyId))
+        .collect(),
+    );
 
     expect(result.createdRunCount).toBe(7);
     expect(result.dispatchedRunCount).toBe(3);
@@ -88,6 +95,14 @@ describe("waveDispatch.dispatchStudyWave", () => {
     expect(study?.status).toBe("running");
     expect(countRunsWithStatuses(runs, ["dispatching", "running"])).toBe(3);
     expect(countRunsWithStatuses(runs, ["queued"])).toBe(4);
+    expect(metrics).toEqual([
+      expect.objectContaining({
+        studyId,
+        metricType: "wave.dispatched_runs",
+        value: 3,
+        unit: "count",
+      }),
+    ]);
   });
 
   it("eventually dispatches every run without exceeding the concurrency limit", async () => {

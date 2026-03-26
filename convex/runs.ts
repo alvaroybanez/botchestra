@@ -11,6 +11,10 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { internalMutation, query } from "./_generated/server";
+import {
+  normalizeInfraErrorCode,
+  recordMetric,
+} from "./observability";
 import { resolveArtifactUrlsForStudy } from "./artifactResolver";
 
 const zQuery = zCustomQuery(query, NoOp);
@@ -62,6 +66,7 @@ const callbackPatchSchema = z.object({
   summaryKey: z.string().optional(),
   workerSessionId: z.string().optional(),
   errorCode: z.string().optional(),
+  errorMessage: z.string().optional(),
 });
 
 const listRunsArgsSchema = z.object({
@@ -132,6 +137,13 @@ export const settleRunFromCallback = zInternalMutation({
     assertValidRunTransition(run.status, args.nextStatus);
 
     const endedAt = args.patch?.endedAt ?? Date.now();
+    const normalizedErrorCode =
+      args.nextStatus === "infra_error"
+        ? normalizeInfraErrorCode(
+            args.patch?.errorCode,
+            args.patch?.errorMessage,
+          )
+        : args.patch?.errorCode;
 
     await ctx.db.patch(args.runId, {
       status: args.nextStatus,
@@ -166,12 +178,29 @@ export const settleRunFromCallback = zInternalMutation({
       ...(args.patch?.workerSessionId !== undefined
         ? { workerSessionId: args.patch.workerSessionId }
         : {}),
-      ...(args.patch?.errorCode !== undefined
-        ? { errorCode: args.patch.errorCode }
+      ...(normalizedErrorCode !== undefined
+        ? { errorCode: normalizedErrorCode }
         : {}),
     });
 
     const updatedRun = await getRunById(ctx, args.runId);
+
+    if (isTerminalRunStatus(updatedRun.status)) {
+      await recordMetric(ctx, {
+        studyId: updatedRun.studyId,
+        runId: updatedRun._id,
+        metricType: "run.completed",
+        value: 1,
+        unit: "count",
+        status: updatedRun.status,
+        ...(updatedRun.status === "infra_error" &&
+        updatedRun.errorCode !== undefined
+          ? { errorCode: updatedRun.errorCode }
+          : {}),
+        recordedAt: endedAt,
+      });
+    }
+
     await ctx.runMutation(internal.studies.finalizeCancelledStudyIfComplete, {
       studyId: updatedRun.studyId,
     });

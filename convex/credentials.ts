@@ -14,6 +14,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { recordAuditEvent } from "./observability";
 import { ADMIN_ROLES, requireRole } from "./rbac";
 
 const zMutation = zCustomMutation(mutation, NoOp);
@@ -124,6 +125,15 @@ export const createCredential = zMutation({
       throw new ConvexError("Credential could not be loaded after creation.");
     }
 
+    await recordAuditEvent(ctx, {
+      orgId,
+      actorId: identity.tokenIdentifier,
+      eventType: "credential.created",
+      resourceType: "credential",
+      resourceId: ref,
+      createdAt: now,
+    });
+
     return toCredentialSummary(created);
   },
 });
@@ -159,6 +169,7 @@ export const updateCredential = zMutation({
             args.patch.allowedStudyIds === null ? undefined : args.patch.allowedStudyIds,
           );
 
+    const updatedAt = Date.now();
     await ctx.db.replace(existing._id, {
       ref: nextRef,
       label:
@@ -177,7 +188,16 @@ export const updateCredential = zMutation({
       orgId: existing.orgId,
       createdBy: existing.createdBy,
       createdAt: existing.createdAt,
-      updatedAt: Date.now(),
+      updatedAt,
+    });
+
+    await recordAuditEvent(ctx, {
+      orgId,
+      actorId: identity.tokenIdentifier,
+      eventType: "credential.updated",
+      resourceType: "credential",
+      resourceId: nextRef,
+      createdAt: updatedAt,
     });
 
     return toCredentialSummary(await loadCredentialForOrg(ctx, existing._id, orgId));
@@ -195,8 +215,17 @@ export const deleteCredential = zMutation({
       args.credentialId,
       identity.tokenIdentifier,
     );
+    const deletedAt = Date.now();
 
     await ctx.db.delete(credential._id);
+    await recordAuditEvent(ctx, {
+      orgId: identity.tokenIdentifier,
+      actorId: identity.tokenIdentifier,
+      eventType: "credential.deleted",
+      resourceType: "credential",
+      resourceId: credential.ref,
+      createdAt: deletedAt,
+    });
 
     return {
       credentialId: credential._id,

@@ -280,10 +280,16 @@ export default defineSchema({
     orgId: v.string(),
     actorId: v.string(),
     eventType: v.string(),
-    studyId: v.id("studies"),
+    studyId: v.optional(v.id("studies")),
+    resourceType: v.optional(v.string()),
+    resourceId: v.optional(v.string()),
     reason: v.optional(v.string()),
     createdAt: v.number(),
   })
+    .index("by_orgId_and_createdAt", ["orgId", "createdAt"])
+    .index("by_orgId_and_actorId_and_createdAt", ["orgId", "actorId", "createdAt"])
+    .index("by_orgId_and_studyId_and_createdAt", ["orgId", "studyId", "createdAt"])
+    .index("by_orgId_and_eventType_and_createdAt", ["orgId", "eventType", "createdAt"])
     .index("by_studyId_and_createdAt", ["studyId", "createdAt"])
     .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
     .index("by_eventType_and_createdAt", ["eventType", "createdAt"]),
@@ -342,4 +348,24 @@ export default defineSchema({
     updatedBy: v.string(),
     updatedAt: v.number(),
   }).index("by_orgId", ["orgId"]),
+
+  // 14. metrics
+  metrics: defineTable({
+    orgId: v.string(),
+    studyId: v.id("studies"),
+    runId: v.optional(v.id("runs")),
+    metricType: v.string(),
+    value: v.number(),
+    unit: v.string(),
+    status: v.optional(v.string()),
+    errorCode: v.optional(v.string()),
+    recordedAt: v.number(),
+  })
+    .index("by_orgId_and_recordedAt", ["orgId", "recordedAt"])
+    .index("by_studyId_and_recordedAt", ["studyId", "recordedAt"])
+    .index("by_orgId_and_metricType_and_recordedAt", [
+      "orgId",
+      "metricType",
+      "recordedAt",
+    ]),
 });

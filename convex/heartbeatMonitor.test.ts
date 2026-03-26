@@ -81,7 +81,7 @@ describe("heartbeatMonitor.monitorStaleRuns", () => {
 
     expect(result.staleRunCount).toBe(1);
     expect(run?.status).toBe("infra_error");
-    expect(run?.errorCode).toBe("HEARTBEAT_STALE");
+    expect(run?.errorCode).toBe("CALLBACK_REJECTED");
     expect(run?.endedAt).toBeTypeOf("number");
   });
 
