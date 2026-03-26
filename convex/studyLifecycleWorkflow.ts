@@ -96,6 +96,18 @@ export const runStudyLifecycle = workflow.define({
       { studyId: args.studyId },
       { inline: true, name: "advance-study-lifecycle" },
     );
+
+    const replaySnapshot = await waitForInitialCohortToSettle(step, args.studyId);
+
+    if (isTerminalStudyStatus(replaySnapshot.studyStatus)) {
+      return;
+    }
+
+    await step.runMutation(
+      internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay,
+      { studyId: args.studyId },
+      { inline: true, name: "complete-study-lifecycle" },
+    );
   },
 });
 
@@ -182,22 +194,24 @@ export const createStudyLifecycleReport = zInternalMutation({
       throw new ConvexError("Cannot create a study report before all runs are terminal.");
     }
 
+    const primaryRuns = runs.filter((run) => run.replayOfRunId === undefined);
+
     const completionRate = ratio(
-      runs.filter((run) => run.status === "success").length,
-      runs.length,
+      primaryRuns.filter((run) => run.status === "success").length,
+      primaryRuns.length,
     );
     const abandonmentRate = ratio(
-      runs.filter((run) => run.status === "gave_up").length,
-      runs.length,
+      primaryRuns.filter((run) => run.status === "gave_up").length,
+      primaryRuns.length,
     );
     const headlineMetrics = {
       completionRate,
       abandonmentRate,
-      medianSteps: median(runs.map((run) => run.stepCount ?? 0)),
-      medianDurationSec: median(runs.map((run) => run.durationSec ?? 0)),
+      medianSteps: median(primaryRuns.map((run) => run.stepCount ?? 0)),
+      medianDurationSec: median(primaryRuns.map((run) => run.durationSec ?? 0)),
     };
 
-    const issueClusterIds = await createPreliminaryIssueClusters(ctx, runs);
+    const issueClusterIds = await createVerifiedIssueClusters(ctx, runs);
     const createdAt = Date.now();
     const reportId = await ctx.db.insert("studyReports", {
       studyId: args.studyId,
@@ -248,6 +262,59 @@ export const advanceStudyLifecycleAfterInitialCohort = zInternalMutation({
       studyId: args.studyId,
       nextStatus: "replaying",
     });
+
+    await ctx.runMutation(internal.studyLifecycleWorkflow.queueReplayRunsForStudy, {
+      studyId: args.studyId,
+    });
+    await ctx.runMutation(internal.waveDispatch.dispatchQueuedRunsForStudy, {
+      studyId: args.studyId,
+    });
+
+    return await getStudyById(ctx, args.studyId);
+  },
+});
+
+export const queueReplayRunsForStudy = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    const study = await getStudyById(ctx, args.studyId);
+
+    if (study.status !== "replaying") {
+      throw new ConvexError("Replay runs can only be queued while the study is replaying.");
+    }
+
+    return {
+      studyId: args.studyId,
+      createdReplayRunCount: await createReplayRunsForStudy(ctx, args.studyId),
+    };
+  },
+});
+
+export const completeStudyLifecycleAfterReplay = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    const study = await getStudyById(ctx, args.studyId);
+
+    if (study.status === "completed" || study.status === "cancelled") {
+      return study;
+    }
+
+    if (study.status !== "replaying") {
+      throw new ConvexError(
+        "Study lifecycle can only complete replay verification while replaying.",
+      );
+    }
+
+    const runs = await listRunsForStudy(ctx, args.studyId);
+
+    if (!runs.every((run) => isTerminalRunStatus(run.status))) {
+      throw new ConvexError("Replay verification cannot complete before all runs are terminal.");
+    }
+
     await ctx.runMutation(internal.studies.transitionStudyState, {
       studyId: args.studyId,
       nextStatus: "analyzing",
@@ -261,6 +328,17 @@ export const advanceStudyLifecycleAfterInitialCohort = zInternalMutation({
     });
 
     return await getStudyById(ctx, args.studyId);
+  },
+});
+
+export const getReplayCandidates = zInternalQuery({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    await getStudyById(ctx, args.studyId);
+    const runs = await listRunsForStudy(ctx, args.studyId);
+    return buildReplayCandidates(runs);
   },
 });
 
@@ -304,74 +382,47 @@ async function waitForInitialCohortToSettle(
   }
 }
 
-async function createPreliminaryIssueClusters(
+async function createVerifiedIssueClusters(
   ctx: MutationCtx,
   runs: Array<Doc<"runs">>,
 ) {
-  const failingRuns = runs.filter(
-    (run) =>
-      run.status !== "success" &&
-      run.status !== "cancelled",
-  );
+  const replayCandidates = buildReplayCandidates(runs);
 
-  if (failingRuns.length === 0) {
+  if (replayCandidates.length === 0) {
     return [] as Id<"issueClusters">[];
   }
 
-  const affectedProtoPersonaIds = uniqueIds(
-    failingRuns.map((run) => run.protoPersonaId),
-  );
-  const representativeRunIds = failingRuns
-    .slice(0, 3)
-    .map((run) => run._id);
-  const evidenceKeys = uniqueStrings(
-    failingRuns.flatMap((run) => run.milestoneKeys),
-  );
-  const severity = deriveClusterSeverity(failingRuns);
-  const affectedRunRate = ratio(failingRuns.length, runs.length);
-  const clusterId = await ctx.db.insert("issueClusters", {
-    studyId: failingRuns[0]!.studyId,
-    title: "Preliminary lifecycle findings",
-    summary: `The lifecycle workflow observed ${failingRuns.length} non-success terminal run(s) before deep analysis was available.`,
-    severity,
-    affectedRunCount: failingRuns.length,
-    affectedRunRate,
-    affectedProtoPersonaIds,
-    affectedAxisRanges: [],
-    representativeRunIds,
-    replayConfidence: 0,
-    evidenceKeys,
-    recommendation:
-      "Review replay results and deeper analysis before prioritizing a fix.",
-    confidenceNote:
-      "This preliminary cluster is generated from raw terminal outcomes before replay verification.",
-    score: affectedRunRate * severityWeight(severity),
-  });
+  const promotedClusterIds: Id<"issueClusters">[] = [];
+  for (const candidate of replayCandidates) {
+    if (candidate.replayConfidence <= 0) {
+      continue;
+    }
 
-  return [clusterId];
-}
+    const clusterId = await ctx.db.insert("issueClusters", {
+      studyId: candidate.studyId,
+      title: buildReplayCandidateTitle(candidate),
+      summary: buildReplayCandidateSummary(candidate),
+      severity: candidate.severity,
+      affectedRunCount: candidate.affectedRunCount,
+      affectedRunRate: candidate.affectedRunRate,
+      affectedProtoPersonaIds: candidate.affectedProtoPersonaIds,
+      affectedAxisRanges: [],
+      representativeRunIds: candidate.representativeRunIds,
+      replayConfidence: candidate.replayConfidence,
+      evidenceKeys: candidate.evidenceKeys,
+      recommendation:
+        "Prioritize fixes for the reproduced failure pattern before broadening analysis.",
+      confidenceNote: `Replay reproduced ${candidate.reproducedFailures}/${candidate.replayAttempts} attempt(s).`,
+      score:
+        candidate.affectedRunRate *
+        severityWeight(candidate.severity) *
+        candidate.replayConfidence,
+    });
 
-function deriveClusterSeverity(runs: Array<Doc<"runs">>) {
-  if (
-    runs.some(
-      (run) =>
-        run.status === "hard_fail" ||
-        run.status === "blocked_by_guardrail" ||
-        run.status === "infra_error",
-    )
-  ) {
-    return "major" as const;
+    promotedClusterIds.push(clusterId);
   }
 
-  if (runs.some((run) => run.status === "timeout")) {
-    return "major" as const;
-  }
-
-  if (runs.some((run) => run.status === "gave_up")) {
-    return "minor" as const;
-  }
-
-  return "cosmetic" as const;
+  return promotedClusterIds;
 }
 
 function severityWeight(severity: Doc<"issueClusters">["severity"]) {
@@ -408,6 +459,156 @@ function ratio(numerator: number, denominator: number) {
   }
 
   return numerator / denominator;
+}
+
+async function createReplayRunsForStudy(
+  ctx: MutationCtx,
+  studyId: Id<"studies">,
+) {
+  const runs = await listRunsForStudy(ctx, studyId);
+  const replayCandidates = buildReplayCandidates(runs);
+  let createdReplayRunCount = 0;
+
+  for (const candidate of replayCandidates) {
+    const representativeRun = runs.find(
+      (run) => run._id === candidate.representativeRunId,
+    );
+
+    if (representativeRun === undefined) {
+      continue;
+    }
+
+    const existingReplayRuns = runs.filter(
+      (run) => run.replayOfRunId === candidate.representativeRunId,
+    );
+    const replayRunsToCreate = Math.max(0, 2 - existingReplayRuns.length);
+
+    for (let index = 0; index < replayRunsToCreate; index += 1) {
+      await ctx.db.insert("runs", {
+        studyId,
+        personaVariantId: representativeRun.personaVariantId,
+        protoPersonaId: representativeRun.protoPersonaId,
+        status: "queued",
+        replayOfRunId: candidate.representativeRunId,
+        frustrationCount: 0,
+        milestoneKeys: [],
+      });
+      createdReplayRunCount += 1;
+    }
+  }
+
+  return createdReplayRunCount;
+}
+
+function buildReplayCandidates(runs: Array<Doc<"runs">>) {
+  const originalRuns = runs.filter((run) => run.replayOfRunId === undefined);
+  const originalFailureGroups = new Map<string, Array<Doc<"runs">>>();
+
+  for (const run of originalRuns) {
+    const signature = getReplayFailureSignature(run);
+
+    if (signature === null) {
+      continue;
+    }
+
+    originalFailureGroups.set(signature, [
+      ...(originalFailureGroups.get(signature) ?? []),
+      run,
+    ]);
+  }
+
+  const replayCandidates: ReplayCandidate[] = [];
+  for (const [signature, groupedRuns] of originalFailureGroups.entries()) {
+    const severity = deriveReplaySeverity(groupedRuns);
+
+    if (groupedRuns.length < 2 && severity !== "blocker") {
+      continue;
+    }
+
+    const representativeRun = groupedRuns[0]!;
+    const replayAttempts = runs.filter(
+      (run) =>
+        run.replayOfRunId === representativeRun._id && isTerminalRunStatus(run.status),
+    );
+    const reproducedFailures = replayAttempts.filter((run) => {
+      return getReplayFailureSignature(run) === signature;
+    });
+
+    replayCandidates.push({
+      studyId: representativeRun.studyId,
+      signature,
+      severity,
+      affectedRunCount: groupedRuns.length,
+      affectedRunRate: ratio(groupedRuns.length, originalRuns.length),
+      affectedProtoPersonaIds: uniqueIds(groupedRuns.map((run) => run.protoPersonaId)),
+      representativeRunId: representativeRun._id,
+      representativeRunIds: groupedRuns.slice(0, 3).map((run) => run._id),
+      replayAttempts: replayAttempts.length,
+      reproducedFailures: reproducedFailures.length,
+      replayConfidence: ratio(reproducedFailures.length, replayAttempts.length),
+      evidenceKeys: uniqueStrings(
+        [...groupedRuns, ...reproducedFailures].flatMap((run) => run.milestoneKeys),
+      ),
+    });
+  }
+
+  return replayCandidates.sort((left, right) => {
+    if (left.affectedRunCount !== right.affectedRunCount) {
+      return right.affectedRunCount - left.affectedRunCount;
+    }
+
+    return left.signature.localeCompare(right.signature);
+  });
+}
+
+function getReplayFailureSignature(run: Doc<"runs">) {
+  if (run.status === "success" || run.status === "cancelled") {
+    return null;
+  }
+
+  return `${run.status}|${run.errorCode ?? "NO_ERROR_CODE"}|${run.finalUrl ?? "NO_FINAL_URL"}`;
+}
+
+function deriveReplaySeverity(runs: Array<Doc<"runs">>) {
+  const severities = runs.map((run) => severityFromRunStatus(run.status));
+
+  if (severities.includes("blocker")) {
+    return "blocker" as const;
+  }
+
+  if (severities.includes("major")) {
+    return "major" as const;
+  }
+
+  if (severities.includes("minor")) {
+    return "minor" as const;
+  }
+
+  return "cosmetic" as const;
+}
+
+function severityFromRunStatus(status: Doc<"runs">["status"]) {
+  switch (status) {
+    case "hard_fail":
+    case "blocked_by_guardrail":
+      return "blocker" as const;
+    case "timeout":
+    case "infra_error":
+      return "major" as const;
+    case "soft_fail":
+    case "gave_up":
+      return "minor" as const;
+    default:
+      return "cosmetic" as const;
+  }
+}
+
+function buildReplayCandidateTitle(candidate: ReplayCandidate) {
+  return `Replay verified failure: ${candidate.signature}`;
+}
+
+function buildReplayCandidateSummary(candidate: ReplayCandidate) {
+  return `Failure signature ${candidate.signature} affected ${candidate.affectedRunCount} original run(s) and replay reproduced ${candidate.reproducedFailures}/${candidate.replayAttempts} attempt(s).`;
 }
 
 function uniqueIds<TableName extends "issueClusters" | "protoPersonas" | "runs">(
@@ -477,6 +678,21 @@ async function getStudyById(
 
   return study;
 }
+
+type ReplayCandidate = {
+  studyId: Id<"studies">;
+  signature: string;
+  severity: Doc<"issueClusters">["severity"];
+  affectedRunCount: number;
+  affectedRunRate: number;
+  affectedProtoPersonaIds: Array<Id<"protoPersonas">>;
+  representativeRunId: Id<"runs">;
+  representativeRunIds: Array<Id<"runs">>;
+  replayAttempts: number;
+  reproducedFailures: number;
+  replayConfidence: number;
+  evidenceKeys: string[];
+};
 
 async function getStudyForOrg(
   ctx: QueryCtx,

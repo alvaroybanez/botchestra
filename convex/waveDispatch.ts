@@ -107,6 +107,23 @@ export const dispatchStudyWave = zInternalMutation({
   },
 });
 
+export const dispatchQueuedRunsForStudy = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    const study = await getStudyById(ctx, args.studyId);
+    const workIds = await dispatchAvailableRuns(ctx, args.studyId);
+
+    return {
+      studyId: args.studyId,
+      activeConcurrency: resolveDispatchConcurrency(study.activeConcurrency),
+      dispatchedRunCount: workIds.length,
+      workIds,
+    };
+  },
+});
+
 export const getRunDispatchPayload = zInternalQuery({
   args: {
     runId: zid("runs"),
@@ -232,7 +249,7 @@ async function dispatchAvailableRuns(
 ) {
   const study = await getStudyById(ctx, studyId);
 
-  if (study.status !== "queued" && study.status !== "running") {
+  if (!canDispatchQueuedRuns(study.status)) {
     return [] as string[];
   }
 
@@ -480,6 +497,10 @@ function resolveDispatchConcurrency(activeConcurrency: number) {
 
 function isClosedRunStatus(status: Doc<"runs">["status"]) {
   return !["queued", "dispatching", "running"].includes(status);
+}
+
+function canDispatchQueuedRuns(status: Doc<"studies">["status"]) {
+  return status === "queued" || status === "running" || status === "replaying";
 }
 
 async function getStudyById(

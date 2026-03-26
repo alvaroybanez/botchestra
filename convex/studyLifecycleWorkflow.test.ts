@@ -91,12 +91,40 @@ describe("studyLifecycleWorkflow", () => {
     expect(preCompletionReport).toBeNull();
   });
 
-  it("advances a settled running study to completed and exposes the report", async () => {
+  it("completes replay verification and exposes the report", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "running", runBudget: 3 });
-    await seedTerminalRuns(t, studyId, ["success", "gave_up", "success"]);
-    await t.mutation(internal.studyLifecycleWorkflow.advanceStudyLifecycleAfterInitialCohort, {
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 3 });
+    await seedRunCluster(t, studyId, {
+      count: 2,
+      status: "hard_fail",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+    await t.mutation(internal.studyLifecycleWorkflow.queueReplayRunsForStudy, {
+      studyId,
+    });
+    const replayRuns = await listReplayRuns(t, studyId);
+
+    expect(replayRuns).toHaveLength(2);
+
+    await settleReplayRun(t, replayRuns[0]!._id, {
+      status: "hard_fail",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    await settleReplayRun(t, replayRuns[1]!._id, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+    await t.mutation(internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay, {
       studyId,
     });
 
@@ -106,13 +134,15 @@ describe("studyLifecycleWorkflow", () => {
     const report = await asResearcher.query(api.studyLifecycleWorkflow.getStudyReport, {
       studyId,
     });
+    const promotedClusters = await listIssueClusters(t, studyId);
 
     expect(completedStudy?.status).toBe("completed");
     expect(completedStudy?.completedAt).toBeTypeOf("number");
     expect(report?.studyId).toBe(studyId);
     expect(report?.issueClusterIds).toHaveLength(1);
-    expect(report?.headlineMetrics.completionRate).toBeCloseTo(2 / 3, 5);
-    expect(report?.headlineMetrics.abandonmentRate).toBeCloseTo(1 / 3, 5);
+    expect(promotedClusters[0]?.replayConfidence).toBe(0.5);
+    expect(report?.headlineMetrics.completionRate).toBeCloseTo(1 / 3, 5);
+    expect(report?.headlineMetrics.abandonmentRate).toBe(0);
     expect(report?.limitations).toEqual(
       expect.arrayContaining([
         "Findings are synthetic and directional.",
@@ -153,6 +183,282 @@ describe("studyLifecycleWorkflow", () => {
     expect(failedStudy?.status).toBe("failed");
     expect(failedStudy?.completedAt).toBeUndefined();
     expect(report).toBeNull();
+  });
+
+  it("identifies replay candidates from repeated failures and single blockers", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, { status: "running", runBudget: 5 });
+
+    await seedRunCluster(t, studyId, {
+      count: 3,
+      status: "gave_up",
+      errorCode: "CHECKOUT_COPY_CONFUSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "soft_fail",
+      errorCode: "SINGLE_NON_BLOCKER",
+      finalUrl: "https://example.com/shop/cart",
+    });
+    await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "hard_fail",
+      errorCode: "PAYMENT_BLOCKER",
+      finalUrl: "https://example.com/shop/payment",
+    });
+
+    const candidates = await t.query(internal.studyLifecycleWorkflow.getReplayCandidates, {
+      studyId,
+    });
+
+    expect(candidates).toHaveLength(2);
+    expect(
+      candidates.map((candidate) => ({
+        affectedRunCount: candidate.affectedRunCount,
+        severity: candidate.severity,
+        signature: candidate.signature,
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          affectedRunCount: 3,
+          severity: "minor",
+          signature: "gave_up|CHECKOUT_COPY_CONFUSING|https://example.com/shop/checkout",
+        },
+        {
+          affectedRunCount: 1,
+          severity: "blocker",
+          signature: "hard_fail|PAYMENT_BLOCKER|https://example.com/shop/payment",
+        },
+      ]),
+    );
+  });
+
+  it("dispatches exactly 2 replay runs per candidate", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, {
+      status: "replaying",
+      runBudget: 4,
+      activeConcurrency: 4,
+    });
+
+    await seedRunCluster(t, studyId, {
+      count: 2,
+      status: "hard_fail",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "blocked_by_guardrail",
+      errorCode: "GUARDRAIL_STOP",
+      finalUrl: "https://example.com/shop/payment",
+    });
+
+    await t.mutation(internal.studyLifecycleWorkflow.queueReplayRunsForStudy, {
+      studyId,
+    });
+
+    const replayRuns = await listReplayRuns(t, studyId);
+    const replayRunsByRepresentative = replayRuns.reduce<Record<string, number>>(
+      (accumulator, run) => {
+        const key = String(run.replayOfRunId);
+        accumulator[key] = (accumulator[key] ?? 0) + 1;
+        return accumulator;
+      },
+      {},
+    );
+
+    expect(replayRuns).toHaveLength(4);
+    expect(Object.values(replayRunsByRepresentative)).toEqual([2, 2]);
+    expect(
+      replayRuns.every((run) => run.replayOfRunId !== undefined),
+    ).toBe(true);
+  });
+
+  it("computes replay confidence as reproduced failures over replay attempts", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 6 });
+
+    const zeroConfidenceRepresentative = await seedRunCluster(t, studyId, {
+      count: 2,
+      status: "hard_fail",
+      errorCode: "ZERO_CONFIDENCE",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    const partialConfidenceRepresentative = await seedRunCluster(t, studyId, {
+      count: 2,
+      status: "hard_fail",
+      errorCode: "PARTIAL_CONFIDENCE",
+      finalUrl: "https://example.com/shop/payment",
+    });
+    const fullConfidenceRepresentative = await seedRunCluster(t, studyId, {
+      count: 2,
+      status: "hard_fail",
+      errorCode: "FULL_CONFIDENCE",
+      finalUrl: "https://example.com/shop/review",
+    });
+
+    await seedReplayRunsForRepresentative(t, studyId, zeroConfidenceRepresentative[0]!._id, [
+      {
+        status: "success",
+        finalOutcome: "SUCCESS",
+        finalUrl: "https://example.com/shop/confirmation",
+      },
+      {
+        status: "success",
+        finalOutcome: "SUCCESS",
+        finalUrl: "https://example.com/shop/confirmation",
+      },
+    ]);
+    await seedReplayRunsForRepresentative(
+      t,
+      studyId,
+      partialConfidenceRepresentative[0]!._id,
+      [
+        {
+          status: "hard_fail",
+          errorCode: "PARTIAL_CONFIDENCE",
+          finalUrl: "https://example.com/shop/payment",
+        },
+        {
+          status: "success",
+          finalOutcome: "SUCCESS",
+          finalUrl: "https://example.com/shop/confirmation",
+        },
+      ],
+    );
+    await seedReplayRunsForRepresentative(t, studyId, fullConfidenceRepresentative[0]!._id, [
+      {
+        status: "hard_fail",
+        errorCode: "FULL_CONFIDENCE",
+        finalUrl: "https://example.com/shop/review",
+      },
+      {
+        status: "hard_fail",
+        errorCode: "FULL_CONFIDENCE",
+        finalUrl: "https://example.com/shop/review",
+      },
+    ]);
+
+    const candidates = await t.query(internal.studyLifecycleWorkflow.getReplayCandidates, {
+      studyId,
+    });
+    const confidenceBySignature = Object.fromEntries(
+      candidates.map((candidate) => [candidate.signature, candidate.replayConfidence]),
+    );
+
+    expect(
+      confidenceBySignature[
+        "hard_fail|ZERO_CONFIDENCE|https://example.com/shop/checkout"
+      ],
+    ).toBe(0);
+    expect(
+      confidenceBySignature[
+        "hard_fail|PARTIAL_CONFIDENCE|https://example.com/shop/payment"
+      ],
+    ).toBe(0.5);
+    expect(
+      confidenceBySignature[
+        "hard_fail|FULL_CONFIDENCE|https://example.com/shop/review"
+      ],
+    ).toBe(1);
+  });
+
+  it("promotes only replay-backed candidates into issue clusters", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 8 });
+
+    const repeatedFailure = await seedRunCluster(t, studyId, {
+      count: 2,
+      status: "hard_fail",
+      errorCode: "REPEATED_FAILURE",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    const singleNonBlocker = await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "soft_fail",
+      errorCode: "SINGLE_NON_BLOCKER",
+      finalUrl: "https://example.com/shop/cart",
+    });
+    const singleBlockerPromoted = await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "blocked_by_guardrail",
+      errorCode: "BLOCKER_PROMOTED",
+      finalUrl: "https://example.com/shop/payment",
+    });
+    const singleBlockerRejected = await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "hard_fail",
+      errorCode: "BLOCKER_REJECTED",
+      finalUrl: "https://example.com/shop/review",
+    });
+
+    await seedReplayRunsForRepresentative(t, studyId, repeatedFailure[0]!._id, [
+      {
+        status: "hard_fail",
+        errorCode: "REPEATED_FAILURE",
+        finalUrl: "https://example.com/shop/checkout",
+      },
+      {
+        status: "success",
+        finalOutcome: "SUCCESS",
+        finalUrl: "https://example.com/shop/confirmation",
+      },
+    ]);
+    await seedReplayRunsForRepresentative(t, studyId, singleBlockerPromoted[0]!._id, [
+      {
+        status: "blocked_by_guardrail",
+        errorCode: "BLOCKER_PROMOTED",
+        finalUrl: "https://example.com/shop/payment",
+      },
+      {
+        status: "success",
+        finalOutcome: "SUCCESS",
+        finalUrl: "https://example.com/shop/confirmation",
+      },
+    ]);
+    await seedReplayRunsForRepresentative(t, studyId, singleBlockerRejected[0]!._id, [
+      {
+        status: "success",
+        finalOutcome: "SUCCESS",
+        finalUrl: "https://example.com/shop/confirmation",
+      },
+      {
+        status: "success",
+        finalOutcome: "SUCCESS",
+        finalUrl: "https://example.com/shop/confirmation",
+      },
+    ]);
+    void singleNonBlocker;
+
+    await t.mutation(internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay, {
+      studyId,
+    });
+
+    const clusters = await listIssueClusters(t, studyId);
+    const report = await t.run(async (ctx) => {
+      for await (const studyReport of ctx.db.query("studyReports")) {
+        if (studyReport.studyId === studyId) {
+          return studyReport;
+        }
+      }
+
+      return null;
+    });
+
+    expect(clusters).toHaveLength(2);
+    expect(clusters.map((cluster) => cluster.replayConfidence)).toEqual([0.5, 0.5]);
+    expect(
+      clusters.map((cluster) => cluster.summary),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("REPEATED_FAILURE"),
+        expect.stringContaining("BLOCKER_PROMOTED"),
+      ]),
+    );
+    expect(report?.issueClusterIds).toHaveLength(2);
   });
 });
 
@@ -325,4 +631,231 @@ async function seedTerminalRuns(
       }),
     );
   }
+}
+
+async function seedRunCluster(
+  t: TestInstance,
+  studyId: Id<"studies">,
+  options: {
+    count: number;
+    status: Doc<"runs">["status"];
+    errorCode?: string;
+    finalOutcome?: string;
+    finalUrl?: string;
+  },
+) {
+  const seededRuns: Array<Doc<"runs">> = [];
+
+  for (let index = 0; index < options.count; index += 1) {
+    seededRuns.push(
+      await insertTerminalRun(t, studyId, {
+        status: options.status,
+        errorCode: options.errorCode,
+        finalOutcome:
+          options.finalOutcome ??
+          (options.status === "success" ? "SUCCESS" : "FAILED"),
+        finalUrl: options.finalUrl,
+      }),
+    );
+  }
+
+  return seededRuns;
+}
+
+async function seedReplayRunsForRepresentative(
+  t: TestInstance,
+  studyId: Id<"studies">,
+  replayOfRunId: Id<"runs">,
+  replayRuns: Array<{
+    status: Doc<"runs">["status"];
+    errorCode?: string;
+    finalOutcome?: string;
+    finalUrl?: string;
+  }>,
+) {
+  const representativeRun = await t.run(async (ctx) => ctx.db.get(replayOfRunId));
+
+  if (representativeRun === null) {
+    throw new Error(`Representative run ${replayOfRunId} not found.`);
+  }
+
+  for (const replayRun of replayRuns) {
+    await t.run(async (ctx) =>
+      ctx.db.insert("runs", {
+        studyId,
+        personaVariantId: representativeRun.personaVariantId,
+        protoPersonaId: representativeRun.protoPersonaId,
+        status: replayRun.status,
+        replayOfRunId,
+        startedAt: Date.now(),
+        endedAt: Date.now(),
+        durationSec: 11,
+        stepCount: 5,
+        finalOutcome: replayRun.finalOutcome ?? "FAILED",
+        finalUrl: replayRun.finalUrl,
+        frustrationCount: replayRun.status === "success" ? 0 : 2,
+        milestoneKeys:
+          replayRun.errorCode !== undefined
+            ? [`replays/${replayOfRunId}/${replayRun.errorCode}.png`]
+            : [],
+        ...(replayRun.errorCode !== undefined ? { errorCode: replayRun.errorCode } : {}),
+      }),
+    );
+  }
+}
+
+async function settleReplayRun(
+  t: TestInstance,
+  runId: Id<"runs">,
+  outcome: {
+    status:
+      | "success"
+      | "hard_fail"
+      | "soft_fail"
+      | "gave_up"
+      | "timeout"
+      | "blocked_by_guardrail"
+      | "infra_error";
+    errorCode?: string;
+    finalOutcome?: string;
+    finalUrl?: string;
+  },
+) {
+  const run = await t.run(async (ctx) => ctx.db.get(runId));
+
+  if (run === null) {
+    throw new Error(`Replay run ${runId} not found.`);
+  }
+
+  if (run.status === "queued") {
+    await t.mutation(internal.runs.transitionRunState, {
+      runId,
+      nextStatus: "dispatching",
+    });
+  }
+
+  const refreshedRun = await t.run(async (ctx) => ctx.db.get(runId));
+
+  if (refreshedRun?.status === "dispatching") {
+    await t.mutation(internal.runs.transitionRunState, {
+      runId,
+      nextStatus: "running",
+    });
+  }
+
+  await t.mutation(internal.runs.settleRunFromCallback, {
+    runId,
+    nextStatus: outcome.status,
+    patch: {
+      endedAt: Date.now(),
+      durationSec: 14,
+      stepCount: 6,
+      finalOutcome:
+        outcome.finalOutcome ??
+        (outcome.status === "success" ? "SUCCESS" : "FAILED"),
+      finalUrl: outcome.finalUrl,
+      frustrationCount: outcome.status === "success" ? 0 : 2,
+      ...(outcome.errorCode !== undefined ? { errorCode: outcome.errorCode } : {}),
+    },
+  });
+}
+
+async function insertTerminalRun(
+  t: TestInstance,
+  studyId: Id<"studies">,
+  options: {
+    status: Doc<"runs">["status"];
+    errorCode?: string;
+    finalOutcome: string;
+    finalUrl?: string;
+  },
+) {
+  const study = await t.run(async (ctx) => ctx.db.get(studyId));
+
+  if (study === null) {
+    throw new Error(`Study ${studyId} not found.`);
+  }
+
+  const protoPersonaId = await t.run(async (ctx) =>
+    ctx.db.insert("protoPersonas", {
+      packId: study.personaPackId,
+      name: `Proto ${Math.random()}`,
+      summary: "Moves quickly and expects little friction.",
+      axes: [],
+      sourceType: "manual",
+      sourceRefs: [],
+      evidenceSnippets: [],
+    }),
+  );
+
+  const personaVariantId = await t.run(async (ctx) =>
+    ctx.db.insert("personaVariants", {
+      studyId,
+      personaPackId: study.personaPackId,
+      protoPersonaId,
+      axisValues: [],
+      edgeScore: 0.5,
+      tensionSeed: "Replay test tension seed",
+      firstPersonBio:
+        "A decisive shopper who expects a smooth purchase flow with clear totals, stable payment affordances, and immediate feedback at each step of checkout.",
+      behaviorRules: [
+        "Moves quickly when the path is obvious.",
+        "Pauses on unclear payment states.",
+        "Looks for reassurance before submitting.",
+        "Trusts familiar storefront patterns.",
+        "Backtracks if totals feel surprising.",
+      ],
+      coherenceScore: 0.9,
+      distinctnessScore: 0.8,
+      accepted: true,
+    }),
+  );
+
+  const now = Date.now();
+  const runId = await t.run(async (ctx) =>
+    ctx.db.insert("runs", {
+      studyId,
+      personaVariantId,
+      protoPersonaId,
+      status: options.status,
+      startedAt: now - 5_000,
+      endedAt: now,
+      durationSec: 18,
+      stepCount: 7,
+      finalOutcome: options.finalOutcome,
+      finalUrl: options.finalUrl,
+      frustrationCount: options.status === "success" ? 0 : 3,
+      milestoneKeys:
+        options.errorCode !== undefined
+          ? [`runs/${studyId}/${options.errorCode}.png`]
+          : [],
+      ...(options.errorCode !== undefined ? { errorCode: options.errorCode } : {}),
+    }),
+  );
+
+  const insertedRun = await t.run(async (ctx) => ctx.db.get(runId));
+
+  if (insertedRun === null) {
+    throw new Error(`Run ${runId} was not inserted.`);
+  }
+
+  return insertedRun;
+}
+
+async function listReplayRuns(t: TestInstance, studyId: Id<"studies">) {
+  return (await t.run(async (ctx) =>
+    ctx.db
+      .query("runs")
+      .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
+      .collect(),
+  )).filter((run) => run.replayOfRunId !== undefined);
+}
+
+async function listIssueClusters(t: TestInstance, studyId: Id<"studies">) {
+  return await t.run(async (ctx) =>
+    ctx.db
+      .query("issueClusters")
+      .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
+      .collect(),
+  );
 }
