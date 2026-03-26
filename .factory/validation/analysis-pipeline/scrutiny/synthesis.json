@@ -1,0 +1,83 @@
+{
+  "milestone": "analysis-pipeline",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 11,
+    "passed": 5,
+    "failed": 6,
+    "failedFeatures": [
+      "export-actions",
+      "findings-explorer-frontend",
+      "issue-clustering",
+      "per-run-summarization",
+      "report-generation",
+      "report-page-frontend"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "export-actions",
+      "severity": "blocking",
+      "description": "`exportHtml` delegates to `buildStudyReportArtifacts(...).html`, so the exported file inherits the renderer that only lists evidence keys instead of embedding screenshots or resolvable image URLs. The action therefore does not deliver the self-contained, viewable HTML promised by the feature."
+    },
+    {
+      "featureId": "findings-explorer-frontend",
+      "severity": "blocking",
+      "description": "Each findings card opens `buildEvidenceHref(evidence.fullResolutionKey)`, which falls back to `/artifacts/<encoded key>`. The repo provides no artifact route or URL resolver for that path, so live evidence links do not resolve to the promised full-resolution artifacts (VAL-ANALYSIS-017)."
+    },
+    {
+      "featureId": "issue-clustering",
+      "severity": "blocking",
+      "description": "`replaceIssueClustersForStudy` only reads the first 200 runs and first 200 persona variants. When a study accumulates more than 200 run documents (possible with 100 primaries plus replay attempts), Stage 2 silently drops later runs/variants and can under-cluster or mis-rank findings."
+    },
+    {
+      "featureId": "per-run-summarization",
+      "severity": "blocking",
+      "description": "`getRunSummarizationContext` truncates the study to the first 200 runs via `.take(200)`. A study can reach 100 primary runs plus up to 200 replay runs, so later terminal runs can be omitted from Stage 1 entirely and never receive a `summaryKey`, violating VAL-ANALYSIS-002's requirement that every non-excluded terminal run be summarized."
+    },
+    {
+      "featureId": "report-generation",
+      "severity": "blocking",
+      "description": "`createStudyLifecycleReport` only stores `htmlReportKey`/`jsonReportKey` strings on the `studyReports` row. No code in this feature writes the generated HTML or JSON bodies to storage/R2, so the keys are placeholders and cannot be fetched as required by VAL-ANALYSIS-009 and VAL-ANALYSIS-011."
+    },
+    {
+      "featureId": "report-generation",
+      "severity": "blocking",
+      "description": "The HTML renderer only prints `evidenceKeys` as text and never embeds screenshots or long-lived URLs. The generated report therefore is not actually self-contained with viewable evidence, which misses VAL-ANALYSIS-010."
+    },
+    {
+      "featureId": "report-page-frontend",
+      "severity": "blocking",
+      "description": "The report page builds thumbnail/full-resolution URLs with `toArtifactHref`, which resolves to `/artifacts/<key>`. The app does not define an artifact route or signed URL resolver, so live evidence thumbnails and their full-resolution links do not actually load."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "Skill: fullstack-worker",
+      "suggestion": "Document how manual verification should proceed when the required dev port 5180 is already occupied by a healthy app and `bun run dev` auto-increments to a disallowed fallback port.",
+      "evidence": "The findings-explorer-frontend review observed the same 5180\u21925182 auto-bump during browser verification that persona-engine scrutiny had already flagged, so the gap is recurring across milestones. Current evidence: `.factory/skills/fullstack-worker/SKILL.md:37-42` says to start `bun run dev` if not running. In `handoffs/2026-03-26T18-34-49-054Z__findings-explorer-frontend__0a1951cd-92b0-4553-8eac-eb669a0df6f6.json`, the worker notes that `bun run dev` tried to move Vite to 5182 and manual verification had to reuse the already-running 5180 server instead.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
