@@ -10,6 +10,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import schema from "./schema";
 import {
   decodeRunSummaryKey,
+  encodeRunSummaryKey,
   runSummarySchema,
   type RunSummary,
 } from "./analysis/runSummaries";
@@ -294,6 +295,368 @@ describe("analysisPipeline.summarizeStudyRuns", () => {
   });
 });
 
+describe("analysisPipeline clustering", () => {
+  beforeEach(() => {
+    mockedGenerateWithModel.mockReset();
+  });
+
+  it("materializes issue clusters with required fields, affected segments, and evidence keys", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+    const checkoutRunA = await insertTerminalRun(t, studyId, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+      axisValues: [
+        { key: "digital_confidence", value: -0.8 },
+        { key: "risk_tolerance", value: 0.2 },
+      ],
+      milestoneKeys: ["runs/checkout-run-a.png"],
+    });
+    const checkoutRunB = await insertTerminalRun(t, studyId, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+      axisValues: [
+        { key: "digital_confidence", value: -0.3 },
+        { key: "risk_tolerance", value: 0.6 },
+      ],
+      milestoneKeys: ["runs/checkout-run-b.png"],
+    });
+    const paymentRun = await insertTerminalRun(t, studyId, {
+      status: "gave_up",
+      finalOutcome: "ABANDONED",
+      finalUrl: "https://example.com/shop/payment",
+      axisValues: [{ key: "digital_confidence", value: 0.7 }],
+      milestoneKeys: ["runs/payment-run.png"],
+    });
+    await insertTerminalRun(t, studyId, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+      axisValues: [{ key: "digital_confidence", value: 0.1 }],
+    });
+
+    await attachSummaryToRun(
+      t,
+      checkoutRunA,
+      makeSummary({
+        sourceRunStatus: "hard_fail",
+        outcomeClassification: "failure",
+        failureSummary:
+          "The checkout page hid the primary action and the shopper could not continue.",
+        failurePoint: "Checkout page at /shop/checkout",
+        lastSuccessfulState: "Cart review completed.",
+        blockingText: "CHECKOUT_BUTTON_MISSING",
+        frustrationMarkers: ["missing primary action"],
+        representativeQuote: "I cannot see how to continue from checkout.",
+      }),
+    );
+    await attachSummaryToRun(
+      t,
+      checkoutRunB,
+      makeSummary({
+        sourceRunStatus: "hard_fail",
+        outcomeClassification: "failure",
+        failureSummary:
+          "The checkout page hid the primary action and the shopper could not continue.",
+        failurePoint: "Checkout page at /shop/checkout",
+        lastSuccessfulState: "Cart review completed.",
+        blockingText: "CHECKOUT_BUTTON_MISSING",
+        frustrationMarkers: ["missing primary action", "hesitation"],
+        representativeQuote: "The next step vanished on checkout.",
+      }),
+    );
+    await attachSummaryToRun(
+      t,
+      paymentRun,
+      makeSummary({
+        sourceRunStatus: "gave_up",
+        outcomeClassification: "abandoned",
+        failureSummary:
+          "The shopper abandoned on payment after confusing inline validation.",
+        failurePoint: "Payment page at /shop/payment",
+        lastSuccessfulState: "Address details were entered.",
+        blockingText: "Inline validation was vague.",
+        frustrationMarkers: ["gave up", "validation confusion"],
+        representativeQuote: "I gave up because the payment errors made no sense.",
+      }),
+    );
+
+    await insertReplayRun(t, studyId, checkoutRunA, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    await insertReplayRun(t, studyId, checkoutRunA, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+    await insertReplayRun(t, studyId, paymentRun, {
+      status: "gave_up",
+      finalOutcome: "ABANDONED",
+      finalUrl: "https://example.com/shop/payment",
+    });
+    await insertReplayRun(t, studyId, paymentRun, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+
+    const report = await t.mutation(
+      internal.studyLifecycleWorkflow.createStudyLifecycleReport,
+      { studyId },
+    );
+    const clusters = await listIssueClusters(t, studyId);
+    const checkoutCluster = clusters.find((cluster) =>
+      cluster.representativeRunIds.includes(checkoutRunA),
+    );
+    const paymentCluster = clusters.find((cluster) =>
+      cluster.representativeRunIds.includes(paymentRun),
+    );
+
+    expect(report.issueClusterIds).toHaveLength(2);
+    expect(clusters).toHaveLength(2);
+    expect(checkoutCluster).toBeDefined();
+    expect(paymentCluster).toBeDefined();
+
+    for (const cluster of clusters) {
+      const requiredFields = [
+        "title",
+        "summary",
+        "severity",
+        "affectedRunCount",
+        "affectedRunRate",
+        "affectedProtoPersonaIds",
+        "affectedAxisRanges",
+        "representativeRunIds",
+        "replayConfidence",
+        "evidenceKeys",
+        "recommendation",
+        "confidenceNote",
+        "score",
+      ] as const;
+
+      for (const field of requiredFields) {
+        expect(cluster).toHaveProperty(field);
+        expect(cluster[field]).not.toBeNull();
+        expect(cluster[field]).not.toBeUndefined();
+      }
+
+      expect(cluster.title).not.toHaveLength(0);
+      expect(cluster.summary).not.toHaveLength(0);
+      expect(cluster.recommendation).not.toHaveLength(0);
+      expect(cluster.confidenceNote).not.toHaveLength(0);
+      expect(cluster.affectedRunCount).toBeGreaterThan(0);
+      expect(cluster.affectedRunRate).toBeGreaterThan(0);
+      expect(cluster.representativeRunIds.length).toBeGreaterThan(0);
+      expect(cluster.score).toBeTypeOf("number");
+      expect(Number.isFinite(cluster.score)).toBe(true);
+      expect(cluster.replayConfidence).toBeGreaterThanOrEqual(0);
+      expect(cluster.replayConfidence).toBeLessThanOrEqual(1);
+      expect(cluster.evidenceKeys.every((key) => typeof key === "string")).toBe(true);
+    }
+
+    expect(checkoutCluster).toMatchObject({
+      severity: "blocker",
+      affectedRunCount: 2,
+      affectedRunRate: 0.5,
+      affectedProtoPersonaIds: expect.any(Array),
+      representativeRunIds: expect.arrayContaining([checkoutRunA, checkoutRunB]),
+      replayConfidence: 0.5,
+      evidenceKeys: expect.arrayContaining([
+        "runs/checkout-run-a.png",
+        "runs/checkout-run-b.png",
+        `replays/${checkoutRunA}/CHECKOUT_BUTTON_MISSING.png`,
+      ]),
+    });
+    expect(checkoutCluster!.affectedProtoPersonaIds).toHaveLength(2);
+    expect(checkoutCluster!.affectedAxisRanges).toEqual(
+      expect.arrayContaining([
+        { key: "digital_confidence", min: -0.8, max: -0.3 },
+        { key: "risk_tolerance", min: 0.2, max: 0.6 },
+      ]),
+    );
+    expect(paymentCluster).toMatchObject({
+      severity: "minor",
+      affectedRunCount: 1,
+      affectedRunRate: 0.25,
+      replayConfidence: 0.5,
+      evidenceKeys: expect.arrayContaining(["runs/payment-run.png"]),
+    });
+  });
+
+  it("keeps clusters without replay coverage and records zero replay confidence", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+    const replayedFailureRun = await insertTerminalRun(t, studyId, {
+      status: "soft_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_COPY_CONFUSION",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    const unreplayedFailureRun = await insertTerminalRun(t, studyId, {
+      status: "soft_fail",
+      finalOutcome: "FAILED",
+      errorCode: "PAYMENT_LABEL_CONFUSION",
+      finalUrl: "https://example.com/shop/payment",
+    });
+
+    await attachSummaryToRun(
+      t,
+      replayedFailureRun,
+      makeSummary({
+        sourceRunStatus: "soft_fail",
+        outcomeClassification: "failure",
+        failureSummary: "Checkout copy confused the shopper.",
+        failurePoint: "Checkout page at /shop/checkout",
+        lastSuccessfulState: "Cart review completed.",
+        blockingText: "CHECKOUT_COPY_CONFUSION",
+        representativeQuote: "I wasn't sure what the checkout button meant.",
+      }),
+    );
+    await attachSummaryToRun(
+      t,
+      unreplayedFailureRun,
+      makeSummary({
+        sourceRunStatus: "soft_fail",
+        outcomeClassification: "failure",
+        failureSummary: "Payment labels confused the shopper.",
+        failurePoint: "Payment page at /shop/payment",
+        lastSuccessfulState: "Checkout form completed.",
+        blockingText: "PAYMENT_LABEL_CONFUSION",
+        representativeQuote: "The payment labels didn't match what I expected.",
+      }),
+    );
+
+    await insertReplayRun(t, studyId, replayedFailureRun, {
+      status: "soft_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_COPY_CONFUSION",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    await insertReplayRun(t, studyId, replayedFailureRun, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+
+    const report = await t.mutation(
+      internal.studyLifecycleWorkflow.createStudyLifecycleReport,
+      { studyId },
+    );
+    const clusters = await listIssueClusters(t, studyId);
+    const replayedCluster = clusters.find((cluster) =>
+      cluster.representativeRunIds.includes(replayedFailureRun),
+    );
+    const unreplayedCluster = clusters.find((cluster) =>
+      cluster.representativeRunIds.includes(unreplayedFailureRun),
+    );
+
+    expect(report.issueClusterIds).toHaveLength(2);
+    expect(clusters).toHaveLength(2);
+    expect(replayedCluster?.replayConfidence).toBe(0.5);
+    expect(unreplayedCluster?.replayConfidence).toBe(0);
+    expect(unreplayedCluster?.representativeRunIds).toContain(unreplayedFailureRun);
+  });
+
+  it("orders study report issueClusterIds by descending score with a stable tie-break", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+    const firstClusterRun = await insertTerminalRun(t, studyId, {
+      status: "soft_fail",
+      finalOutcome: "FAILED",
+      errorCode: "ADDRESS_COPY_CONFUSION",
+      finalUrl: "https://example.com/shop/address",
+    });
+    const secondClusterRun = await insertTerminalRun(t, studyId, {
+      status: "soft_fail",
+      finalOutcome: "FAILED",
+      errorCode: "PAYMENT_COPY_CONFUSION",
+      finalUrl: "https://example.com/shop/payment",
+    });
+
+    await attachSummaryToRun(
+      t,
+      firstClusterRun,
+      makeSummary({
+        sourceRunStatus: "soft_fail",
+        outcomeClassification: "failure",
+        failureSummary: "Address copy caused the user to stop.",
+        failurePoint: "Address page at /shop/address",
+        lastSuccessfulState: "Cart review completed.",
+        blockingText: "ADDRESS_COPY_CONFUSION",
+        representativeQuote: "The address instructions were unclear.",
+      }),
+    );
+    await attachSummaryToRun(
+      t,
+      secondClusterRun,
+      makeSummary({
+        sourceRunStatus: "soft_fail",
+        outcomeClassification: "failure",
+        failureSummary: "Payment copy caused the user to stop.",
+        failurePoint: "Payment page at /shop/payment",
+        lastSuccessfulState: "Address form completed.",
+        blockingText: "PAYMENT_COPY_CONFUSION",
+        representativeQuote: "The payment instructions were unclear.",
+      }),
+    );
+
+    await insertReplayRun(t, studyId, firstClusterRun, {
+      status: "soft_fail",
+      finalOutcome: "FAILED",
+      errorCode: "ADDRESS_COPY_CONFUSION",
+      finalUrl: "https://example.com/shop/address",
+    });
+    await insertReplayRun(t, studyId, firstClusterRun, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+    await insertReplayRun(t, studyId, secondClusterRun, {
+      status: "soft_fail",
+      finalOutcome: "FAILED",
+      errorCode: "PAYMENT_COPY_CONFUSION",
+      finalUrl: "https://example.com/shop/payment",
+    });
+    await insertReplayRun(t, studyId, secondClusterRun, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+
+    const report = await t.mutation(
+      internal.studyLifecycleWorkflow.createStudyLifecycleReport,
+      { studyId },
+    );
+    const clusters = await listIssueClusters(t, studyId);
+    const clustersById = new Map(clusters.map((cluster) => [cluster._id, cluster]));
+    const orderedTitles = report.issueClusterIds.map(
+      (clusterId) => clustersById.get(clusterId)?.title,
+    );
+
+    expect(report.issueClusterIds).toHaveLength(2);
+    expect(clustersById.get(report.issueClusterIds[0]!)?.score).toBeCloseTo(
+      clustersById.get(report.issueClusterIds[1]!)?.score ?? -1,
+      6,
+    );
+    expect(
+      clustersById.get(report.issueClusterIds[0]!)?.score,
+    ).toBeGreaterThanOrEqual(clustersById.get(report.issueClusterIds[1]!)?.score ?? -1);
+    expect(orderedTitles).toEqual([
+      clusters.find((cluster) => cluster.representativeRunIds.includes(firstClusterRun))
+        ?.title,
+      clusters.find((cluster) => cluster.representativeRunIds.includes(secondClusterRun))
+        ?.title,
+    ]);
+  });
+});
+
 type TestInstance = ReturnType<typeof createTest>;
 
 async function insertStudy(t: TestInstance) {
@@ -340,6 +703,8 @@ async function insertTerminalRun(
     finalUrl?: string;
     frustrationCount?: number;
     selfReport?: Doc<"runs">["selfReport"];
+    axisValues?: Doc<"personaVariants">["axisValues"];
+    milestoneKeys?: string[];
   },
 ) {
   const study = await t.run(async (ctx) => ctx.db.get(studyId));
@@ -365,7 +730,7 @@ async function insertTerminalRun(
       studyId,
       personaPackId: study.personaPackId,
       protoPersonaId,
-      axisValues: [],
+      axisValues: options.axisValues ?? [],
       edgeScore: 0.5,
       tensionSeed: "Analysis test tension seed",
       firstPersonBio:
@@ -398,9 +763,10 @@ async function insertTerminalRun(
       finalUrl: options.finalUrl,
       frustrationCount: options.frustrationCount ?? (options.status === "success" ? 0 : 2),
       milestoneKeys:
-        options.errorCode !== undefined
+        options.milestoneKeys ??
+        (options.errorCode !== undefined
           ? [`runs/${studyId}/${options.errorCode}.png`]
-          : [],
+          : []),
       ...(options.errorCode !== undefined ? { errorCode: options.errorCode } : {}),
       ...(options.selfReport !== undefined ? { selfReport: options.selfReport } : {}),
     }),
@@ -491,4 +857,16 @@ function createAiResult(summary: RunSummary) {
 function parseSummary(summaryKey: string | undefined) {
   const summary = decodeRunSummaryKey(summaryKey);
   return runSummarySchema.parse(summary);
+}
+
+async function attachSummaryToRun(
+  t: TestInstance,
+  runId: Id<"runs">,
+  summary: RunSummary,
+) {
+  await t.run(async (ctx) =>
+    ctx.db.patch(runId, {
+      summaryKey: encodeRunSummaryKey(summary),
+    }),
+  );
 }

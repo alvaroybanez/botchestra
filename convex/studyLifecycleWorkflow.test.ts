@@ -9,6 +9,7 @@ import { workflow } from "./workflow";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
+  "./analysisPipelineModel.ts": () => import("./analysisPipelineModel"),
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),
   "./schema.ts": () => import("./schema"),
@@ -453,7 +454,7 @@ describe("studyLifecycleWorkflow", () => {
     ).toBe(1);
   });
 
-  it("promotes only replay-backed candidates into issue clusters", async () => {
+  it("keeps replay-backed and unreplayed failure patterns in issue clusters", async () => {
     const t = createTest();
     const studyId = await insertStudy(t, { status: "replaying", runBudget: 8 });
 
@@ -535,17 +536,19 @@ describe("studyLifecycleWorkflow", () => {
       return null;
     });
 
-    expect(clusters).toHaveLength(2);
-    expect(clusters.map((cluster) => cluster.replayConfidence)).toEqual([0.5, 0.5]);
+    expect(clusters).toHaveLength(4);
+    expect(clusters.map((cluster) => cluster.replayConfidence)).toEqual([0.5, 0.5, 0, 0]);
     expect(
       clusters.map((cluster) => cluster.summary),
     ).toEqual(
       expect.arrayContaining([
         expect.stringContaining("REPEATED_FAILURE"),
+        expect.stringContaining("SINGLE_NON_BLOCKER"),
         expect.stringContaining("BLOCKER_PROMOTED"),
+        expect.stringContaining("BLOCKER_REJECTED"),
       ]),
     );
-    expect(report?.issueClusterIds).toHaveLength(2);
+    expect(report?.issueClusterIds).toHaveLength(4);
   });
 });
 

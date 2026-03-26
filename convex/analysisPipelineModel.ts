@@ -7,10 +7,16 @@ import {
 } from "convex-helpers/server/zod";
 import { z } from "zod";
 
+import { type Doc, type Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { buildIssueClusters } from "./analysis/issueClustering";
 
 const zInternalMutation = zCustomMutation(internalMutation, NoOp);
 const zInternalQuery = zCustomQuery(internalQuery, NoOp);
+type RunMilestoneContext = Pick<
+  Doc<"runMilestones">,
+  "actionType" | "title" | "url" | "note" | "stepIndex"
+>;
 
 export const getRunSummarizationContext = zInternalQuery({
   args: {
@@ -71,5 +77,104 @@ export const persistRunSummary = zInternalMutation({
       runId: args.runId,
       summaryKey: args.summaryKey,
     };
+  },
+});
+
+export const replaceIssueClustersForStudy = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args): Promise<Id<"issueClusters">[]> => {
+    const study = await ctx.db.get(args.studyId);
+
+    if (study === null) {
+      throw new ConvexError("Study not found.");
+    }
+
+    const pack = await ctx.db.get(study.personaPackId);
+
+    if (pack === null) {
+      throw new ConvexError("Persona pack not found.");
+    }
+
+    const runs = await ctx.db
+      .query("runs")
+      .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
+      .take(200);
+
+    if (
+      runs.some(
+        (run) =>
+          run.status === "queued" ||
+          run.status === "dispatching" ||
+          run.status === "running",
+      )
+    ) {
+      throw new ConvexError("Cannot cluster study issues before all runs are terminal.");
+    }
+
+    const personaVariants = await ctx.db
+      .query("personaVariants")
+      .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
+      .take(200);
+    const axisValuesByVariantId = new Map(
+      personaVariants.map((variant) => [variant._id, variant.axisValues]),
+    );
+    const milestonesByRunId = new Map<Id<"runs">, RunMilestoneContext[]>(
+      await Promise.all(
+        runs.map(async (run) => {
+          const milestones = await ctx.db
+            .query("runMilestones")
+            .withIndex("by_runId_and_stepIndex", (query) => query.eq("runId", run._id))
+            .take(25);
+
+          return [
+            run._id,
+            milestones.map((milestone) => ({
+              actionType: milestone.actionType,
+              title: milestone.title,
+              url: milestone.url,
+              note: milestone.note,
+              stepIndex: milestone.stepIndex,
+            })),
+          ] as const;
+        }),
+      ),
+    );
+    const totalProtoPersonaCount = new Set(
+      runs
+        .filter((run) => run.replayOfRunId === undefined)
+        .map((run) => run.protoPersonaId),
+    ).size;
+    const fallbackAxisCount = new Set(
+      personaVariants.flatMap((variant) => variant.axisValues.map((axis) => axis.key)),
+    ).size;
+    const issueClusters = buildIssueClusters({
+      studyId: args.studyId,
+      runs: runs.map((run) => ({
+        ...run,
+        axisValues: axisValuesByVariantId.get(run.personaVariantId) ?? [],
+        milestones: milestonesByRunId.get(run._id) ?? [],
+      })),
+      totalAxisCount: pack.sharedAxes.length > 0 ? pack.sharedAxes.length : fallbackAxisCount,
+      totalProtoPersonaCount,
+    });
+
+    const existingClusters = await ctx.db
+      .query("issueClusters")
+      .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
+      .take(200);
+
+    for (const existingCluster of existingClusters) {
+      await ctx.db.delete(existingCluster._id);
+    }
+
+    const insertedClusterIds: Id<"issueClusters">[] = [];
+    for (const issueCluster of issueClusters) {
+      const clusterId = await ctx.db.insert("issueClusters", issueCluster);
+      insertedClusterIds.push(clusterId);
+    }
+
+    return insertedClusterIds;
   },
 });

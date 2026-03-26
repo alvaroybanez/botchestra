@@ -347,7 +347,10 @@ export const createStudyLifecycleReport = zInternalMutation({
 
     const headlineMetrics = computeHeadlineMetrics(primaryRuns);
 
-    const issueClusterIds = await createVerifiedIssueClusters(ctx, runs);
+    const issueClusterIds: Id<"issueClusters">[] = await ctx.runMutation(
+      internal.analysisPipelineModel.replaceIssueClustersForStudy,
+      { studyId: args.studyId },
+    );
     const createdAt = Date.now();
     const reportId = await ctx.db.insert("studyReports", {
       studyId: args.studyId,
