@@ -17,6 +17,10 @@ import {
   internalQuery,
   query,
 } from "./_generated/server";
+import {
+  buildLimitationsSection,
+  computeHeadlineMetrics,
+} from "./analysis/pure";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
 
@@ -31,12 +35,6 @@ const lifecycleTerminalStatusSchema = z.enum([
   "failed",
   "cancelled",
 ]);
-
-const reportLimitations = [
-  "Findings are synthetic and directional.",
-  "Agents may miss or invent behavior relative to humans.",
-  "Human follow-up is recommended for high-stakes decisions.",
-] as const;
 
 export const startStudyLifecycleWorkflow = internalMutation({
   args: {
@@ -346,20 +344,7 @@ export const createStudyLifecycleReport = zInternalMutation({
 
     const primaryRuns = runs.filter((run) => run.replayOfRunId === undefined);
 
-    const completionRate = ratio(
-      primaryRuns.filter((run) => run.status === "success").length,
-      primaryRuns.length,
-    );
-    const abandonmentRate = ratio(
-      primaryRuns.filter((run) => run.status === "gave_up").length,
-      primaryRuns.length,
-    );
-    const headlineMetrics = {
-      completionRate,
-      abandonmentRate,
-      medianSteps: median(primaryRuns.map((run) => run.stepCount ?? 0)),
-      medianDurationSec: median(primaryRuns.map((run) => run.durationSec ?? 0)),
-    };
+    const headlineMetrics = computeHeadlineMetrics(primaryRuns);
 
     const issueClusterIds = await createVerifiedIssueClusters(ctx, runs);
     const createdAt = Date.now();
@@ -368,7 +353,7 @@ export const createStudyLifecycleReport = zInternalMutation({
       headlineMetrics,
       issueClusterIds,
       segmentBreakdownKey: `study-reports/${args.studyId}/segment-breakdown.json`,
-      limitations: [...reportLimitations],
+      limitations: buildLimitationsSection(),
       htmlReportKey: `study-reports/${args.studyId}/report.html`,
       jsonReportKey: `study-reports/${args.studyId}/report.json`,
       createdAt,
@@ -595,21 +580,6 @@ function severityWeight(severity: Doc<"issueClusters">["severity"]) {
     case "cosmetic":
       return 0.1;
   }
-}
-
-function median(values: number[]) {
-  if (values.length === 0) {
-    return 0;
-  }
-
-  const sorted = [...values].sort((left, right) => left - right);
-  const middle = Math.floor(sorted.length / 2);
-
-  if (sorted.length % 2 === 0) {
-    return (sorted[middle - 1]! + sorted[middle]!) / 2;
-  }
-
-  return sorted[middle]!;
 }
 
 function ratio(numerator: number, denominator: number) {

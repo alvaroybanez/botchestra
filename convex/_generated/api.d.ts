@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as analysis_pure from "../analysis/pure.js";
 import type * as auditEvents from "../auditEvents.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
@@ -33,6 +34,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "analysis/pure": typeof analysis_pure;
   auditEvents: typeof auditEvents;
   auth: typeof auth;
   crons: typeof crons;
