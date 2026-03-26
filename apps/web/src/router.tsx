@@ -20,10 +20,10 @@ import {
   StudiesListPage as StudiesRoutePage,
   StudyCreationWizardPage as StudyCreationWizardRoutePage,
   StudyOverviewPage as StudyOverviewRoutePage,
-  StudyReportPage as StudyReportRoutePage,
 } from "@/routes/study-pages";
 import { StudyFindingsPage as StudyFindingsRoutePage } from "@/routes/study-findings-page";
 import { StudyPersonasPage as StudyPersonasRoutePage } from "@/routes/study-personas-page";
+import { StudyReportPage as StudyReportRoutePage } from "@/routes/study-report-page";
 import { StudyRunsPage as StudyRunsRoutePage } from "@/routes/study-runs-page";
 import { validateStudyDetailSearch } from "@/routes/study-shared";
 import {

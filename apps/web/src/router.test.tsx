@@ -189,6 +189,23 @@ type FindingView = {
   }>;
 };
 
+type StudyReportView = {
+  _id: string;
+  studyId: string;
+  headlineMetrics: {
+    completionRate: number;
+    abandonmentRate: number;
+    medianSteps: number;
+    medianDurationSec: number;
+  };
+  issueClusterIds: string[];
+  segmentBreakdownKey: string;
+  limitations: string[];
+  htmlReportKey?: string;
+  jsonReportKey?: string;
+  createdAt: number;
+};
+
 let mockedVariantReview: ReviewData | null | undefined = undefined;
 let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
 let mockedStudyList: Doc<"studies">[] | undefined = [];
@@ -197,6 +214,8 @@ let mockedRunSummariesByStudyId: Record<string, RunSummary | undefined> = {};
 let mockedRunsByStudyId: Record<string, RunListItem[] | undefined> = {};
 let mockedRunDetailsById: Record<string, RunDetail | null | undefined> = {};
 let mockedFindingsByStudyId: Record<string, FindingView[] | undefined> = {};
+let mockedReportsByStudyId: Record<string, StudyReportView | null | undefined> =
+  {};
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
 const updateStudyMock = vi.fn();
@@ -328,6 +347,10 @@ vi.mock("convex/react", () => ({
       return mockedFindingsByStudyId[String(args?.studyId)];
     }
 
+    if (queryName === "analysisQueries:getReport") {
+      return mockedReportsByStudyId[String(args?.studyId)];
+    }
+
     if (queryName === "personaPacks:list") {
       return mockedPackList;
     }
@@ -378,6 +401,7 @@ beforeEach(() => {
   mockedRunsByStudyId = {};
   mockedRunDetailsById = {};
   mockedFindingsByStudyId = {};
+  mockedReportsByStudyId = {};
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
   createStudyMock.mockReset();
@@ -1262,6 +1286,85 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("The shipping address step");
   });
 
+  it("renders the report page with headline metrics, ranked issue cards, evidence thumbnails, and analyst notes", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "completed",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live", {
+        totalRuns: 12,
+        terminalCount: 12,
+        runningCount: 0,
+        queuedCount: 0,
+      }),
+    };
+    mockedFindingsByStudyId = {
+      "study-live": makeFindings(),
+    };
+    mockedReportsByStudyId = {
+      "study-live": makeStudyReport({
+        issueClusterIds: ["finding-payment", "finding-address"],
+        headlineMetrics: {
+          completionRate: 0.68,
+          abandonmentRate: 0.19,
+          medianSteps: 7,
+          medianDurationSec: 188,
+        },
+      }),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/report"],
+    });
+
+    expect(container.textContent).toContain("Study report");
+    expect(container.textContent).toContain("Completion rate");
+    expect(container.textContent).toContain("68%");
+    expect(container.textContent).toContain("Abandonment rate");
+    expect(container.textContent).toContain("19%");
+    expect(container.textContent).toContain("Median steps");
+    expect(container.textContent).toContain("Median duration");
+    expect(container.textContent).toContain("188 sec");
+    expect(container.textContent).toContain("12/12 terminal");
+
+    const issueCards = [
+      ...container.querySelectorAll<HTMLElement>('[data-testid="report-issue-card"]'),
+    ];
+    expect(issueCards).toHaveLength(2);
+    expect(issueCards[0]?.textContent).toContain(
+      "Payment totals shift late in checkout",
+    );
+    expect(issueCards[1]?.textContent).toContain(
+      "Checkout continue button hidden on the address step",
+    );
+    expect(issueCards[0]?.textContent).toContain("What broke");
+    expect(issueCards[0]?.textContent).toContain("Where");
+    expect(issueCards[0]?.textContent).toContain("Affected segments");
+    expect(issueCards[0]?.textContent).toContain("Representative quotes");
+    expect(issueCards[0]?.textContent).toContain("Recommendation");
+    expect(issueCards[0]?.textContent).toContain("Confidence note");
+
+    const evidenceLinks = [
+      ...container.querySelectorAll<HTMLAnchorElement>(
+        '[data-testid="report-evidence-link"]',
+      ),
+    ];
+    expect(evidenceLinks).toHaveLength(2);
+    expect(evidenceLinks[0]?.getAttribute("href")).toBe(
+      "/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
+    );
+    expect(evidenceLinks[0]?.querySelector("img")?.getAttribute("src")).toBe(
+      "/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
+    );
+    expect(container.textContent).toContain(
+      "Replay evidence confirms the continue button is clipped below the fold.",
+    );
+  });
+
   it("renders the persona pack empty state when no packs exist", async () => {
     mockedPackList = [];
 
@@ -1870,6 +1973,31 @@ function makeFindings(): FindingView[] {
       ],
     },
   ];
+}
+
+function makeStudyReport(
+  overrides: Partial<StudyReportView> = {},
+): StudyReportView {
+  return {
+    _id: "report-study-live",
+    studyId: "study-live",
+    headlineMetrics: {
+      completionRate: 0.5,
+      abandonmentRate: 0.25,
+      medianSteps: 6,
+      medianDurationSec: 180,
+    },
+    issueClusterIds: ["finding-address", "finding-payment"],
+    segmentBreakdownKey: "study-reports/study-live/segment-breakdown.json",
+    limitations: [
+      "Findings are synthetic and directional.",
+      "Human follow-up is recommended for high-stakes decisions.",
+    ],
+    htmlReportKey: "study-reports/study-live/report.html",
+    jsonReportKey: "study-reports/study-live/report.json",
+    createdAt: 1_700_000_000_000,
+    ...overrides,
+  };
 }
 
 async function updateTextarea(

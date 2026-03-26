@@ -8,6 +8,22 @@ export type DemoStudySummary = {
   updatedAt: number;
 };
 
+export type DemoStudyReport = {
+  _id: string;
+  studyId: string;
+  headlineMetrics: {
+    completionRate: number;
+    abandonmentRate: number;
+    medianSteps: number;
+    medianDurationSec: number;
+  };
+  issueClusterIds: string[];
+  limitations: string[];
+  htmlReportKey?: string;
+  jsonReportKey?: string;
+  createdAt: number;
+};
+
 export type DemoRunListItem = {
   _id: string;
   status: string;
@@ -108,6 +124,30 @@ export const demoStudySummary: DemoStudySummary = {
   status: "completed",
   runBudget: 64,
   updatedAt: demoTimestamp,
+};
+
+const demoIssueClusterIds = [
+  "finding-demo-address",
+  "finding-demo-payment",
+] as const;
+
+export const demoStudyReport: DemoStudyReport = {
+  _id: "report-demo-study",
+  studyId: DEMO_STUDY_ID,
+  headlineMetrics: {
+    completionRate: 0.68,
+    abandonmentRate: 0.19,
+    medianSteps: 7,
+    medianDurationSec: 188,
+  },
+  issueClusterIds: [...demoIssueClusterIds],
+  limitations: [
+    "Findings are synthetic and directional, not a replacement for human usability testing.",
+    "High-confidence issues should still be confirmed with replay review and human follow-up.",
+  ],
+  htmlReportKey: "study-reports/demo-study/report.html",
+  jsonReportKey: "study-reports/demo-study/report.json",
+  createdAt: demoTimestamp,
 };
 
 export const demoRuns: DemoRunListItem[] = [
