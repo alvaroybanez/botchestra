@@ -145,6 +145,7 @@ export default defineSchema({
     launchRequestedBy: v.optional(v.string()),
     launchedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    failureReason: v.optional(v.string()),
     cancellationRequestedAt: v.optional(v.number()),
     cancellationReason: v.optional(v.string()),
     createdBy: v.string(),

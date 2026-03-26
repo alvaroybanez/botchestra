@@ -58,6 +58,37 @@ export const getRunSummarizationContext = zInternalQuery({
   },
 });
 
+export const getStudyAnalysisSnapshot = zInternalQuery({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    const study = await ctx.db.get(args.studyId);
+
+    if (study === null) {
+      throw new ConvexError("Study not found.");
+    }
+
+    let hasReport = false;
+    let reportIssueClusterCount = 0;
+    for await (const report of ctx.db.query("studyReports")) {
+      if (report.studyId === args.studyId) {
+        hasReport = true;
+        reportIssueClusterCount = report.issueClusterIds.length;
+        break;
+      }
+    }
+
+    return {
+      studyId: study._id,
+      status: study.status,
+      failureReason: study.failureReason ?? null,
+      hasReport,
+      reportIssueClusterCount,
+    };
+  },
+});
+
 export const persistRunSummary = zInternalMutation({
   args: {
     runId: zid("runs"),

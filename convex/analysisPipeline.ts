@@ -16,7 +16,6 @@ import {
   internalAction,
 } from "./_generated/server";
 import {
-  buildFallbackRunSummary,
   decodeRunSummaryKey,
   encodeRunSummaryKey,
   isRunEligibleForSummarization,
@@ -90,29 +89,91 @@ export const summarizeStudyRuns = zInternalAction({
   },
 });
 
+export const analyzeStudy = zInternalAction({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args): Promise<AnalyzeStudyResult> => {
+    const analysisSnapshot: StudyAnalysisSnapshot = await ctx.runQuery(
+      internal.analysisPipelineModel.getStudyAnalysisSnapshot,
+      { studyId: args.studyId },
+    );
+
+    if (analysisSnapshot.status !== "analyzing") {
+      return {
+        studyStatus: analysisSnapshot.status,
+        failureReason: analysisSnapshot.failureReason,
+        summaryResult: null,
+        issueClusterCount: analysisSnapshot.reportIssueClusterCount,
+        reportId: null,
+      };
+    }
+
+    try {
+      const summaryResult = await ctx.runAction(
+        internal.analysisPipeline.summarizeStudyRuns,
+        { studyId: args.studyId },
+      );
+      const report = await ctx.runMutation(
+        internal.studyLifecycleWorkflow.createStudyLifecycleReport,
+        { studyId: args.studyId },
+      );
+      await ctx.runMutation(internal.studies.transitionStudyState, {
+        studyId: args.studyId,
+        nextStatus: "completed",
+      });
+
+      return {
+        studyStatus: "completed",
+        failureReason: null,
+        summaryResult,
+        issueClusterCount: report.issueClusterIds.length,
+        reportId: report._id,
+      };
+    } catch (error) {
+      const failureReason = `Analysis pipeline failed: ${toErrorMessage(error)}`;
+
+      await ctx.runMutation(internal.studies.transitionStudyState, {
+        studyId: args.studyId,
+        nextStatus: "failed",
+        failureReason,
+      });
+
+      return {
+        studyStatus: "failed",
+        failureReason,
+        summaryResult: null,
+        issueClusterCount: 0,
+        reportId: null,
+      };
+    }
+  },
+});
+
 async function summarizeRun(
   ctx: ActionCtx,
   run: SummarizableRunSummaryContext & {
     summaryKey?: string;
   },
 ): Promise<RunSummary> {
-  const fallbackSummary = buildFallbackRunSummary(run);
-
   try {
     const result = await generateWithModel("summarization", {
       system:
         "Return only valid JSON. Summarize one synthetic usability run using concise evidence-backed language.",
       prompt: buildSummarizationPrompt(run),
     });
-    const parsedSummary = aiRunSummarySchema.safeParse(JSON.parse(result.text));
+    const parsedJson = JSON.parse(result.text);
+    const parsedSummary = aiRunSummarySchema.safeParse(parsedJson);
 
     if (!parsedSummary.success) {
-      return fallbackSummary;
+      throw new Error(parsedSummary.error.issues[0]?.message ?? "Invalid AI summary.");
     }
 
     return normalizeRunSummary(parsedSummary.data, run.status);
-  } catch {
-    return fallbackSummary;
+  } catch (error) {
+    throw new Error(
+      `Failed to summarize run ${run._id}: ${toErrorMessage(error)}`,
+    );
   }
 }
 
@@ -131,6 +192,32 @@ type SummarizeStudyRunsResult = {
   summarizedRunCount: number;
   excludedRunCount: number;
   skippedRunCount: number;
+};
+
+type StudyAnalysisSnapshot = {
+  studyId: Id<"studies">;
+  status:
+    | "draft"
+    | "persona_review"
+    | "ready"
+    | "queued"
+    | "running"
+    | "replaying"
+    | "analyzing"
+    | "completed"
+    | "failed"
+    | "cancelled";
+  failureReason: string | null;
+  hasReport: boolean;
+  reportIssueClusterCount: number;
+};
+
+type AnalyzeStudyResult = {
+  studyStatus: StudyAnalysisSnapshot["status"];
+  failureReason: string | null;
+  summaryResult: SummarizeStudyRunsResult | null;
+  issueClusterCount: number;
+  reportId: Id<"studyReports"> | null;
 };
 
 function buildSummarizationPrompt(run: RunSummaryContext) {
@@ -169,4 +256,12 @@ function buildSummarizationPrompt(run: RunSummaryContext) {
       })),
     )}`,
   ].join("\n");
+}
+
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }

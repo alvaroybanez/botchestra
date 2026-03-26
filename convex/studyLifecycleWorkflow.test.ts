@@ -2,13 +2,19 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkflowId } from "@convex-dev/workflow";
 
+vi.mock("../packages/ai/src/index", () => ({
+  generateWithModel: vi.fn(),
+}));
+
 import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import schema from "./schema";
 import { workflow } from "./workflow";
+import { generateWithModel } from "../packages/ai/src/index";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
+  "./analysisPipeline.ts": () => import("./analysisPipeline"),
   "./analysisPipelineModel.ts": () => import("./analysisPipelineModel"),
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),
@@ -22,6 +28,7 @@ const modules = {
 const createTest = () => {
   return convexTest(schema, modules);
 };
+const mockedGenerateWithModel = vi.mocked(generateWithModel);
 
 const sampleTaskSpec = {
   scenario: "A shopper wants to complete checkout.",
@@ -67,6 +74,8 @@ const researchIdentity = {
 
 describe("studyLifecycleWorkflow", () => {
   afterEach(() => {
+    mockedGenerateWithModel.mockReset();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -145,6 +154,7 @@ describe("studyLifecycleWorkflow", () => {
   });
 
   it("completes replay verification and exposes the report", async () => {
+    vi.useFakeTimers();
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, { status: "replaying", runBudget: 3 });
@@ -177,9 +187,16 @@ describe("studyLifecycleWorkflow", () => {
       finalOutcome: "SUCCESS",
       finalUrl: "https://example.com/shop/confirmation",
     });
-    await t.mutation(internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay, {
-      studyId,
-    });
+    mockSummariesFromPrompt();
+    const analyzingStudy = await t.mutation(
+      internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay,
+      {
+        studyId,
+      },
+    );
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(analyzingStudy.status).toBe("analyzing");
 
     const completedStudy = await asResearcher.query(api.studies.getStudy, {
       studyId,
@@ -206,6 +223,7 @@ describe("studyLifecycleWorkflow", () => {
   });
 
   it("creates a zero-metric report when every settled run is an infra error", async () => {
+    vi.useFakeTimers();
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, { status: "replaying", runBudget: 3 });
@@ -217,9 +235,15 @@ describe("studyLifecycleWorkflow", () => {
       finalUrl: "https://example.com/shop/checkout",
     });
 
-    await t.mutation(internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay, {
-      studyId,
-    });
+    const analyzingStudy = await t.mutation(
+      internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay,
+      {
+        studyId,
+      },
+    );
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(analyzingStudy.status).toBe("analyzing");
 
     const completedStudy = await asResearcher.query(api.studies.getStudy, {
       studyId,
@@ -464,6 +488,7 @@ describe("studyLifecycleWorkflow", () => {
   });
 
   it("keeps replay-backed and unreplayed failure patterns in issue clusters", async () => {
+    vi.useFakeTimers();
     const t = createTest();
     const studyId = await insertStudy(t, { status: "replaying", runBudget: 8 });
 
@@ -530,9 +555,20 @@ describe("studyLifecycleWorkflow", () => {
     ]);
     void singleNonBlocker;
 
-    await t.mutation(internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay, {
-      studyId,
-    });
+    mockSummariesFromPrompt();
+
+    const analyzingStudy = await t.mutation(
+      internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay,
+      {
+        studyId,
+      },
+    );
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(analyzingStudy.status).toBe("analyzing");
+
+    const completedStudy = await t.run(async (ctx) => ctx.db.get(studyId));
+    expect(completedStudy?.status).toBe("completed");
 
     const clusters = await listIssueClusters(t, studyId);
     const report = await t.run(async (ctx) => {
@@ -558,6 +594,55 @@ describe("studyLifecycleWorkflow", () => {
       ]),
     );
     expect(report?.issueClusterIds).toHaveLength(4);
+  });
+
+  it("auto-triggers analysis when replay completion moves the study into analyzing", async () => {
+    vi.useFakeTimers();
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 2 });
+
+    await seedRunCluster(t, studyId, {
+      count: 1,
+      status: "hard_fail",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+
+    mockedGenerateWithModel.mockResolvedValueOnce(
+      createAiResult({
+        summaryVersion: 1,
+        sourceRunStatus: "hard_fail",
+        outcomeClassification: "failure",
+        failureSummary: "Checkout could not continue.",
+        failurePoint: "Checkout page at /shop/checkout",
+        lastSuccessfulState: "Cart review completed.",
+        blockingText: "CHECKOUT_BUTTON_MISSING",
+        frustrationMarkers: ["missing primary action"],
+        selfReportedConfidence: null,
+        representativeQuote: "I cannot see how to continue from checkout.",
+        includeInClustering: true,
+      }),
+    );
+
+    const analyzingStudy = await t.mutation(
+      internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay,
+      {
+        studyId,
+      },
+    );
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const completedStudy = await asResearcher.query(api.studies.getStudy, {
+      studyId,
+    });
+    const report = await asResearcher.query(api.studyLifecycleWorkflow.getStudyReport, {
+      studyId,
+    });
+
+    expect(analyzingStudy.status).toBe("analyzing");
+    expect(completedStudy?.status).toBe("completed");
+    expect(report?.studyId).toBe(studyId);
   });
 });
 
@@ -957,4 +1042,57 @@ async function listIssueClusters(t: TestInstance, studyId: Id<"studies">) {
       .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
       .collect(),
   );
+}
+
+function createAiResult(summary: Record<string, unknown>) {
+  return {
+    text: JSON.stringify(summary),
+  } as unknown as Awaited<ReturnType<typeof generateWithModel>>;
+}
+
+function mockSummariesFromPrompt() {
+  mockedGenerateWithModel.mockImplementation(async (_task, request) => {
+    const prompt = typeof request.prompt === "string" ? request.prompt : "";
+    const status = matchPromptField(prompt, "Run status") ?? "hard_fail";
+    const errorCode = matchPromptField(prompt, "Error code");
+    const finalUrl = matchPromptField(prompt, "Final URL") ?? "https://example.com";
+
+    if (status === "success") {
+      return createAiResult({
+        summaryVersion: 1,
+        sourceRunStatus: "success",
+        outcomeClassification: "success",
+        failureSummary: "The run completed successfully.",
+        failurePoint: "No failure observed.",
+        lastSuccessfulState: "The intended goal was completed.",
+        blockingText: "No blocking text captured.",
+        frustrationMarkers: [],
+        selfReportedConfidence: null,
+        representativeQuote: "The run completed.",
+        includeInClustering: false,
+      });
+    }
+
+    return createAiResult({
+      summaryVersion: 1,
+      sourceRunStatus: status,
+      outcomeClassification: status === "gave_up" ? "abandoned" : "failure",
+      failureSummary: `Observed ${status} at ${finalUrl}.`,
+      failurePoint: finalUrl,
+      lastSuccessfulState: "The preceding step completed.",
+      blockingText:
+        errorCode !== undefined && errorCode !== "none"
+          ? errorCode
+          : "No blocking text captured.",
+      frustrationMarkers: status === "gave_up" ? ["gave up"] : [],
+      selfReportedConfidence: null,
+      representativeQuote: `Observed ${status} during analysis.`,
+      includeInClustering: true,
+    });
+  });
+}
+
+function matchPromptField(prompt: string, label: string) {
+  const matched = prompt.match(new RegExp(`${label}: (.+)`));
+  return matched?.[1];
 }

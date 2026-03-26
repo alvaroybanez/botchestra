@@ -21,6 +21,7 @@ const modules = {
   "./analysisPipeline.ts": () => import("./analysisPipeline"),
   "./analysisPipelineModel.ts": () => import("./analysisPipelineModel"),
   "./schema.ts": () => import("./schema"),
+  "./studies.ts": () => import("./studies"),
   "./studyLifecycleWorkflow.ts": () => import("./studyLifecycleWorkflow"),
   "./workflow.ts": () => import("./workflow"),
 };
@@ -292,6 +293,102 @@ describe("analysisPipeline.summarizeStudyRuns", () => {
     expect(report.issueClusterIds).toHaveLength(1);
     expect(clusters).toHaveLength(1);
     expect(representativeStatuses).toEqual(["hard_fail", "hard_fail"]);
+  });
+});
+
+describe("analysisPipeline.analyzeStudy", () => {
+  beforeEach(() => {
+    mockedGenerateWithModel.mockReset();
+  });
+
+  it("orchestrates summarize, cluster, rank, and report generation before completing the study", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+    const representativeRunId = await insertTerminalRun(t, studyId, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+      milestoneKeys: ["runs/checkout-run-a.png"],
+    });
+
+    mockedGenerateWithModel.mockResolvedValueOnce(
+      createAiResult(
+        makeSummary({
+          sourceRunStatus: "hard_fail",
+          outcomeClassification: "failure",
+          failureSummary:
+            "The checkout page hid the primary action and blocked progress.",
+          failurePoint: "Checkout page at /shop/checkout",
+          lastSuccessfulState: "Cart review completed.",
+          blockingText: "CHECKOUT_BUTTON_MISSING",
+          frustrationMarkers: ["missing primary action"],
+          representativeQuote: "I cannot see how to continue from checkout.",
+        }),
+      ),
+    );
+
+    const result = await t.action(analysisPipelineApi.analyzeStudy, {
+      studyId,
+    });
+    const study = await t.run(async (ctx) => ctx.db.get(studyId));
+    const report = await findStudyReport(t, studyId);
+    const clusters = await listIssueClusters(t, studyId);
+
+    expect(result).toMatchObject({
+      studyStatus: "completed",
+      failureReason: null,
+      summaryResult: {
+        eligibleRunCount: 1,
+        summarizedRunCount: 1,
+        excludedRunCount: 0,
+        skippedRunCount: 0,
+      },
+      issueClusterCount: 1,
+    });
+    expect(study?.status).toBe("completed");
+    expect(study?.completedAt).toBeTypeOf("number");
+    expect(study?.failureReason).toBeUndefined();
+    expect(report?.studyId).toBe(studyId);
+    expect(report?.issueClusterIds).toHaveLength(1);
+    expect(report?.issueClusterIds).toEqual([clusters[0]!._id]);
+    expect(clusters[0]).toMatchObject({
+      representativeRunIds: [representativeRunId],
+      summary: expect.stringContaining("CHECKOUT_BUTTON_MISSING"),
+    });
+  });
+
+  it("marks the study failed with a descriptive reason when AI summarization throws", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+    await insertTerminalRun(t, studyId, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+
+    mockedGenerateWithModel.mockRejectedValueOnce(
+      new Error("AI provider unavailable"),
+    );
+
+    const result = await t.action(analysisPipelineApi.analyzeStudy, {
+      studyId,
+    });
+    const study = await t.run(async (ctx) => ctx.db.get(studyId));
+    const report = await findStudyReport(t, studyId);
+
+    expect(result).toMatchObject({
+      studyStatus: "failed",
+      failureReason: expect.stringContaining("AI provider unavailable"),
+      summaryResult: null,
+      issueClusterCount: 0,
+      reportId: null,
+    });
+    expect(study?.status).toBe("failed");
+    expect(study?.failureReason).toContain("AI provider unavailable");
+    expect(study?.completedAt).toBeUndefined();
+    expect(report).toBeNull();
   });
 });
 
@@ -908,6 +1005,18 @@ async function listIssueClusters(t: TestInstance, studyId: Id<"studies">) {
       .withIndex("by_studyId", (query) => query.eq("studyId", studyId))
       .collect(),
   );
+}
+
+async function findStudyReport(t: TestInstance, studyId: Id<"studies">) {
+  return await t.run(async (ctx) => {
+    for await (const report of ctx.db.query("studyReports")) {
+      if (report.studyId === studyId) {
+        return report;
+      }
+    }
+
+    return null;
+  });
 }
 
 function makeSummary(overrides: Partial<RunSummary> = {}): RunSummary {

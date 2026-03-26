@@ -465,12 +465,8 @@ export const completeStudyLifecycleAfterReplay = zInternalMutation({
       studyId: args.studyId,
       nextStatus: "analyzing",
     });
-    await ctx.runMutation(internal.studyLifecycleWorkflow.createStudyLifecycleReport, {
+    await ctx.scheduler.runAfter(0, internal.analysisPipeline.analyzeStudy, {
       studyId: args.studyId,
-    });
-    await ctx.runMutation(internal.studies.transitionStudyState, {
-      studyId: args.studyId,
-      nextStatus: "completed",
     });
 
     return await getStudyById(ctx, args.studyId);

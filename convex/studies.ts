@@ -431,6 +431,7 @@ export const transitionStudyState = zInternalMutation({
   args: {
     studyId: zid("studies"),
     nextStatus: studyStatusSchema,
+    failureReason: z.string().trim().min(1).optional(),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -442,6 +443,9 @@ export const transitionStudyState = zInternalMutation({
       status: args.nextStatus,
       ...(args.nextStatus === "completed"
         ? { completedAt: transitionTimestamp }
+        : {}),
+      ...(args.nextStatus === "failed" && args.failureReason !== undefined
+        ? { failureReason: args.failureReason }
         : {}),
       updatedAt: transitionTimestamp,
     });
