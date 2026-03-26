@@ -44,6 +44,7 @@ const runSelfReportSchema = z.object({
   confusion: z.string().optional(),
   confidence: z.number().optional(),
   suggestedChange: z.string().optional(),
+  answers: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
 });
 
 const callbackPatchSchema = z.object({

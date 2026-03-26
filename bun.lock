@@ -6,6 +6,7 @@
       "name": "botchestra",
       "dependencies": {
         "@auth/core": "^0.37.0",
+        "@botchestra/shared": "workspace:*",
         "@convex-dev/auth": "^0.0.91",
         "@convex-dev/workflow": "^0.3.8",
         "@convex-dev/workpool": "^0.4.6",

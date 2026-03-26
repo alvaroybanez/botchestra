@@ -33,8 +33,27 @@ const sampleTaskSpec = {
   goal: "Reach order confirmation.",
   startingUrl: "https://example.com/products/shoes",
   allowedDomains: ["example.com"],
-  allowedActions: ["goto", "click", "type", "finish"] as const,
-  forbiddenActions: ["payment_submission"] as const,
+  allowedActions: ["goto", "click", "type", "finish"] as (
+    | "goto"
+    | "click"
+    | "type"
+    | "select"
+    | "scroll"
+    | "wait"
+    | "back"
+    | "finish"
+    | "abort"
+  )[],
+  forbiddenActions: ["payment_submission"] as (
+    | "external_download"
+    | "payment_submission"
+    | "email_send"
+    | "sms_send"
+    | "captcha_bypass"
+    | "account_creation_without_fixture"
+    | "cross_domain_escape"
+    | "file_upload_unless_allowed"
+  )[],
   successCriteria: ["Order confirmation is visible"],
   stopConditions: ["The user leaves the allowed domain"],
   postTaskQuestions: ["Did you complete the task?"],
@@ -347,11 +366,12 @@ async function insertStudy(
   t: TestInstance,
   overrides: Partial<Doc<"studies">> & { orgId: string },
 ) {
-  const packId = overrides.personaPackId ?? (await insertPack(t, overrides.orgId));
+  const { orgId, personaPackId, ...rest } = overrides;
+  const packId = personaPackId ?? (await insertPack(t, orgId));
 
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
-      orgId: overrides.orgId,
+      orgId,
       personaPackId: packId,
       name: "Study query fixture",
       description: "Fixture study",
@@ -359,10 +379,10 @@ async function insertStudy(
       runBudget: 8,
       activeConcurrency: 2,
       status: "draft",
-      createdBy: overrides.orgId,
+      createdBy: orgId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      ...overrides,
+      ...rest,
     }),
   );
 }

@@ -185,8 +185,15 @@ export default defineSchema({
         confusion: v.optional(v.string()),
         confidence: v.optional(v.number()),
         suggestedChange: v.optional(v.string()),
+        answers: v.optional(
+          v.record(
+            v.string(),
+            v.union(v.string(), v.number(), v.boolean()),
+          ),
+        ),
       }),
     ),
+    lastHeartbeatAt: v.optional(v.number()),
     frustrationCount: v.number(),
     milestoneKeys: v.array(v.string()),
     artifactManifestKey: v.optional(v.string()),

@@ -220,6 +220,7 @@ export const launchStudy = zMutation({
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
     const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+    const runBudget = study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET;
 
     if (study.status === "draft") {
       throw new ConvexError("Draft studies cannot be launched.");
@@ -229,7 +230,7 @@ export const launchStudy = zMutation({
       throw new ConvexError("Only ready studies can be launched.");
     }
 
-    if (study.runBudget <= 0) {
+    if (runBudget <= 0) {
       throw new ConvexError("Study run budget must be greater than 0 before launch.");
     }
 
@@ -261,7 +262,7 @@ export const launchStudy = zMutation({
     const hasConfirmedVariants = await hasEnoughAcceptedVariants(
       ctx,
       study._id,
-      study.runBudget,
+      runBudget,
     );
 
     if (!hasConfirmedVariants) {

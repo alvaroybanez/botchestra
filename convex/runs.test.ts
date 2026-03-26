@@ -18,8 +18,27 @@ const sampleTaskSpec = {
   goal: "Submit the order successfully.",
   startingUrl: "https://example.com/shop",
   allowedDomains: ["example.com"],
-  allowedActions: ["goto", "click", "type", "finish"] as const,
-  forbiddenActions: ["payment_submission"] as const,
+  allowedActions: ["goto", "click", "type", "finish"] as (
+    | "goto"
+    | "click"
+    | "type"
+    | "select"
+    | "scroll"
+    | "wait"
+    | "back"
+    | "finish"
+    | "abort"
+  )[],
+  forbiddenActions: ["payment_submission"] as (
+    | "external_download"
+    | "payment_submission"
+    | "email_send"
+    | "sms_send"
+    | "captcha_bypass"
+    | "account_creation_without_fixture"
+    | "cross_domain_escape"
+    | "file_upload_unless_allowed"
+  )[],
   successCriteria: ["Order confirmation is visible"],
   stopConditions: ["The user leaves the allowed domain"],
   postTaskQuestions: ["Do you think you completed the task?"],
