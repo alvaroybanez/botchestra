@@ -40,6 +40,31 @@ async function createCallbackToken(runId: string, secret: string, exp = Date.now
   return `${payload}.${encodeBase64Url(String.fromCharCode(...new Uint8Array(signature)))}`;
 }
 
+async function createArtifactUrl(
+  artifactKey: string,
+  secret: string,
+  expires = Date.now() + 60_000,
+) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${artifactKey}:${expires}`),
+  );
+
+  return `https://example.com/artifacts/${encodeURIComponent(
+    artifactKey,
+  )}?expires=${expires}&signature=${encodeBase64Url(
+    String.fromCharCode(...new Uint8Array(signature)),
+  )}`;
+}
+
 async function createValidExecuteRunRequest(overrides: Partial<ExecuteRunRequest> = {}) {
   const base: ExecuteRunRequest = {
     runId: "run_abc123",
@@ -126,8 +151,12 @@ describe("browser executor worker entry point", () => {
   it("serves stored artifacts for GET /artifacts/:key", async () => {
     const artifactBody = new TextEncoder().encode("artifact body");
     const artifactWorker = createWorker();
+    const requestUrl = await createArtifactUrl(
+      "runs/run_abc123/manifest.json",
+      env.CALLBACK_SIGNING_SECRET,
+    );
     const response = await artifactWorker.fetch(
-      new Request("https://example.com/artifacts/runs%2Frun_abc123%2Fmanifest.json"),
+      new Request(requestUrl),
       {
         ...env,
         ARTIFACTS: {
@@ -148,8 +177,12 @@ describe("browser executor worker entry point", () => {
 
   it("returns 404 when an artifact key is missing from storage", async () => {
     const artifactWorker = createWorker();
+    const requestUrl = await createArtifactUrl(
+      "runs/missing/manifest.json",
+      env.CALLBACK_SIGNING_SECRET,
+    );
     const response = await artifactWorker.fetch(
-      new Request("https://example.com/artifacts/runs%2Fmissing%2Fmanifest.json"),
+      new Request(requestUrl),
       {
         ...env,
         ARTIFACTS: {
@@ -162,6 +195,28 @@ describe("browser executor worker entry point", () => {
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: "not_found" });
+  });
+
+  it("returns 401 for GET /artifacts/:key with an invalid signature", async () => {
+    const artifactWorker = createWorker();
+    const response = await artifactWorker.fetch(
+      new Request(
+        "https://example.com/artifacts/runs%2Frun_abc123%2Fmanifest.json?expires=1770000000000&signature=bad-signature",
+      ),
+      {
+        ...env,
+        ARTIFACTS: {
+          get: vi.fn(async () => null),
+          put: vi.fn(),
+        },
+      },
+      executionContext,
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "invalid_artifact_signature",
+    });
   });
 
   it("dispatches valid POST /execute-run requests to the handler", async () => {

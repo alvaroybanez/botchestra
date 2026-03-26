@@ -18,7 +18,6 @@ import {
   StudyOverviewLinkButton,
   StudyStatusBadge,
   StudyTabsNav,
-  buildArtifactHref,
   emptyStudyDetailSearch,
   formatTimestamp,
   type StudyDetailSearch,
@@ -766,7 +765,7 @@ function buildEvidenceHref(
   value: string,
   resolvedArtifactUrls: Record<string, string>,
 ) {
-  return resolvedArtifactUrls[value] ?? (value.startsWith("data:") ? value : buildArtifactHref(value));
+  return resolvedArtifactUrls[value] ?? (value.startsWith("data:") ? value : "#");
 }
 
 function toOptionalNumber(value: string) {

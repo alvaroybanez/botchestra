@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api } from "./_generated/api";
@@ -27,6 +27,10 @@ const otherIdentity = {
   name: "Researcher Two",
   email: "researcher.two@example.com",
 };
+
+const BASE_TIME = new Date("2026-03-26T12:00:00.000Z");
+const ARTIFACT_BASE_URL = "https://artifacts.example.com";
+const ARTIFACT_SIGNING_SECRET = "artifact-signing-secret";
 
 const sampleTaskSpec = {
   scenario: "Complete checkout for a pair of shoes.",
@@ -63,6 +67,19 @@ const sampleTaskSpec = {
   locale: "en-US",
   viewport: { width: 1440, height: 900 },
 };
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(BASE_TIME);
+  process.env.ARTIFACT_BASE_URL = ARTIFACT_BASE_URL;
+  process.env.CALLBACK_SIGNING_SECRET = ARTIFACT_SIGNING_SECRET;
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  delete process.env.ARTIFACT_BASE_URL;
+  delete process.env.CALLBACK_SIGNING_SECRET;
+});
 
 describe("study queries", () => {
   it("getStudy returns the full study document for the owning org and null otherwise", async () => {
@@ -196,6 +213,8 @@ describe("run queries", () => {
       protoPersonaId,
       finalUrl: "https://example.com/confirmation",
       finalOutcome: "order_confirmed",
+      artifactManifestKey: "runs/run-1/manifest.json",
+      summaryKey: "runs/run-1/summary.json",
       selfReport: {
         perceivedSuccess: true,
         hardestPart: "Reviewing shipping costs",
@@ -233,6 +252,16 @@ describe("run queries", () => {
         perceivedSuccess: true,
         hardestPart: "Reviewing shipping costs",
       },
+      artifactManifestUrl: expect.stringContaining(
+        `${ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+          "runs/run-1/manifest.json",
+        )}?expires=${BASE_TIME.getTime() + 14_400_000}&signature=`,
+      ),
+      summaryUrl: expect.stringContaining(
+        `${ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+          "runs/run-1/summary.json",
+        )}?expires=${BASE_TIME.getTime() + 14_400_000}&signature=`,
+      ),
     });
     expect(run?.protoPersona).toMatchObject({
       _id: protoPersonaId,
@@ -249,6 +278,11 @@ describe("run queries", () => {
     expect(run?.milestones[0]).toMatchObject({
       actionType: "type",
       screenshotKey: "runs/run-1/milestones/1.jpg",
+      screenshotUrl: expect.stringContaining(
+        `${ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+          "runs/run-1/milestones/1.jpg",
+        )}?expires=${BASE_TIME.getTime() + 14_400_000}&signature=`,
+      ),
     });
   });
 

@@ -203,10 +203,6 @@ export function formatDuration(durationSec: number | undefined) {
   return `${minutes}m ${seconds}s`;
 }
 
-export function buildArtifactHref(key: string) {
-  return `/artifacts/${encodeURIComponent(key)}`;
-}
-
 function normalizeOptionalString(value: unknown) {
   if (typeof value !== "string") {
     return undefined;

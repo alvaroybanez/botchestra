@@ -39,6 +39,10 @@ function invalidCallbackToken() {
   return json({ error: "invalid_callback_token" }, 401);
 }
 
+function invalidArtifactSignature() {
+  return json({ error: "invalid_artifact_signature" }, 401);
+}
+
 function misconfiguredWorker() {
   return json({ error: "misconfigured_worker" }, 500);
 }
@@ -57,6 +61,10 @@ async function handleArtifactRequest(
   request: Request,
   env: BrowserExecutorEnv,
 ) {
+  if (!env.CALLBACK_SIGNING_SECRET) {
+    return misconfiguredWorker();
+  }
+
   if (!env.ARTIFACTS) {
     return misconfiguredWorker();
   }
@@ -67,20 +75,98 @@ async function handleArtifactRequest(
     return notFound();
   }
 
+  const signatureIsValid = await validateArtifactSignature(
+    request,
+    artifactKey,
+    env.CALLBACK_SIGNING_SECRET,
+  );
+
+  if (!signatureIsValid) {
+    return invalidArtifactSignature();
+  }
+
   const artifact = await env.ARTIFACTS.get(artifactKey);
 
   if (!artifact) {
     return notFound();
   }
 
+  const secondsUntilExpiry = getSecondsUntilArtifactExpiry(request);
+
   return new Response(await artifact.arrayBuffer(), {
     status: 200,
     headers: {
       "content-type":
         artifact.httpMetadata?.contentType ?? contentTypeForArtifactKey(artifactKey),
-      "cache-control": "public, max-age=14400",
+      "cache-control": `private, max-age=${secondsUntilExpiry}`,
     },
   });
+}
+
+async function validateArtifactSignature(
+  request: Request,
+  artifactKey: string,
+  secret: string,
+) {
+  const signature = new URL(request.url).searchParams.get("signature");
+  const expires = getArtifactExpiry(request);
+
+  if (!signature || expires === null || Date.now() > expires) {
+    return false;
+  }
+
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+
+    return await crypto.subtle.verify(
+      "HMAC",
+      key,
+      decodeBase64Url(signature),
+      new TextEncoder().encode(`${artifactKey}:${expires}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
+function getArtifactExpiry(request: Request) {
+  const expires = new URL(request.url).searchParams.get("expires");
+
+  if (!expires) {
+    return null;
+  }
+
+  const parsedExpiry = Number(expires);
+  return Number.isFinite(parsedExpiry) && parsedExpiry > 0 ? parsedExpiry : null;
+}
+
+function getSecondsUntilArtifactExpiry(request: Request) {
+  const expires = getArtifactExpiry(request);
+
+  if (expires === null) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((expires - Date.now()) / 1000));
+}
+
+function decodeBase64Url(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
 }
 
 function contentTypeForArtifactKey(artifactKey: string) {

@@ -321,6 +321,7 @@ export default defineSchema({
       v.object({ taskCategory: v.string(), modelId: v.string() }),
     ),
     runBudgetCap: v.number(),
+    signedUrlExpirySeconds: v.optional(v.number()),
     updatedBy: v.string(),
     updatedAt: v.number(),
   }).index("by_orgId", ["orgId"]),

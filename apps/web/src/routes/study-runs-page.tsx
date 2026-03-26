@@ -18,7 +18,6 @@ import {
   RunStatusBadge,
   StudyOverviewLinkButton,
   StudyTabsNav,
-  buildArtifactHref,
   formatDuration,
   formatTimestamp,
   type StudyDetailSearch,
@@ -393,7 +392,12 @@ function ResolvedRunDetail({
                   {milestone.screenshotKey ? (
                     <a
                       className="mt-3 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
-                      href={buildArtifactHref(milestone.screenshotKey)}
+                      href={resolveArtifactHref(
+                        (milestone as typeof milestone & {
+                          screenshotUrl?: string | null;
+                        }).screenshotUrl,
+                        milestone.screenshotKey,
+                      )}
                       rel="noreferrer"
                       target="_blank"
                     >
@@ -457,13 +461,20 @@ function ResolvedRunDetail({
           <div className="flex flex-wrap gap-3">
             {run.artifactManifestKey ? (
               <ArtifactLink
-                href={buildArtifactHref(run.artifactManifestKey)}
+                href={resolveArtifactHref(
+                  (run as typeof run & { artifactManifestUrl?: string | null })
+                    .artifactManifestUrl,
+                  run.artifactManifestKey,
+                )}
                 label="Open artifact manifest"
               />
             ) : null}
             {run.summaryKey ? (
               <ArtifactLink
-                href={buildArtifactHref(run.summaryKey)}
+                href={resolveArtifactHref(
+                  (run as typeof run & { summaryUrl?: string | null }).summaryUrl,
+                  run.summaryKey,
+                )}
                 label="Open run summary"
               />
             ) : null}
@@ -483,6 +494,21 @@ function getSelectedRunId(
   }
 
   return filteredRuns[0]?._id ?? null;
+}
+
+function resolveArtifactHref(
+  resolvedUrl: string | null | undefined,
+  fallbackKey: string | undefined,
+) {
+  if (resolvedUrl) {
+    return resolvedUrl;
+  }
+
+  if (fallbackKey?.startsWith("data:")) {
+    return fallbackKey;
+  }
+
+  return "#";
 }
 
 function filterRuns(

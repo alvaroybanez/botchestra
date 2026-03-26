@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 vi.mock("../packages/ai/src/index", () => ({
@@ -29,6 +29,22 @@ const modules = {
 const createTest = () => convexTest(schema, modules);
 const mockedGenerateWithModel = vi.mocked(generateWithModel);
 const analysisPipelineApi = (internal as any).analysisPipeline;
+const BASE_TIME = new Date("2026-03-26T12:00:00.000Z");
+const ARTIFACT_BASE_URL = "https://artifacts.example.com";
+const ARTIFACT_SIGNING_SECRET = "artifact-signing-secret";
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(BASE_TIME);
+  process.env.ARTIFACT_BASE_URL = ARTIFACT_BASE_URL;
+  process.env.CALLBACK_SIGNING_SECRET = ARTIFACT_SIGNING_SECRET;
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  delete process.env.ARTIFACT_BASE_URL;
+  delete process.env.CALLBACK_SIGNING_SECRET;
+});
 
 const sampleTaskSpec = {
   scenario: "A shopper wants to complete checkout.",
@@ -836,7 +852,9 @@ describe("analysisPipeline clustering", () => {
     expect(artifacts.html).toContain("Findings are synthetic and directional.");
     expect(artifacts.html).toContain("Checkout button missing at /shop/checkout");
     expect(artifacts.html).toContain(
-      `http://localhost:8787/artifacts/${encodeURIComponent("runs/checkout-run-a.png")}`,
+      `${ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+        "runs/checkout-run-a.png",
+      )}?expires=${BASE_TIME.getTime() + 14_400_000}&amp;signature=`,
     );
     expect(artifacts.html).not.toContain("<script src=");
     expect(artifacts.html).not.toContain("<link rel=\"stylesheet\"");

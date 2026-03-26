@@ -143,7 +143,9 @@ type RunDetail = {
       suggestedChange?: string;
     };
     artifactManifestKey?: string;
+    artifactManifestUrl?: string | null;
     summaryKey?: string;
+    summaryUrl?: string | null;
   };
   personaVariant: {
     _id: string;
@@ -163,6 +165,7 @@ type RunDetail = {
     actionType: string;
     rationaleShort: string;
     screenshotKey?: string;
+    screenshotUrl?: string | null;
   }>;
 };
 
@@ -1994,7 +1997,15 @@ function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
         suggestedChange: "Explain which fields need to change.",
       },
       artifactManifestKey: "runs/run-hard-fail/artifacts.json",
+      artifactManifestUrl:
+        `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+          "runs/run-hard-fail/artifacts.json",
+        )}`,
       summaryKey: "runs/run-hard-fail/summary.json",
+      summaryUrl:
+        `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+          "runs/run-hard-fail/summary.json",
+        )}`,
       ...overrides.run,
     },
     personaVariant: {
@@ -2019,6 +2030,10 @@ function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
         actionType: "click",
         rationaleShort: "Started checkout from the cart page.",
         screenshotKey: "runs/run-hard-fail/milestones/1.png",
+        screenshotUrl:
+          `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+            "runs/run-hard-fail/milestones/1.png",
+          )}`,
       },
       {
         _id: "milestone-2",

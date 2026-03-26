@@ -19,7 +19,6 @@ import {
   StudyOverviewLinkButton,
   StudyStatusBadge,
   StudyTabsNav,
-  buildArtifactHref,
   formatTimestamp,
   type StudyDetailSearch,
 } from "@/routes/study-shared";
@@ -704,7 +703,7 @@ function toArtifactHref(
   value: string,
   resolvedArtifactUrls: Record<string, string>,
 ) {
-  return resolvedArtifactUrls[value] ?? (value.startsWith("data:") ? value : buildArtifactHref(value));
+  return resolvedArtifactUrls[value] ?? (value.startsWith("data:") ? value : "#");
 }
 
 function unique(values: string[]) {

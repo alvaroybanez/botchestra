@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api } from "./_generated/api";
@@ -27,6 +27,10 @@ const otherIdentity = {
   name: "Reviewer Two",
   email: "reviewer.two@example.com",
 };
+
+const BASE_TIME = new Date("2026-03-26T12:00:00.000Z");
+const ARTIFACT_BASE_URL = "https://artifacts.example.com";
+const ARTIFACT_SIGNING_SECRET = "artifact-signing-secret";
 
 const sampleTaskSpec = {
   scenario: "Complete checkout for a pair of shoes.",
@@ -65,6 +69,19 @@ const sampleTaskSpec = {
 };
 
 describe("report exports", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(BASE_TIME);
+    process.env.ARTIFACT_BASE_URL = ARTIFACT_BASE_URL;
+    process.env.CALLBACK_SIGNING_SECRET = ARTIFACT_SIGNING_SECRET;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    delete process.env.ARTIFACT_BASE_URL;
+    delete process.env.CALLBACK_SIGNING_SECRET;
+  });
+
   it("exports the full report JSON with issue clusters in report order", async () => {
     const t = createTest();
     const asOwner = t.withIdentity(owningIdentity);
@@ -135,9 +152,9 @@ describe("report exports", () => {
     expect(exported.content).toContain("Payment totals shift late in checkout");
     expect(exported.content).toContain("Findings are synthetic and directional.");
     expect(exported.content).toContain(
-      `http://localhost:8787/artifacts/${encodeURIComponent(
+      `${ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
         "runs/run-primary/milestones/2.jpg",
-      )}`,
+      )}?expires=${BASE_TIME.getTime() + 14_400_000}&amp;signature=`,
     );
     expect(exported.content).not.toContain("<script src=");
     expect(exported.content).not.toContain('<link rel="stylesheet"');

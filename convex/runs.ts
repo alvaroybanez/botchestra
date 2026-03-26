@@ -11,6 +11,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { internalMutation, query } from "./_generated/server";
+import { resolveArtifactUrlsForStudy } from "./artifactResolver";
 
 const zQuery = zCustomQuery(query, NoOp);
 const zInternalMutation = zCustomMutation(internalMutation, NoOp);
@@ -253,11 +254,39 @@ export const getRun = zQuery({
       throw new ConvexError("Run is missing required persona records.");
     }
 
+    const artifactUrls = await resolveArtifactUrlsForStudy(ctx, {
+      studyId: run.studyId,
+      keys: [
+        ...milestones
+          .map((milestone) => milestone.screenshotKey)
+          .filter((key): key is string => key !== undefined),
+        ...[run.artifactManifestKey, run.summaryKey].filter(
+          (key): key is string => key !== undefined,
+        ),
+      ],
+    });
+
     return {
-      run,
+      run: {
+        ...run,
+        artifactManifestUrl:
+          run.artifactManifestKey !== undefined
+            ? artifactUrls[run.artifactManifestKey] ?? null
+            : null,
+        summaryUrl:
+          run.summaryKey !== undefined
+            ? artifactUrls[run.summaryKey] ?? null
+            : null,
+      },
       personaVariant,
       protoPersona,
-      milestones,
+      milestones: milestones.map((milestone) => ({
+        ...milestone,
+        screenshotUrl:
+          milestone.screenshotKey !== undefined
+            ? artifactUrls[milestone.screenshotKey] ?? null
+            : null,
+      })),
     };
   },
 });

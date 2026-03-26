@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api } from "./_generated/api";
@@ -31,6 +31,10 @@ const otherIdentity = {
   name: "Researcher Two",
   email: "researcher.two@example.com",
 };
+
+const BASE_TIME = new Date("2026-03-26T12:00:00.000Z");
+const ARTIFACT_BASE_URL = "https://artifacts.example.com";
+const ARTIFACT_SIGNING_SECRET = "artifact-signing-secret";
 
 const sampleTaskSpec = {
   scenario: "Complete checkout for a pair of shoes.",
@@ -67,6 +71,19 @@ const sampleTaskSpec = {
   locale: "en-US",
   viewport: { width: 1440, height: 900 },
 };
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(BASE_TIME);
+  process.env.ARTIFACT_BASE_URL = ARTIFACT_BASE_URL;
+  process.env.CALLBACK_SIGNING_SECRET = ARTIFACT_SIGNING_SECRET;
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  delete process.env.ARTIFACT_BASE_URL;
+  delete process.env.CALLBACK_SIGNING_SECRET;
+});
 
 describe("analysis queries", () => {
   it("getReport returns the full study report for the owning org and null when absent", async () => {
@@ -264,7 +281,7 @@ describe("analysis queries", () => {
     ).rejects.toThrowError("Study not found.");
   });
 
-  it("resolveArtifactUrls preserves data URLs and resolves run artifacts through the worker proxy", async () => {
+  it("resolveArtifactUrls preserves data URLs and resolves run artifacts through signed worker URLs", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, researchIdentity.tokenIdentifier);
@@ -280,7 +297,11 @@ describe("analysis queries", () => {
 
     expect(resolved).toEqual({
       "runs/run-primary/milestones/2.jpg":
-        "http://localhost:8787/artifacts/runs%2Frun-primary%2Fmilestones%2F2.jpg",
+        expect.stringContaining(
+          `${ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+            "runs/run-primary/milestones/2.jpg",
+          )}?expires=${BASE_TIME.getTime() + 14_400_000}&signature=`,
+        ),
       [inlineArtifactUrl]: inlineArtifactUrl,
     });
   });
