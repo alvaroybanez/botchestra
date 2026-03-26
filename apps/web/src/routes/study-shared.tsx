@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type StudyDetailSearch = {
@@ -109,6 +110,26 @@ export function StudyTabsNav({
         </div>
       </div>
     </div>
+  );
+}
+
+export function StudyOverviewLinkButton({
+  detailSearch,
+  studyId,
+}: {
+  detailSearch: StudyDetailSearch;
+  studyId: string;
+}) {
+  return (
+    <Button asChild variant="outline">
+      <Link
+        params={{ studyId }}
+        search={detailSearch}
+        to="/studies/$studyId/overview"
+      >
+        Go to Overview
+      </Link>
+    </Button>
   );
 }
 

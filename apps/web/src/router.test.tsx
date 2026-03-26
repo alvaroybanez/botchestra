@@ -838,6 +838,20 @@ describe("@botchestra/web routing", () => {
     );
   });
 
+  it("renders the demo study overview without crashing", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/demo-study/overview"],
+    });
+
+    expect(container.textContent).toContain("Checkout usability benchmark");
+    expect(container.textContent).toContain("Task specification");
+    expect(container.textContent).toContain("Live monitor");
+    expect(container.textContent).toContain("100% complete");
+    expect(container.textContent).toContain("Open runs tab");
+    expect(container.textContent).not.toContain("Study not found");
+  });
+
   it("lets researchers edit draft studies from the overview page", async () => {
     mockedStudyById = {
       "study-live": makeStudy({
@@ -1375,6 +1389,45 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain(
       "Replay evidence confirms the continue button is clipped below the fold.",
     );
+  });
+
+  it("renders working Go to Overview links across demo runs, findings, and report tabs", async () => {
+    for (const initialEntry of [
+      "/studies/demo-study/runs",
+      "/studies/demo-study/findings",
+      "/studies/demo-study/report",
+    ]) {
+      const { container } = await renderRoute({
+        auth: { isAuthenticated: true, isLoading: false },
+        initialEntries: [initialEntry],
+      });
+
+      const overviewLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
+        (link) => link.textContent?.trim() === "Go to Overview",
+      );
+
+      expect(overviewLink?.getAttribute("href")).toBe(
+        "/studies/demo-study/overview",
+      );
+    }
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/demo-study/report"],
+    });
+
+    const overviewLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
+      (link) => link.textContent?.trim() === "Go to Overview",
+    );
+
+    expect(overviewLink).not.toBeNull();
+
+    await act(async () => {
+      overviewLink!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(getRouterLocationHref(router)).toContain("/studies/demo-study/overview");
+    expect(container.textContent).toContain("Task specification");
   });
 
   it("renders the persona pack empty state when no packs exist", async () => {

@@ -1,11 +1,53 @@
 import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
 
+export type DemoStudyStatus =
+  | "draft"
+  | "persona_review"
+  | "ready"
+  | "queued"
+  | "running"
+  | "replaying"
+  | "analyzing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
 export type DemoStudySummary = {
   _id: string;
   name: string;
-  status: string;
+  status: DemoStudyStatus;
   runBudget: number;
   updatedAt: number;
+};
+
+export type DemoStudyOverview = {
+  _id: string;
+  personaPackId: string;
+  name: string;
+  description: string;
+  status: DemoStudyStatus;
+  runBudget: number;
+  activeConcurrency: number;
+  updatedAt: number;
+  taskSpec: {
+    scenario: string;
+    goal: string;
+    startingUrl: string;
+    allowedDomains: string[];
+    allowedActions: string[];
+    forbiddenActions: string[];
+    successCriteria: string[];
+    stopConditions: string[];
+    postTaskQuestions: string[];
+    maxSteps: number;
+    maxDurationSec: number;
+    environmentLabel: string;
+    locale: string;
+    viewport: {
+      width: number;
+      height: number;
+    };
+  };
 };
 
 export type DemoStudyReport = {
@@ -116,6 +158,24 @@ export type DemoFinding = {
   }>;
 };
 
+export type DemoRunSummary = {
+  studyId: string;
+  totalRuns: number;
+  queuedCount: number;
+  runningCount: number;
+  terminalCount: number;
+  outcomeCounts: {
+    success: number;
+    hard_fail: number;
+    soft_fail: number;
+    gave_up: number;
+    timeout: number;
+    blocked_by_guardrail: number;
+    infra_error: number;
+    cancelled: number;
+  };
+};
+
 const demoTimestamp = new Date("2026-03-26T10:30:00Z").getTime();
 
 export const demoStudySummary: DemoStudySummary = {
@@ -124,6 +184,44 @@ export const demoStudySummary: DemoStudySummary = {
   status: "completed",
   runBudget: 64,
   updatedAt: demoTimestamp,
+};
+
+export const demoStudyOverview: DemoStudyOverview = {
+  _id: DEMO_STUDY_ID,
+  personaPackId: "demo-pack",
+  name: "Checkout usability benchmark",
+  description:
+    "Synthetic benchmark study showing the completed analysis surfaces for the demo checkout flow.",
+  status: "completed",
+  runBudget: 64,
+  activeConcurrency: 8,
+  updatedAt: demoTimestamp,
+  taskSpec: {
+    scenario:
+      "A shopper wants to complete checkout and confirm their order without second-guessing totals or navigation.",
+    goal: "Reach order confirmation with confidence.",
+    startingUrl: "https://example.com/checkout",
+    allowedDomains: ["example.com"],
+    allowedActions: ["goto", "click", "type", "select", "scroll", "wait", "back", "finish"],
+    forbiddenActions: ["payment_submission", "external_download"],
+    successCriteria: ["Order confirmation is visible"],
+    stopConditions: ["Leave the allowlisted domain"],
+    postTaskQuestions: [
+      "Do you think you completed the task?",
+      "What was the hardest part?",
+      "What confused or frustrated you?",
+      "How confident are you that you did the right thing?",
+      "What would you change?",
+    ],
+    maxSteps: 25,
+    maxDurationSec: 420,
+    environmentLabel: "demo",
+    locale: "en-US",
+    viewport: {
+      width: 1440,
+      height: 900,
+    },
+  },
 };
 
 const demoIssueClusterIds = [
@@ -186,6 +284,24 @@ export const demoRuns: DemoRunListItem[] = [
     stepCount: 6,
   },
 ];
+
+export const demoRunSummary: DemoRunSummary = {
+  studyId: DEMO_STUDY_ID,
+  totalRuns: demoRuns.length,
+  queuedCount: 0,
+  runningCount: 0,
+  terminalCount: demoRuns.length,
+  outcomeCounts: {
+    success: 0,
+    hard_fail: 1,
+    soft_fail: 1,
+    gave_up: 0,
+    timeout: 0,
+    blocked_by_guardrail: 0,
+    infra_error: 0,
+    cancelled: 0,
+  },
+};
 
 export const demoRunDetailsById: Record<string, DemoRunDetail> = {
   "run-demo-address": {

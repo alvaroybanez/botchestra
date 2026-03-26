@@ -16,6 +16,7 @@ import {
 } from "@/routes/study-demo-data";
 import {
   RunStatusBadge,
+  StudyOverviewLinkButton,
   StudyTabsNav,
   buildArtifactHref,
   formatDuration,
@@ -141,9 +142,15 @@ function ResolvedStudyRunsPage({
           </div>
         </div>
 
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <StudyOverviewLinkButton
+            detailSearch={detailSearch}
+            studyId={studyId}
+          />
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        </div>
       </div>
 
       <StudyTabsNav

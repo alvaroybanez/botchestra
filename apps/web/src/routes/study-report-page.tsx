@@ -16,6 +16,7 @@ import {
   type DemoStudySummary,
 } from "@/routes/study-demo-data";
 import {
+  StudyOverviewLinkButton,
   StudyStatusBadge,
   StudyTabsNav,
   buildArtifactHref,
@@ -411,9 +412,15 @@ function ReportShell({
           </div>
         </div>
 
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <StudyOverviewLinkButton
+            detailSearch={detailSearch}
+            studyId={study._id}
+          />
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        </div>
       </div>
 
       <StudyTabsNav

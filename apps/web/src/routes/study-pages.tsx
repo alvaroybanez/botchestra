@@ -8,6 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
+import {
+  demoRunSummary,
+  demoRuns,
+  demoStudyOverview,
+} from "@/routes/study-demo-data";
 import {
   RunStatusBadge,
   StudyStatusBadge,
@@ -568,6 +574,10 @@ export function StudyOverviewPage({
   detailSearch: StudyDetailSearch;
   studyId: string;
 }) {
+  if (studyId === DEMO_STUDY_ID) {
+    return <DemoStudyOverviewPage detailSearch={detailSearch} />;
+  }
+
   const study = useQuery(api.studies.getStudy, {
     studyId: studyId as Id<"studies">,
   });
@@ -595,6 +605,266 @@ export function StudyOverviewPage({
       detailSearch={detailSearch}
       study={study}
     />
+  );
+}
+
+function DemoStudyOverviewPage({
+  detailSearch,
+}: {
+  detailSearch: StudyDetailSearch;
+}) {
+  const overallCompletion = getCompletionPercentage(
+    demoRunSummary.terminalCount,
+    demoRunSummary.totalRuns,
+  );
+  const replayStatus = getReplayChipStatus(demoStudyOverview.status);
+  const analysisStatus = getAnalysisChipStatus(demoStudyOverview.status);
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-3xl font-semibold tracking-tight">
+              {demoStudyOverview.name}
+            </h2>
+            <StudyStatusBadge status={demoStudyOverview.status} />
+          </div>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            {demoStudyOverview.description}
+          </p>
+        </div>
+
+        <Button asChild variant="outline">
+          <Link to="/studies">Back to Studies</Link>
+        </Button>
+      </div>
+
+      <StudyTabsNav
+        activeTab="overview"
+        detailSearch={detailSearch}
+        studyId={demoStudyOverview._id}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Task specification</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <SummaryValue
+                label="Scenario"
+                value={demoStudyOverview.taskSpec.scenario}
+              />
+              <SummaryValue
+                label="Goal"
+                value={demoStudyOverview.taskSpec.goal}
+              />
+              <SummaryValue
+                label="Starting URL"
+                value={demoStudyOverview.taskSpec.startingUrl}
+              />
+              <SummaryValue
+                label="Allowed domains"
+                value={demoStudyOverview.taskSpec.allowedDomains.join(", ")}
+              />
+              <SummaryValue
+                label="Success criteria"
+                value={demoStudyOverview.taskSpec.successCriteria.join(", ")}
+              />
+              <SummaryValue
+                label="Stop conditions"
+                value={demoStudyOverview.taskSpec.stopConditions.join(", ")}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Guardrails and questionnaire</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <SummaryValue
+                label="Allowed actions"
+                value={demoStudyOverview.taskSpec.allowedActions.join(", ")}
+              />
+              <SummaryValue
+                label="Forbidden actions"
+                value={demoStudyOverview.taskSpec.forbiddenActions.join(", ")}
+              />
+              <SummaryValue
+                label="Locale"
+                value={demoStudyOverview.taskSpec.locale}
+              />
+              <SummaryValue
+                label="Viewport"
+                value={`${demoStudyOverview.taskSpec.viewport.width} × ${demoStudyOverview.taskSpec.viewport.height}`}
+              />
+              <SummaryValue
+                label="Post-task questions"
+                value={demoStudyOverview.taskSpec.postTaskQuestions.join(", ")}
+              />
+              <SummaryValue
+                label="Persona pack"
+                value={demoStudyOverview.personaPackId}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Study summary</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <SummaryValue
+                label="Run budget"
+                value={String(demoStudyOverview.runBudget)}
+              />
+              <SummaryValue
+                label="Active concurrency"
+                value={String(demoStudyOverview.activeConcurrency)}
+              />
+              <SummaryValue
+                label="Environment"
+                value={demoStudyOverview.taskSpec.environmentLabel}
+              />
+              <SummaryValue
+                label="Last updated"
+                value={formatTimestamp(demoStudyOverview.updatedAt)}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Live monitor</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <PhaseStatusChip
+                    label="Replay"
+                    tone={replayStatus.tone}
+                    value={replayStatus.label}
+                  />
+                  <PhaseStatusChip
+                    label="Analysis"
+                    tone={analysisStatus.tone}
+                    value={analysisStatus.label}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Completion progress
+                      </p>
+                      <p className="text-2xl font-semibold tracking-tight">
+                        {overallCompletion}% complete
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {demoRunSummary.terminalCount} of {demoRunSummary.totalRuns} runs
+                      {" "}
+                      reached a terminal outcome
+                    </p>
+                  </div>
+                  <ProgressBar
+                    value={overallCompletion}
+                    valueText={`${overallCompletion}% complete`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SummaryValue
+                  label="Completed"
+                  value={`${demoRunSummary.terminalCount} / ${demoRunSummary.totalRuns}`}
+                />
+                <SummaryValue
+                  label="Running"
+                  value={String(demoRunSummary.runningCount)}
+                />
+                <SummaryValue
+                  label="Queued / dispatching"
+                  value={String(demoRunSummary.queuedCount)}
+                />
+                <SummaryValue
+                  label="Active variants"
+                  value="0"
+                />
+              </div>
+
+              <Button asChild variant="outline">
+                <Link
+                  params={{ studyId: demoStudyOverview._id }}
+                  search={detailSearch}
+                  to="/studies/$studyId/runs"
+                >
+                  Open runs tab
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Outcome breakdown</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {TERMINAL_OUTCOME_LABELS.map((outcome) => (
+                <SummaryValue
+                  key={outcome.key}
+                  label={outcome.label}
+                  value={String(demoRunSummary.outcomeCounts[outcome.key])}
+                />
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Active persona variants</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-lg border border-dashed bg-background p-4">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Demo runs are complete, so there are no persona variants
+                  actively dispatching or running right now.
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                {demoRuns.map((run) => (
+                  <div
+                    className="rounded-lg border bg-background p-4"
+                    key={run._id}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="font-medium">{run.protoPersonaName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {run.finalOutcome ?? run.status}
+                        </p>
+                      </div>
+                      <RunStatusBadge status={run.status} />
+                    </div>
+
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      {run.firstPersonBio}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </section>
   );
 }
 
