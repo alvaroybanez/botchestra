@@ -1,0 +1,126 @@
+{
+  "groupId": "report-ui-consistency",
+  "testedAt": "2026-03-26T20:24:46.332640+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "analysis-main-5142@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "5142e29a9810"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-ANALYSIS-015",
+      "title": "Report Page Headline Metrics Display",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Open /studies/demo-study/report after signing in",
+          "expected": "Headline metrics render at the top of the report page",
+          "observed": "The report opened with Completion rate 68%, Abandonment rate 19%, Median steps 7, and Median duration 188 sec."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/report-ui-consistency/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "The populated report route rendered headline metrics immediately on /studies/demo-study/report."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-ANALYSIS-016",
+      "title": "Report Page Ranked Issue Cards",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect the ranked report cards",
+          "expected": "Cards appear in ranked order with the required visible fields",
+          "observed": "The page rendered #1 blocker and #2 minor issue cards with What broke, Where, Affected segments, Evidence thumbnails, quotes, Replay confidence, Recommendation, and Confidence note sections."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/report-ui-consistency/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "Two ranked issue cards were visible in numbered order on the report route."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-ANALYSIS-017",
+      "title": "Evidence Screenshots Link to Full Resolution",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect evidence thumbnails on the report card",
+          "expected": "Each thumbnail links to a full-resolution artifact",
+          "observed": "The report card exposed clickable evidence thumbnails."
+        },
+        {
+          "action": "Open the first evidence thumbnail in a new tab",
+          "expected": "A full-resolution artifact loads",
+          "observed": "The browser opened a new tab with the full-resolution SVG data URL and rendered the larger artifact preview."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/report-ui-consistency/demo-report-initial.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/report-ui-consistency/demo-report-fullres-tab.png"
+        ],
+        "consoleErrors": "none",
+        "network": "Evidence thumbnail href resolved to a full-resolution data:image SVG opened in a new tab."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-017",
+      "title": "Data Consistency Across Views",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Try to inspect the same study across overview, runs, findings, and report views",
+          "expected": "A completed study would render consistently across all four tabs",
+          "observed": "The fresh org had no completed study, and the demo-study overview tab crashed with an ArgumentValidationError while runs/findings/report used canned demo data."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/report-ui-consistency/demo-report-initial.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-run-detail-from-findings.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/pipeline-liveness-and-clusters/demo-overview-not-found.png"
+        ],
+        "consoleErrors": "demo-study overview route threw an ArgumentValidationError for invalid studyId",
+        "network": "Cross-view comparison could not be completed because the overview tab did not load for demo-study and no live completed study existed."
+      },
+      "issues": "Blocked: there was no single live completed study that could be compared across overview, runs, findings, and report."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "The only populated report available from the browser was the direct /studies/demo-study/report route; the live fresh org had no analyzed study to navigate to.",
+      "resolved": false,
+      "resolution": "Used the populated demo route for route/UI validation and blocked the true cross-view consistency assertion.",
+      "affectedAssertions": [
+        "VAL-ANALYSIS-015",
+        "VAL-ANALYSIS-016",
+        "VAL-ANALYSIS-017",
+        "VAL-CROSS-017"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "The demo-study overview route is broken, preventing a full four-tab consistency check even on the built-in demo surface.",
+      "affectedAssertions": [
+        "VAL-CROSS-017"
+      ],
+      "quickFixAttempted": "Loaded /studies/demo-study/overview directly; the same Convex validation error reappeared."
+    }
+  ],
+  "summary": "Tested 4 assertions: 3 passed on the report route UI, 0 failed, and 1 was blocked because no single completed study could be compared across all four views."
+}

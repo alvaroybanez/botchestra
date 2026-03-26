@@ -97,3 +97,11 @@ Testing surface, required tools, and resource cost classification.
 - On the rerun, a `runBudget=50` study still failed before creating any runs; manual **Generate variants** on the Personas tab reported `Generated 0 accepted variants (100 rejected, 150 retries).`
 - The real callback receiver for study-orchestrator is the public Convex site (`bunx convex env get CONVEX_SITE_URL`), not `http://localhost:5180/api/run-progress`; the local Vite route returns 404.
 - `CALLBACK_SIGNING_SECRET` is now configured in the Convex deployment, and an invalid bearer token sent to `CONVEX_SITE_URL/api/run-progress` now correctly returns `401 {"error":"invalid_callback_token"}`.
+
+## Analysis-pipeline validation notes (2026-03-26)
+
+- Fresh authenticated orgs still start with **no persona packs** and therefore no live path to create an analyzed study from the browser; `/studies/new` stops at **No persona packs available**.
+- The only populated analysis surfaces currently reachable from the browser are the direct demo routes `/studies/demo-study/findings` and `/studies/demo-study/report`; these are useful for route/UI verification but not for proving live run-to-analysis data flow.
+- `/studies/demo-study/overview` currently crashes with a Convex `ArgumentValidationError` because the overview route does not share the demo fallback used by Runs/Findings/Report.
+- On the populated demo findings route, severity, proto-persona, axis-range, outcome, and URL-prefix filters all visibly narrow the result set, and representative-run links drill into the matching demo run detail.
+- On the populated demo report route, headline metrics, ranked issue cards, analyst notes, and evidence-thumbnail links all render, and clicking an evidence thumbnail opens a full-resolution artifact in a new tab.

@@ -1,0 +1,177 @@
+{
+  "groupId": "findings-ui-and-segments",
+  "testedAt": "2026-03-26T20:24:46.332640+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "analysis-main-5142@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "5142e29a9810"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-ANALYSIS-013",
+      "title": "Findings Explorer Route and Filters",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Open /studies/demo-study/findings after signing in",
+          "expected": "A findings explorer with filter controls and issue cards would render",
+          "observed": "The route rendered filter controls for severity, proto-persona, axis range, outcome, and URL prefix with two issue cards."
+        },
+        {
+          "action": "Apply the severity filter blocker",
+          "expected": "Only blocker clusters remain visible",
+          "observed": "The page narrowed from 2 clusters to 1 blocker cluster (\u201cCheckout continue button hidden on the address step\u201d)."
+        },
+        {
+          "action": "Apply proto-persona + outcome + URL prefix filters together",
+          "expected": "Combined filters narrow to the matching cluster only",
+          "observed": "The filters reduced the list to the \u201cPayment totals shift late in checkout\u201d cluster only."
+        },
+        {
+          "action": "Apply an axis-range filter",
+          "expected": "Only clusters whose axis coverage intersects the range remain",
+          "observed": "Filtering support_needs to 0.5\u20131 narrowed the view to the blocker cluster only."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-initial.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-filter-blocker.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-filter-combo.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-filter-axis-range.png"
+        ],
+        "consoleErrors": "none",
+        "network": "Route stayed on /studies/demo-study/findings while the result count changed from 2 to 1 as filters were applied."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-ANALYSIS-014",
+      "title": "Findings Explorer Issue Cards Link to Evidence",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Open the populated findings route",
+          "expected": "Issue cards would show representative runs and drill-down links",
+          "observed": "Each issue card showed title, severity, affected segments, representative runs, and evidence links."
+        },
+        {
+          "action": "Click \u201cOpen run detail\u201d from the blocker card",
+          "expected": "Navigation opens the matching run detail",
+          "observed": "The browser navigated to /studies/demo-study/runs?runId=run-demo-address and showed the matching hard-fail run detail."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-initial.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-run-detail-from-findings.png"
+        ],
+        "consoleErrors": "none",
+        "network": "Representative run link target resolved to /studies/demo-study/runs?runId=run-demo-address."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-ANALYSIS-018",
+      "title": "Analyst Notes Visible on Both Views",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect analyst notes on the findings blocker card",
+          "expected": "Existing note text is visible on the findings page",
+          "observed": "The findings card displayed analyst-a and analyst-b notes for the blocker cluster."
+        },
+        {
+          "action": "Inspect the corresponding report card for the same cluster",
+          "expected": "The same note text is visible on the report page",
+          "observed": "The report card showed the same analyst-a and analyst-b notes for the blocker cluster."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-filter-blocker.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/report-ui-consistency/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "Both routes rendered the same note text for the blocker cluster."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-008",
+      "title": "Run Data Flows to Findings",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Inspect the live browser surface after signup",
+          "expected": "A real completed study with findings derived from browser-executor runs would be available",
+          "observed": "The fresh org had no persona packs or studies."
+        },
+        {
+          "action": "Inspect the populated findings route",
+          "expected": "A live study would prove run data flowing through analysis",
+          "observed": "Only the demo-study route contained populated findings, so the browser did not prove a real run-to-analysis pipeline for this org."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-initial.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/pipeline-liveness-and-clusters/live-study-create-no-packs.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No live study-generated findings were reachable from the fresh org."
+      },
+      "issues": "Blocked: the populated findings surface was demo-only, so live run-data flow could not be proven."
+    },
+    {
+      "id": "VAL-CROSS-009",
+      "title": "Variant Axis Values Reflected in Analysis Segments",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Inspect axis coverage on the populated findings cards",
+          "expected": "A live study would prove variant axis values flowing into analysis segments",
+          "observed": "Axis keys were visible on the demo cards, but there was no live study-generated analysis output to prove real variant-to-analysis propagation."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-initial.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/findings-ui-and-segments/demo-findings-filter-axis-range.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No live study-generated findings with visible originating variants were reachable from the browser."
+      },
+      "issues": "Blocked: the browser only exposed canned demo axis ranges, not a live variant-to-analysis flow."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "The populated findings route was only reachable via direct URL to /studies/demo-study/findings because the fresh org had no live analyzed study to navigate to.",
+      "resolved": false,
+      "resolution": "Used the demo-study findings route strictly for route/UI validation and called out the limitation for live data-flow assertions.",
+      "affectedAssertions": [
+        "VAL-ANALYSIS-013",
+        "VAL-ANALYSIS-014",
+        "VAL-ANALYSIS-018",
+        "VAL-CROSS-008",
+        "VAL-CROSS-009"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Fresh orgs have no persona packs, so no live study can be created from the browser to reach populated findings.",
+      "affectedAssertions": [
+        "VAL-CROSS-008",
+        "VAL-CROSS-009"
+      ],
+      "quickFixAttempted": "Opened /studies/new; the wizard halted at \u201cNo persona packs available\u201d."
+    }
+  ],
+  "summary": "Tested 5 assertions: 3 passed on the populated findings route UI, 0 failed, and 2 were blocked because live run-to-analysis data flow was not reachable from the browser."
+}

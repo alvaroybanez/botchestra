@@ -1,0 +1,102 @@
+{
+  "milestone": "analysis-pipeline",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 24,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 18
+  },
+  "passedAssertions": [
+    "VAL-ANALYSIS-013",
+    "VAL-ANALYSIS-014",
+    "VAL-ANALYSIS-015",
+    "VAL-ANALYSIS-016",
+    "VAL-ANALYSIS-017",
+    "VAL-ANALYSIS-018"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [
+    {
+      "id": "VAL-ANALYSIS-001",
+      "blockedBy": "Fresh orgs expose no live analyzed-study path, and /studies/demo-study/overview crashes instead of showing a populated lifecycle."
+    },
+    {
+      "id": "VAL-ANALYSIS-002",
+      "blockedBy": "The browser surface did not expose a real analyzed study with structured per-run summary output."
+    },
+    {
+      "id": "VAL-ANALYSIS-003",
+      "blockedBy": "No live clustered study with infra_error/cancelled handling was reachable from the browser surface."
+    },
+    {
+      "id": "VAL-ANALYSIS-004",
+      "blockedBy": "The browser only exposed issue-card summaries, not full raw IssueCluster fields."
+    },
+    {
+      "id": "VAL-ANALYSIS-005",
+      "blockedBy": "Impact-score formula inputs and raw scores are not user-visible in the browser."
+    },
+    {
+      "id": "VAL-ANALYSIS-006",
+      "blockedBy": "The browser showed ranked demo cards but not live score/order proof for a real analyzed study."
+    },
+    {
+      "id": "VAL-ANALYSIS-007",
+      "blockedBy": "Headline-metric calculation correctness could not be proven from browser-visible data alone."
+    },
+    {
+      "id": "VAL-ANALYSIS-008",
+      "blockedBy": "Only the demo report route was populated, and it is not authoritative for live limitations validation."
+    },
+    {
+      "id": "VAL-ANALYSIS-009",
+      "blockedBy": "Report artifact keys are not exposed on the current browser surface."
+    },
+    {
+      "id": "VAL-ANALYSIS-010",
+      "blockedBy": "No browser-visible path exposed a generated HTML report artifact."
+    },
+    {
+      "id": "VAL-ANALYSIS-011",
+      "blockedBy": "No browser-visible path exposed a generated JSON report artifact."
+    },
+    {
+      "id": "VAL-ANALYSIS-012",
+      "blockedBy": "Notes are view-only in the browser; there is no add-note UI to prove append-only behavior."
+    },
+    {
+      "id": "VAL-ANALYSIS-019",
+      "blockedBy": "The browser surface did not expose a live analysis flow or a way to induce/observe AI failure handling."
+    },
+    {
+      "id": "VAL-ANALYSIS-020",
+      "blockedBy": "No live all-infra_error report was reachable from the browser surface."
+    },
+    {
+      "id": "VAL-ANALYSIS-021",
+      "blockedBy": "The browser surface did not expose a live zero-vs-positive replay-confidence comparison."
+    },
+    {
+      "id": "VAL-CROSS-008",
+      "blockedBy": "The populated findings surface was demo-only, so live run-to-analysis data flow was not proven."
+    },
+    {
+      "id": "VAL-CROSS-009",
+      "blockedBy": "Visible axis ranges came from demo data and did not prove live variant-to-analysis propagation."
+    },
+    {
+      "id": "VAL-CROSS-017",
+      "blockedBy": "No single completed study could be compared across overview, runs, findings, and report; the demo overview route crashes."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Recorded analysis-pipeline browser-validation findings: fresh orgs still have no live analyzed-study path, populated findings/report routes are demo-study-only, the demo overview route crashes, and the populated demo findings/report UIs now expose working filters, notes, and evidence links.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null
+}

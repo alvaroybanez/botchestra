@@ -1,0 +1,204 @@
+{
+  "groupId": "metrics-artifacts-and-notes",
+  "testedAt": "2026-03-26T20:24:46.332640+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "analysis-main-5142@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "5142e29a9810"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-ANALYSIS-005",
+      "title": "Deterministic Impact Score Formula",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Inspect live and demo analysis surfaces for score math",
+          "expected": "The browser would expose impact-score inputs/outputs or calculation details",
+          "observed": "The UI showed ranked cards but no formula inputs or raw scores suitable for verifying the deterministic calculation."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No score-calculation payloads were exposed in the browser UI."
+      },
+      "issues": "Blocked: impact-score formula verification is not user-visible from the browser surface."
+    },
+    {
+      "id": "VAL-ANALYSIS-007",
+      "title": "Headline Metrics Computed Correctly",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Open the populated report route and inspect headline metrics",
+          "expected": "The browser would allow the underlying metric computation to be verified",
+          "observed": "Headline metrics were visible on the demo report, but the browser provided no live run set or raw report payload to verify the calculations."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No direct StudyReport payload was visible in the browser."
+      },
+      "issues": "Blocked: metric-calculation correctness could not be proven from the browser alone."
+    },
+    {
+      "id": "VAL-ANALYSIS-008",
+      "title": "Limitations Section Contains Three Required Statements",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Inspect the populated report route limitations card",
+          "expected": "A real pipeline-generated limitations section could be checked for three required statements",
+          "observed": "The only populated route available was the demo report, which showed two limitation statements and therefore could not stand in for a live pipeline-generated report."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No live report record for the fresh org was reachable."
+      },
+      "issues": "Blocked: the live browser surface had no real generated report; the demo route is not authoritative for backend limitations validation."
+    },
+    {
+      "id": "VAL-ANALYSIS-009",
+      "title": "Report Artifacts Stored with R2 Keys",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Inspect the report page for artifact/export controls or visible keys",
+          "expected": "htmlReportKey/jsonReportKey would be observable from the user surface",
+          "observed": "The report page exposed evidence thumbnails only; no live report artifact keys or export controls were visible."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No htmlReportKey/jsonReportKey values were exposed by the browser UI."
+      },
+      "issues": "Blocked: report artifact keys were not user-visible in the browser surface."
+    },
+    {
+      "id": "VAL-ANALYSIS-010",
+      "title": "HTML Report is Self-Contained",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Look for a browser-visible way to open a generated HTML report artifact",
+          "expected": "A self-contained HTML export could be opened without app access",
+          "observed": "No live HTML report download/open path was available from the browser in this fresh org."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No HTML export artifact was reachable from the browser surface."
+      },
+      "issues": "Blocked: the browser surface did not expose a real HTML report artifact to open."
+    },
+    {
+      "id": "VAL-ANALYSIS-011",
+      "title": "JSON Export Contains Full Report and Clusters",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Look for JSON export/download affordances on the report surface",
+          "expected": "A browser-visible JSON artifact could be downloaded and inspected",
+          "observed": "No JSON export path or inline artifact payload was exposed."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No JSON export artifact was reachable from the browser surface."
+      },
+      "issues": "Blocked: the browser surface did not expose a downloadable JSON report artifact."
+    },
+    {
+      "id": "VAL-ANALYSIS-012",
+      "title": "Analyst Notes Append-Only",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Inspect findings/report cards for note controls",
+          "expected": "The browser would offer a way to add multiple analyst notes and verify append-only behavior",
+          "observed": "Notes were visible on the cards, but no add-note form or mutation trigger was exposed in the browser UI."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No note-creation request path was reachable from the UI."
+      },
+      "issues": "Blocked: analyst notes are view-only on the current browser surface."
+    },
+    {
+      "id": "VAL-ANALYSIS-020",
+      "title": "Zero Successful Runs Produces Valid Report",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Try to find or create a live report scenario from the fresh org",
+          "expected": "A visible all-infra_error study report could be inspected",
+          "observed": "The fresh org had no persona packs, no studies, and no live report generation path. The populated demo route is not a real all-infra_error report."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/live-study-create-no-packs.png",
+          "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/analysis-pipeline/metrics-artifacts-and-notes/demo-report-initial.png"
+        ],
+        "consoleErrors": "none",
+        "network": "No live zero-success report was reachable through the browser."
+      },
+      "issues": "Blocked: the user surface did not expose a real all-infra_error study report."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "The only populated report UI available from the browser was the hard-coded demo-study route, which is useful for route rendering checks but not for backend artifact/metrics validation.",
+      "resolved": false,
+      "resolution": "Used the demo report only to understand what the populated report UI currently shows.",
+      "affectedAssertions": [
+        "VAL-ANALYSIS-007",
+        "VAL-ANALYSIS-008",
+        "VAL-ANALYSIS-009",
+        "VAL-ANALYSIS-010",
+        "VAL-ANALYSIS-011",
+        "VAL-ANALYSIS-012",
+        "VAL-ANALYSIS-020"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "No browser-visible export controls or generated HTML/JSON report artifacts were available in the live surface.",
+      "affectedAssertions": [
+        "VAL-ANALYSIS-009",
+        "VAL-ANALYSIS-010",
+        "VAL-ANALYSIS-011"
+      ],
+      "quickFixAttempted": "Inspected the populated report route and its visible controls; no export entry point appeared."
+    }
+  ],
+  "summary": "Tested 8 assertions: 0 passed, 0 failed, 8 blocked because metric/artifact correctness is not provable from the current browser-visible surface."
+}
