@@ -18,6 +18,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 
 const zAction = zCustomAction(action, NoOp);
 const zMutation = zCustomMutation(mutation, NoOp);
@@ -142,7 +143,7 @@ export const createDraft = zMutation({
     pack: createDraftSchema,
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const now = Date.now();
 
     return await ctx.db.insert("personaPacks", {
@@ -163,7 +164,7 @@ export const importJson = zAction({
     json: z.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const importedPack = parseImportedPackJson(args.json);
     const packId: Id<"personaPacks"> = await ctx.runMutation(
       internal.personaPacks.persistImportedPack,
@@ -202,7 +203,7 @@ export const updateDraft = zMutation({
     patch: updateDraftSchema,
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const pack = await getPackForIdentity(ctx, args.packId, identity.tokenIdentifier);
 
     assertPackIsDraft(pack);
@@ -222,7 +223,7 @@ export const publish = zMutation({
     packId: zid("personaPacks"),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const pack = await getPackForIdentity(ctx, args.packId, identity.tokenIdentifier);
 
     if (pack.status === "published") {
@@ -263,7 +264,7 @@ export const archive = zMutation({
     packId: zid("personaPacks"),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const pack = await getPackForIdentity(ctx, args.packId, identity.tokenIdentifier);
 
     if (pack.status === "draft") {
@@ -290,7 +291,7 @@ export const createProtoPersona = zMutation({
     protoPersona: protoPersonaSchema,
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const pack = await getPackForIdentity(ctx, args.packId, identity.tokenIdentifier);
 
     assertPackIsDraft(pack);
@@ -322,7 +323,7 @@ export const updateProtoPersona = zMutation({
     patch: updateProtoPersonaSchema,
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const { pack } = await getProtoPersonaForIdentity(
       ctx,
       args.protoPersonaId,
@@ -349,7 +350,7 @@ export const deleteProtoPersona = zMutation({
     protoPersonaId: zid("protoPersonas"),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const { pack } = await getProtoPersonaForIdentity(
       ctx,
       args.protoPersonaId,
@@ -508,16 +509,6 @@ export function assertPackIsDraft(pack: Doc<"personaPacks">): void {
   if (pack.status === "archived") {
     throw new ConvexError("Archived persona packs cannot be modified.");
   }
-}
-
-async function requireIdentity(ctx: QueryCtx | MutationCtx | ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
 }
 
 async function getPackForIdentity(

@@ -29,6 +29,7 @@ import type * as personaPacks from "../personaPacks.js";
 import type * as personaVariantGeneration from "../personaVariantGeneration.js";
 import type * as personaVariantGenerationModel from "../personaVariantGenerationModel.js";
 import type * as personaVariantReview from "../personaVariantReview.js";
+import type * as rbac from "../rbac.js";
 import type * as reportExports from "../reportExports.js";
 import type * as runProgress from "../runProgress.js";
 import type * as runs from "../runs.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   personaVariantGeneration: typeof personaVariantGeneration;
   personaVariantGenerationModel: typeof personaVariantGenerationModel;
   personaVariantReview: typeof personaVariantReview;
+  rbac: typeof rbac;
   reportExports: typeof reportExports;
   runProgress: typeof runProgress;
   runs: typeof runs;

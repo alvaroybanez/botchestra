@@ -15,6 +15,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 import { workflow } from "./workflow";
 
 const zMutation = zCustomMutation(mutation, NoOp);
@@ -150,7 +151,7 @@ export const createStudy = zMutation({
     study: createStudySchema,
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const pack = await getPackForOrg(
       ctx,
       args.study.personaPackId,
@@ -183,7 +184,7 @@ export const updateStudy = zMutation({
     patch: updateStudyPatchSchema,
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
 
     if (study.status !== "draft") {
@@ -228,7 +229,7 @@ export const launchStudy = zMutation({
     productionAck: z.boolean().optional(),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
     const runBudget = study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET;
 
@@ -324,7 +325,7 @@ export const cancelStudy = zMutation({
     reason: requiredString("Cancellation reason").optional(),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
 
     if (isTerminalStudyStatus(study.status)) {
@@ -530,16 +531,6 @@ async function hasEnoughAcceptedVariants(
   }
 
   return false;
-}
-
-async function requireIdentity(ctx: QueryCtx | MutationCtx | ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
 }
 
 async function getStudyForOrg(

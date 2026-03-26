@@ -21,6 +21,7 @@ import {
   type ProtoPersonaForAllocation,
   validateGeneratedVariantCandidate,
 } from "./personaEngine/variantGeneration";
+import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 
 const zAction = zCustomAction(action, NoOp);
 const zInternalAction = zCustomAction(internalAction, NoOp);
@@ -31,11 +32,7 @@ export const previewVariants = zAction({
     budget: z.number().int(),
   },
   handler: async (ctx, args): Promise<PreviewSummary> => {
-    const identity = await ctx.auth.getUserIdentity();
-
-    if (identity === null) {
-      throw new ConvexError("Not authenticated.");
-    }
+    const identity = await requireIdentity(ctx);
 
     const previewContext: PreviewContext = await ctx.runQuery(
       internal.personaVariantGenerationModel.getPreviewContext,
@@ -84,11 +81,7 @@ export const generateVariantsForStudy = zAction({
     studyId: zid("studies"),
   },
   handler: async (ctx, args): Promise<GenerationSummary> => {
-    const identity = await ctx.auth.getUserIdentity();
-
-    if (identity === null) {
-      throw new ConvexError("Not authenticated.");
-    }
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
 
     return await generateVariantsForStudyForOrg(
       ctx,

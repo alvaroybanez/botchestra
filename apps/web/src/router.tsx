@@ -9,6 +9,8 @@ import {
   type AnyRouter,
   type RouterHistory,
 } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { AppSidebar } from "@/components/app-sidebar";
 import { LoginPage } from "@/routes/login";
 import { NotFoundPlaceholder } from "@/routes/placeholders";
@@ -400,7 +402,50 @@ function PersonaPackDetailPage() {
 }
 
 function SettingsPage() {
+  const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {});
+
+  if (viewerAccess === undefined) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (viewerAccess?.permissions.canAccessSettings !== true) {
+    return (
+      <AccessDeniedPage
+        description="Only admins can access workspace settings."
+        title="Access denied"
+      />
+    );
+  }
+
   return <SettingsSkeletonPage />;
+}
+
+function AccessDeniedPage({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <section className="space-y-6">
+      <div className="space-y-3">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          Restricted Route
+        </p>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-semibold tracking-tight">{title}</h2>
+          <p className="max-w-2xl text-base text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function getRouterLocationHref(routerInstance: AnyRouter) {

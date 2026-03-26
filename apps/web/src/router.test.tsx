@@ -28,6 +28,22 @@ let mockedAuthState: AppAuthState = {
   isLoading: false,
 };
 
+type ViewerRole = "researcher" | "reviewer" | "admin";
+
+type ViewerAccess = {
+  role: ViewerRole;
+  permissions: {
+    canAccessAdminDiagnostics: boolean;
+    canAccessSettings: boolean;
+    canAddNotes: boolean;
+    canExportReports: boolean;
+    canManagePersonaPacks: boolean;
+    canManageStudies: boolean;
+  };
+};
+
+let mockedViewerAccess: ViewerAccess | null | undefined = null;
+
 let mockedPackList:
   | Doc<"personaPacks">[]
   | undefined = [];
@@ -295,6 +311,10 @@ vi.mock("convex/react", () => ({
   useQuery: (query: unknown, args: Record<string, unknown> | undefined) => {
     const queryName = getFunctionName(query as never);
 
+    if (queryName === "rbac:getViewerAccess") {
+      return mockedViewerAccess;
+    }
+
     if (queryName === "studies:listStudies") {
       return mockedStudyList;
     }
@@ -405,6 +425,7 @@ beforeEach(() => {
   mockedPackList = [];
   mockedPackDetail = null;
   mockedProtoPersonas = [];
+  mockedViewerAccess = null;
   mockedVariantReview = undefined;
   mockedPackVariantReview = undefined;
   mockedStudyList = [];
@@ -500,6 +521,39 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Loading...");
     expect(container.textContent).not.toContain("Validation Console");
     expect(container.querySelector("#login-email")).toBeNull();
+  });
+
+  it("denies /settings to researchers and hides the Settings link", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/settings"],
+      viewerRole: "researcher",
+    });
+
+    expect(container.textContent).toContain("Access denied");
+    expect(container.textContent).toContain("Only admins can access workspace settings.");
+    expect(container.textContent).not.toContain("Current route");
+
+    const linkLabels = [...container.querySelectorAll("a")].map((link) =>
+      link.textContent?.trim(),
+    );
+    expect(linkLabels).not.toContain("Settings");
+  });
+
+  it("allows admins to access /settings and shows the Settings link", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/settings"],
+      viewerRole: "admin",
+    });
+
+    expect(container.textContent).toContain("Settings");
+    expect(container.textContent).toContain("Current route");
+
+    const linkLabels = [...container.querySelectorAll("a")].map((link) =>
+      link.textContent?.trim(),
+    );
+    expect(linkLabels).toContain("Settings");
   });
 
   it("renders an empty state CTA on /studies when no studies exist", async () => {
@@ -936,6 +990,31 @@ describe("@botchestra/web routing", () => {
 
     expect(launchStudyMock).toHaveBeenCalledWith({ studyId: "study-live" });
     expect(container.textContent).toContain("Study launch started.");
+  });
+
+  it("hides study mutation controls for reviewers on the overview page", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "running",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live"),
+    };
+    mockedRunsByStudyId = {
+      "study-live": [],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+      viewerRole: "reviewer",
+    });
+
+    expect(container.textContent).not.toContain("Edit Study");
+    expect(container.textContent).not.toContain("Launch Study");
+    expect(container.textContent).not.toContain("Cancel Study");
   });
 
   it("shows cancel confirmation and requests cancellation for running studies", async () => {
@@ -1705,11 +1784,16 @@ describe("@botchestra/web routing", () => {
 async function renderRoute({
   auth,
   initialEntries,
+  viewerRole,
 }: {
   auth: AppAuthState;
   initialEntries: string[];
+  viewerRole?: ViewerRole;
 }) {
   mockedAuthState = auth;
+  mockedViewerAccess = auth.isAuthenticated
+    ? makeViewerAccess(viewerRole ?? "researcher")
+    : null;
   const history = createMemoryHistory({ initialEntries });
   const router = createAppRouter({ history });
   const container = document.createElement("div");
@@ -1845,6 +1929,20 @@ function makeRunSummary(
       cancelled: 0,
     },
     ...overrides,
+  };
+}
+
+function makeViewerAccess(role: ViewerRole): ViewerAccess {
+  return {
+    role,
+    permissions: {
+      canAccessAdminDiagnostics: role === "admin",
+      canAccessSettings: role === "admin",
+      canAddNotes: true,
+      canExportReports: true,
+      canManagePersonaPacks: role !== "reviewer",
+      canManageStudies: role !== "reviewer",
+    },
   };
 }
 

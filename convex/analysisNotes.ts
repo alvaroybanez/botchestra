@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
+import { COMMENTER_ROLES, requireIdentity, requireRole } from "./rbac";
 
 const zMutation = zCustomMutation(mutation, NoOp);
 
@@ -18,7 +19,7 @@ export const addNote = zMutation({
     note: requiredString("Analyst note"),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const { identity } = await requireRole(ctx, COMMENTER_ROLES);
     await getIssueClusterForOrg(ctx, args.issueId, identity.tokenIdentifier);
 
     const createdAt = Date.now();
@@ -38,16 +39,6 @@ export const addNote = zMutation({
     return insertedNote;
   },
 });
-
-async function requireIdentity(ctx: QueryCtx | MutationCtx | ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
-}
 
 async function getIssueClusterForOrg(
   ctx: QueryCtx | MutationCtx,

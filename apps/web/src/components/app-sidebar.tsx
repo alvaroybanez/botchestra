@@ -1,27 +1,36 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 
-const navigationItems = [
+const baseNavigationItems = [
   {
     label: "Studies",
     to: "/studies",
     exact: false,
+    adminOnly: false,
   },
   {
     label: "Persona Packs",
     to: "/persona-packs",
     exact: false,
+    adminOnly: false,
   },
   {
     label: "Settings",
     to: "/settings",
     exact: true,
+    adminOnly: true,
   },
 ] as const;
 
 export function AppSidebar() {
   const { signOut } = useAuthActions();
+  const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {});
+  const navigationItems = baseNavigationItems.filter((item) =>
+    item.adminOnly ? viewerAccess?.permissions.canAccessSettings === true : true,
+  );
 
   return (
     <aside className="flex w-full max-w-64 flex-col border-r bg-card">

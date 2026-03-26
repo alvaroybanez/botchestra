@@ -959,6 +959,7 @@ function StudyOverviewResolved({
   detailSearch: StudyDetailSearch;
   study: Doc<"studies">;
 }) {
+  const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {});
   const updateStudy = useMutation(api.studies.updateStudy);
   const launchStudy = useMutation(api.studies.launchStudy);
   const cancelStudy = useMutation(api.studies.cancelStudy);
@@ -996,16 +997,19 @@ function StudyOverviewResolved({
       : getCompletionPercentage(runSummary.terminalCount, runSummary.totalRuns);
   const replayStatus = getReplayChipStatus(study.status);
   const analysisStatus = getAnalysisChipStatus(study.status);
-  const canEditStudy = study.status === "draft";
+  const canManageStudies = viewerAccess?.permissions.canManageStudies === true;
+  const canEditStudy = canManageStudies && study.status === "draft";
   const canLaunchStudy =
-    study.status === "draft" ||
-    study.status === "persona_review" ||
-    study.status === "ready";
+    canManageStudies &&
+    (study.status === "draft" ||
+      study.status === "persona_review" ||
+      study.status === "ready");
   const canCancelStudy =
-    study.status === "persona_review" ||
-    study.status === "queued" ||
-    study.status === "running" ||
-    study.status === "replaying";
+    canManageStudies &&
+    (study.status === "persona_review" ||
+      study.status === "queued" ||
+      study.status === "running" ||
+      study.status === "replaying");
 
   async function handleSaveDraft(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
