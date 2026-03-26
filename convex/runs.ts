@@ -200,6 +200,10 @@ export const settleRunFromCallback = zInternalMutation({
         recordedAt: endedAt,
       });
     }
+    await ctx.runMutation(internal.costControls.evaluateStudyCostControls, {
+      studyId: updatedRun.studyId,
+      ...(endedAt !== undefined ? { observedAt: endedAt } : {}),
+    });
 
     await ctx.runMutation(internal.studies.finalizeCancelledStudyIfComplete, {
       studyId: updatedRun.studyId,

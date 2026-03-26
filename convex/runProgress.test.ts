@@ -8,6 +8,7 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./schema.ts": () => import("./schema"),
   "./auth.ts": () => import("./auth"),
+  "./costControls.ts": () => import("./costControls"),
   "./http.ts": () => import("./http"),
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),

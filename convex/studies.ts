@@ -475,6 +475,7 @@ export const cancelStudy = zMutation({
           status: "cancelled",
           endedAt: cancellationRequestedAt,
           cancellationRequestedAt,
+          cancellationReason,
         });
         continue;
       }
@@ -482,6 +483,7 @@ export const cancelStudy = zMutation({
       if (run.status === "dispatching" || run.status === "running") {
         await ctx.db.patch(run._id, {
           cancellationRequestedAt,
+          cancellationReason,
         });
       }
     }

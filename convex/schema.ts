@@ -197,6 +197,7 @@ export default defineSchema({
     ),
     lastHeartbeatAt: v.optional(v.number()),
     cancellationRequestedAt: v.optional(v.number()),
+    cancellationReason: v.optional(v.string()),
     frustrationCount: v.number(),
     milestoneKeys: v.array(v.string()),
     artifactManifestKey: v.optional(v.string()),

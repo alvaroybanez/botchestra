@@ -252,9 +252,16 @@ async function dispatchAvailableRuns(
   ctx: DispatchMutationCtx,
   studyId: Id<"studies">,
 ) {
+  await ctx.runMutation(internal.costControls.evaluateStudyCostControls, {
+    studyId,
+  });
+
   const study = await getStudyById(ctx, studyId);
 
-  if (!canDispatchQueuedRuns(study.status)) {
+  if (
+    !canDispatchQueuedRuns(study.status) ||
+    study.cancellationRequestedAt !== undefined
+  ) {
     return [] as string[];
   }
 

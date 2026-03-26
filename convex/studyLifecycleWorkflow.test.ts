@@ -16,6 +16,7 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./analysisPipeline.ts": () => import("./analysisPipeline"),
   "./analysisPipelineModel.ts": () => import("./analysisPipelineModel"),
+  "./costControls.ts": () => import("./costControls"),
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),
   "./schema.ts": () => import("./schema"),

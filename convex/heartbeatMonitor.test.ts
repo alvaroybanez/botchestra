@@ -9,6 +9,7 @@ import schema from "./schema";
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./runProgress.ts": () => import("./runProgress"),
+  "./costControls.ts": () => import("./costControls"),
   "./runs.ts": () => import("./runs"),
   "./heartbeatMonitor.ts": () => import("./heartbeatMonitor"),
   "./schema.ts": () => import("./schema"),

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 
 const zInternalMutation = zCustomMutation(internalMutation, NoOp);
@@ -47,6 +48,10 @@ export const recordRunHeartbeat = zInternalMutation({
 
     await ctx.db.patch(args.runId, {
       lastHeartbeatAt: args.timestamp,
+    });
+    await ctx.runMutation(internal.costControls.evaluateStudyCostControls, {
+      studyId: run.studyId,
+      observedAt: args.timestamp,
     });
 
     const updatedRun = await getRunById(ctx, args.runId);

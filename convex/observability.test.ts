@@ -9,6 +9,7 @@ import { workflow } from "./workflow";
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./credentials.ts": () => import("./credentials"),
+  "./costControls.ts": () => import("./costControls"),
   "./heartbeatMonitor.ts": () => import("./heartbeatMonitor"),
   "./observability.ts": () => import("./observability"),
   "./runProgress.ts": () => import("./runProgress"),
