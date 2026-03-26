@@ -271,7 +271,7 @@ export default defineSchema({
     htmlReportKey: v.optional(v.string()),
     jsonReportKey: v.optional(v.string()),
     createdAt: v.number(),
-  }),
+  }).index("by_studyId", ["studyId"]),
 
   // 10. auditEvents
   auditEvents: defineTable({

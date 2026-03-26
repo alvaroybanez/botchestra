@@ -829,13 +829,10 @@ async function findStudyReportByStudyId(
   ctx: QueryCtx | MutationCtx,
   studyId: Id<"studies">,
 ) {
-  for await (const report of ctx.db.query("studyReports")) {
-    if (report.studyId === studyId) {
-      return report;
-    }
-  }
-
-  return null;
+  return await ctx.db
+    .query("studyReports")
+    .withIndex("by_studyId", (query) => query.eq("studyId", studyId))
+    .unique();
 }
 
 async function listIssueClustersByIds(
