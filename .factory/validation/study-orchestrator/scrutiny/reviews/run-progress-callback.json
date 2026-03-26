@@ -1,0 +1,15 @@
+{
+  "featureId": "run-progress-callback",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "a6984cc2122b16721e9e0dca1db1e1404354b221",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The callback endpoint validates signed progress payloads, rejects malformed requests early, and routes heartbeat, milestone, completion, and failure updates into the expected persistence helpers. The behavior is well-covered and I did not find a correctness issue in this feature.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `a6984cc2122b16721e9e0dca1db1e1404354b221` for `run-progress-callback`. The signed callback flow looks coherent and I found no code defects in this feature."
+}

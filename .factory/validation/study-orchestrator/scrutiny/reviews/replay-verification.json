@@ -1,0 +1,15 @@
+{
+  "featureId": "replay-verification",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "130f6a8b572d52c59f2abfaf076c23c4429f734d",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The replay-verification changes group original failures by signature, queue up to two replay attempts per candidate, and only promote replay-backed issue clusters when confidence is positive. I did not find a correctness issue in this feature.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `130f6a8b572d52c59f2abfaf076c23c4429f734d` for `replay-verification`. The candidate selection and replay-confidence logic look coherent and I found no code defects in this feature."
+}

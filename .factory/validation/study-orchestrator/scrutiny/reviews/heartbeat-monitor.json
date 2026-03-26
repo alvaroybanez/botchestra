@@ -1,0 +1,22 @@
+{
+  "featureId": "heartbeat-monitor",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "865204f5757eb283f6b10b8d349ad676cc3af8c7",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The monitor correctly detects stale `running` runs and settles them to `infra_error`, but its refill path is wired to the wrong dispatch helper. That leaves replay-phase studies unable to refill stale slots, so replay verification can stall after a stale run.",
+    "issues": [
+      {
+        "file": "convex/heartbeatMonitor.ts",
+        "line": 55,
+        "severity": "blocking",
+        "description": "After marking a stale run `infra_error`, the monitor calls `internal.waveDispatch.dispatchStudyWave`. That helper immediately returns unless the study status is `queued` or `running` (`convex/waveDispatch.ts:87`), so a stale run that occurs while the study is `replaying` frees capacity without dispatching queued replay replacements. The feature contract says stale runs should release the slot and let the next queued run dispatch; in replay mode the current code leaves the study stranded with undispatched queued runs."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `865204f5757eb283f6b10b8d349ad676cc3af8c7` for `heartbeat-monitor`. Result: fail \u2014 stale replay runs do not trigger replacement dispatches because the monitor uses a dispatch entry point that ignores `replaying` studies."
+}

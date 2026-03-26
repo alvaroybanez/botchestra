@@ -1,0 +1,22 @@
+{
+  "featureId": "study-frontend-pages",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "9f88b5cf54541a5b054285961aaf0f73678458d4",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The UI adds real study list, creation, overview, and runs surfaces, but it stops at draft creation. The route module never wires the existing study mutations needed to continue the orchestration flow, so researchers cannot actually move a study from creation into execution from the browser.",
+    "issues": [
+      {
+        "file": "apps/web/src/routes/study-pages.tsx",
+        "line": 140,
+        "severity": "blocking",
+        "description": "This route module only calls `api.studies.createStudy`, and the wizard submit action is explicitly \u201cSave study draft\u201d (`apps/web/src/routes/study-pages.tsx:553`). There is no UI that invokes `api.studies.updateStudy` or `api.studies.launchStudy`, so a researcher can create a study but cannot advance or launch it from the browser. That leaves the milestone's create \u2192 configure \u2192 launch flow incomplete on the user-visible surface."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `9f88b5cf54541a5b054285961aaf0f73678458d4` for `study-frontend-pages`. Result: fail \u2014 the browser UI can only save a draft study and never exposes the mutations needed to advance or launch it."
+}

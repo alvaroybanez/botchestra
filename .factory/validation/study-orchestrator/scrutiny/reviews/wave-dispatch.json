@@ -1,0 +1,15 @@
+{
+  "featureId": "wave-dispatch",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "aab4cd803ebba8ec80506ba884f20a679b9bbcf9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The dispatch module creates the initial run cohort from accepted variants, respects the per-study concurrency cap, and uses Workpool completion hooks to refill slots as dispatch jobs finish. I did not find a standalone correctness issue in this feature.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `aab4cd803ebba8ec80506ba884f20a679b9bbcf9` for `wave-dispatch`. The initial cohort creation and dispatch/refill flow are coherent and I found no code defects in this feature."
+}

@@ -1,0 +1,15 @@
+{
+  "featureId": "study-queries",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "fc0c51c9cf898517cce150fc6b817e684970c69b",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The study-query changes keep access org-scoped, bound list sizes to the milestone's run-budget scale, and join run detail data with milestones and persona context in a straightforward way. I did not find a correctness issue in this feature.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `fc0c51c9cf898517cce150fc6b817e684970c69b` for `study-queries`. The query surface is coherent and I found no code defects in this feature."
+}

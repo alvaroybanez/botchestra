@@ -1,0 +1,15 @@
+{
+  "featureId": "run-state-machine",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "f31e601911aed7c2ba6a2438a6b9b13608d77d25",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The run-state-machine module enforces the intended transition graph, records start/end timestamps on state changes, and provides an idempotent callback-settlement path that ignores duplicate or late terminal callbacks on cancelled runs. I did not find a correctness issue in this feature.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `f31e601911aed7c2ba6a2438a6b9b13608d77d25` for `run-state-machine`. The transition and settlement logic matches the intended run lifecycle and I found no code defects in this feature."
+}

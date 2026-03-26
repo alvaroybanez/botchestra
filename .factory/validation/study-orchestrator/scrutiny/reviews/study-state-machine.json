@@ -1,0 +1,28 @@
+{
+  "featureId": "study-state-machine",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "4682581ae946918e773b64028d66a0fc56757069",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The module adds authenticated study creation, draft-only updates, and launch gating, but it leaves the public lifecycle incomplete. Draft studies cannot reach a launchable state through the public API, and the missing-variant launch path stops at `persona_review` without kicking off variant generation.",
+    "issues": [
+      {
+        "file": "convex/studies.ts",
+        "line": 225,
+        "severity": "blocking",
+        "description": "The public study API exports `createStudy`, `updateStudy`, `launchStudy`, and `cancelStudy`, but nothing that moves a freshly-created draft into `persona_review` or `ready`. `launchStudy` then hard-rejects draft studies, so a study created through the supported public surface can never become launchable without tests or internal mutations directly patching state. That leaves the 10-state machine unreachable from real callers and misses the feature contract's promised ready-state validation step."
+      },
+      {
+        "file": "convex/studies.ts",
+        "line": 272,
+        "severity": "blocking",
+        "description": "When accepted persona variants are missing, `launchStudy` only patches the study back to `persona_review` and returns. There is no call into the persona-variant generation action or any queued follow-up work, so VAL-STUDY-014's required \u201ctransition to persona_review and trigger variant generation\u201d behavior never happens. A ready study with no variants therefore stalls permanently until something external seeds variants by hand."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `4682581ae946918e773b64028d66a0fc56757069` for `study-state-machine`. Result: fail \u2014 the public API cannot advance draft studies into a launchable state, and the missing-variant launch path never triggers variant generation."
+}

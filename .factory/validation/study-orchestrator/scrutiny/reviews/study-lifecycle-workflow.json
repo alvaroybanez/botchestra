@@ -1,0 +1,22 @@
+{
+  "featureId": "study-lifecycle-workflow",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "86e3e54d1e2ad96717e59c4cc53e8e4fc58c6a23",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The workflow correctly bootstraps launch, waits for runs to settle, and creates a provisional report, but its terminal-state decision is too optimistic. Once all replay work is terminal it always transitions to `analyzing` and then `completed`, even when the entire study only produced infrastructure failures.",
+    "issues": [
+      {
+        "file": "convex/studyLifecycleWorkflow.ts",
+        "line": 295,
+        "severity": "blocking",
+        "description": "`completeStudyLifecycleAfterReplay` unconditionally transitions every fully-settled replaying study to `analyzing` and then `completed` after creating a report. There is no guard for the \u201call runs ended `infra_error`\u201d path, so a study whose initial and replay runs all fail for infrastructure reasons still completes with a report instead of transitioning to `failed` as required by VAL-STUDY-065. The workflow therefore misclassifies platform outages as completed studies."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `86e3e54d1e2ad96717e59c4cc53e8e4fc58c6a23` for `study-lifecycle-workflow`. Result: fail \u2014 the replay-completion path always marks the study completed, even when every run ended in infrastructure failure."
+}

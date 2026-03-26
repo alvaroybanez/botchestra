@@ -1,0 +1,15 @@
+{
+  "featureId": "cancellation-fanout",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "156df60c2bf336cb1be09c6fe01a46f5b1c23160",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The cancellation fan-out changes synchronously cancel queued runs, mark active runs for stop-on-heartbeat behavior, and finalize the study only after active work drains. The added cancellation audit event wiring is coherent and I did not find a correctness issue in this feature.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `156df60c2bf336cb1be09c6fe01a46f5b1c23160` for `cancellation-fanout`. The queued-vs-active cancellation handling matches the intended fan-out behavior and I found no code defects in this feature."
+}

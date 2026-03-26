@@ -1,0 +1,22 @@
+{
+  "featureId": "live-monitoring-frontend",
+  "reviewedAt": "2026-03-26T13:13:38.615680Z",
+  "commitId": "185faae95a0cda1e9e3add26f674adbd7e2c8105",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The overview gains reactive progress cards and active-run tiles, but the feature stops short of the promised control surface. The live monitor never exposes a cancellation action, so researchers cannot stop an in-flight study from the UI.",
+    "issues": [
+      {
+        "file": "apps/web/src/routes/study-pages.tsx",
+        "line": 823,
+        "severity": "blocking",
+        "description": "The live-monitor card only renders read-only metrics plus an \u201cOpen runs tab\u201d link (`apps/web/src/routes/study-pages.tsx:910`). The feature never imports or calls `api.studies.cancelStudy`, so there is no cancellation button or confirmation flow anywhere on the monitoring surface despite the feature description promising cancellation actions. That blocks the required mid-execution cancel flow from the user-visible UI."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, and commit `185faae95a0cda1e9e3add26f674adbd7e2c8105` for `live-monitoring-frontend`. Result: fail \u2014 the monitoring UI is read-only and never exposes the cancellation action promised by the feature."
+}
