@@ -288,7 +288,11 @@ describe("studyLifecycleWorkflow", () => {
       finalUrl: "https://example.com/shop/payment",
     });
 
-    const candidates = await t.query(internal.studyLifecycleWorkflow.getReplayCandidates, {
+    const candidates: Array<{
+      affectedRunCount: number;
+      severity: string;
+      signature: string;
+    }> = await t.query(internal.studyLifecycleWorkflow.getReplayCandidates, {
       studyId,
     });
 
@@ -422,7 +426,10 @@ describe("studyLifecycleWorkflow", () => {
       },
     ]);
 
-    const candidates = await t.query(internal.studyLifecycleWorkflow.getReplayCandidates, {
+    const candidates: Array<{
+      signature: string;
+      replayConfidence: number;
+    }> = await t.query(internal.studyLifecycleWorkflow.getReplayCandidates, {
       studyId,
     });
     const confidenceBySignature = Object.fromEntries(

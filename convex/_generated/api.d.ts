@@ -9,6 +9,9 @@
  */
 
 import type * as analysis_pure from "../analysis/pure.js";
+import type * as analysis_runSummaries from "../analysis/runSummaries.js";
+import type * as analysisPipeline from "../analysisPipeline.js";
+import type * as analysisPipelineModel from "../analysisPipelineModel.js";
 import type * as auditEvents from "../auditEvents.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
@@ -35,6 +38,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "analysis/pure": typeof analysis_pure;
+  "analysis/runSummaries": typeof analysis_runSummaries;
+  analysisPipeline: typeof analysisPipeline;
+  analysisPipelineModel: typeof analysisPipelineModel;
   auditEvents: typeof auditEvents;
   auth: typeof auth;
   crons: typeof crons;

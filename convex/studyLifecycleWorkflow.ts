@@ -21,6 +21,7 @@ import {
   buildLimitationsSection,
   computeHeadlineMetrics,
 } from "./analysis/pure";
+import { isRunExcludedFromClustering } from "./analysis/runSummaries";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
 
@@ -691,7 +692,7 @@ function buildReplayCandidates(runs: Array<Doc<"runs">>) {
 }
 
 function getReplayFailureSignature(run: Doc<"runs">) {
-  if (run.status === "success" || run.status === "cancelled") {
+  if (run.status === "success" || isRunExcludedFromClustering(run.status)) {
     return null;
   }
 
