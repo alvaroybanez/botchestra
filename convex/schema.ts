@@ -149,7 +149,9 @@ export default defineSchema({
     createdBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_personaPackId", ["personaPackId"]),
+  })
+    .index("by_personaPackId", ["personaPackId"])
+    .index("by_orgId_and_updatedAt", ["orgId", "updatedAt"]),
 
   // 5. runs
   runs: defineTable({
@@ -193,7 +195,8 @@ export default defineSchema({
     errorCode: v.optional(v.string()),
   })
     .index("by_studyId", ["studyId"])
-    .index("by_studyId_status", ["studyId", "status"]),
+    .index("by_studyId_status", ["studyId", "status"])
+    .index("by_studyId_and_protoPersonaId", ["studyId", "protoPersonaId"]),
 
   // 6. runMilestones
   runMilestones: defineTable({
@@ -207,7 +210,9 @@ export default defineSchema({
     rationaleShort: v.string(),
     screenshotKey: v.optional(v.string()),
     note: v.optional(v.string()),
-  }).index("by_runId", ["runId"]),
+  })
+    .index("by_runId", ["runId"])
+    .index("by_runId_and_stepIndex", ["runId", "stepIndex"]),
 
   // 7. issueClusters
   issueClusters: defineTable({

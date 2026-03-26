@@ -1,12 +1,17 @@
 import { ConvexError } from "convex/values";
 import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomMutation, zid } from "convex-helpers/server/zod";
+import {
+  zCustomMutation,
+  zCustomQuery,
+  zid,
+} from "convex-helpers/server/zod";
 import { z } from "zod";
 
-import type { Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
-import { internalMutation } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 
+const zQuery = zCustomQuery(query, NoOp);
 const zInternalMutation = zCustomMutation(internalMutation, NoOp);
 
 const runStatusSchema = z.enum([
@@ -54,6 +59,13 @@ const callbackPatchSchema = z.object({
   summaryKey: z.string().optional(),
   workerSessionId: z.string().optional(),
   errorCode: z.string().optional(),
+});
+
+const listRunsArgsSchema = z.object({
+  studyId: zid("studies"),
+  outcome: runStatusSchema.optional(),
+  protoPersonaId: zid("protoPersonas").optional(),
+  finalUrlContains: z.string().trim().min(1).optional(),
 });
 
 const VALID_RUN_TRANSITIONS: Record<RunStatus, readonly RunStatus[]> = {
@@ -152,6 +164,177 @@ export const settleRunFromCallback = zInternalMutation({
   },
 });
 
+export const getRunSummary = zQuery({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    await getStudyForOrg(ctx, args.studyId);
+
+    const summary = {
+      studyId: args.studyId,
+      totalRuns: 0,
+      queuedCount: 0,
+      runningCount: 0,
+      terminalCount: 0,
+      outcomeCounts: {
+        success: 0,
+        hard_fail: 0,
+        soft_fail: 0,
+        gave_up: 0,
+        timeout: 0,
+        blocked_by_guardrail: 0,
+        infra_error: 0,
+        cancelled: 0,
+      },
+    };
+
+    for await (const run of ctx.db
+      .query("runs")
+      .withIndex("by_studyId", (q) => q.eq("studyId", args.studyId))) {
+      summary.totalRuns += 1;
+
+      if (run.status === "queued" || run.status === "dispatching") {
+        summary.queuedCount += 1;
+        continue;
+      }
+
+      if (run.status === "running") {
+        summary.runningCount += 1;
+        continue;
+      }
+
+      summary.terminalCount += 1;
+      summary.outcomeCounts[run.status] += 1;
+    }
+
+    return summary;
+  },
+});
+
+export const getRun = zQuery({
+  args: {
+    runId: zid("runs"),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+
+    if (run === null) {
+      return null;
+    }
+
+    await getStudyForOrg(ctx, run.studyId);
+
+    const [personaVariant, protoPersona, milestones] = await Promise.all([
+      ctx.db.get(run.personaVariantId),
+      ctx.db.get(run.protoPersonaId),
+      ctx.db
+        .query("runMilestones")
+        .withIndex("by_runId_and_stepIndex", (q) => q.eq("runId", run._id))
+        .collect(),
+    ]);
+
+    if (personaVariant === null || protoPersona === null) {
+      throw new ConvexError("Run is missing required persona records.");
+    }
+
+    return {
+      run,
+      personaVariant,
+      protoPersona,
+      milestones,
+    };
+  },
+});
+
+export const listRuns = zQuery({
+  args: listRunsArgsSchema.shape,
+  handler: async (ctx, args) => {
+    const study = await getStudyForOrg(ctx, args.studyId);
+
+    const baseRuns =
+      args.outcome !== undefined
+        ? await ctx.db
+            .query("runs")
+            .withIndex("by_studyId_status", (q) =>
+              q.eq("studyId", args.studyId).eq("status", args.outcome!),
+            )
+            .order("desc")
+            .take(200)
+        : args.protoPersonaId !== undefined
+          ? await ctx.db
+              .query("runs")
+              .withIndex("by_studyId_and_protoPersonaId", (q) =>
+                q
+                  .eq("studyId", args.studyId)
+                  .eq("protoPersonaId", args.protoPersonaId!),
+              )
+              .order("desc")
+              .take(200)
+          : await ctx.db
+              .query("runs")
+              .withIndex("by_studyId", (q) => q.eq("studyId", args.studyId))
+              .order("desc")
+              .take(200);
+
+    const filteredRuns = baseRuns.filter((run) => {
+      if (args.protoPersonaId !== undefined && run.protoPersonaId !== args.protoPersonaId) {
+        return false;
+      }
+
+      if (
+        args.finalUrlContains !== undefined &&
+        !(run.finalUrl?.includes(args.finalUrlContains) ?? false)
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const protoPersonaIds = [...new Set(filteredRuns.map((run) => run.protoPersonaId))];
+    const personaVariantIds = [...new Set(filteredRuns.map((run) => run.personaVariantId))];
+    const [protoPersonas, personaVariants] = await Promise.all([
+      Promise.all(protoPersonaIds.map((protoPersonaId) => ctx.db.get(protoPersonaId))),
+      Promise.all(personaVariantIds.map((personaVariantId) => ctx.db.get(personaVariantId))),
+    ]);
+    const protoPersonaMap = new Map(
+      protoPersonas
+        .filter((protoPersona): protoPersona is Doc<"protoPersonas"> => protoPersona !== null)
+        .map((protoPersona) => [protoPersona._id, protoPersona]),
+    );
+    const personaVariantMap = new Map(
+      personaVariants
+        .filter(
+          (personaVariant): personaVariant is Doc<"personaVariants"> =>
+            personaVariant !== null,
+        )
+        .map((personaVariant) => [personaVariant._id, personaVariant]),
+    );
+
+    return filteredRuns.map((run) => {
+      const protoPersona = protoPersonaMap.get(run.protoPersonaId);
+      const personaVariant = personaVariantMap.get(run.personaVariantId);
+
+      if (protoPersona === undefined || personaVariant === undefined) {
+        throw new ConvexError("Run list contains missing persona records.");
+      }
+
+      if (personaVariant.studyId !== study._id) {
+        throw new ConvexError("Run list contains a persona variant from another study.");
+      }
+
+      return {
+        ...run,
+        protoPersonaName: protoPersona.name,
+        protoPersonaSummary: protoPersona.summary,
+        firstPersonBio: personaVariant.firstPersonBio,
+        axisValues: personaVariant.axisValues,
+      };
+    });
+  },
+});
+
 export function isValidRunTransition(
   currentStatus: RunStatus,
   nextStatus: RunStatus,
@@ -201,6 +384,27 @@ async function getRunById(ctx: MutationCtx, runId: Id<"runs">) {
   }
 
   return run;
+}
+
+async function getStudyForOrg(ctx: QueryCtx, studyId: Id<"studies">) {
+  const identity = await requireIdentity(ctx);
+  const study = await ctx.db.get(studyId);
+
+  if (study === null || study.orgId !== identity.tokenIdentifier) {
+    throw new ConvexError("Study not found.");
+  }
+
+  return study;
+}
+
+async function requireIdentity(ctx: QueryCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+
+  if (identity === null) {
+    throw new ConvexError("Not authenticated.");
+  }
+
+  return identity;
 }
 
 type RunStatus = z.infer<typeof runStatusSchema>;

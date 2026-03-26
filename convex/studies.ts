@@ -301,6 +301,21 @@ export const getStudy = zQuery({
   },
 });
 
+export const listStudies = zQuery({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await requireIdentity(ctx);
+
+    return await ctx.db
+      .query("studies")
+      .withIndex("by_orgId_and_updatedAt", (q) =>
+        q.eq("orgId", identity.tokenIdentifier),
+      )
+      .order("desc")
+      .take(100);
+  },
+});
+
 export const transitionStudyState = zInternalMutation({
   args: {
     studyId: zid("studies"),
