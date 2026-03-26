@@ -82,12 +82,10 @@ describe("analysisNotes.addNote", () => {
     await asAnalyst.mutation((api as any).analysisNotes.addNote, {
       issueId,
       note: "Checkout CTA disappears below the fold on smaller laptop viewports.",
-      authorId: "analyst-a",
     });
     await asAnalyst.mutation((api as any).analysisNotes.addNote, {
       issueId,
       note: "The issue clusters with frustration spikes at the payment step.",
-      authorId: "analyst-a",
     });
 
     const notes = await listIssueClusterNotes(t, issueId);
@@ -110,7 +108,6 @@ describe("analysisNotes.addNote", () => {
       {
         issueId,
         note: "This failure likely affects first-time buyers the most.",
-        authorId: "analyst-a",
       },
     );
     const secondNote = await asSecondaryAnalyst.mutation(
@@ -118,7 +115,6 @@ describe("analysisNotes.addNote", () => {
       {
         issueId,
         note: "Replay evidence confirms the dead-end is reproducible.",
-        authorId: "analyst-b",
       },
     );
 
@@ -141,7 +137,6 @@ describe("analysisNotes.addNote", () => {
       asOtherOrg.mutation((api as any).analysisNotes.addNote, {
         issueId,
         note: "This should not be visible cross-org.",
-        authorId: "analyst-c",
       }),
     ).rejects.toThrowError("Issue cluster not found.");
   });
@@ -154,7 +149,6 @@ describe("analysisNotes.addNote", () => {
       t.mutation((api as any).analysisNotes.addNote, {
         issueId,
         note: "Anonymous note",
-        authorId: "anon",
       }),
     ).rejects.toThrowError("Not authenticated.");
   });

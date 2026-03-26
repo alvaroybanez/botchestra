@@ -216,6 +216,7 @@ let mockedRunDetailsById: Record<string, RunDetail | null | undefined> = {};
 let mockedFindingsByStudyId: Record<string, FindingView[] | undefined> = {};
 let mockedReportsByStudyId: Record<string, StudyReportView | null | undefined> =
   {};
+const MOCK_ARTIFACT_BASE_URL = "http://localhost:8787";
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
 const updateStudyMock = vi.fn();
@@ -349,6 +350,17 @@ vi.mock("convex/react", () => ({
 
     if (queryName === "analysisQueries:getReport") {
       return mockedReportsByStudyId[String(args?.studyId)];
+    }
+
+    if (queryName === "analysisQueries:resolveArtifactUrls") {
+      return Object.fromEntries(
+        ((args?.keys as string[] | undefined) ?? []).map((key) => [
+          key,
+          key.startsWith("data:")
+            ? key
+            : `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(key)}`,
+        ]),
+      );
     }
 
     if (queryName === "personaPacks:list") {
@@ -1210,7 +1222,7 @@ describe("@botchestra/web routing", () => {
       .filter((link) => link.textContent?.includes("Open evidence"));
     expect(evidenceLinks).toHaveLength(2);
     expect(evidenceLinks[0]?.getAttribute("href")).toBe(
-      "/artifacts/runs%2Frun-hard-fail%2Fmilestones%2F2.jpg",
+      "http://localhost:8787/artifacts/runs%2Frun-hard-fail%2Fmilestones%2F2.jpg",
     );
 
     await updateSelect(container, "#finding-severity-filter", "blocker");
@@ -1355,10 +1367,10 @@ describe("@botchestra/web routing", () => {
     ];
     expect(evidenceLinks).toHaveLength(2);
     expect(evidenceLinks[0]?.getAttribute("href")).toBe(
-      "/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
+      "http://localhost:8787/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
     );
     expect(evidenceLinks[0]?.querySelector("img")?.getAttribute("src")).toBe(
-      "/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
+      "http://localhost:8787/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
     );
     expect(container.textContent).toContain(
       "Replay evidence confirms the continue button is clipped below the fold.",

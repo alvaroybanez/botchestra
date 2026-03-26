@@ -18,6 +18,7 @@ import {
   buildStudyReportArtifacts,
   type StudyReportExportCluster,
 } from "./analysis/reportArtifacts";
+import { collectIssueClusterArtifactKeys, resolveArtifactUrlsForStudy } from "./artifactResolver";
 
 const zAction = zCustomAction(action, NoOp);
 const zInternalQuery = zCustomQuery(internalQuery, NoOp);
@@ -93,10 +94,15 @@ export const getArtifactsForOrg = zInternalQuery({
     }
 
     const issueClusters = await listIssueClustersByIds(ctx, report.issueClusterIds);
+    const resolvedArtifactUrls = await resolveArtifactUrlsForStudy(ctx, {
+      studyId: args.studyId,
+      keys: collectIssueClusterArtifactKeys(issueClusters),
+    });
 
     return buildStudyReportArtifacts({
       report,
       issueClusters,
+      resolvedArtifactUrls,
     });
   },
 });

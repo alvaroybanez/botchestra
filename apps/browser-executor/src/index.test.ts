@@ -123,6 +123,47 @@ describe("browser executor worker entry point", () => {
     await expect(response.json()).resolves.toEqual({ status: "ok" });
   });
 
+  it("serves stored artifacts for GET /artifacts/:key", async () => {
+    const artifactBody = new TextEncoder().encode("artifact body");
+    const artifactWorker = createWorker();
+    const response = await artifactWorker.fetch(
+      new Request("https://example.com/artifacts/runs%2Frun_abc123%2Fmanifest.json"),
+      {
+        ...env,
+        ARTIFACTS: {
+          get: vi.fn(async () => ({
+            arrayBuffer: async () => artifactBody.buffer,
+            httpMetadata: { contentType: "application/json" },
+          })),
+          put: vi.fn(),
+        },
+      },
+      executionContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/json");
+    await expect(response.text()).resolves.toBe("artifact body");
+  });
+
+  it("returns 404 when an artifact key is missing from storage", async () => {
+    const artifactWorker = createWorker();
+    const response = await artifactWorker.fetch(
+      new Request("https://example.com/artifacts/runs%2Fmissing%2Fmanifest.json"),
+      {
+        ...env,
+        ARTIFACTS: {
+          get: vi.fn(async () => null),
+          put: vi.fn(),
+        },
+      },
+      executionContext,
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({ error: "not_found" });
+  });
+
   it("dispatches valid POST /execute-run requests to the handler", async () => {
     const validExecuteRunRequest = await createValidExecuteRunRequest();
     const executeRun = vi.fn(async (request: ExecuteRunRequest) =>

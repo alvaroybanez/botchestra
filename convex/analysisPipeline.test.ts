@@ -77,6 +77,27 @@ describe("analysisPipeline.summarizeStudyRuns", () => {
     mockedGenerateWithModel.mockReset();
   });
 
+  it("loads every run in the study instead of truncating after 200 records", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+
+    for (let index = 0; index < 205; index += 1) {
+      await insertTerminalRun(t, studyId, {
+        status: "success",
+        finalOutcome: "SUCCESS",
+        finalUrl: `https://example.com/shop/confirmation/${index}`,
+      });
+    }
+
+    const context = await t.query(
+      internal.analysisPipelineModel.getRunSummarizationContext,
+      { studyId },
+    );
+
+    expect(context.runs).toHaveLength(205);
+    expect(context.hasNonTerminalRuns).toBe(false);
+  });
+
   it("produces structured summaries for eligible terminal runs only", async () => {
     const t = createTest();
     const studyId = await insertStudy(t);
@@ -275,7 +296,7 @@ describe("analysisPipeline.summarizeStudyRuns", () => {
       finalUrl: "https://example.com/shop/checkout",
     });
 
-    const report = await t.mutation(
+    const report = await t.action(
       internal.studyLifecycleWorkflow.createStudyLifecycleReport,
       { studyId },
     );
@@ -504,7 +525,7 @@ describe("analysisPipeline clustering", () => {
       finalUrl: "https://example.com/shop/confirmation",
     });
 
-    const report = await t.mutation(
+    const report = await t.action(
       internal.studyLifecycleWorkflow.createStudyLifecycleReport,
       { studyId },
     );
@@ -642,7 +663,7 @@ describe("analysisPipeline clustering", () => {
       finalUrl: "https://example.com/shop/confirmation",
     });
 
-    const report = await t.mutation(
+    const report = await t.action(
       internal.studyLifecycleWorkflow.createStudyLifecycleReport,
       { studyId },
     );
@@ -729,7 +750,7 @@ describe("analysisPipeline clustering", () => {
       finalUrl: "https://example.com/shop/confirmation",
     });
 
-    const report = await t.mutation(
+    const report = await t.action(
       internal.studyLifecycleWorkflow.createStudyLifecycleReport,
       { studyId },
     );
@@ -798,7 +819,7 @@ describe("analysisPipeline clustering", () => {
       finalUrl: "https://example.com/shop/confirmation",
     });
 
-    const report = await t.mutation(
+    const report = await t.action(
       internal.studyLifecycleWorkflow.createStudyLifecycleReport,
       { studyId },
     );
@@ -814,6 +835,9 @@ describe("analysisPipeline clustering", () => {
     expect(artifacts.html).toContain("<!DOCTYPE html>");
     expect(artifacts.html).toContain("Findings are synthetic and directional.");
     expect(artifacts.html).toContain("Checkout button missing at /shop/checkout");
+    expect(artifacts.html).toContain(
+      `http://localhost:8787/artifacts/${encodeURIComponent("runs/checkout-run-a.png")}`,
+    );
     expect(artifacts.html).not.toContain("<script src=");
     expect(artifacts.html).not.toContain("<link rel=\"stylesheet\"");
 

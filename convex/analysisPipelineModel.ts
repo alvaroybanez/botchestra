@@ -33,7 +33,7 @@ export const getRunSummarizationContext = zInternalQuery({
     const runs = await ctx.db
       .query("runs")
       .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
-      .take(200);
+      .collect();
 
     const runContexts = await Promise.all(
       runs.map(async (run) => ({
@@ -132,7 +132,7 @@ export const replaceIssueClustersForStudy = zInternalMutation({
     const runs = await ctx.db
       .query("runs")
       .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
-      .take(200);
+      .collect();
 
     if (
       runs.some(
@@ -148,7 +148,7 @@ export const replaceIssueClustersForStudy = zInternalMutation({
     const personaVariants = await ctx.db
       .query("personaVariants")
       .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
-      .take(200);
+      .collect();
     const axisValuesByVariantId = new Map(
       personaVariants.map((variant) => [variant._id, variant.axisValues]),
     );
@@ -195,7 +195,7 @@ export const replaceIssueClustersForStudy = zInternalMutation({
     const existingClusters = await ctx.db
       .query("issueClusters")
       .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
-      .take(200);
+      .collect();
 
     for (const existingCluster of existingClusters) {
       await ctx.db.delete(existingCluster._id);
@@ -219,7 +219,7 @@ export const listRankedIssueClusterIds = zInternalQuery({
     const issueClusters = await ctx.db
       .query("issueClusters")
       .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
-      .take(200);
+      .collect();
 
     return rankIssueClusters(issueClusters).map((cluster) => cluster._id);
   },

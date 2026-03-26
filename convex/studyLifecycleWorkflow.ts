@@ -3,6 +3,7 @@ import { vResultValidator } from "@convex-dev/workpool";
 import { ConvexError, v } from "convex/values";
 import { NoOp } from "convex-helpers/server/customFunctions";
 import {
+  zCustomAction,
   zCustomMutation,
   zCustomQuery,
   zid,
@@ -13,6 +14,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import {
+  internalAction,
   internalMutation,
   internalQuery,
   query,
@@ -27,10 +29,16 @@ import {
   type StudyReportExportCluster,
 } from "./analysis/reportArtifacts";
 import { isRunExcludedFromClustering } from "./analysis/runSummaries";
+import {
+  buildArtifactUrlMap,
+  collectIssueClusterArtifactKeys,
+  resolveArtifactUrlsForStudy,
+} from "./artifactResolver";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
 
 const zQuery = zCustomQuery(query, NoOp);
+const zInternalAction = zCustomAction(internalAction, NoOp);
 const zInternalMutation = zCustomMutation(internalMutation, NoOp);
 const zInternalQuery = zCustomQuery(internalQuery, NoOp);
 
@@ -41,6 +49,22 @@ const lifecycleTerminalStatusSchema = z.enum([
   "failed",
   "cancelled",
 ]);
+
+type StudyLifecycleReportRecord = {
+  studyId: Id<"studies">;
+  headlineMetrics: Doc<"studyReports">["headlineMetrics"];
+  issueClusterIds: Doc<"studyReports">["issueClusterIds"];
+  segmentBreakdownKey: string;
+  limitations: string[];
+  htmlReportKey: string;
+  jsonReportKey: string;
+  createdAt: number;
+};
+
+type StudyLifecycleReportDraft = {
+  report: StudyLifecycleReportRecord;
+  issueClusters: StudyReportExportCluster[];
+};
 
 export const startStudyLifecycleWorkflow = internalMutation({
   args: {
@@ -326,17 +350,67 @@ export const getStudyLifecycleSnapshot = zInternalQuery({
   },
 });
 
-export const createStudyLifecycleReport = zInternalMutation({
+export const createStudyLifecycleReport = zInternalAction({
   args: {
     studyId: zid("studies"),
   },
-  handler: async (ctx, args) => {
-    const existingReport = await findStudyReportByStudyId(ctx, args.studyId);
+  handler: async (ctx, args): Promise<Doc<"studyReports">> => {
+    const existingReport: Doc<"studyReports"> | null = await ctx.runQuery(
+      internal.studyLifecycleWorkflow.getStudyReportRecord,
+      { studyId: args.studyId },
+    );
 
     if (existingReport !== null) {
       return existingReport;
     }
 
+    const draft: StudyLifecycleReportDraft = await ctx.runMutation(
+      internal.studyLifecycleWorkflow.buildStudyLifecycleReportDraft,
+      { studyId: args.studyId },
+    );
+    const reportArtifacts = buildStudyReportArtifacts({
+      report: draft.report,
+      issueClusters: draft.issueClusters,
+      resolvedArtifactUrls: buildArtifactUrlMap(
+        collectIssueClusterArtifactKeys(draft.issueClusters),
+      ),
+    });
+    const htmlReportStorageId = await ctx.storage.store(
+      new Blob([reportArtifacts.html], {
+        type: "text/html; charset=utf-8",
+      }),
+    );
+    const jsonReportStorageId = await ctx.storage.store(
+      new Blob([reportArtifacts.json], {
+        type: "application/json",
+      }),
+    );
+
+    return await ctx.runMutation(
+      internal.studyLifecycleWorkflow.insertStudyLifecycleReport,
+      {
+        report: draft.report,
+        htmlReportStorageId,
+        jsonReportStorageId,
+      },
+    );
+  },
+});
+
+export const getStudyReportRecord = zInternalQuery({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args): Promise<Doc<"studyReports"> | null> => {
+    return await findStudyReportByStudyId(ctx, args.studyId);
+  },
+});
+
+export const buildStudyLifecycleReportDraft = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args): Promise<StudyLifecycleReportDraft> => {
     await getStudyById(ctx, args.studyId);
     const runs = await listRunsForStudy(ctx, args.studyId);
 
@@ -349,7 +423,6 @@ export const createStudyLifecycleReport = zInternalMutation({
     }
 
     const primaryRuns = runs.filter((run) => run.replayOfRunId === undefined);
-
     const headlineMetrics = computeHeadlineMetrics(primaryRuns);
 
     await ctx.runMutation(
@@ -360,16 +433,54 @@ export const createStudyLifecycleReport = zInternalMutation({
       internal.analysisPipelineModel.listRankedIssueClusterIds,
       { studyId: args.studyId },
     );
-    const createdAt = Date.now();
-    const reportId = await ctx.db.insert("studyReports", {
+    const report = {
       studyId: args.studyId,
       headlineMetrics,
       issueClusterIds,
       ...buildStudyReportArtifactKeys(args.studyId),
       limitations: buildLimitationsSection(),
-      createdAt,
-    });
+      createdAt: Date.now(),
+    };
 
+    return {
+      report,
+      issueClusters: await listIssueClustersByIds(ctx, issueClusterIds),
+    };
+  },
+});
+
+export const insertStudyLifecycleReport = zInternalMutation({
+  args: {
+    report: z.object({
+      studyId: zid("studies"),
+      headlineMetrics: z.object({
+        completionRate: z.number(),
+        abandonmentRate: z.number(),
+        medianSteps: z.number(),
+        medianDurationSec: z.number(),
+      }),
+      issueClusterIds: z.array(zid("issueClusters")),
+      segmentBreakdownKey: z.string().min(1),
+      limitations: z.array(z.string()),
+      htmlReportKey: z.string().min(1),
+      jsonReportKey: z.string().min(1),
+      createdAt: z.number(),
+    }),
+    htmlReportStorageId: z.string().min(1),
+    jsonReportStorageId: z.string().min(1),
+  },
+  handler: async (ctx, args): Promise<Doc<"studyReports">> => {
+    const existingReport = await findStudyReportByStudyId(ctx, args.report.studyId);
+
+    if (existingReport !== null) {
+      return existingReport;
+    }
+
+    const reportId = await ctx.db.insert("studyReports", {
+      ...args.report,
+      htmlReportStorageId: args.htmlReportStorageId as Id<"_storage">,
+      jsonReportStorageId: args.jsonReportStorageId as Id<"_storage">,
+    });
     const report = await ctx.db.get(reportId);
 
     if (report === null) {
@@ -507,10 +618,15 @@ export const getStudyReportArtifacts = zInternalQuery({
     }
 
     const issueClusters = await listIssueClustersByIds(ctx, report.issueClusterIds);
+    const resolvedArtifactUrls = await resolveArtifactUrlsForStudy(ctx, {
+      studyId: args.studyId,
+      keys: collectIssueClusterArtifactKeys(issueClusters),
+    });
 
     return buildStudyReportArtifacts({
       report,
       issueClusters,
+      resolvedArtifactUrls,
     });
   },
 });
@@ -822,7 +938,7 @@ async function listRunsForStudy(
   return await ctx.db
     .query("runs")
     .withIndex("by_studyId", (query) => query.eq("studyId", studyId))
-    .take(200);
+    .collect();
 }
 
 async function findStudyReportByStudyId(

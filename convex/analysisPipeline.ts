@@ -114,7 +114,7 @@ export const analyzeStudy = zInternalAction({
         internal.analysisPipeline.summarizeStudyRuns,
         { studyId: args.studyId },
       );
-      const report = await ctx.runMutation(
+      const report = await ctx.runAction(
         internal.studyLifecycleWorkflow.createStudyLifecycleReport,
         { studyId: args.studyId },
       );

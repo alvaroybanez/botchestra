@@ -12,6 +12,15 @@ import {
 import { generateSelfReport } from "./selfReport";
 
 type ArtifactBucket = {
+  get(
+    key: string,
+  ): Promise<
+    | {
+        arrayBuffer(): Promise<ArrayBuffer>;
+        httpMetadata?: { contentType?: string };
+      }
+    | null
+  >;
   put(
     key: string,
     value: string | ArrayBuffer | ArrayBufferView | Blob,

@@ -16,7 +16,6 @@ export const addNote = zMutation({
   args: {
     issueId: zid("issueClusters"),
     note: requiredString("Analyst note"),
-    authorId: requiredString("Author ID"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
@@ -25,7 +24,7 @@ export const addNote = zMutation({
     const createdAt = Date.now();
     const noteId = await ctx.db.insert("issueClusterNotes", {
       issueClusterId: args.issueId,
-      authorId: args.authorId,
+      authorId: identity.subject,
       note: args.note,
       createdAt,
     });

@@ -95,10 +95,51 @@ export function StudyFindingsPage({
   }
 
   return (
-    <ResolvedStudyFindingsPage
+    <LiveStudyFindingsContent
       detailSearch={detailSearch}
       findings={findings as DemoFinding[]}
       onSearchChange={onSearchChange}
+      study={study}
+    />
+  );
+}
+
+function LiveStudyFindingsContent({
+  study,
+  findings,
+  detailSearch,
+  onSearchChange,
+}: {
+  study: FindingsStudySummary;
+  findings: DemoFinding[];
+  detailSearch: StudyDetailSearch;
+  onSearchChange: (patch: Partial<StudyDetailSearch>) => void;
+}) {
+  const artifactKeys = useMemo(
+    () =>
+      [...new Set(findings.flatMap((finding) => finding.evidence.map((evidence) => evidence.fullResolutionKey)))],
+    [findings],
+  );
+  const resolvedArtifactUrls = useQuery(api.analysisQueries.resolveArtifactUrls, {
+    studyId: study._id as Id<"studies">,
+    keys: artifactKeys,
+  });
+
+  if (resolvedArtifactUrls === undefined) {
+    return (
+      <FindingsStateCard
+        description="Resolving evidence artifact URLs for this study..."
+        title="Findings"
+      />
+    );
+  }
+
+  return (
+    <ResolvedStudyFindingsPage
+      detailSearch={detailSearch}
+      findings={findings}
+      onSearchChange={onSearchChange}
+      resolvedArtifactUrls={resolvedArtifactUrls}
       study={study}
     />
   );
@@ -109,11 +150,13 @@ function ResolvedStudyFindingsPage({
   findings,
   detailSearch,
   onSearchChange,
+  resolvedArtifactUrls = {},
 }: {
   study: FindingsStudySummary;
   findings: DemoFinding[];
   detailSearch: StudyDetailSearch;
   onSearchChange: (patch: Partial<StudyDetailSearch>) => void;
+  resolvedArtifactUrls?: Record<string, string>;
 }) {
   const axisRangeIsInvalid =
     detailSearch.axisMin !== undefined &&
@@ -399,6 +442,7 @@ function ResolvedStudyFindingsPage({
                 <FindingCard
                   key={finding._id}
                   finding={finding}
+                  resolvedArtifactUrls={resolvedArtifactUrls}
                   studyId={study._id}
                 />
               ))}
@@ -448,9 +492,11 @@ function ResolvedStudyFindingsPage({
 function FindingCard({
   finding,
   studyId,
+  resolvedArtifactUrls,
 }: {
   finding: DemoFinding;
   studyId: string;
+  resolvedArtifactUrls: Record<string, string>;
 }) {
   return (
     <Card data-testid="finding-card">
@@ -556,7 +602,10 @@ function FindingCard({
                 <a
                   key={evidence.key}
                   className="flex items-center justify-between rounded-lg border bg-background px-4 py-3 text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  href={buildEvidenceHref(evidence.fullResolutionKey)}
+                  href={buildEvidenceHref(
+                    evidence.fullResolutionKey,
+                    resolvedArtifactUrls,
+                  )}
                   rel="noreferrer"
                   target="_blank"
                 >
@@ -706,8 +755,11 @@ function filterFindings(findings: DemoFinding[], search: StudyDetailSearch) {
   });
 }
 
-function buildEvidenceHref(value: string) {
-  return value.startsWith("data:") ? value : buildArtifactHref(value);
+function buildEvidenceHref(
+  value: string,
+  resolvedArtifactUrls: Record<string, string>,
+) {
+  return resolvedArtifactUrls[value] ?? (value.startsWith("data:") ? value : buildArtifactHref(value));
 }
 
 function toOptionalNumber(value: string) {

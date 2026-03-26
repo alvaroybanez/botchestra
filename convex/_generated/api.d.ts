@@ -17,6 +17,7 @@ import type * as analysisNotes from "../analysisNotes.js";
 import type * as analysisPipeline from "../analysisPipeline.js";
 import type * as analysisPipelineModel from "../analysisPipelineModel.js";
 import type * as analysisQueries from "../analysisQueries.js";
+import type * as artifactResolver from "../artifactResolver.js";
 import type * as auditEvents from "../auditEvents.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   analysisPipeline: typeof analysisPipeline;
   analysisPipelineModel: typeof analysisPipelineModel;
   analysisQueries: typeof analysisQueries;
+  artifactResolver: typeof artifactResolver;
   auditEvents: typeof auditEvents;
   auth: typeof auth;
   crons: typeof crons;

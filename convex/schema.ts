@@ -269,7 +269,9 @@ export default defineSchema({
     segmentBreakdownKey: v.string(),
     limitations: v.array(v.string()),
     htmlReportKey: v.optional(v.string()),
+    htmlReportStorageId: v.optional(v.id("_storage")),
     jsonReportKey: v.optional(v.string()),
+    jsonReportStorageId: v.optional(v.id("_storage")),
     createdAt: v.number(),
   }).index("by_studyId", ["studyId"]),
 

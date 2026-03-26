@@ -32,6 +32,13 @@ const TERMINAL_OUTCOME_LABELS = [
 ] as const;
 
 type PersonaPackListItem = Doc<"personaPacks">;
+type ActiveRunListItem = {
+  _id: string;
+  status: string;
+  stepCount?: number;
+  protoPersonaName: string;
+  firstPersonBio: string;
+};
 
 type StudyFormValue = {
   personaPackId: string;
@@ -134,7 +141,7 @@ export function StudiesListPage() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {studies.map((study) => (
+          {studies.map((study: Doc<"studies">) => (
             <StudyListCard key={study._id} study={study} />
           ))}
         </div>
@@ -151,7 +158,7 @@ export function StudyCreationWizardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const availablePacks = useMemo(
+  const availablePacks = useMemo<PersonaPackListItem[]>(
     () => (personaPacks ?? []).filter((pack) => pack.status !== "archived"),
     [personaPacks],
   );
@@ -265,7 +272,7 @@ export function StudyCreationWizardPage() {
                     }))
                   }
                 >
-                  {availablePacks.map((pack) => (
+                  {availablePacks.map((pack: PersonaPackListItem) => (
                     <option key={pack._id} value={pack._id}>
                       {pack.name} ({pack.status})
                     </option>
@@ -700,11 +707,11 @@ function StudyOverviewResolved({
     setForm(studyToFormValue(study));
   }, [study._id, study.updatedAt]);
 
-  const activeRuns = useMemo(
+  const activeRuns = useMemo<ActiveRunListItem[]>(
     () =>
       (runs ?? [])
-        .filter((run) => ACTIVE_RUN_STATUSES.has(run.status))
-        .sort((left, right) => {
+        .filter((run: ActiveRunListItem) => ACTIVE_RUN_STATUSES.has(run.status))
+        .sort((left: ActiveRunListItem, right: ActiveRunListItem) => {
           if (left.status !== right.status) {
             return left.status === "running" ? -1 : 1;
           }
@@ -1102,7 +1109,7 @@ function StudyOverviewResolved({
                   </p>
                 </div>
               ) : (
-                activeRuns.map((run) => {
+                activeRuns.map((run: ActiveRunListItem) => {
                   const stepProgress = getCompletionPercentage(
                     run.stepCount ?? 0,
                     study.taskSpec.maxSteps,

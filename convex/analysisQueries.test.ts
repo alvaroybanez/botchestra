@@ -263,6 +263,27 @@ describe("analysis queries", () => {
       }),
     ).rejects.toThrowError("Study not found.");
   });
+
+  it("resolveArtifactUrls preserves data URLs and resolves run artifacts through the worker proxy", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const studyId = await insertStudy(t, researchIdentity.tokenIdentifier);
+    const inlineArtifactUrl = "data:image/png;base64,aGVsbG8=";
+
+    const resolved = await asResearcher.query(analysisApi.resolveArtifactUrls, {
+      studyId,
+      keys: [
+        "runs/run-primary/milestones/2.jpg",
+        inlineArtifactUrl,
+      ],
+    });
+
+    expect(resolved).toEqual({
+      "runs/run-primary/milestones/2.jpg":
+        "http://localhost:8787/artifacts/runs%2Frun-primary%2Fmilestones%2F2.jpg",
+      [inlineArtifactUrl]: inlineArtifactUrl,
+    });
+  });
 });
 
 type TestInstance = ReturnType<typeof createTest>;

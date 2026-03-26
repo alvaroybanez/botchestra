@@ -241,6 +241,7 @@ describe("execute-run integration", () => {
     const leaseClient = createLeaseClient();
     const callbackFetch = createFetchMock();
     const bucket = {
+      get: vi.fn(async () => null),
       put: vi.fn(async (_key: string, _value: unknown, _options?: unknown) => undefined),
     };
     const selfReport = {
@@ -374,6 +375,7 @@ describe("execute-run integration", () => {
     const leaseClient = createLeaseClient();
     const callbackFetch = createFetchMock();
     const bucket = {
+      get: vi.fn(async () => null),
       put: vi.fn(async (_key: string, _value: unknown, _options?: unknown) => undefined),
     };
     const selfReport = {
@@ -452,6 +454,7 @@ describe("execute-run integration", () => {
     const leaseClient = createLeaseClient();
     const callbackFetch = createFetchMock();
     const bucket = {
+      get: vi.fn(async () => null),
       put: vi.fn(async (_key: string, _value: unknown, _options?: unknown) => undefined),
     };
     const selfReport = {

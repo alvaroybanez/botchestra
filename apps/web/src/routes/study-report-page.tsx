@@ -154,11 +154,64 @@ function LiveStudyReportPage({
   }
 
   return (
-    <ResolvedStudyReportPage
+    <LiveStudyReportContent
       detailSearch={detailSearch}
       findings={findings as DemoFinding[]}
       report={report}
       runSummary={runSummary as RunSummary | undefined}
+      study={study}
+    />
+  );
+}
+
+function LiveStudyReportContent({
+  detailSearch,
+  findings,
+  report,
+  runSummary,
+  study,
+}: {
+  detailSearch: StudyDetailSearch;
+  findings: DemoFinding[];
+  report: ReportRecord;
+  runSummary: RunSummary | undefined;
+  study: ReportStudySummary;
+}) {
+  const artifactKeys = useMemo(
+    () =>
+      [
+        ...new Set(
+          findings.flatMap((finding) =>
+            finding.evidence.flatMap((evidence) => [
+              evidence.fullResolutionKey,
+              evidence.thumbnailKey,
+            ]),
+          ),
+        ),
+      ],
+    [findings],
+  );
+  const resolvedArtifactUrls = useQuery(api.analysisQueries.resolveArtifactUrls, {
+    studyId: study._id as Id<"studies">,
+    keys: artifactKeys,
+  });
+
+  if (resolvedArtifactUrls === undefined) {
+    return (
+      <ReportStateCard
+        description="Resolving evidence thumbnails and artifact links..."
+        title="Study report"
+      />
+    );
+  }
+
+  return (
+    <ResolvedStudyReportPage
+      detailSearch={detailSearch}
+      findings={findings}
+      report={report}
+      resolvedArtifactUrls={resolvedArtifactUrls}
+      runSummary={runSummary}
       study={study}
     />
   );
@@ -170,12 +223,14 @@ function ResolvedStudyReportPage({
   findings,
   runSummary,
   detailSearch,
+  resolvedArtifactUrls = {},
 }: {
   study: ReportStudySummary;
   report: ReportRecord;
   findings: DemoFinding[];
   runSummary: RunSummary | undefined;
   detailSearch: StudyDetailSearch;
+  resolvedArtifactUrls?: Record<string, string>;
 }) {
   const orderedFindings = useMemo(() => {
     const findingsById = new Map(findings.map((finding) => [finding._id, finding]));
@@ -315,6 +370,7 @@ function ResolvedStudyReportPage({
               finding={finding}
               index={index}
               key={finding._id}
+              resolvedArtifactUrls={resolvedArtifactUrls}
             />
           ))}
         </div>
@@ -377,9 +433,11 @@ function ReportShell({
 function IssueCard({
   finding,
   index,
+  resolvedArtifactUrls,
 }: {
   finding: DemoFinding;
   index: number;
+  resolvedArtifactUrls: Record<string, string>;
 }) {
   const whereValues = unique(
     finding.representativeRuns
@@ -481,8 +539,14 @@ function IssueCard({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {evidence.map((item, evidenceIndex) => {
-                const href = toArtifactHref(item.fullResolutionKey);
-                const imageSrc = toArtifactHref(item.thumbnailKey);
+                const href = toArtifactHref(
+                  item.fullResolutionKey,
+                  resolvedArtifactUrls,
+                );
+                const imageSrc = toArtifactHref(
+                  item.thumbnailKey,
+                  resolvedArtifactUrls,
+                );
 
                 return (
                   <a
@@ -629,8 +693,11 @@ function formatLabel(value: string) {
   return value.replaceAll("_", " ");
 }
 
-function toArtifactHref(value: string) {
-  return value.startsWith("data:") ? value : buildArtifactHref(value);
+function toArtifactHref(
+  value: string,
+  resolvedArtifactUrls: Record<string, string>,
+) {
+  return resolvedArtifactUrls[value] ?? (value.startsWith("data:") ? value : buildArtifactHref(value));
 }
 
 function unique(values: string[]) {

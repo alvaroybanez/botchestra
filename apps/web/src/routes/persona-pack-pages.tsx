@@ -103,7 +103,7 @@ export function PersonaPacksPage() {
   const [importJsonText, setImportJsonText] = useState("");
   const [form, setForm] = useState<PackFormValue>(emptyPackForm);
 
-  const packList = packs ?? [];
+  const packList: PersonaPackDoc[] = packs ?? [];
   const activePackList = packList.filter((pack) => pack.status !== "archived");
   const archivedPackList = packList.filter((pack) => pack.status === "archived");
 
@@ -321,8 +321,8 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
 
   const resolvedStatus = optimisticStatus ?? pack?.status;
   const isDraft = resolvedStatus === "draft";
-  const protoPersonaList = protoPersonas ?? [];
-  const resolvedAxes = useMemo(() => {
+  const protoPersonaList: ProtoPersonaDoc[] = protoPersonas ?? [];
+  const resolvedAxes: PersonaPackDoc["sharedAxes"] = useMemo(() => {
     if (!pack) {
       return draftForm.sharedAxes.map(axisFormToPayload);
     }

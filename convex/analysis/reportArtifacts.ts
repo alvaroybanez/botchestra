@@ -49,9 +49,11 @@ export function buildStudyReportArtifactKeys(
 export function buildStudyReportArtifacts({
   report,
   issueClusters,
+  resolvedArtifactUrls = {},
 }: {
   report: StudyReportExportReport;
   issueClusters: readonly StudyReportExportCluster[];
+  resolvedArtifactUrls?: Record<string, string>;
 }) {
   const artifactKeys = buildStudyReportArtifactKeys(report.studyId);
   const orderedIssueClusters = orderIssueClusters(report.issueClusterIds, issueClusters);
@@ -65,7 +67,11 @@ export function buildStudyReportArtifacts({
     ...artifactKeys,
     htmlReportKey: normalizedReport.htmlReportKey,
     jsonReportKey: normalizedReport.jsonReportKey,
-    html: renderStudyReportHtml(normalizedReport, orderedIssueClusters),
+    html: renderStudyReportHtml(
+      normalizedReport,
+      orderedIssueClusters,
+      resolvedArtifactUrls,
+    ),
     json: JSON.stringify(
       {
         ...normalizedReport,
@@ -84,6 +90,7 @@ function renderStudyReportHtml(
     jsonReportKey: string;
   },
   issueClusters: readonly StudyReportExportCluster[],
+  resolvedArtifactUrls: Record<string, string>,
 ) {
   const headlineMetricCards = [
     {
@@ -160,12 +167,22 @@ function renderStudyReportHtml(
                   </ul>
                 </section>
                 <section>
-                  <h3>Evidence keys</h3>
-                  <ul>
+                  <h3>Evidence</h3>
+                  ${
+                    cluster.evidenceKeys.length === 0
+                      ? "<p>No evidence artifacts were attached to this cluster.</p>"
+                      : `<div class="evidence-grid">
                     ${cluster.evidenceKeys
-                      .map((key) => `<li><code>${escapeHtml(key)}</code></li>`)
+                      .map((key, evidenceIndex) =>
+                        renderEvidenceCard(
+                          key,
+                          evidenceIndex,
+                          resolvedArtifactUrls[key] ?? null,
+                        ),
+                      )
                       .join("")}
-                  </ul>
+                  </div>`
+                  }
                 </section>
               </article>
             `,
@@ -198,6 +215,12 @@ function renderStudyReportHtml(
     "    .issue-metadata dt { color: #475569; font-size: 0.875rem; }",
     "    .issue-metadata dd { margin: 4px 0 0; font-weight: 600; }",
     "    .limitations { margin-top: 32px; }",
+    "    .evidence-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }",
+    "    .evidence-card { overflow: hidden; text-decoration: none; color: inherit; }",
+    "    .evidence-card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #e2e8f0; }",
+    "    .evidence-card__meta { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }",
+    "    .evidence-card__label { font-weight: 600; }",
+    "    .evidence-card__detail { color: #475569; font-size: 0.875rem; }",
     "    code { font-family: 'SFMono-Regular', ui-monospace, SFMono-Regular, Menlo, monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 6px; }",
     "  </style>",
     "</head>",
@@ -266,4 +289,64 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function renderEvidenceCard(
+  key: string,
+  evidenceIndex: number,
+  resolvedUrl: string | null,
+) {
+  if (resolvedUrl === null) {
+    return `
+      <article class="metric-card">
+        <p class="evidence-card__label">Evidence ${evidenceIndex + 1}</p>
+        <p class="evidence-card__detail">Artifact unavailable for key <code>${escapeHtml(
+          key,
+        )}</code></p>
+      </article>
+    `;
+  }
+
+  const safeUrl = escapeHtml(resolvedUrl);
+  const label = `Evidence ${evidenceIndex + 1}`;
+
+  if (isImageArtifact(key, resolvedUrl)) {
+    return `
+      <a class="metric-card evidence-card" href="${safeUrl}" rel="noreferrer" target="_blank">
+        <img alt="${escapeHtml(label)}" src="${safeUrl}" />
+        <div class="evidence-card__meta">
+          <span class="evidence-card__label">${escapeHtml(label)}</span>
+          <span class="evidence-card__detail">View full resolution</span>
+        </div>
+      </a>
+    `;
+  }
+
+  return `
+    <a class="metric-card evidence-card" href="${safeUrl}" rel="noreferrer" target="_blank">
+      <div class="evidence-card__meta">
+        <span class="evidence-card__label">${escapeHtml(label)}</span>
+        <span class="evidence-card__detail">Open artifact</span>
+      </div>
+    </a>
+  `;
+}
+
+function isImageArtifact(key: string, resolvedUrl: string) {
+  const normalizedKey = key.toLowerCase();
+  const normalizedUrl = resolvedUrl.toLowerCase();
+
+  return (
+    normalizedUrl.startsWith("data:image/") ||
+    normalizedKey.endsWith(".png") ||
+    normalizedKey.endsWith(".jpg") ||
+    normalizedKey.endsWith(".jpeg") ||
+    normalizedKey.endsWith(".gif") ||
+    normalizedKey.endsWith(".webp") ||
+    normalizedUrl.includes(".png") ||
+    normalizedUrl.includes(".jpg") ||
+    normalizedUrl.includes(".jpeg") ||
+    normalizedUrl.includes(".gif") ||
+    normalizedUrl.includes(".webp")
+  );
 }

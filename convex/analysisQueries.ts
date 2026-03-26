@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
+import { resolveArtifactUrlsForStudy } from "./artifactResolver";
 import { decodeRunSummaryKey } from "./analysis/runSummaries";
 
 const zQuery = zCustomQuery(query, NoOp);
@@ -97,6 +98,21 @@ export const getIssueCluster = zQuery({
     await getStudyForOrg(ctx, issueCluster.studyId);
     const findings = await buildFindingViews(ctx, [issueCluster]);
     return findings[0] ?? null;
+  },
+});
+
+export const resolveArtifactUrls = zQuery({
+  args: {
+    studyId: zid("studies"),
+    keys: z.array(requiredString("Artifact key")),
+  },
+  handler: async (ctx, args) => {
+    await getStudyForOrg(ctx, args.studyId);
+
+    return await resolveArtifactUrlsForStudy(ctx, {
+      studyId: args.studyId,
+      keys: args.keys,
+    });
   },
 });
 

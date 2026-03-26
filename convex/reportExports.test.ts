@@ -134,6 +134,11 @@ describe("report exports", () => {
     expect(exported.content).toContain("Checkout continue button hidden on address step");
     expect(exported.content).toContain("Payment totals shift late in checkout");
     expect(exported.content).toContain("Findings are synthetic and directional.");
+    expect(exported.content).toContain(
+      `http://localhost:8787/artifacts/${encodeURIComponent(
+        "runs/run-primary/milestones/2.jpg",
+      )}`,
+    );
     expect(exported.content).not.toContain("<script src=");
     expect(exported.content).not.toContain('<link rel="stylesheet"');
   });
