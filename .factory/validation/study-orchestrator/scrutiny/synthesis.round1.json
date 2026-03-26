@@ -1,0 +1,70 @@
+{
+  "milestone": "study-orchestrator",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run --cwd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 12,
+    "passed": 7,
+    "failed": 5,
+    "failedFeatures": [
+      "study-state-machine",
+      "heartbeat-monitor",
+      "study-lifecycle-workflow",
+      "study-frontend-pages",
+      "live-monitoring-frontend"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "study-state-machine",
+      "severity": "blocking",
+      "description": "The public study API exports `createStudy`, `updateStudy`, `launchStudy`, and `cancelStudy`, but nothing that moves a freshly-created draft into `persona_review` or `ready`. `launchStudy` then hard-rejects draft studies, so a study created through the supported public surface can never become launchable without tests or internal mutations directly patching state. That leaves the 10-state machine unreachable from real callers and misses the feature contract's promised ready-state validation step."
+    },
+    {
+      "featureId": "study-state-machine",
+      "severity": "blocking",
+      "description": "When accepted persona variants are missing, `launchStudy` only patches the study back to `persona_review` and returns. There is no call into the persona-variant generation action or any queued follow-up work, so VAL-STUDY-014's required “transition to persona_review and trigger variant generation” behavior never happens. A ready study with no variants therefore stalls permanently until something external seeds variants by hand."
+    },
+    {
+      "featureId": "heartbeat-monitor",
+      "severity": "blocking",
+      "description": "After marking a stale run `infra_error`, the monitor calls `internal.waveDispatch.dispatchStudyWave`. That helper immediately returns unless the study status is `queued` or `running` (`convex/waveDispatch.ts:87`), so a stale run that occurs while the study is `replaying` frees capacity without dispatching queued replay replacements. The feature contract says stale runs should release the slot and let the next queued run dispatch; in replay mode the current code leaves the study stranded with undispatched queued runs."
+    },
+    {
+      "featureId": "study-lifecycle-workflow",
+      "severity": "blocking",
+      "description": "`completeStudyLifecycleAfterReplay` unconditionally transitions every fully-settled replaying study to `analyzing` and then `completed` after creating a report. There is no guard for the “all runs ended `infra_error`” path, so a study whose initial and replay runs all fail for infrastructure reasons still completes with a report instead of transitioning to `failed` as required by VAL-STUDY-065. The workflow therefore misclassifies platform outages as completed studies."
+    },
+    {
+      "featureId": "study-frontend-pages",
+      "severity": "blocking",
+      "description": "This route module only calls `api.studies.createStudy`, and the wizard submit action is explicitly “Save study draft” (`apps/web/src/routes/study-pages.tsx:553`). There is no UI that invokes `api.studies.updateStudy` or `api.studies.launchStudy`, so a researcher can create a study but cannot advance or launch it from the browser. That leaves the milestone's create → configure → launch flow incomplete on the user-visible surface."
+    },
+    {
+      "featureId": "live-monitoring-frontend",
+      "severity": "blocking",
+      "description": "The live-monitor card only renders read-only metrics plus an “Open runs tab” link (`apps/web/src/routes/study-pages.tsx:910`). The feature never imports or calls `api.studies.cancelStudy`, so there is no cancellation button or confirmation flow anywhere on the monitoring surface despite the feature description promising cancellation actions. That blocks the required mid-execution cancel flow from the user-visible UI."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [],
+  "previousRound": null
+}

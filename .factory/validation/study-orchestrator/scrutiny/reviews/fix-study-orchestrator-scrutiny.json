@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-study-orchestrator-scrutiny",
+  "reviewedAt": "2026-03-26T13:48:39.795655Z",
+  "commitId": "17cada7c2e5220e74e2f58b9d19d41b0ffdc0c23",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit resolves the prior study-orchestrator scrutiny failures. Draft launches now enter the lifecycle preparation path and can advance through persona review into a queued launch, stale replay recovery can dispatch queued replay work, replay flows now fail on total infrastructure outage instead of reporting success, and the study overview exposes the edit, launch, and cancel actions that were previously missing from the browser surface.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": [
+    "study-state-machine",
+    "heartbeat-monitor",
+    "study-lifecycle-workflow",
+    "study-frontend-pages",
+    "live-monitoring-frontend"
+  ],
+  "summary": "Pass on the re-review: commit `17cada7c2e5220e74e2f58b9d19d41b0ffdc0c23` fixes all five prior blocking study-orchestrator scrutiny failures. I found no remaining blocking or non-blocking code review issues in the launch preparation, replay dispatch/completion, or overview management flows."
+}
