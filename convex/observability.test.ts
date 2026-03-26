@@ -396,6 +396,163 @@ describe("observability metrics", () => {
   });
 });
 
+describe("admin diagnostics overview", () => {
+  it("aggregates live metrics, per-study usage, and infra error codes for admins", async () => {
+    const t = createTest();
+    const asAdmin = t.withIdentity(adminIdentity);
+    const now = Date.now();
+
+    const runningStudyId = await insertStudy(t, {
+      orgId: adminIdentity.tokenIdentifier,
+      status: "running",
+    });
+    const completedStudyId = await insertStudy(t, {
+      orgId: adminIdentity.tokenIdentifier,
+      status: "completed",
+      completedAt: now - 500,
+    });
+
+    await insertRun(t, runningStudyId, {
+      status: "success",
+      durationSec: 45,
+    });
+    await insertRun(t, runningStudyId, {
+      status: "infra_error",
+      durationSec: 30,
+      errorCode: "NAVIGATION_TIMEOUT",
+    });
+    await insertRun(t, completedStudyId, {
+      status: "hard_fail",
+      durationSec: 20,
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("metrics", {
+        orgId: adminIdentity.tokenIdentifier,
+        studyId: runningStudyId,
+        metricType: "wave.dispatched_runs",
+        value: 2,
+        unit: "count",
+        recordedAt: now - 2_000,
+      });
+      await ctx.db.insert("metrics", {
+        orgId: adminIdentity.tokenIdentifier,
+        studyId: runningStudyId,
+        metricType: "ai.tokens.input",
+        value: 1_200,
+        unit: "tokens",
+        recordedAt: now - 1_800,
+      });
+      await ctx.db.insert("metrics", {
+        orgId: adminIdentity.tokenIdentifier,
+        studyId: runningStudyId,
+        metricType: "ai.tokens.output",
+        value: 300,
+        unit: "tokens",
+        recordedAt: now - 1_600,
+      });
+      await ctx.db.insert("metrics", {
+        orgId: adminIdentity.tokenIdentifier,
+        studyId: runningStudyId,
+        metricType: "run.completed",
+        value: 1,
+        unit: "count",
+        status: "infra_error",
+        errorCode: "NAVIGATION_TIMEOUT",
+        recordedAt: now - 1_400,
+      });
+      await ctx.db.insert("metrics", {
+        orgId: adminIdentity.tokenIdentifier,
+        studyId: completedStudyId,
+        metricType: "study.completed",
+        value: 1,
+        unit: "count",
+        status: "completed",
+        recordedAt: now - 1_200,
+      });
+      await ctx.db.insert("metrics", {
+        orgId: adminIdentity.tokenIdentifier,
+        studyId: completedStudyId,
+        metricType: "run.completed",
+        value: 1,
+        unit: "count",
+        status: "hard_fail",
+        recordedAt: now - 1_000,
+      });
+      await ctx.db.insert("metrics", {
+        orgId: otherAdminIdentity.tokenIdentifier,
+        studyId: completedStudyId,
+        metricType: "ai.tokens.input",
+        value: 9_999,
+        unit: "tokens",
+        recordedAt: now - 900,
+      });
+    });
+
+    const overview = await asAdmin.query((api as any).observability.getAdminDiagnosticsOverview, {});
+
+    expect(overview.liveStudyCounts).toMatchObject({
+      running: 1,
+      completed: 1,
+    });
+    expect(overview.historicalMetrics).toMatchObject({
+      dispatchedRuns: 2,
+      completedRuns: 2,
+      completedStudies: 1,
+      totalTokenUsage: 1_500,
+      totalBrowserSeconds: 95,
+      recentInfraErrors: 1,
+    });
+    expect(overview.infraErrorCodes).toEqual([
+      {
+        code: "NAVIGATION_TIMEOUT",
+        count: 1,
+      },
+    ]);
+    expect(overview.studyUsage).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          studyId: runningStudyId,
+          studyName: "Observability fixture study",
+          status: "running",
+          tokenUsage: 1_500,
+          browserSecondsUsed: 75,
+          completedRunCount: 2,
+          infraErrorCount: 1,
+          latestInfraErrorCode: "NAVIGATION_TIMEOUT",
+        }),
+        expect.objectContaining({
+          studyId: completedStudyId,
+          status: "completed",
+          tokenUsage: 0,
+          browserSecondsUsed: 20,
+          completedRunCount: 1,
+          infraErrorCount: 0,
+        }),
+      ]),
+    );
+    expect(overview.recentMetrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          studyId: runningStudyId,
+          studyName: "Observability fixture study",
+          metricType: "run.completed",
+          errorCode: "NAVIGATION_TIMEOUT",
+        }),
+      ]),
+    );
+  });
+
+  it("blocks researchers from querying the admin diagnostics overview", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researcherIdentity);
+
+    await expect(
+      asResearcher.query((api as any).observability.getAdminDiagnosticsOverview, {}),
+    ).rejects.toThrow(/FORBIDDEN/);
+  });
+});
+
 describe("observability error normalization", () => {
   it("stores standardized infra error codes for worker, dispatch, and stale-heartbeat failures", async () => {
     const t = createTest();

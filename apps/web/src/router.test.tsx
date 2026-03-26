@@ -225,6 +225,58 @@ type StudyReportView = {
   createdAt: number;
 };
 
+type DiagnosticsOverview = {
+  generatedAt: number;
+  liveStudyCounts: Record<string, number>;
+  historicalMetrics: {
+    dispatchedRuns: number;
+    completedRuns: number;
+    completedStudies: number;
+    totalTokenUsage: number;
+    totalBrowserSeconds: number;
+    recentInfraErrors: number;
+    lastMetricRecordedAt: number | null;
+  };
+  studyUsage: Array<{
+    studyId: string;
+    studyName: string;
+    status: string;
+    runBudget: number;
+    updatedAt: number;
+    browserSecondsUsed: number;
+    tokenUsage: number;
+    completedRunCount: number;
+    infraErrorCount: number;
+    latestInfraErrorCode?: string;
+    lastMetricRecordedAt: number | null;
+  }>;
+  infraErrorCodes: Array<{
+    code: string;
+    count: number;
+  }>;
+  recentMetrics: Array<{
+    studyId: string;
+    studyName: string;
+    metricType: string;
+    value: number;
+    unit: string;
+    status?: string;
+    errorCode?: string;
+    recordedAt: number;
+  }>;
+};
+
+type AuditEventView = {
+  _id: string;
+  actorId: string;
+  eventType: string;
+  createdAt: number;
+  studyId?: string;
+  resourceType?: string;
+  resourceId?: string;
+  reason?: string;
+};
+
 let mockedVariantReview: ReviewData | null | undefined = undefined;
 let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
 let mockedStudyList: Doc<"studies">[] | undefined = [];
@@ -235,6 +287,8 @@ let mockedRunDetailsById: Record<string, RunDetail | null | undefined> = {};
 let mockedFindingsByStudyId: Record<string, FindingView[] | undefined> = {};
 let mockedReportsByStudyId: Record<string, StudyReportView | null | undefined> =
   {};
+let mockedAdminDiagnosticsOverview: DiagnosticsOverview | undefined = undefined;
+let mockedAuditEvents: AuditEventView[] | undefined = [];
 const MOCK_ARTIFACT_BASE_URL = "http://localhost:8787";
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
@@ -386,6 +440,62 @@ vi.mock("convex/react", () => ({
       );
     }
 
+    if (queryName === "observability:getAdminDiagnosticsOverview") {
+      return mockedAdminDiagnosticsOverview;
+    }
+
+    if (queryName === "observability:listAuditEvents") {
+      const auditEvents = mockedAuditEvents;
+
+      if (auditEvents === undefined) {
+        return undefined;
+      }
+
+      return auditEvents.filter((event) => {
+        if (
+          typeof args?.actorId === "string" &&
+          args.actorId.length > 0 &&
+          event.actorId !== args.actorId
+        ) {
+          return false;
+        }
+
+        if (
+          typeof args?.studyId === "string" &&
+          args.studyId.length > 0 &&
+          event.studyId !== args.studyId
+        ) {
+          return false;
+        }
+
+        if (
+          typeof args?.eventType === "string" &&
+          args.eventType.length > 0 &&
+          event.eventType !== args.eventType
+        ) {
+          return false;
+        }
+
+        if (
+          typeof args?.startAt === "number" &&
+          Number.isFinite(args.startAt) &&
+          event.createdAt < args.startAt
+        ) {
+          return false;
+        }
+
+        if (
+          typeof args?.endAt === "number" &&
+          Number.isFinite(args.endAt) &&
+          event.createdAt > args.endAt
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
     if (queryName === "personaPacks:list") {
       return mockedPackList;
     }
@@ -438,6 +548,8 @@ beforeEach(() => {
   mockedRunDetailsById = {};
   mockedFindingsByStudyId = {};
   mockedReportsByStudyId = {};
+  mockedAdminDiagnosticsOverview = undefined;
+  mockedAuditEvents = [];
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
   createStudyMock.mockReset();
@@ -557,6 +669,60 @@ describe("@botchestra/web routing", () => {
       link.textContent?.trim(),
     );
     expect(linkLabels).toContain("Settings");
+  });
+
+  it("denies /admin/diagnostics to researchers and hides the Diagnostics link", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/admin/diagnostics"],
+      viewerRole: "researcher",
+    });
+
+    expect(container.textContent).toContain("Access denied");
+    expect(container.textContent).toContain("Only admins can access workspace diagnostics.");
+
+    const linkLabels = [...container.querySelectorAll("a")].map((link) =>
+      link.textContent?.trim(),
+    );
+    expect(linkLabels).not.toContain("Diagnostics");
+  });
+
+  it("renders admin diagnostics metrics, study usage, and audit trail filters for admins", async () => {
+    mockedAdminDiagnosticsOverview = makeDiagnosticsOverview();
+    mockedAuditEvents = makeAuditEvents();
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/admin/diagnostics"],
+      viewerRole: "admin",
+    });
+
+    expect(container.textContent).toContain("Admin diagnostics");
+    expect(container.textContent).toContain("Live study health");
+    expect(container.textContent).toContain("Running studies");
+    expect(container.textContent).toContain("Recent historical metrics");
+    expect(container.textContent).toContain("1,500");
+    expect(container.textContent).toContain("Per-study usage");
+    expect(container.textContent).toContain("Checkout baseline");
+    expect(container.textContent).toContain("1m 15s");
+    expect(container.textContent).toContain("NAVIGATION_TIMEOUT");
+    expect(container.textContent).toContain("Audit trail");
+
+    const linkLabels = [...container.querySelectorAll("a")].map((link) =>
+      link.textContent?.trim(),
+    );
+    expect(linkLabels).toContain("Diagnostics");
+
+    expect(getAuditRows(container)).toHaveLength(3);
+
+    await updateInput(container, "#audit-actor-filter", "researcher|org-a");
+    expect(getAuditRows(container)).toHaveLength(2);
+    expect(container.textContent).toContain("report.published");
+
+    await updateSelect(container, "#audit-event-type-filter", "study.cancelled");
+    expect(getAuditRows(container)).toHaveLength(1);
+    expect(container.textContent).toContain("Manual stop after blocker reproduction.");
+    expect(container.textContent).not.toContain("Published ranked report.");
   });
 
   it("renders an empty state CTA on /studies when no studies exist", async () => {
@@ -1873,6 +2039,12 @@ function getVariantRows(container: HTMLDivElement) {
   );
 }
 
+function getAuditRows(container: HTMLDivElement) {
+  return [...container.querySelectorAll<HTMLElement>('[data-testid="audit-row"]')].map(
+    (row) => row.textContent ?? "",
+  );
+}
+
 function firstVariantRowText(container: HTMLDivElement) {
   return getVariantRows(container)[0] ?? "";
 }
@@ -1947,6 +2119,120 @@ function makeViewerAccess(role: ViewerRole): ViewerAccess {
       canManageStudies: role !== "reviewer",
     },
   };
+}
+
+function makeDiagnosticsOverview(): DiagnosticsOverview {
+  return {
+    generatedAt: 1_710_000_000_000,
+    liveStudyCounts: {
+      active: 3,
+      draft: 0,
+      persona_review: 0,
+      ready: 1,
+      queued: 0,
+      running: 2,
+      replaying: 0,
+      analyzing: 1,
+      completed: 4,
+      failed: 1,
+      cancelled: 1,
+    },
+    historicalMetrics: {
+      dispatchedRuns: 12,
+      completedRuns: 9,
+      completedStudies: 4,
+      totalTokenUsage: 1_500,
+      totalBrowserSeconds: 185,
+      recentInfraErrors: 1,
+      lastMetricRecordedAt: 1_710_000_000_000,
+    },
+    studyUsage: [
+      {
+        studyId: "study-checkout",
+        studyName: "Checkout baseline",
+        status: "running",
+        runBudget: 64,
+        updatedAt: 1_710_000_000_000,
+        browserSecondsUsed: 75,
+        tokenUsage: 1_500,
+        completedRunCount: 2,
+        infraErrorCount: 1,
+        latestInfraErrorCode: "NAVIGATION_TIMEOUT",
+        lastMetricRecordedAt: 1_710_000_000_000,
+      },
+      {
+        studyId: "study-returns",
+        studyName: "Returns friction audit",
+        status: "completed",
+        runBudget: 32,
+        updatedAt: 1_709_999_500_000,
+        browserSecondsUsed: 110,
+        tokenUsage: 0,
+        completedRunCount: 7,
+        infraErrorCount: 0,
+        lastMetricRecordedAt: 1_709_999_500_000,
+      },
+    ],
+    infraErrorCodes: [
+      {
+        code: "NAVIGATION_TIMEOUT",
+        count: 1,
+      },
+    ],
+    recentMetrics: [
+      {
+        studyId: "study-checkout",
+        studyName: "Checkout baseline",
+        metricType: "run.completed",
+        value: 1,
+        unit: "count",
+        status: "infra_error",
+        errorCode: "NAVIGATION_TIMEOUT",
+        recordedAt: 1_710_000_000_000,
+      },
+      {
+        studyId: "study-checkout",
+        studyName: "Checkout baseline",
+        metricType: "ai.tokens.input",
+        value: 1_200,
+        unit: "tokens",
+        recordedAt: 1_709_999_900_000,
+      },
+    ],
+  };
+}
+
+function makeAuditEvents(): AuditEventView[] {
+  return [
+    {
+      _id: "audit-1",
+      actorId: "researcher|org-a",
+      eventType: "study.cancelled",
+      createdAt: 1_710_000_000_000,
+      studyId: "study-checkout",
+      reason: "Manual stop after blocker reproduction.",
+      resourceId: "study-checkout",
+      resourceType: "study",
+    },
+    {
+      _id: "audit-2",
+      actorId: "researcher|org-a",
+      eventType: "report.published",
+      createdAt: 1_709_999_900_000,
+      studyId: "study-returns",
+      reason: "Published ranked report.",
+      resourceId: "study-returns",
+      resourceType: "study",
+    },
+    {
+      _id: "audit-3",
+      actorId: "admin|org-a",
+      eventType: "settings.updated",
+      createdAt: 1_709_999_800_000,
+      resourceId: "org-a",
+      resourceType: "settings",
+    },
+  ];
 }
 
 function makeRunList(): RunListItem[] {

@@ -9,19 +9,25 @@ const baseNavigationItems = [
     label: "Studies",
     to: "/studies",
     exact: false,
-    adminOnly: false,
+    permission: null,
   },
   {
     label: "Persona Packs",
     to: "/persona-packs",
     exact: false,
-    adminOnly: false,
+    permission: null,
   },
   {
     label: "Settings",
     to: "/settings",
     exact: true,
-    adminOnly: true,
+    permission: "canAccessSettings",
+  },
+  {
+    label: "Diagnostics",
+    to: "/admin/diagnostics",
+    exact: true,
+    permission: "canAccessAdminDiagnostics",
   },
 ] as const;
 
@@ -29,7 +35,7 @@ export function AppSidebar() {
   const { signOut } = useAuthActions();
   const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {});
   const navigationItems = baseNavigationItems.filter((item) =>
-    item.adminOnly ? viewerAccess?.permissions.canAccessSettings === true : true,
+    item.permission === null ? true : viewerAccess?.permissions[item.permission] === true,
   );
 
   return (

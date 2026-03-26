@@ -43,6 +43,168 @@ const metricTypeSchema = z.enum(METRIC_TYPES);
 const standardInfraErrorCodeSchema = z.enum(STANDARD_INFRA_ERROR_CODES);
 
 const boundedLimitSchema = z.number().int().positive().max(200);
+const dashboardLimitSchema = z.number().int().positive().max(50);
+
+const studyStatuses = [
+  "draft",
+  "persona_review",
+  "ready",
+  "queued",
+  "running",
+  "replaying",
+  "analyzing",
+  "completed",
+  "failed",
+  "cancelled",
+] as const;
+
+const terminalRunStatuses = [
+  "success",
+  "hard_fail",
+  "soft_fail",
+  "gave_up",
+  "timeout",
+  "blocked_by_guardrail",
+  "infra_error",
+  "cancelled",
+] as const;
+
+export const getAdminDiagnosticsOverview = zQuery({
+  args: {
+    recentMetricLimit: dashboardLimitSchema.optional(),
+    recentStudyLimit: dashboardLimitSchema.optional(),
+  },
+  handler: async (ctx, args) => {
+    const { identity } = await requireRole(ctx, ADMIN_ROLES);
+    const recentMetricLimit = args.recentMetricLimit ?? 40;
+    const recentStudyLimit = args.recentStudyLimit ?? 20;
+
+    const [recentMetrics, recentStudies] = await Promise.all([
+      ctx.db
+        .query("metrics")
+        .withIndex("by_orgId_and_recordedAt", (q) => q.eq("orgId", identity.tokenIdentifier))
+        .order("desc")
+        .take(recentMetricLimit),
+      ctx.db
+        .query("studies")
+        .withIndex("by_orgId_and_updatedAt", (q) => q.eq("orgId", identity.tokenIdentifier))
+        .order("desc")
+        .take(recentStudyLimit),
+    ]);
+
+    const studyIds = [
+      ...new Set([
+        ...recentStudies.map((study) => study._id),
+        ...recentMetrics.map((metric) => metric.studyId),
+      ]),
+    ];
+
+    const loadedStudies = await Promise.all(studyIds.map((studyId) => ctx.db.get(studyId)));
+    const studiesById = new Map(
+      loadedStudies
+        .filter(
+          (study): study is Doc<"studies"> =>
+            study !== null && study.orgId === identity.tokenIdentifier,
+        )
+        .map((study) => [study._id, study]),
+    );
+
+    const runEntries: Array<[Id<"studies">, Doc<"runs">[]]> = await Promise.all(
+      recentStudies.map(async (study): Promise<[Id<"studies">, Doc<"runs">[]]> => {
+        const runs = await ctx.db
+          .query("runs")
+          .withIndex("by_studyId", (q) => q.eq("studyId", study._id))
+          .collect();
+
+        return [study._id, runs];
+      }),
+    );
+    const runsByStudyId = new Map(runEntries);
+
+    const liveStudyCounts = studyStatuses.reduce<Record<(typeof studyStatuses)[number], number>>(
+      (accumulator, status) => ({
+        ...accumulator,
+        [status]: recentStudies.filter((study) => study.status === status).length,
+      }),
+      {
+        draft: 0,
+        persona_review: 0,
+        ready: 0,
+        queued: 0,
+        running: 0,
+        replaying: 0,
+        analyzing: 0,
+        completed: 0,
+        failed: 0,
+        cancelled: 0,
+      },
+    );
+
+    const studyUsage = recentStudies.map((study) => {
+      const runs = runsByStudyId.get(study._id) ?? [];
+      const studyMetrics = recentMetrics.filter((metric) => metric.studyId === study._id);
+      const infraRuns = runs.filter((run) => run.status === "infra_error");
+
+      return {
+        studyId: study._id,
+        studyName: study.name,
+        status: study.status,
+        runBudget: study.runBudget ?? 64,
+        updatedAt: study.updatedAt,
+        browserSecondsUsed: runs.reduce(
+          (total, run) => total + (run.durationSec ?? 0),
+          0,
+        ),
+        tokenUsage: studyMetrics.reduce(
+          (total, metric) => total + (isTokenMetric(metric) ? metric.value : 0),
+          0,
+        ),
+        completedRunCount: runs.filter((run) => isTerminalRunStatus(run.status)).length,
+        infraErrorCount: infraRuns.length,
+        latestInfraErrorCode: infraRuns.find((run) => run.errorCode !== undefined)?.errorCode,
+        lastMetricRecordedAt: studyMetrics[0]?.recordedAt ?? null,
+      };
+    });
+
+    const infraErrorCounts = aggregateInfraErrorCounts(recentMetrics);
+
+    return {
+      generatedAt: Date.now(),
+      liveStudyCounts: {
+        ...liveStudyCounts,
+        active:
+          liveStudyCounts.queued +
+          liveStudyCounts.running +
+          liveStudyCounts.replaying +
+          liveStudyCounts.analyzing,
+      },
+      historicalMetrics: {
+        dispatchedRuns: sumMetricValues(recentMetrics, "wave.dispatched_runs"),
+        completedRuns: sumMetricValues(recentMetrics, "run.completed"),
+        completedStudies: sumMetricValues(recentMetrics, "study.completed"),
+        totalTokenUsage: studyUsage.reduce((total, study) => total + study.tokenUsage, 0),
+        totalBrowserSeconds: studyUsage.reduce(
+          (total, study) => total + study.browserSecondsUsed,
+          0,
+        ),
+        recentInfraErrors: infraErrorCounts.reduce((total, item) => total + item.count, 0),
+        lastMetricRecordedAt: recentMetrics[0]?.recordedAt ?? null,
+      },
+      infraErrorCodes: infraErrorCounts,
+      recentMetrics: recentMetrics.map((metric) => ({
+        studyId: metric.studyId,
+        studyName: studiesById.get(metric.studyId)?.name ?? "Study unavailable",
+        metricType: metric.metricType,
+        value: metric.value,
+        unit: metric.unit,
+        ...(metric.status !== undefined ? { status: metric.status } : {}),
+        ...(metric.errorCode !== undefined ? { errorCode: metric.errorCode } : {}),
+        recordedAt: metric.recordedAt,
+      })),
+      studyUsage,
+    };
+  },
+});
 
 export const listAuditEvents = zQuery({
   args: {
@@ -338,6 +500,42 @@ function normalizeBrowserErrorMessage(errorMessage?: string): StandardInfraError
   }
 
   return "WORKER_INTERNAL_ERROR";
+}
+
+function aggregateInfraErrorCounts(
+  metrics: Array<Doc<"metrics">>,
+) {
+  const counts = new Map<string, number>();
+
+  for (const metric of metrics) {
+    if (metric.errorCode === undefined) {
+      continue;
+    }
+
+    counts.set(metric.errorCode, (counts.get(metric.errorCode) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([code, count]) => ({ code, count }))
+    .sort((left, right) => right.count - left.count || left.code.localeCompare(right.code));
+}
+
+function isTerminalRunStatus(status: string): status is (typeof terminalRunStatuses)[number] {
+  return terminalRunStatuses.includes(status as (typeof terminalRunStatuses)[number]);
+}
+
+function isTokenMetric(metric: Pick<Doc<"metrics">, "metricType" | "unit">) {
+  const metricType = metric.metricType.toLowerCase();
+  const unit = metric.unit.toLowerCase();
+
+  return unit === "token" || unit === "tokens" || metricType.includes("token");
+}
+
+function sumMetricValues(metrics: Array<Doc<"metrics">>, metricType: MetricType | string) {
+  return metrics.reduce(
+    (total, metric) => total + (metric.metricType === metricType ? metric.value : 0),
+    0,
+  );
 }
 
 async function getStudyById(ctx: QueryCtx | MutationCtx, studyId: Id<"studies">) {

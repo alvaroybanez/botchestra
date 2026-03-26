@@ -12,6 +12,7 @@ import {
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AdminDiagnosticsPage as AdminDiagnosticsRoutePage } from "@/routes/admin-diagnostics-page";
 import { LoginPage } from "@/routes/login";
 import { NotFoundPlaceholder } from "@/routes/placeholders";
 import {
@@ -210,6 +211,12 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
+const adminDiagnosticsRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "admin/diagnostics",
+  component: AdminDiagnosticsPage,
+});
+
 const authenticatedNotFoundRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "$",
@@ -231,6 +238,7 @@ const routeTree = rootRoute.addChildren([
     personaPacksRoute,
     personaPackDetailRoute,
     settingsRoute,
+    adminDiagnosticsRoute,
     authenticatedNotFoundRoute,
   ]),
 ]);
@@ -422,6 +430,29 @@ function SettingsPage() {
   }
 
   return <SettingsSkeletonPage />;
+}
+
+function AdminDiagnosticsPage() {
+  const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {});
+
+  if (viewerAccess === undefined) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (viewerAccess?.permissions.canAccessAdminDiagnostics !== true) {
+    return (
+      <AccessDeniedPage
+        description="Only admins can access workspace diagnostics."
+        title="Access denied"
+      />
+    );
+  }
+
+  return <AdminDiagnosticsRoutePage />;
 }
 
 function AccessDeniedPage({
