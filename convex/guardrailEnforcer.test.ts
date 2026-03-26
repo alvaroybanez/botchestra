@@ -31,23 +31,31 @@ const researchIdentity = {
 
 const makeTaskSpec = (
   overrides: Partial<StudyTaskSpecInput> = {},
-): StudyTaskSpecInput => ({
-  scenario: "Evaluate the standard checkout journey.",
-  goal: "Reach the review step without using disallowed actions.",
-  startingUrl: "https://example.com/products/running-shoes",
-  allowedDomains: ["example.com"],
-  allowedActions: ["goto", "click", "type", "finish"],
-  forbiddenActions: [],
-  successCriteria: ["The order review screen is visible."],
-  stopConditions: ["Leave the approved domain allowlist."],
-  postTaskQuestions: ["Did you complete the task?"],
-  maxSteps: 20,
-  maxDurationSec: 300,
-  environmentLabel: "staging",
-  locale: "en-US",
-  viewport: { width: 1440, height: 900 },
-  ...overrides,
-});
+): PersistedStudyTaskSpec => {
+  const taskSpec: PersistedStudyTaskSpec = {
+    scenario: "Evaluate the standard checkout journey.",
+    goal: "Reach the review step without using disallowed actions.",
+    startingUrl: "https://example.com/products/running-shoes",
+    allowedDomains: ["example.com"],
+    allowedActions: ["goto", "click", "type", "finish"],
+    forbiddenActions: [],
+    successCriteria: ["The order review screen is visible."],
+    stopConditions: ["Leave the approved domain allowlist."],
+    postTaskQuestions: ["Did you complete the task?"],
+    maxSteps: 20,
+    maxDurationSec: 300,
+    environmentLabel: "staging",
+    locale: "en-US",
+    viewport: { width: 1440, height: 900 },
+    ...overrides,
+  };
+
+  return {
+    ...taskSpec,
+    postTaskQuestions:
+      taskSpec.postTaskQuestions ?? ["Did you complete the task?"],
+  };
+};
 
 describe("evaluateStudyLaunchGuardrails", () => {
   it("fails when a study domain is outside the org allowlist", () => {
@@ -222,6 +230,10 @@ type StudyStatus =
   | "completed"
   | "failed"
   | "cancelled";
+
+type PersistedStudyTaskSpec = Omit<StudyTaskSpecInput, "postTaskQuestions"> & {
+  postTaskQuestions: string[];
+};
 
 type TestInstance = ReturnType<typeof createTest>;
 
