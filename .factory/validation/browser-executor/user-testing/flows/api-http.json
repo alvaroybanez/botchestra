@@ -1,0 +1,73 @@
+{
+  "groupId": "api-http",
+  "testedAt": "2026-03-26T10:13:24.056956+00:00",
+  "surface": "browser-executor-api",
+  "isolation": {
+    "baseUrl": "http://localhost:8787",
+    "sharedService": "manifest-backed browser-executor wrangler dev service",
+    "concurrency": 1,
+    "notes": "Single shared worker surface only; no extra callback listener or alternate ports allowed."
+  },
+  "toolsUsed": [
+    "curl"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-EXEC-001",
+      "status": "pass",
+      "reason": "POST /health on the real Worker surface returned HTTP 200 with the structured JSON body {\"status\":\"ok\"}.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-001-health.headers.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-001-health.body.txt",
+        "Observed response body: {\"status\":\"ok\"}."
+      ]
+    },
+    {
+      "id": "VAL-EXEC-002",
+      "status": "pass",
+      "reason": "Three malformed /execute-run payload variants were rejected with HTTP 400 and structured validation details: an empty object, a payload missing taskSpec, and a payload with taskSpec.maxSteps = 0.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-002-empty-object.headers.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-002-empty-object.body.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-002-missing-task-spec.headers.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-002-missing-task-spec.body.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-002-invalid-max-steps.headers.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-002-invalid-max-steps.body.txt",
+        "Observed issue payloads included required-field errors for runId/studyId/personaVariant/taskSpec/callbackToken/callbackBaseUrl and a field-specific error for taskSpec.maxSteps needing to be greater than 0."
+      ]
+    },
+    {
+      "id": "VAL-EXEC-003",
+      "status": "pass",
+      "reason": "A schema-valid /execute-run request with an intentionally invalid callback token was rejected before execution with HTTP 401 and the body {\"error\":\"invalid_callback_token\"}.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-003-invalid-callback-token.headers.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-003-invalid-callback-token.body.txt"
+      ]
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "status": "blocked",
+      "reason": "A real /execute-run request with a valid HMAC callback token did not reach a terminal run outcome because the Worker immediately attempted its heartbeat callback to /api/run-progress and that real callback receiver is not available on the current milestone surface. Within mission boundaries there is no separate callback service to attach, so the request fails with HTTP 500 before completion/failure output can be observed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-004-valid-request-attempt.headers.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-004-valid-request-attempt.body.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-004-callback-endpoint-probe.headers.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/val-exec-004-callback-endpoint-probe.body.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/browser-executor/api-http/wrangler-log-excerpt.txt",
+        "Observed blocker chain: POST /api/run-progress returned 404 Not Found, wrangler logged \"Run progress callback failed with status 404\", and the corresponding POST /execute-run returned 500 Internal Server Error."
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "The browser-executor milestone has no real callback receiver for /api/run-progress on the available user surface, so a valid execute-run request cannot complete end-to-end through the local Worker alone.",
+      "affectedAssertions": [
+        "VAL-EXEC-004"
+      ],
+      "quickFixAttempted": "Sent a real signed /execute-run request to the manifest-backed Worker and separately probed POST /api/run-progress on the only allowed local surface; both confirmed the callback path is unavailable (404)."
+    }
+  ],
+  "summary": "Tested 4 browser-executor HTTP assertions on the real Worker surface: 3 passed (VAL-EXEC-001/002/003) and 1 was blocked (VAL-EXEC-004) by the missing real callback receiver at /api/run-progress."
+}

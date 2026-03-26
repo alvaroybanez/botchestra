@@ -1,0 +1,31 @@
+{
+  "milestone": "browser-executor",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 4,
+    "passed": 3,
+    "failed": 0,
+    "blocked": 1
+  },
+  "passedAssertions": [
+    "VAL-EXEC-001",
+    "VAL-EXEC-002",
+    "VAL-EXEC-003"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [
+    {
+      "id": "VAL-EXEC-004",
+      "blockedBy": "The only real local Worker surface available in this milestone has no callback receiver at /api/run-progress, so a valid /execute-run request fails during its first heartbeat callback with 404 -> 500 before any terminal run outcome can be observed."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Documented browser-executor user testing against the real Worker HTTP API on port 8787, set max API validator concurrency to 1, and added flow guidance explaining the callback-receiver limitation for /execute-run.",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null
+}
