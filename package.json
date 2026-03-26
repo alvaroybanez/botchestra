@@ -16,6 +16,8 @@
   "dependencies": {
     "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.91",
+    "@convex-dev/workflow": "^0.3.8",
+    "@convex-dev/workpool": "^0.4.6",
     "convex": "^1.34.0",
     "convex-helpers": "^0.1.114",
     "convex-test": "^0.0.43",
