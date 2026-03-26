@@ -3,7 +3,7 @@ import { zCustomMutation } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 
 export const STALE_HEARTBEAT_THRESHOLD_MS = 60_000;
@@ -48,7 +48,11 @@ export const monitorStaleRuns = zInternalMutation({
 
     let dispatchedRunCount = 0;
     for (const studyId of affectedStudyIds) {
-      dispatchedRunCount += await dispatchQueuedRunsForStudy(ctx, studyId);
+      const dispatchSummary = await ctx.runMutation(
+        internal.waveDispatch.dispatchStudyWave,
+        { studyId },
+      );
+      dispatchedRunCount += dispatchSummary.dispatchedRunCount;
     }
 
     return {
@@ -58,50 +62,3 @@ export const monitorStaleRuns = zInternalMutation({
     };
   },
 });
-
-async function dispatchQueuedRunsForStudy(ctx: MutationCtx, studyId: Id<"studies">) {
-  const study = await ctx.db.get(studyId);
-
-  if (study === null || (study.status !== "queued" && study.status !== "running")) {
-    return 0;
-  }
-
-  const [runningCount, dispatchingCount] = await Promise.all([
-    countRunsByStatus(ctx, studyId, "running"),
-    countRunsByStatus(ctx, studyId, "dispatching"),
-  ]);
-  const availableSlots = Math.max(0, study.activeConcurrency - runningCount - dispatchingCount);
-
-  if (availableSlots === 0) {
-    return 0;
-  }
-
-  const queuedRuns = await ctx.db
-    .query("runs")
-    .withIndex("by_studyId_status", (q) => q.eq("studyId", studyId).eq("status", "queued"))
-    .take(availableSlots);
-
-  for (const queuedRun of queuedRuns) {
-    await ctx.db.patch(queuedRun._id, {
-      status: "dispatching",
-    });
-  }
-
-  return queuedRuns.length;
-}
-
-async function countRunsByStatus(
-  ctx: MutationCtx,
-  studyId: Id<"studies">,
-  status: "dispatching" | "running",
-) {
-  let count = 0;
-
-  for await (const _run of ctx.db
-    .query("runs")
-    .withIndex("by_studyId_status", (q) => q.eq("studyId", studyId).eq("status", status))) {
-    count += 1;
-  }
-
-  return count;
-}

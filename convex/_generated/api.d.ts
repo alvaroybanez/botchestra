@@ -21,6 +21,7 @@ import type * as personaVariantReview from "../personaVariantReview.js";
 import type * as runProgress from "../runProgress.js";
 import type * as runs from "../runs.js";
 import type * as studies from "../studies.js";
+import type * as waveDispatch from "../waveDispatch.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   runProgress: typeof runProgress;
   runs: typeof runs;
   studies: typeof studies;
+  waveDispatch: typeof waveDispatch;
 }>;
 
 /**

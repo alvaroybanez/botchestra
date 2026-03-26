@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { register as registerWorkpool } from "@convex-dev/workpool/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { internal } from "./_generated/api";
@@ -7,11 +8,19 @@ import schema from "./schema";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
+  "./runProgress.ts": () => import("./runProgress"),
+  "./runs.ts": () => import("./runs"),
   "./heartbeatMonitor.ts": () => import("./heartbeatMonitor"),
   "./schema.ts": () => import("./schema"),
+  "./studies.ts": () => import("./studies"),
+  "./waveDispatch.ts": () => import("./waveDispatch"),
 };
 
-const createTest = () => convexTest(schema, modules);
+const createTest = () => {
+  const t = convexTest(schema, modules);
+  registerWorkpool(t, "browserPool");
+  return t;
+};
 
 const sampleTaskSpec = {
   scenario: "A shopper wants to complete checkout.",
@@ -50,6 +59,14 @@ const sampleTaskSpec = {
 };
 
 describe("heartbeatMonitor.monitorStaleRuns", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("marks stale running runs as infra_error", async () => {
     const t = createTest();
     const now = Date.now();
