@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api, internal } from "./_generated/api";
@@ -9,6 +9,7 @@ import {
   DEFAULT_POST_TASK_QUESTIONS,
   DEFAULT_STUDY_RUN_BUDGET,
 } from "./studies";
+import { workflow } from "./workflow";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
@@ -17,6 +18,10 @@ const modules = {
 };
 
 const createTest = () => convexTest(schema, modules);
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const researchIdentity = {
   subject: "researcher-1",
@@ -293,6 +298,9 @@ describe("studies.launchStudy", () => {
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, { status: "ready", runBudget: 5 });
     await seedAcceptedVariants(t, studyId, 5);
+    const workflowStartSpy = vi
+      .spyOn(workflow, "start")
+      .mockResolvedValue("workflow_1" as never);
     const beforeLaunch = Date.now();
 
     const launchedStudy = await asResearcher.mutation(api.studies.launchStudy, {
@@ -300,6 +308,7 @@ describe("studies.launchStudy", () => {
     });
 
     expect(launchedStudy.status).toBe("queued");
+    expect(workflowStartSpy).toHaveBeenCalledTimes(1);
     expect(launchedStudy.launchRequestedBy).toBe(
       researchIdentity.tokenIdentifier,
     );
@@ -335,6 +344,7 @@ describe("studies.launchStudy", () => {
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, { status: "ready", runBudget: 5 });
     await seedAcceptedVariants(t, studyId, 5);
+    vi.spyOn(workflow, "start").mockResolvedValue("workflow_1" as never);
 
     await asResearcher.mutation(api.studies.launchStudy, { studyId });
 

@@ -130,9 +130,19 @@ describe("study queries", () => {
 
     const studies = await asResearcher.query(api.studies.listStudies, {});
 
-    expect(studies.map((study) => study._id)).toEqual([newerStudyId, olderStudyId]);
-    expect(studies.every((study) => study.orgId === researchIdentity.tokenIdentifier)).toBe(true);
-    expect(studies.some((study) => study._id === foreignStudyId)).toBe(false);
+    expect(studies.map((study: Doc<"studies">) => study._id)).toEqual([
+      newerStudyId,
+      olderStudyId,
+    ]);
+    expect(
+      studies.every(
+        (study: Doc<"studies">) =>
+          study.orgId === researchIdentity.tokenIdentifier,
+      ),
+    ).toBe(true);
+    expect(
+      studies.some((study: Doc<"studies">) => study._id === foreignStudyId),
+    ).toBe(false);
   });
 });
 
@@ -233,7 +243,9 @@ describe("run queries", () => {
       firstPersonBio: expect.stringContaining("Careful online shopper"),
       axisValues: [{ key: "digital_confidence", value: -0.35 }],
     });
-    expect(run?.milestones.map((milestone) => milestone.stepIndex)).toEqual([1, 2]);
+    expect(
+      run?.milestones.map((milestone: Doc<"runMilestones">) => milestone.stepIndex),
+    ).toEqual([1, 2]);
     expect(run?.milestones[0]).toMatchObject({
       actionType: "type",
       screenshotKey: "runs/run-1/milestones/1.jpg",

@@ -9,11 +9,13 @@ import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import {
   internalMutation,
   mutation,
   query,
 } from "./_generated/server";
+import { workflow } from "./workflow";
 
 const zMutation = zCustomMutation(mutation, NoOp);
 const zQuery = zCustomQuery(query, NoOp);
@@ -281,6 +283,16 @@ export const launchStudy = zMutation({
       launchedAt: launchTimestamp,
       updatedAt: launchTimestamp,
     });
+    await workflow.start(
+      ctx,
+      internal.studyLifecycleWorkflow.runStudyLifecycle,
+      { studyId: study._id },
+      {
+        onComplete: internal.studyLifecycleWorkflow.handleStudyLifecycleComplete,
+        context: { studyId: study._id },
+        startAsync: true,
+      },
+    );
 
     return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
   },

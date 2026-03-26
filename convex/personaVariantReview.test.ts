@@ -164,13 +164,16 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     expect(review?.pack.name).toBe("Checkout Pack");
     expect(review?.protoPersonas).toHaveLength(2);
     expect(review?.variants).toHaveLength(2);
-    expect(review?.variants.map((variant) => variant.protoPersonaName)).toEqual(
+    expect(
+      review?.variants.map((variant: { protoPersonaName: string }) => variant.protoPersonaName),
+    ).toEqual(
       expect.arrayContaining(["Cautious shopper", "Confident repeat buyer"]),
     );
     expect(
-      review?.variants.every((variant) =>
+      review?.variants.every((variant: { protoPersonaId: Id<"protoPersonas"> }) =>
         review.protoPersonas.some(
-          (protoPersona) => protoPersona._id === variant.protoPersonaId,
+          (protoPersona: { _id: Id<"protoPersonas"> }) =>
+            protoPersona._id === variant.protoPersonaId,
         ),
       ),
     ).toBe(true);
