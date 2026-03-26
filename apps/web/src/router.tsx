@@ -19,10 +19,10 @@ import {
 import {
   StudiesListPage as StudiesRoutePage,
   StudyCreationWizardPage as StudyCreationWizardRoutePage,
-  StudyFindingsPage as StudyFindingsRoutePage,
   StudyOverviewPage as StudyOverviewRoutePage,
   StudyReportPage as StudyReportRoutePage,
 } from "@/routes/study-pages";
+import { StudyFindingsPage as StudyFindingsRoutePage } from "@/routes/study-findings-page";
 import { StudyPersonasPage as StudyPersonasRoutePage } from "@/routes/study-personas-page";
 import { StudyRunsPage as StudyRunsRoutePage } from "@/routes/study-runs-page";
 import { validateStudyDetailSearch } from "@/routes/study-shared";
@@ -361,9 +361,19 @@ function StudyRunsPage() {
 function StudyFindingsPage() {
   const { studyId } = studyFindingsRoute.useParams();
   const detailSearch = studyFindingsRoute.useSearch();
+  const navigate = studyFindingsRoute.useNavigate();
   return (
     <StudyFindingsRoutePage
       detailSearch={detailSearch}
+      onSearchChange={(patch) =>
+        void navigate({
+          replace: true,
+          search: (previous) => ({
+            ...previous,
+            ...patch,
+          }),
+        })
+      }
       studyId={studyId}
     />
   );

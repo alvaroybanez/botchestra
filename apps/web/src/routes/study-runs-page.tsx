@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
+import {
+  demoRunDetailsById,
+  demoRuns,
+  type DemoRunDetail,
+  type DemoRunListItem,
+} from "@/routes/study-demo-data";
 import {
   RunStatusBadge,
   StudyTabsNav,
@@ -30,6 +37,9 @@ const outcomeOptions = [
   "running",
 ] as const;
 
+type RunListItem = DemoRunListItem;
+type RunDetailData = DemoRunDetail;
+
 export function StudyRunsPage({
   detailSearch,
   onSearchChange,
@@ -39,6 +49,20 @@ export function StudyRunsPage({
   onSearchChange: (patch: Partial<StudyDetailSearch>) => void;
   studyId: string;
 }) {
+  if (studyId === DEMO_STUDY_ID) {
+    const filteredDemoRuns = filterRuns(demoRuns, detailSearch);
+
+    return (
+      <ResolvedStudyRunsPage
+        allRuns={demoRuns}
+        detailSearch={detailSearch}
+        filteredRuns={filteredDemoRuns}
+        onSearchChange={onSearchChange}
+        studyId={studyId}
+      />
+    );
+  }
+
   const allRuns = useQuery(api.runs.listRuns, {
     studyId: studyId as Id<"studies">,
   });
@@ -52,37 +76,6 @@ export function StudyRunsPage({
       ? { finalUrlContains: detailSearch.finalUrlContains }
       : {}),
   });
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
-
-  const personaOptions = useMemo(() => {
-    const uniqueRuns = allRuns ?? [];
-    const personaMap = new Map<string, string>();
-
-    for (const run of uniqueRuns) {
-      if (!personaMap.has(run.protoPersonaId)) {
-        personaMap.set(run.protoPersonaId, run.protoPersonaName);
-      }
-    }
-
-    return [...personaMap.entries()].map(([id, name]) => ({ id, name }));
-  }, [allRuns]);
-
-  useEffect(() => {
-    if (filteredRuns === undefined) {
-      return;
-    }
-
-    if (filteredRuns.length === 0) {
-      setSelectedRunId(null);
-      return;
-    }
-
-    setSelectedRunId((current) =>
-      current && filteredRuns.some((run) => run._id === current)
-        ? current
-        : filteredRuns[0]!._id,
-    );
-  }, [filteredRuns]);
 
   if (filteredRuns === undefined || allRuns === undefined) {
     return (
@@ -92,6 +85,44 @@ export function StudyRunsPage({
       />
     );
   }
+
+  return (
+    <ResolvedStudyRunsPage
+      allRuns={allRuns}
+      detailSearch={detailSearch}
+      filteredRuns={filteredRuns}
+      onSearchChange={onSearchChange}
+      studyId={studyId}
+    />
+  );
+}
+
+function ResolvedStudyRunsPage({
+  allRuns,
+  filteredRuns,
+  detailSearch,
+  onSearchChange,
+  studyId,
+}: {
+  allRuns: RunListItem[] | DemoRunListItem[];
+  filteredRuns: RunListItem[] | DemoRunListItem[];
+  detailSearch: StudyDetailSearch;
+  onSearchChange: (patch: Partial<StudyDetailSearch>) => void;
+  studyId: string;
+}) {
+  const personaOptions = useMemo(() => {
+    const personaMap = new Map<string, string>();
+
+    for (const run of allRuns) {
+      if (!personaMap.has(run.protoPersonaId)) {
+        personaMap.set(run.protoPersonaId, run.protoPersonaName);
+      }
+    }
+
+    return [...personaMap.entries()].map(([id, name]) => ({ id, name }));
+  }, [allRuns]);
+
+  const selectedRunId = getSelectedRunId(filteredRuns, detailSearch.runId);
 
   return (
     <section className="space-y-6">
@@ -210,7 +241,7 @@ export function StudyRunsPage({
                       : runClassName
                   }
                   type="button"
-                  onClick={() => setSelectedRunId(run._id)}
+                  onClick={() => onSearchChange({ runId: run._id })}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="space-y-1 text-left">
@@ -260,6 +291,10 @@ export function StudyRunsPage({
 }
 
 function RunDetail({ runId }: { runId: string }) {
+  if (runId in demoRunDetailsById) {
+    return <ResolvedRunDetail runDetail={demoRunDetailsById[runId]!} />;
+  }
+
   const runDetail = useQuery(api.runs.getRun, {
     runId: runId as Id<"runs">,
   });
@@ -277,6 +312,14 @@ function RunDetail({ runId }: { runId: string }) {
     );
   }
 
+  return <ResolvedRunDetail runDetail={runDetail as RunDetailData} />;
+}
+
+function ResolvedRunDetail({
+  runDetail,
+}: {
+  runDetail: RunDetailData;
+}) {
   const { milestones, personaVariant, protoPersona, run } = runDetail;
 
   return (
@@ -422,6 +465,47 @@ function RunDetail({ runId }: { runId: string }) {
       </CardContent>
     </Card>
   );
+}
+
+function getSelectedRunId(
+  filteredRuns: readonly { _id: string }[],
+  requestedRunId: string | undefined,
+) {
+  if (requestedRunId) {
+    return requestedRunId;
+  }
+
+  return filteredRuns[0]?._id ?? null;
+}
+
+function filterRuns(
+  runs: readonly DemoRunListItem[],
+  detailSearch: StudyDetailSearch,
+) {
+  return runs.filter((run) => {
+    if (
+      detailSearch.outcome !== undefined &&
+      run.status !== detailSearch.outcome
+    ) {
+      return false;
+    }
+
+    if (
+      detailSearch.protoPersonaId !== undefined &&
+      run.protoPersonaId !== detailSearch.protoPersonaId
+    ) {
+      return false;
+    }
+
+    if (
+      detailSearch.finalUrlContains !== undefined &&
+      !(run.finalUrl?.includes(detailSearch.finalUrlContains) ?? false)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function ArtifactLink({ href, label }: { href: string; label: string }) {

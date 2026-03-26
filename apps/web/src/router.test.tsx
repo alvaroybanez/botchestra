@@ -150,6 +150,45 @@ type RunDetail = {
   }>;
 };
 
+type FindingView = {
+  _id: string;
+  title: string;
+  summary: string;
+  severity: "blocker" | "major" | "minor" | "cosmetic";
+  affectedRunCount: number;
+  affectedRunRate: number;
+  affectedAxisRanges: Array<{ key: string; min: number; max: number }>;
+  recommendation: string;
+  confidenceNote: string;
+  replayConfidence: number;
+  affectedProtoPersonas: Array<{ _id: string; name: string }>;
+  evidence: Array<{
+    key: string;
+    thumbnailKey: string;
+    fullResolutionKey: string;
+  }>;
+  notes: Array<{
+    _id: string;
+    authorId: string;
+    note: string;
+    createdAt: number;
+  }>;
+  representativeRuns: Array<{
+    _id: string;
+    protoPersonaId: string;
+    protoPersonaName: string | null;
+    status: string;
+    finalUrl: string | null;
+    finalOutcome: string | null;
+    representativeQuote: string | null;
+    evidence: Array<{
+      key: string;
+      thumbnailKey: string;
+      fullResolutionKey: string;
+    }>;
+  }>;
+};
+
 let mockedVariantReview: ReviewData | null | undefined = undefined;
 let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
 let mockedStudyList: Doc<"studies">[] | undefined = [];
@@ -157,6 +196,7 @@ let mockedStudyById: Record<string, Doc<"studies"> | null | undefined> = {};
 let mockedRunSummariesByStudyId: Record<string, RunSummary | undefined> = {};
 let mockedRunsByStudyId: Record<string, RunListItem[] | undefined> = {};
 let mockedRunDetailsById: Record<string, RunDetail | null | undefined> = {};
+let mockedFindingsByStudyId: Record<string, FindingView[] | undefined> = {};
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
 const updateStudyMock = vi.fn();
@@ -284,6 +324,10 @@ vi.mock("convex/react", () => ({
       return mockedRunDetailsById[String(args?.runId)];
     }
 
+    if (queryName === "analysisQueries:listFindings") {
+      return mockedFindingsByStudyId[String(args?.studyId)];
+    }
+
     if (queryName === "personaPacks:list") {
       return mockedPackList;
     }
@@ -333,6 +377,7 @@ beforeEach(() => {
   mockedRunSummariesByStudyId = {};
   mockedRunsByStudyId = {};
   mockedRunDetailsById = {};
+  mockedFindingsByStudyId = {};
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
   createStudyMock.mockReset();
@@ -1062,6 +1107,9 @@ describe("@botchestra/web routing", () => {
     mockedRunDetailsById = {
       "run-hard-fail": makeRunDetail(),
     };
+    mockedFindingsByStudyId = {
+      "study-live": makeFindings(),
+    };
 
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
@@ -1108,6 +1156,110 @@ describe("@botchestra/web routing", () => {
     expect(outcomeSelect?.value).toBe("hard_fail");
     expect(personaSelect?.value).toBe("proto-careful");
     expect(urlInput?.value).toBe("address");
+  });
+
+  it("renders findings cards with filters, evidence links, and analyst notes", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "completed",
+      }),
+    };
+    mockedFindingsByStudyId = {
+      "study-live": makeFindings(),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/findings"],
+    });
+
+    expect(container.textContent).toContain("Findings Explorer");
+    expect(container.textContent).toContain(
+      "Checkout continue button hidden on the address step",
+    );
+    expect(container.textContent).toContain(
+      "Replay evidence confirms the continue button is clipped below the fold.",
+    );
+
+    const evidenceLinks = [...container.querySelectorAll<HTMLAnchorElement>("a")]
+      .filter((link) => link.textContent?.includes("Open evidence"));
+    expect(evidenceLinks).toHaveLength(2);
+    expect(evidenceLinks[0]?.getAttribute("href")).toBe(
+      "/artifacts/runs%2Frun-hard-fail%2Fmilestones%2F2.jpg",
+    );
+
+    await updateSelect(container, "#finding-severity-filter", "blocker");
+    expect(container.textContent).toContain("Showing 1 of 2 clusters");
+    expect(container.textContent).not.toContain("Payment totals shift late in checkout");
+
+    await updateSelect(container, "#finding-persona-filter", "proto-speedy");
+    expect(container.textContent).toContain("No matching findings");
+
+    await updateSelect(container, "#finding-severity-filter", "");
+    await updateSelect(container, "#finding-persona-filter", "proto-careful");
+    await updateSelect(container, "#finding-axis-key-filter", "digital_confidence");
+    await updateInput(container, "#finding-axis-min-filter", "-0.8");
+    await updateInput(container, "#finding-axis-max-filter", "-0.2");
+    await updateSelect(container, "#finding-outcome-filter", "hard_fail");
+    await updateInput(
+      container,
+      "#finding-url-prefix-filter",
+      "https://example.com/checkout/address",
+    );
+
+    expect(container.textContent).toContain("Showing 1 of 2 clusters");
+    expect(container.textContent).toContain(
+      "Checkout continue button hidden on the address step",
+    );
+    expect(container.textContent).not.toContain("Payment totals shift late in checkout");
+  });
+
+  it("opens the linked representative run detail from a findings card", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "completed",
+      }),
+    };
+    mockedFindingsByStudyId = {
+      "study-live": makeFindings(),
+    };
+    mockedRunsByStudyId = {
+      "study-live": makeRunList(),
+    };
+    mockedRunDetailsById = {
+      "run-hard-fail": makeRunDetail(),
+      "run-success": makeRunDetail({
+        run: {
+          _id: "run-success",
+          status: "success",
+          finalUrl: "https://example.com/checkout/confirmation",
+          finalOutcome: "order_confirmed",
+        },
+      }),
+    };
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/findings"],
+    });
+
+    const runLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
+      (link) => link.textContent?.includes("Open run detail"),
+    );
+
+    expect(runLink).not.toBeNull();
+
+    await act(async () => {
+      runLink!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(getRouterLocationHref(router)).toContain("/studies/study-live/runs");
+    expect(getRouterLocationHref(router)).toContain("runId=run-hard-fail");
+    expect(container.textContent).toContain("Run detail");
+    expect(container.textContent).toContain("Checkout failed at address");
+    expect(container.textContent).toContain("The shipping address step");
   });
 
   it("renders the persona pack empty state when no packs exist", async () => {
@@ -1614,6 +1766,110 @@ function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
       ...(overrides.milestones ?? []),
     ],
   };
+}
+
+function makeFindings(): FindingView[] {
+  return [
+    {
+      _id: "finding-address",
+      title: "Checkout continue button hidden on the address step",
+      summary:
+        "A blocker cluster where the primary continue action disappears after address validation.",
+      severity: "blocker",
+      affectedRunCount: 3,
+      affectedRunRate: 0.5,
+      affectedAxisRanges: [
+        { key: "digital_confidence", min: -0.9, max: -0.3 },
+      ],
+      recommendation:
+        "Pin the continue action below the form and keep it visible after validation messages appear.",
+      confidenceNote: "Replay reproduced the missing button twice.",
+      replayConfidence: 0.82,
+      affectedProtoPersonas: [
+        { _id: "proto-careful", name: "Careful shopper" },
+      ],
+      evidence: [
+        {
+          key: "runs/run-hard-fail/milestones/2.jpg",
+          thumbnailKey: "runs/run-hard-fail/milestones/2.jpg",
+          fullResolutionKey: "runs/run-hard-fail/milestones/2.jpg",
+        },
+      ],
+      notes: [
+        {
+          _id: "note-address",
+          authorId: "analyst-a",
+          note: "Replay evidence confirms the continue button is clipped below the fold.",
+          createdAt: 1_700_000_000_000,
+        },
+      ],
+      representativeRuns: [
+        {
+          _id: "run-hard-fail",
+          protoPersonaId: "proto-careful",
+          protoPersonaName: "Careful shopper",
+          status: "hard_fail",
+          finalUrl: "https://example.com/checkout/address",
+          finalOutcome: "address_validation_failed",
+          representativeQuote:
+            "I could not figure out how to continue from the address step.",
+          evidence: [
+            {
+              key: "runs/run-hard-fail/milestones/2.jpg",
+              thumbnailKey: "runs/run-hard-fail/milestones/2.jpg",
+              fullResolutionKey: "runs/run-hard-fail/milestones/2.jpg",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      _id: "finding-payment",
+      title: "Payment totals shift late in checkout",
+      summary:
+        "A minor cluster where the total changes at payment and creates hesitation.",
+      severity: "minor",
+      affectedRunCount: 2,
+      affectedRunRate: 0.33,
+      affectedAxisRanges: [
+        { key: "digital_confidence", min: 0.2, max: 0.8 },
+      ],
+      recommendation:
+        "Explain taxes and shipping earlier so totals stay predictable by the time payment loads.",
+      confidenceNote: "Observed in one replay and one primary run.",
+      replayConfidence: 0.44,
+      affectedProtoPersonas: [
+        { _id: "proto-speedy", name: "Speedy repeat buyer" },
+      ],
+      evidence: [
+        {
+          key: "runs/run-success/milestones/4.jpg",
+          thumbnailKey: "runs/run-success/milestones/4.jpg",
+          fullResolutionKey: "runs/run-success/milestones/4.jpg",
+        },
+      ],
+      notes: [],
+      representativeRuns: [
+        {
+          _id: "run-success",
+          protoPersonaId: "proto-speedy",
+          protoPersonaName: "Speedy repeat buyer",
+          status: "soft_fail",
+          finalUrl: "https://example.com/checkout/payment",
+          finalOutcome: "payment_total_unclear",
+          representativeQuote:
+            "I was not sure why the total changed once I reached payment.",
+          evidence: [
+            {
+              key: "runs/run-success/milestones/4.jpg",
+              thumbnailKey: "runs/run-success/milestones/4.jpg",
+              fullResolutionKey: "runs/run-success/milestones/4.jpg",
+            },
+          ],
+        },
+      ],
+    },
+  ];
 }
 
 async function updateTextarea(

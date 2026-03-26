@@ -5,12 +5,24 @@ export type StudyDetailSearch = {
   outcome: string | undefined;
   protoPersonaId: string | undefined;
   finalUrlContains: string | undefined;
+  severity: string | undefined;
+  axisKey: string | undefined;
+  axisMin: number | undefined;
+  axisMax: number | undefined;
+  urlPrefix: string | undefined;
+  runId: string | undefined;
 };
 
 export const emptyStudyDetailSearch: StudyDetailSearch = {
   outcome: undefined,
   protoPersonaId: undefined,
   finalUrlContains: undefined,
+  severity: undefined,
+  axisKey: undefined,
+  axisMin: undefined,
+  axisMax: undefined,
+  urlPrefix: undefined,
+  runId: undefined,
 };
 
 export const studyTabs = [
@@ -46,6 +58,12 @@ export function validateStudyDetailSearch(search: Record<string, unknown>) {
     outcome: normalizeOptionalString(search.outcome),
     protoPersonaId: normalizeOptionalString(search.protoPersonaId),
     finalUrlContains: normalizeOptionalString(search.finalUrlContains),
+    severity: normalizeOptionalString(search.severity),
+    axisKey: normalizeOptionalString(search.axisKey),
+    axisMin: normalizeOptionalNumber(search.axisMin),
+    axisMax: normalizeOptionalNumber(search.axisMax),
+    urlPrefix: normalizeOptionalString(search.urlPrefix),
+    runId: normalizeOptionalString(search.runId),
   };
 }
 
@@ -175,4 +193,24 @@ function normalizeOptionalString(value: unknown) {
 
   const normalizedValue = value.trim();
   return normalizedValue.length > 0 ? normalizedValue : undefined;
+}
+
+function normalizeOptionalNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  const parsedValue = Number(normalizedValue);
+
+  return Number.isFinite(parsedValue) ? parsedValue : undefined;
 }
