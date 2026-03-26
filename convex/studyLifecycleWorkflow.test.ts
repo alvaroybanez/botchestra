@@ -205,7 +205,7 @@ describe("studyLifecycleWorkflow", () => {
     );
   });
 
-  it("marks a replaying study as failed when every settled run is an infra error", async () => {
+  it("creates a zero-metric report when every settled run is an infra error", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, { status: "replaying", runBudget: 3 });
@@ -221,16 +221,25 @@ describe("studyLifecycleWorkflow", () => {
       studyId,
     });
 
-    const failedStudy = await asResearcher.query(api.studies.getStudy, {
+    const completedStudy = await asResearcher.query(api.studies.getStudy, {
       studyId,
     });
     const report = await asResearcher.query(api.studyLifecycleWorkflow.getStudyReport, {
       studyId,
     });
 
-    expect(failedStudy?.status).toBe("failed");
-    expect(failedStudy?.completedAt).toBeUndefined();
-    expect(report).toBeNull();
+    expect(completedStudy?.status).toBe("completed");
+    expect(completedStudy?.completedAt).toBeTypeOf("number");
+    expect(report?.issueClusterIds).toEqual([]);
+    expect(report?.headlineMetrics).toEqual({
+      completionRate: 0,
+      abandonmentRate: 0,
+      medianSteps: 0,
+      medianDurationSec: 0,
+    });
+    expect(report?.limitations).toHaveLength(3);
+    expect(report?.htmlReportKey).toBe(`study-reports/${studyId}/report.html`);
+    expect(report?.jsonReportKey).toBe(`study-reports/${studyId}/report.json`);
   });
 
   it("marks the study as failed when the workflow completion result fails", async () => {

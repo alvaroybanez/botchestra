@@ -657,6 +657,83 @@ describe("analysisPipeline clustering", () => {
         ?.title,
     ]);
   });
+
+  it("populates report artifact keys and renders self-contained HTML plus inline cluster JSON", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+    const representativeRun = await insertTerminalRun(t, studyId, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+      milestoneKeys: ["runs/checkout-run-a.png"],
+    });
+    await insertTerminalRun(t, studyId, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+
+    await attachSummaryToRun(
+      t,
+      representativeRun,
+      makeSummary({
+        sourceRunStatus: "hard_fail",
+        outcomeClassification: "failure",
+        failureSummary: "The checkout page hid the primary action and blocked progress.",
+        failurePoint: "Checkout page at /shop/checkout",
+        lastSuccessfulState: "Cart review completed.",
+        blockingText: "CHECKOUT_BUTTON_MISSING",
+        frustrationMarkers: ["missing primary action"],
+        representativeQuote: "I cannot see how to continue from checkout.",
+      }),
+    );
+
+    await insertReplayRun(t, studyId, representativeRun, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+    await insertReplayRun(t, studyId, representativeRun, {
+      status: "success",
+      finalOutcome: "SUCCESS",
+      finalUrl: "https://example.com/shop/confirmation",
+    });
+
+    const report = await t.mutation(
+      internal.studyLifecycleWorkflow.createStudyLifecycleReport,
+      { studyId },
+    );
+    const artifacts = await t.query(
+      internal.studyLifecycleWorkflow.getStudyReportArtifacts,
+      { studyId },
+    );
+
+    expect(report.htmlReportKey).toBe(`study-reports/${studyId}/report.html`);
+    expect(report.jsonReportKey).toBe(`study-reports/${studyId}/report.json`);
+    expect(artifacts.htmlReportKey).toBe(report.htmlReportKey);
+    expect(artifacts.jsonReportKey).toBe(report.jsonReportKey);
+    expect(artifacts.html).toContain("<!DOCTYPE html>");
+    expect(artifacts.html).toContain("Findings are synthetic and directional.");
+    expect(artifacts.html).toContain("Checkout button missing at /shop/checkout");
+    expect(artifacts.html).not.toContain("<script src=");
+    expect(artifacts.html).not.toContain("<link rel=\"stylesheet\"");
+
+    const exported = JSON.parse(artifacts.json);
+    expect(exported.studyId).toBe(studyId);
+    expect(exported.headlineMetrics).toEqual(report.headlineMetrics);
+    expect(exported.issueClusterIds).toEqual(report.issueClusterIds);
+    expect(exported.issueClusters).toHaveLength(1);
+    expect(exported.issueClusters[0]).toMatchObject({
+      title: expect.any(String),
+      summary: expect.stringContaining("CHECKOUT_BUTTON_MISSING"),
+      evidenceKeys: expect.arrayContaining([
+        "runs/checkout-run-a.png",
+        `replays/${representativeRun}/CHECKOUT_BUTTON_MISSING.png`,
+      ]),
+    });
+  });
 });
 
 type TestInstance = ReturnType<typeof createTest>;

@@ -21,6 +21,11 @@ import {
   buildLimitationsSection,
   computeHeadlineMetrics,
 } from "./analysis/pure";
+import {
+  buildStudyReportArtifacts,
+  buildStudyReportArtifactKeys,
+  type StudyReportExportCluster,
+} from "./analysis/reportArtifacts";
 import { isRunExcludedFromClustering } from "./analysis/runSummaries";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
@@ -360,10 +365,8 @@ export const createStudyLifecycleReport = zInternalMutation({
       studyId: args.studyId,
       headlineMetrics,
       issueClusterIds,
-      segmentBreakdownKey: `study-reports/${args.studyId}/segment-breakdown.json`,
+      ...buildStudyReportArtifactKeys(args.studyId),
       limitations: buildLimitationsSection(),
-      htmlReportKey: `study-reports/${args.studyId}/report.html`,
-      jsonReportKey: `study-reports/${args.studyId}/report.json`,
       createdAt,
     });
 
@@ -458,15 +461,6 @@ export const completeStudyLifecycleAfterReplay = zInternalMutation({
       throw new ConvexError("Replay verification cannot complete before all runs are terminal.");
     }
 
-    if (runs.every((run) => run.status === "infra_error")) {
-      await ctx.runMutation(internal.studies.transitionStudyState, {
-        studyId: args.studyId,
-        nextStatus: "failed",
-      });
-
-      return await getStudyById(ctx, args.studyId);
-    }
-
     await ctx.runMutation(internal.studies.transitionStudyState, {
       studyId: args.studyId,
       nextStatus: "analyzing",
@@ -501,6 +495,27 @@ export const getStudyReport = zQuery({
   handler: async (ctx, args) => {
     await getStudyForOrg(ctx, args.studyId);
     return await findStudyReportByStudyId(ctx, args.studyId);
+  },
+});
+
+export const getStudyReportArtifacts = zInternalQuery({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    await getStudyById(ctx, args.studyId);
+    const report = await findStudyReportByStudyId(ctx, args.studyId);
+
+    if (report === null) {
+      throw new ConvexError("Study report not found.");
+    }
+
+    const issueClusters = await listIssueClustersByIds(ctx, report.issueClusterIds);
+
+    return buildStudyReportArtifacts({
+      report,
+      issueClusters,
+    });
   },
 });
 
@@ -825,6 +840,23 @@ async function findStudyReportByStudyId(
   }
 
   return null;
+}
+
+async function listIssueClustersByIds(
+  ctx: QueryCtx | MutationCtx,
+  issueClusterIds: readonly Id<"issueClusters">[],
+) {
+  return await Promise.all(
+    issueClusterIds.map(async (issueClusterId) => {
+      const issueCluster = await ctx.db.get(issueClusterId);
+
+      if (issueCluster === null) {
+        throw new ConvexError(`Issue cluster ${issueClusterId} not found.`);
+      }
+
+      return issueCluster as StudyReportExportCluster;
+    }),
+  );
 }
 
 async function getStudyById(

@@ -11,6 +11,7 @@
 import type * as analysis_issueClustering from "../analysis/issueClustering.js";
 import type * as analysis_pure from "../analysis/pure.js";
 import type * as analysis_ranking from "../analysis/ranking.js";
+import type * as analysis_reportArtifacts from "../analysis/reportArtifacts.js";
 import type * as analysis_runSummaries from "../analysis/runSummaries.js";
 import type * as analysisPipeline from "../analysisPipeline.js";
 import type * as analysisPipelineModel from "../analysisPipelineModel.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   "analysis/issueClustering": typeof analysis_issueClustering;
   "analysis/pure": typeof analysis_pure;
   "analysis/ranking": typeof analysis_ranking;
+  "analysis/reportArtifacts": typeof analysis_reportArtifacts;
   "analysis/runSummaries": typeof analysis_runSummaries;
   analysisPipeline: typeof analysisPipeline;
   analysisPipelineModel: typeof analysisPipelineModel;
