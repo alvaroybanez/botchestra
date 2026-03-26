@@ -84,7 +84,11 @@ export const dispatchStudyWave = zInternalMutation({
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
 
-    if (study.status !== "queued" && study.status !== "running") {
+    if (
+      study.status !== "queued" &&
+      study.status !== "running" &&
+      study.status !== "replaying"
+    ) {
       return {
         studyId: args.studyId,
         activeConcurrency: resolveDispatchConcurrency(study.activeConcurrency),

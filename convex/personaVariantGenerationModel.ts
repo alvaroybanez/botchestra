@@ -107,6 +107,23 @@ export const getGenerationContext = zInternalQuery({
   },
 });
 
+export const getStudyGenerationOwner = zInternalQuery({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args) => {
+    const study = await ctx.db.get(args.studyId);
+
+    if (study === null) {
+      throw new ConvexError("Study not found.");
+    }
+
+    return {
+      orgId: study.orgId,
+    };
+  },
+});
+
 export const getPreviewContext = zInternalQuery({
   args: {
     packId: zid("personaPacks"),

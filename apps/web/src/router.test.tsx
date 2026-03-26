@@ -159,6 +159,9 @@ let mockedRunsByStudyId: Record<string, RunListItem[] | undefined> = {};
 let mockedRunDetailsById: Record<string, RunDetail | null | undefined> = {};
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
+const updateStudyMock = vi.fn();
+const launchStudyMock = vi.fn();
+const cancelStudyMock = vi.fn();
 const importJsonMock = vi.fn();
 const updateDraftMock = vi.fn();
 const createProtoPersonaMock = vi.fn();
@@ -180,6 +183,18 @@ vi.mock("convex/react", () => ({
 
     if (mutationName === "studies:createStudy") {
       return createStudyMock;
+    }
+
+    if (mutationName === "studies:updateStudy") {
+      return updateStudyMock;
+    }
+
+    if (mutationName === "studies:launchStudy") {
+      return launchStudyMock;
+    }
+
+    if (mutationName === "studies:cancelStudy") {
+      return cancelStudyMock;
     }
 
     if (mutationName === "personaPacks:createDraft") {
@@ -324,6 +339,12 @@ beforeEach(() => {
   createStudyMock.mockResolvedValue(
     makeStudy({ _id: "study-created" as Id<"studies"> }),
   );
+  updateStudyMock.mockReset();
+  updateStudyMock.mockResolvedValue(undefined);
+  launchStudyMock.mockReset();
+  launchStudyMock.mockResolvedValue(undefined);
+  cancelStudyMock.mockReset();
+  cancelStudyMock.mockResolvedValue(undefined);
   importJsonMock.mockReset();
   importJsonMock.mockResolvedValue("imported-pack-id" as Id<"personaPacks">);
   updateDraftMock.mockReset();
@@ -734,6 +755,125 @@ describe("@botchestra/web routing", () => {
         }),
       ]),
     );
+  });
+
+  it("lets researchers edit draft studies from the overview page", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "draft",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live"),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+    });
+
+    await clickButton(container, "Edit Study");
+    await updateInput(container, "#study-name", "Updated study name");
+    await updateInput(container, "#study-starting-url", "https://example.com/new-start");
+    await updateInput(container, "#study-run-budget", "48");
+    await updateInput(container, "#study-active-concurrency", "5");
+    await updateSelect(container, "#study-environment-label", "qa");
+    await updateTextarea(container, "#study-post-task-questions", "Did you finish?\nWhat slowed you down?");
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+
+    await act(async () => {
+      form!.dispatchEvent(
+        new Event("submit", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(updateStudyMock).toHaveBeenCalledWith({
+      studyId: "study-live",
+      patch: {
+        name: "Updated study name",
+        description: "Evaluates friction in the checkout flow.",
+        taskSpec: {
+          scenario: "A shopper wants to complete checkout.",
+          goal: "Reach order confirmation.",
+          startingUrl: "https://example.com/new-start",
+          allowedDomains: ["example.com"],
+          allowedActions: ["goto", "click", "type", "select", "scroll", "wait", "back", "finish"],
+          forbiddenActions: ["payment_submission", "external_download"],
+          successCriteria: ["Order confirmation is visible"],
+          stopConditions: ["Leave the allowlisted domain"],
+          postTaskQuestions: ["Did you finish?", "What slowed you down?"],
+          maxSteps: 25,
+          maxDurationSec: 420,
+          environmentLabel: "qa",
+          locale: "en-US",
+          viewport: { width: 1440, height: 900 },
+        },
+        runBudget: 48,
+        activeConcurrency: 5,
+      },
+    });
+    expect(container.textContent).toContain("Study draft saved.");
+  });
+
+  it("shows launch confirmation and launches studies from the overview page", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "draft",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live"),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+    });
+
+    await clickButton(container, "Launch Study");
+    expect(container.textContent).toContain("Launch study?");
+
+    await clickButton(container, "Confirm Launch");
+
+    expect(launchStudyMock).toHaveBeenCalledWith({ studyId: "study-live" });
+    expect(container.textContent).toContain("Study launch started.");
+  });
+
+  it("shows cancel confirmation and requests cancellation for running studies", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "running",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live", {
+        totalRuns: 4,
+        terminalCount: 1,
+        runningCount: 2,
+        queuedCount: 1,
+      }),
+    };
+    mockedRunsByStudyId = {
+      "study-live": [],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+    });
+
+    await clickButton(container, "Cancel Study");
+    expect(container.textContent).toContain("Cancel study?");
+
+    await clickButton(container, "Confirm Cancellation");
+
+    expect(cancelStudyMock).toHaveBeenCalledWith({ studyId: "study-live" });
+    expect(container.textContent).toContain("Study cancellation requested.");
   });
 
   it("renders the live monitor with outcome breakdown, active variants, and progress details", async () => {

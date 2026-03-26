@@ -232,12 +232,22 @@ export const launchStudy = zMutation({
     const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
     const runBudget = study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET;
 
-    if (study.status === "draft") {
-      throw new ConvexError("Draft studies cannot be launched.");
+    if (
+      study.status !== "draft" &&
+      study.status !== "persona_review" &&
+      study.status !== "ready"
+    ) {
+      throw new ConvexError(
+        "Only draft, persona review, or ready studies can be launched.",
+      );
     }
 
-    if (study.status !== "ready") {
-      throw new ConvexError("Only ready studies can be launched.");
+    if (
+      study.status === "persona_review" &&
+      study.launchRequestedBy !== undefined &&
+      study.launchedAt === undefined
+    ) {
+      throw new ConvexError("This study is already preparing for launch.");
     }
 
     if (runBudget <= 0) {
@@ -274,27 +284,29 @@ export const launchStudy = zMutation({
       study._id,
       runBudget,
     );
+    const launchTimestamp = Date.now();
 
-    if (!hasConfirmedVariants) {
+    if (study.status !== "ready" || !hasConfirmedVariants) {
       await ctx.db.patch(study._id, {
         status: "persona_review",
-        updatedAt: Date.now(),
+        launchRequestedBy: identity.tokenIdentifier,
+        updatedAt: launchTimestamp,
       });
-
-      return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
+    } else {
+      await ctx.db.patch(study._id, {
+        status: "queued",
+        launchRequestedBy: identity.tokenIdentifier,
+        launchedAt: launchTimestamp,
+        updatedAt: launchTimestamp,
+      });
     }
-
-    const launchTimestamp = Date.now();
-    await ctx.db.patch(study._id, {
-      status: "queued",
-      launchRequestedBy: identity.tokenIdentifier,
-      launchedAt: launchTimestamp,
-      updatedAt: launchTimestamp,
-    });
     await workflow.start(
       ctx,
       internal.studyLifecycleWorkflow.runStudyLifecycle,
-      { studyId: study._id },
+      {
+        studyId: study._id,
+        launchRequestedBy: identity.tokenIdentifier,
+      },
       {
         onComplete: internal.studyLifecycleWorkflow.handleStudyLifecycleComplete,
         context: { studyId: study._id },

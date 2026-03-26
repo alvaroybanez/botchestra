@@ -9,7 +9,7 @@ import { generateWithModel } from "../packages/ai/src/index";
 
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { action } from "./_generated/server";
+import { type ActionCtx, action, internalAction } from "./_generated/server";
 import {
   axisValuesToArray,
   evaluateDistinctness,
@@ -23,6 +23,7 @@ import {
 } from "./personaEngine/variantGeneration";
 
 const zAction = zCustomAction(action, NoOp);
+const zInternalAction = zCustomAction(internalAction, NoOp);
 
 export const previewVariants = zAction({
   args: {
@@ -89,183 +90,211 @@ export const generateVariantsForStudy = zAction({
       throw new ConvexError("Not authenticated.");
     }
 
-    const generationContext: GenerationContext = await ctx.runQuery(
-      internal.personaVariantGenerationModel.getGenerationContext,
-      {
-        studyId: args.studyId,
-        orgId: identity.tokenIdentifier,
-      },
-    );
-
-    const budget = resolveRunBudget(generationContext.resolvedBudget);
-    const acceptedExistingVariants = generationContext.existingVariants.filter(
-      (variant) => variant.accepted,
-    );
-
-    if (acceptedExistingVariants.length >= budget) {
-      return await ctx.runMutation(
-        internal.personaVariantGenerationModel.persistVariantsIfAbsent,
-        {
-          studyId: args.studyId,
-          orgId: identity.tokenIdentifier,
-          variants: [],
-          summary: {
-            acceptedCount: 0,
-            rejectedCount: 0,
-            retryCount: 0,
-            coverage: {
-              budget: generationContext.resolvedBudget,
-              edgeCount: 0,
-              interiorCount: 0,
-              minimumPairwiseDistance: 1,
-              perProtoPersona: [],
-            },
-          },
-        },
-      );
-    }
-
-    const protoPersonasForAllocation: ProtoPersonaForAllocation[] =
-      generationContext.protoPersonas.map((protoPersona) => ({
-        id: protoPersona._id,
-        axes: protoPersona.axes,
-        evidenceSnippets: protoPersona.evidenceSnippets,
-        axisKeys: generationContext.pack.sharedAxes.map((axis) => axis.key),
-      }));
-    const acceptedAxisValues = new Map<string, Record<string, number>>();
-
-    acceptedExistingVariants.forEach((variant, index) => {
-      acceptedAxisValues.set(`existing:${index}`, toAxisRecord(variant.axisValues));
-    });
-
-    const persistedVariants: PersistedVariant[] = [];
-    let retryCount = 0;
-    let acceptedCount = acceptedExistingVariants.length;
-    let passIndex = 0;
-
-    while (acceptedCount < budget) {
-      const acceptedCountAtStartOfPass = acceptedCount;
-      const remainingBudget = budget - acceptedCount;
-      const variantPlans = planVariants(
-        protoPersonasForAllocation,
-        remainingBudget,
-        undefined,
-        Array.from(acceptedAxisValues.values()),
-        passIndex * 100_000,
-      );
-
-      for (const variantPlan of variantPlans) {
-        const protoPersona = generationContext.protoPersonas.find(
-          (candidate) => candidate._id === variantPlan.protoPersonaId,
-        );
-
-        if (!protoPersona) {
-          throw new ConvexError(
-            `Proto-persona ${variantPlan.protoPersonaId} not found.`,
-          );
-        }
-
-        let bestCandidate: PersistedVariant | null = null;
-        let acceptedVariantGenerated = false;
-
-        for (
-          let attemptIndex = 0;
-          attemptIndex <= MAX_RETRIES_PER_VARIANT;
-          attemptIndex += 1
-        ) {
-          if (attemptIndex > 0) {
-            retryCount += 1;
-          }
-
-          const generatedCandidate = await generateCandidate(
-            generationContext.pack,
-            protoPersona,
-            variantPlan.axisValues,
-          );
-
-          const distinctness = evaluateDistinctness(
-            variantPlan.axisValues,
-            Array.from(acceptedAxisValues.values()),
-          );
-          const validation = validateGeneratedVariantCandidate(generatedCandidate);
-          const accepted = validation.accepted && isDistinctEnough(distinctness);
-          const persistedVariant = toPersistedVariant({
-            studyId: generationContext.study._id,
-            personaPackId: generationContext.pack._id,
-            protoPersonaId: protoPersona._id,
-            axisValues: variantPlan.axisValues,
-            edgeScore: variantPlan.edgeScore,
-            candidate: generatedCandidate,
-            coherenceScore: validation.coherenceScore,
-            distinctnessScore: distinctness.distinctnessScore,
-            accepted,
-          });
-
-          if (
-            bestCandidate === null ||
-            persistedVariant.coherenceScore + persistedVariant.distinctnessScore >
-              bestCandidate.coherenceScore + bestCandidate.distinctnessScore
-          ) {
-            bestCandidate = persistedVariant;
-          }
-
-          if (accepted) {
-            persistedVariants.push(persistedVariant);
-            acceptedAxisValues.set(
-              `${protoPersona._id}:${acceptedAxisValues.size}`,
-              variantPlan.axisValues,
-            );
-            acceptedCount += 1;
-            acceptedVariantGenerated = true;
-            break;
-          }
-        }
-
-        if (!acceptedVariantGenerated && bestCandidate !== null) {
-          persistedVariants.push({
-            ...bestCandidate,
-            accepted: false,
-          });
-        }
-      }
-
-      if (acceptedCount === acceptedCountAtStartOfPass) {
-        break;
-      }
-
-      passIndex += 1;
-    }
-
-    const allVariants = [...generationContext.existingVariants, ...persistedVariants];
-    const acceptedVariants = allVariants.filter((variant) => variant.accepted);
-    const rejectedCount = allVariants.length - acceptedVariants.length;
-    const edgeCount = acceptedVariants.filter((variant) => variant.edgeScore >= 0.65)
-      .length;
-
-    return await ctx.runMutation(
-      internal.personaVariantGenerationModel.persistVariantsIfAbsent,
-      {
-        studyId: args.studyId,
-        orgId: identity.tokenIdentifier,
-        variants: persistedVariants,
-        summary: {
-          acceptedCount: acceptedVariants.length,
-          rejectedCount,
-          retryCount,
-          coverage: {
-            budget,
-            edgeCount,
-            interiorCount: acceptedVariants.length - edgeCount,
-            minimumPairwiseDistance: calculateMinimumPairwiseDistance(
-              acceptedVariants,
-            ),
-            perProtoPersona: summarizePerProtoPersona(allVariants),
-          },
-        },
-      },
+    return await generateVariantsForStudyForOrg(
+      ctx,
+      args.studyId,
+      identity.tokenIdentifier,
     );
   },
 });
+
+export const generateVariantsForStudyInternal = zInternalAction({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args): Promise<GenerationSummary> => {
+    const { orgId } = await ctx.runQuery(
+      internal.personaVariantGenerationModel.getStudyGenerationOwner,
+      {
+        studyId: args.studyId,
+      },
+    );
+
+    return await generateVariantsForStudyForOrg(ctx, args.studyId, orgId);
+  },
+});
+
+async function generateVariantsForStudyForOrg(
+  ctx: ActionCtx,
+  studyId: Id<"studies">,
+  orgId: string,
+): Promise<GenerationSummary> {
+  const generationContext: GenerationContext = await ctx.runQuery(
+    internal.personaVariantGenerationModel.getGenerationContext,
+    {
+      studyId,
+      orgId,
+    },
+  );
+
+  const budget = resolveRunBudget(generationContext.resolvedBudget);
+  const acceptedExistingVariants = generationContext.existingVariants.filter(
+    (variant) => variant.accepted,
+  );
+
+  if (acceptedExistingVariants.length >= budget) {
+    return await ctx.runMutation(
+      internal.personaVariantGenerationModel.persistVariantsIfAbsent,
+      {
+        studyId,
+        orgId,
+        variants: [],
+        summary: {
+          acceptedCount: 0,
+          rejectedCount: 0,
+          retryCount: 0,
+          coverage: {
+            budget: generationContext.resolvedBudget,
+            edgeCount: 0,
+            interiorCount: 0,
+            minimumPairwiseDistance: 1,
+            perProtoPersona: [],
+          },
+        },
+      },
+    );
+  }
+
+  const protoPersonasForAllocation: ProtoPersonaForAllocation[] =
+    generationContext.protoPersonas.map((protoPersona) => ({
+      id: protoPersona._id,
+      axes: protoPersona.axes,
+      evidenceSnippets: protoPersona.evidenceSnippets,
+      axisKeys: generationContext.pack.sharedAxes.map((axis) => axis.key),
+    }));
+  const acceptedAxisValues = new Map<string, Record<string, number>>();
+
+  acceptedExistingVariants.forEach((variant, index) => {
+    acceptedAxisValues.set(`existing:${index}`, toAxisRecord(variant.axisValues));
+  });
+
+  const persistedVariants: PersistedVariant[] = [];
+  let retryCount = 0;
+  let acceptedCount = acceptedExistingVariants.length;
+  let passIndex = 0;
+
+  while (acceptedCount < budget) {
+    const acceptedCountAtStartOfPass = acceptedCount;
+    const remainingBudget = budget - acceptedCount;
+    const variantPlans = planVariants(
+      protoPersonasForAllocation,
+      remainingBudget,
+      undefined,
+      Array.from(acceptedAxisValues.values()),
+      passIndex * 100_000,
+    );
+
+    for (const variantPlan of variantPlans) {
+      const protoPersona = generationContext.protoPersonas.find(
+        (candidate) => candidate._id === variantPlan.protoPersonaId,
+      );
+
+      if (!protoPersona) {
+        throw new ConvexError(
+          `Proto-persona ${variantPlan.protoPersonaId} not found.`,
+        );
+      }
+
+      let bestCandidate: PersistedVariant | null = null;
+      let acceptedVariantGenerated = false;
+
+      for (
+        let attemptIndex = 0;
+        attemptIndex <= MAX_RETRIES_PER_VARIANT;
+        attemptIndex += 1
+      ) {
+        if (attemptIndex > 0) {
+          retryCount += 1;
+        }
+
+        const generatedCandidate = await generateCandidate(
+          generationContext.pack,
+          protoPersona,
+          variantPlan.axisValues,
+        );
+
+        const distinctness = evaluateDistinctness(
+          variantPlan.axisValues,
+          Array.from(acceptedAxisValues.values()),
+        );
+        const validation = validateGeneratedVariantCandidate(generatedCandidate);
+        const accepted = validation.accepted && isDistinctEnough(distinctness);
+        const persistedVariant = toPersistedVariant({
+          studyId: generationContext.study._id,
+          personaPackId: generationContext.pack._id,
+          protoPersonaId: protoPersona._id,
+          axisValues: variantPlan.axisValues,
+          edgeScore: variantPlan.edgeScore,
+          candidate: generatedCandidate,
+          coherenceScore: validation.coherenceScore,
+          distinctnessScore: distinctness.distinctnessScore,
+          accepted,
+        });
+
+        if (
+          bestCandidate === null ||
+          persistedVariant.coherenceScore + persistedVariant.distinctnessScore >
+            bestCandidate.coherenceScore + bestCandidate.distinctnessScore
+        ) {
+          bestCandidate = persistedVariant;
+        }
+
+        if (accepted) {
+          persistedVariants.push(persistedVariant);
+          acceptedAxisValues.set(
+            `${protoPersona._id}:${acceptedAxisValues.size}`,
+            variantPlan.axisValues,
+          );
+          acceptedCount += 1;
+          acceptedVariantGenerated = true;
+          break;
+        }
+      }
+
+      if (!acceptedVariantGenerated && bestCandidate !== null) {
+        persistedVariants.push({
+          ...bestCandidate,
+          accepted: false,
+        });
+      }
+    }
+
+    if (acceptedCount === acceptedCountAtStartOfPass) {
+      break;
+    }
+
+    passIndex += 1;
+  }
+
+  const allVariants = [...generationContext.existingVariants, ...persistedVariants];
+  const acceptedVariants = allVariants.filter((variant) => variant.accepted);
+  const rejectedCount = allVariants.length - acceptedVariants.length;
+  const edgeCount = acceptedVariants.filter((variant) => variant.edgeScore >= 0.65)
+    .length;
+
+  return await ctx.runMutation(
+    internal.personaVariantGenerationModel.persistVariantsIfAbsent,
+    {
+      studyId,
+      orgId,
+      variants: persistedVariants,
+      summary: {
+        acceptedCount: acceptedVariants.length,
+        rejectedCount,
+        retryCount,
+        coverage: {
+          budget,
+          edgeCount,
+          interiorCount: acceptedVariants.length - edgeCount,
+          minimumPairwiseDistance: calculateMinimumPairwiseDistance(
+            acceptedVariants,
+          ),
+          perProtoPersona: summarizePerProtoPersona(allVariants),
+        },
+      },
+    },
+  );
+}
 
 async function generateCandidate(
   pack: Doc<"personaPacks">,

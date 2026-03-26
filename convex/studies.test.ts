@@ -226,16 +226,24 @@ describe("studies.updateStudy", () => {
 });
 
 describe("studies.launchStudy", () => {
-  it("rejects draft studies", async () => {
+  it("moves draft studies into persona_review and starts launch preparation", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, { status: "draft" });
+    const workflowStartSpy = vi
+      .spyOn(workflow, "start")
+      .mockResolvedValue("workflow_1" as never);
 
-    await expect(
-      asResearcher.mutation(api.studies.launchStudy, { studyId }),
-    ).rejects.toThrow(/draft/i);
+    const launchedStudy = await asResearcher.mutation(api.studies.launchStudy, {
+      studyId,
+    });
 
-    expect((await getStudyDoc(t, studyId))!.status).toBe("draft");
+    expect(workflowStartSpy).toHaveBeenCalledTimes(1);
+    expect(launchedStudy.status).toBe("persona_review");
+    expect(launchedStudy.launchRequestedBy).toBe(
+      researchIdentity.tokenIdentifier,
+    );
+    expect(launchedStudy.launchedAt).toBeUndefined();
   });
 
   it("rejects studies whose persona pack is not published", async () => {
@@ -283,13 +291,19 @@ describe("studies.launchStudy", () => {
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, { status: "ready", runBudget: 5 });
     await seedAcceptedVariants(t, studyId, 4);
+    const workflowStartSpy = vi
+      .spyOn(workflow, "start")
+      .mockResolvedValue("workflow_1" as never);
 
     const launchedStudy = await asResearcher.mutation(api.studies.launchStudy, {
       studyId,
     });
 
+    expect(workflowStartSpy).toHaveBeenCalledTimes(1);
     expect(launchedStudy.status).toBe("persona_review");
-    expect(launchedStudy.launchRequestedBy).toBeUndefined();
+    expect(launchedStudy.launchRequestedBy).toBe(
+      researchIdentity.tokenIdentifier,
+    );
     expect(launchedStudy.launchedAt).toBeUndefined();
   });
 
@@ -351,6 +365,19 @@ describe("studies.launchStudy", () => {
     await expect(
       asResearcher.mutation(api.studies.launchStudy, { studyId }),
     ).rejects.toThrow(/ready/i);
+  });
+
+  it("rejects duplicate launches while persona review generation is already in progress", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const studyId = await insertStudy(t, {
+      status: "persona_review",
+      launchRequestedBy: researchIdentity.tokenIdentifier,
+    });
+
+    await expect(
+      asResearcher.mutation(api.studies.launchStudy, { studyId }),
+    ).rejects.toThrow(/already preparing/i);
   });
 });
 
@@ -504,6 +531,8 @@ async function insertStudy(
     activeConcurrency?: number;
     taskSpec?: StudyTaskSpecInput & { postTaskQuestions?: string[] };
     personaPackStatus?: "draft" | "published" | "archived";
+    launchRequestedBy?: string;
+    launchedAt?: number;
   } = {},
 ) {
   const packId = await insertPack(t, {
@@ -527,6 +556,12 @@ async function insertStudy(
       runBudget: overrides.runBudget ?? 5,
       activeConcurrency: overrides.activeConcurrency ?? 2,
       status: overrides.status ?? "draft",
+      ...(overrides.launchRequestedBy !== undefined
+        ? { launchRequestedBy: overrides.launchRequestedBy }
+        : {}),
+      ...(overrides.launchedAt !== undefined
+        ? { launchedAt: overrides.launchedAt }
+        : {}),
       createdBy: researchIdentity.tokenIdentifier,
       createdAt: Date.now(),
       updatedAt: Date.now(),

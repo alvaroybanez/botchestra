@@ -185,6 +185,27 @@ describe("waveDispatch.dispatchStudyWave", () => {
     expect(countRunsWithStatuses(runs, ["dispatching", "running"])).toBe(30);
     expect(countRunsWithStatuses(runs, ["queued"])).toBe(5);
   });
+
+  it("dispatches queued replay runs while the study is replaying", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, {
+      runBudget: 4,
+      activeConcurrency: 2,
+      status: "replaying",
+    });
+    await seedAcceptedVariants(t, studyId, 4);
+    await seedQueuedRuns(t, studyId, 4);
+
+    const result = await t.mutation(internal.waveDispatch.dispatchStudyWave, {
+      studyId,
+    });
+    const runs = await listRuns(t, studyId);
+
+    expect(result.createdRunCount).toBe(0);
+    expect(result.dispatchedRunCount).toBe(2);
+    expect(countRunsWithStatuses(runs, ["dispatching", "running"])).toBe(2);
+    expect(countRunsWithStatuses(runs, ["queued"])).toBe(2);
+  });
 });
 
 type StudyStatus =
@@ -286,6 +307,61 @@ async function seedAcceptedVariants(
         coherenceScore: 0.9,
         distinctnessScore: 0.8,
         accepted: true,
+      }),
+    );
+  }
+}
+
+async function seedQueuedRuns(
+  t: TestInstance,
+  studyId: Id<"studies">,
+  count: number,
+) {
+  const study = await getStudyDoc(t, studyId);
+
+  if (!study) {
+    throw new Error(`Study ${studyId} not found.`);
+  }
+
+  const protoPersona = await t.run(async (ctx) =>
+    ctx.db
+      .query("protoPersonas")
+      .withIndex("by_packId", (q) => q.eq("packId", study.personaPackId))
+      .unique(),
+  );
+  const variants = await t.run(async (ctx) =>
+    ctx.db
+      .query("personaVariants")
+      .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
+      .take(count),
+  );
+
+  if (protoPersona === null || variants.length < count) {
+    throw new Error("Missing proto-persona or accepted variants for queued runs.");
+  }
+
+  const originalRunId = await t.run(async (ctx) =>
+    ctx.db.insert("runs", {
+      studyId,
+      personaVariantId: variants[0]!._id,
+      protoPersonaId: protoPersona._id,
+      status: "success",
+      replayOfRunId: undefined,
+      frustrationCount: 0,
+      milestoneKeys: [],
+    }),
+  );
+
+  for (const variant of variants) {
+    await t.run(async (ctx) =>
+      ctx.db.insert("runs", {
+        studyId,
+        personaVariantId: variant._id,
+        protoPersonaId: protoPersona._id,
+        status: "queued",
+        replayOfRunId: originalRunId,
+        frustrationCount: 0,
+        milestoneKeys: [],
       }),
     );
   }

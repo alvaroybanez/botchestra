@@ -51,6 +51,14 @@ type StudyFormValue = {
   maxDurationSec: string;
 };
 
+type StudyActionConfirmationState = {
+  kind: "launch" | "cancel";
+  title: string;
+  description: string;
+  confirmLabel: string;
+  productionAck?: boolean;
+};
+
 const emptyStudyForm = (): StudyFormValue => ({
   personaPackId: "",
   name: "",
@@ -174,22 +182,7 @@ export function StudyCreationWizardPage() {
           ...(form.description.trim()
             ? { description: form.description.trim() }
             : {}),
-          taskSpec: {
-            scenario: form.scenario,
-            goal: form.goal,
-            startingUrl: form.startingUrl,
-            allowedDomains: parseLineSeparatedList(form.allowedDomains),
-            allowedActions: [...DEFAULT_ALLOWED_ACTIONS],
-            forbiddenActions: [...DEFAULT_FORBIDDEN_ACTIONS],
-            successCriteria: parseLineSeparatedList(form.successCriteria),
-            stopConditions: parseLineSeparatedList(form.stopConditions),
-            postTaskQuestions: parseLineSeparatedList(form.postTaskQuestions),
-            maxSteps: Number(form.maxSteps),
-            maxDurationSec: Number(form.maxDurationSec),
-            environmentLabel: form.environmentLabel,
-            locale: "en-US",
-            viewport: { width: 1440, height: 900 },
-          },
+          taskSpec: studyFormToTaskSpec(form),
           runBudget: Number(form.runBudget),
           activeConcurrency: Number(form.activeConcurrency),
         },
@@ -689,8 +682,24 @@ function StudyOverviewResolved({
   detailSearch: StudyDetailSearch;
   study: Doc<"studies">;
 }) {
+  const updateStudy = useMutation(api.studies.updateStudy);
+  const launchStudy = useMutation(api.studies.launchStudy);
+  const cancelStudy = useMutation(api.studies.cancelStudy);
   const runSummary = useQuery(api.runs.getRunSummary, { studyId: study._id });
   const runs = useQuery(api.runs.listRuns, { studyId: study._id });
+  const [form, setForm] = useState<StudyFormValue>(() => studyToFormValue(study));
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmationState, setConfirmationState] =
+    useState<StudyActionConfirmationState | null>(null);
+
+  useEffect(() => {
+    setForm(studyToFormValue(study));
+  }, [study._id, study.updatedAt]);
+
   const activeRuns = useMemo(
     () =>
       (runs ?? [])
@@ -710,6 +719,76 @@ function StudyOverviewResolved({
       : getCompletionPercentage(runSummary.terminalCount, runSummary.totalRuns);
   const replayStatus = getReplayChipStatus(study.status);
   const analysisStatus = getAnalysisChipStatus(study.status);
+  const canEditStudy = study.status === "draft";
+  const canLaunchStudy =
+    study.status === "draft" ||
+    study.status === "persona_review" ||
+    study.status === "ready";
+  const canCancelStudy =
+    study.status === "persona_review" ||
+    study.status === "queued" ||
+    study.status === "running" ||
+    study.status === "replaying";
+
+  async function handleSaveDraft(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setActionError(null);
+    setFeedbackMessage(null);
+    setIsSavingDraft(true);
+
+    try {
+      await updateStudy({
+        studyId: study._id,
+        patch: {
+          name: form.name,
+          ...(form.description.trim()
+            ? { description: form.description.trim() }
+            : {}),
+          taskSpec: studyFormToTaskSpec(form),
+          runBudget: Number(form.runBudget),
+          activeConcurrency: Number(form.activeConcurrency),
+        },
+      });
+
+      setFeedbackMessage("Study draft saved.");
+      setIsEditing(false);
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Could not update study."));
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }
+
+  async function handleConfirmAction() {
+    if (!confirmationState) {
+      return;
+    }
+
+    setActionError(null);
+    setFeedbackMessage(null);
+    setIsSubmittingAction(true);
+
+    try {
+      if (confirmationState.kind === "launch") {
+        await launchStudy({
+          studyId: study._id,
+          ...(confirmationState.productionAck ? { productionAck: true } : {}),
+        });
+        setFeedbackMessage("Study launch started.");
+        setIsEditing(false);
+      } else {
+        await cancelStudy({ studyId: study._id });
+        setFeedbackMessage("Study cancellation requested.");
+      }
+
+      setConfirmationState(null);
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Could not update study status."));
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  }
 
   return (
     <section className="space-y-6">
@@ -724,16 +803,90 @@ function StudyOverviewResolved({
           </p>
         </div>
 
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          {canEditStudy ? (
+            <Button
+              onClick={() => {
+                setActionError(null);
+                setFeedbackMessage(null);
+                setForm(studyToFormValue(study));
+                setIsEditing((current) => !current);
+              }}
+              variant={isEditing ? "secondary" : "default"}
+            >
+              {isEditing ? "Close Editor" : "Edit Study"}
+            </Button>
+          ) : null}
+
+          {canLaunchStudy ? (
+            <Button
+              onClick={() =>
+                setConfirmationState({
+                  kind: "launch",
+                  title: "Launch study?",
+                  description:
+                    study.taskSpec.environmentLabel === "production"
+                      ? "Launching against production requires acknowledgement. Confirm to generate any missing variants, queue the study, and start execution."
+                      : "Confirm to generate any missing variants, queue the study, and start execution.",
+                  confirmLabel: "Confirm Launch",
+                  productionAck: study.taskSpec.environmentLabel === "production",
+                })
+              }
+            >
+              Launch Study
+            </Button>
+          ) : null}
+
+          {canCancelStudy ? (
+            <Button
+              onClick={() =>
+                setConfirmationState({
+                  kind: "cancel",
+                  title: "Cancel study?",
+                  description:
+                    "Cancel the remaining queued or active runs for this study. This cannot be undone.",
+                  confirmLabel: "Confirm Cancellation",
+                })
+              }
+              variant="outline"
+            >
+              Cancel Study
+            </Button>
+          ) : null}
+
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        </div>
       </div>
+
+      {feedbackMessage ? (
+        <p className="text-sm text-emerald-700">{feedbackMessage}</p>
+      ) : null}
+      {actionError ? (
+        <p className="text-sm text-destructive">{actionError}</p>
+      ) : null}
 
       <StudyTabsNav
         activeTab="overview"
         detailSearch={detailSearch}
         studyId={study._id}
       />
+
+      {isEditing ? (
+        <StudyDraftEditor
+          form={form}
+          isSubmitting={isSavingDraft}
+          onCancel={() => {
+            setForm(studyToFormValue(study));
+            setIsEditing(false);
+            setActionError(null);
+            setFeedbackMessage(null);
+          }}
+          onChange={setForm}
+          onSubmit={handleSaveDraft}
+        />
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <div className="space-y-6">
@@ -992,6 +1145,16 @@ function StudyOverviewResolved({
           </Card>
         </div>
       </div>
+
+      <StudyConfirmationDialog
+        confirmLabel={confirmationState?.confirmLabel ?? "Confirm"}
+        description={confirmationState?.description ?? ""}
+        isOpen={confirmationState !== null}
+        isSubmitting={isSubmittingAction}
+        title={confirmationState?.title ?? ""}
+        onCancel={() => setConfirmationState(null)}
+        onConfirm={() => void handleConfirmAction()}
+      />
     </section>
   );
 }
@@ -1068,6 +1231,331 @@ function StudyStatusPage({
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+function StudyDraftEditor({
+  form,
+  isSubmitting,
+  onCancel,
+  onChange,
+  onSubmit,
+}: {
+  form: StudyFormValue;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onChange: React.Dispatch<React.SetStateAction<StudyFormValue>>;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="space-y-6" onSubmit={onSubmit}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Edit study draft</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-name">Study name</Label>
+              <Input
+                id="study-name"
+                value={form.name}
+                onChange={(event) =>
+                  onChange((current) => ({ ...current, name: event.target.value }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-starting-url">Starting URL</Label>
+              <Input
+                id="study-starting-url"
+                type="url"
+                value={form.startingUrl}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    startingUrl: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <Field>
+            <Label htmlFor="study-description">Description</Label>
+            <textarea
+              id="study-description"
+              className={textareaClassName}
+              value={form.description}
+              onChange={(event) =>
+                onChange((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+            />
+          </Field>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-scenario">Scenario</Label>
+              <textarea
+                id="study-scenario"
+                className={textareaClassName}
+                value={form.scenario}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    scenario: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-goal">Goal</Label>
+              <textarea
+                id="study-goal"
+                className={textareaClassName}
+                value={form.goal}
+                onChange={(event) =>
+                  onChange((current) => ({ ...current, goal: event.target.value }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-allowed-domains">Allowed domains</Label>
+              <textarea
+                id="study-allowed-domains"
+                className={textareaClassName}
+                value={form.allowedDomains}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    allowedDomains: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-environment-label">Environment label</Label>
+              <select
+                id="study-environment-label"
+                className={selectClassName}
+                value={form.environmentLabel}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    environmentLabel: event.target.value,
+                  }))
+                }
+              >
+                <option value="staging">staging</option>
+                <option value="qa">qa</option>
+                <option value="production">production</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-run-budget">Run budget</Label>
+              <Input
+                id="study-run-budget"
+                min="1"
+                step="1"
+                type="number"
+                value={form.runBudget}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    runBudget: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-active-concurrency">Active concurrency</Label>
+              <Input
+                id="study-active-concurrency"
+                min="1"
+                step="1"
+                type="number"
+                value={form.activeConcurrency}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    activeConcurrency: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-success-criteria">Success criteria</Label>
+              <textarea
+                id="study-success-criteria"
+                className={textareaClassName}
+                value={form.successCriteria}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    successCriteria: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-stop-conditions">Stop conditions</Label>
+              <textarea
+                id="study-stop-conditions"
+                className={textareaClassName}
+                value={form.stopConditions}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    stopConditions: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-post-task-questions">
+                Post-task questions
+              </Label>
+              <textarea
+                id="study-post-task-questions"
+                className={textareaClassName}
+                value={form.postTaskQuestions}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    postTaskQuestions: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <div className="grid gap-4">
+              <Field>
+                <Label htmlFor="study-max-steps">Max steps</Label>
+                <Input
+                  id="study-max-steps"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.maxSteps}
+                  onChange={(event) =>
+                    onChange((current) => ({
+                      ...current,
+                      maxSteps: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-max-duration">
+                  Max duration (seconds)
+                </Label>
+                <Input
+                  id="study-max-duration"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.maxDurationSec}
+                  onChange={(event) =>
+                    onChange((current) => ({
+                      ...current,
+                      maxDurationSec: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-wrap gap-3">
+        <Button disabled={isSubmitting} type="submit">
+          {isSubmitting ? "Saving study..." : "Save Study"}
+        </Button>
+        <Button onClick={onCancel} type="button" variant="outline">
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function StudyConfirmationDialog({
+  confirmLabel,
+  description,
+  isOpen,
+  isSubmitting,
+  title,
+  onCancel,
+  onConfirm,
+}: {
+  confirmLabel: string;
+  description: string;
+  isOpen: boolean;
+  isSubmitting: boolean;
+  title: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <p className="text-sm leading-6 text-muted-foreground">
+            {description}
+          </p>
+
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button disabled={isSubmitting} onClick={onCancel} variant="outline">
+              Cancel
+            </Button>
+            <Button disabled={isSubmitting} onClick={onConfirm}>
+              {isSubmitting ? "Working..." : confirmLabel}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -1200,6 +1688,45 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function studyToFormValue(study: Doc<"studies">): StudyFormValue {
+  return {
+    personaPackId: study.personaPackId,
+    name: study.name,
+    description: study.description ?? "",
+    scenario: study.taskSpec.scenario,
+    goal: study.taskSpec.goal,
+    startingUrl: study.taskSpec.startingUrl,
+    allowedDomains: study.taskSpec.allowedDomains.join("\n"),
+    successCriteria: study.taskSpec.successCriteria.join("\n"),
+    stopConditions: study.taskSpec.stopConditions.join("\n"),
+    postTaskQuestions: study.taskSpec.postTaskQuestions.join("\n"),
+    runBudget: String(study.runBudget ?? 0),
+    activeConcurrency: String(study.activeConcurrency),
+    environmentLabel: study.taskSpec.environmentLabel,
+    maxSteps: String(study.taskSpec.maxSteps),
+    maxDurationSec: String(study.taskSpec.maxDurationSec),
+  };
+}
+
+function studyFormToTaskSpec(form: StudyFormValue) {
+  return {
+    scenario: form.scenario,
+    goal: form.goal,
+    startingUrl: form.startingUrl,
+    allowedDomains: parseLineSeparatedList(form.allowedDomains),
+    allowedActions: [...DEFAULT_ALLOWED_ACTIONS],
+    forbiddenActions: [...DEFAULT_FORBIDDEN_ACTIONS],
+    successCriteria: parseLineSeparatedList(form.successCriteria),
+    stopConditions: parseLineSeparatedList(form.stopConditions),
+    postTaskQuestions: parseLineSeparatedList(form.postTaskQuestions),
+    maxSteps: Number(form.maxSteps),
+    maxDurationSec: Number(form.maxDurationSec),
+    environmentLabel: form.environmentLabel,
+    locale: "en-US",
+    viewport: { width: 1440, height: 900 },
+  };
 }
 
 const textareaClassName =

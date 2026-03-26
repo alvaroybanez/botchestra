@@ -91,6 +91,58 @@ describe("studyLifecycleWorkflow", () => {
     expect(preCompletionReport).toBeNull();
   });
 
+  it("prepares draft studies for launch by moving them into persona review until variants are generated", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, { status: "draft", runBudget: 3 });
+
+    const preparedStudy = await t.mutation(
+      internal.studyLifecycleWorkflow.prepareStudyForLaunch,
+      {
+        studyId,
+        launchRequestedBy: researchIdentity.tokenIdentifier,
+      },
+    );
+    const persistedStudy = await t.run(async (ctx) => ctx.db.get(studyId));
+
+    expect(preparedStudy).toEqual({
+      studyStatus: "persona_review",
+      needsVariantGeneration: true,
+    });
+    expect(persistedStudy?.status).toBe("persona_review");
+    expect(persistedStudy?.launchRequestedBy).toBe(
+      researchIdentity.tokenIdentifier,
+    );
+    expect(persistedStudy?.launchedAt).toBeUndefined();
+  });
+
+  it("finalizes prepared launches by advancing persona review studies to queued", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, {
+      status: "persona_review",
+      runBudget: 3,
+    });
+    await seedAcceptedVariants(t, studyId, 3);
+
+    const finalizedStudy = await t.mutation(
+      internal.studyLifecycleWorkflow.finalizePreparedStudyLaunch,
+      {
+        studyId,
+        launchRequestedBy: researchIdentity.tokenIdentifier,
+      },
+    );
+    const persistedStudy = await t.run(async (ctx) => ctx.db.get(studyId));
+
+    expect(finalizedStudy).toEqual({
+      studyStatus: "queued",
+      needsVariantGeneration: false,
+    });
+    expect(persistedStudy?.status).toBe("queued");
+    expect(persistedStudy?.launchRequestedBy).toBe(
+      researchIdentity.tokenIdentifier,
+    );
+    expect(persistedStudy?.launchedAt).toBeTypeOf("number");
+  });
+
   it("completes replay verification and exposes the report", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
@@ -150,6 +202,34 @@ describe("studyLifecycleWorkflow", () => {
         "Human follow-up is recommended for high-stakes decisions.",
       ]),
     );
+  });
+
+  it("marks a replaying study as failed when every settled run is an infra error", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 3 });
+
+    await seedRunCluster(t, studyId, {
+      count: 3,
+      status: "infra_error",
+      errorCode: "BROWSER_EXECUTOR_DOWN",
+      finalUrl: "https://example.com/shop/checkout",
+    });
+
+    await t.mutation(internal.studyLifecycleWorkflow.completeStudyLifecycleAfterReplay, {
+      studyId,
+    });
+
+    const failedStudy = await asResearcher.query(api.studies.getStudy, {
+      studyId,
+    });
+    const report = await asResearcher.query(api.studyLifecycleWorkflow.getStudyReport, {
+      studyId,
+    });
+
+    expect(failedStudy?.status).toBe("failed");
+    expect(failedStudy?.completedAt).toBeUndefined();
+    expect(report).toBeNull();
   });
 
   it("marks the study as failed when the workflow completion result fails", async () => {

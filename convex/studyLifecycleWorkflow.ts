@@ -17,6 +17,7 @@ import {
   internalQuery,
   query,
 } from "./_generated/server";
+import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
 
 const zQuery = zCustomQuery(query, NoOp);
@@ -40,20 +41,31 @@ const reportLimitations = [
 export const startStudyLifecycleWorkflow = internalMutation({
   args: {
     studyId: v.id("studies"),
+    launchRequestedBy: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string> => {
     const study = await getStudyById(ctx, args.studyId);
 
-    if (study.status !== "queued" && study.status !== "running") {
+    if (
+      study.status !== "persona_review" &&
+      study.status !== "ready" &&
+      study.status !== "queued" &&
+      study.status !== "running"
+    ) {
       throw new ConvexError(
-        "Study lifecycle workflow can only start for queued or running studies.",
+        "Study lifecycle workflow can only start for studies that are preparing, queued, or running.",
       );
     }
 
     return await workflow.start(
       ctx,
       internal.studyLifecycleWorkflow.runStudyLifecycle,
-      { studyId: args.studyId },
+      {
+        studyId: args.studyId,
+        ...(args.launchRequestedBy !== undefined
+          ? { launchRequestedBy: args.launchRequestedBy }
+          : {}),
+      },
       {
         onComplete: internal.studyLifecycleWorkflow.handleStudyLifecycleComplete,
         context: { studyId: args.studyId },
@@ -66,6 +78,7 @@ export const startStudyLifecycleWorkflow = internalMutation({
 export const runStudyLifecycle = workflow.define({
   args: {
     studyId: v.id("studies"),
+    launchRequestedBy: v.optional(v.string()),
   },
   handler: async (step, args): Promise<void> => {
     await step.sleep(0, { name: "defer-lifecycle-start" });
@@ -76,6 +89,45 @@ export const runStudyLifecycle = workflow.define({
     );
 
     if (isTerminalStudyStatus(initialSnapshot.studyStatus)) {
+      return;
+    }
+
+    const launchPreparation = await step.runMutation(
+      internal.studyLifecycleWorkflow.prepareStudyForLaunch,
+      {
+        studyId: args.studyId,
+        ...(args.launchRequestedBy !== undefined
+          ? { launchRequestedBy: args.launchRequestedBy }
+          : {}),
+      },
+      { inline: true, name: "prepare-study-launch" },
+    );
+
+    if (launchPreparation.needsVariantGeneration) {
+      await step.runAction(
+        internal.personaVariantGeneration.generateVariantsForStudyInternal,
+        { studyId: args.studyId },
+        { name: "generate-study-variants" },
+      );
+      await step.runMutation(
+        internal.studyLifecycleWorkflow.finalizePreparedStudyLaunch,
+        {
+          studyId: args.studyId,
+          ...(args.launchRequestedBy !== undefined
+            ? { launchRequestedBy: args.launchRequestedBy }
+            : {}),
+        },
+        { inline: true, name: "finalize-study-launch" },
+      );
+    }
+
+    const preparedSnapshot = await step.runQuery(
+      internal.studyLifecycleWorkflow.getStudyLifecycleSnapshot,
+      { studyId: args.studyId },
+      { inline: true, name: "read-prepared-snapshot" },
+    );
+
+    if (isTerminalStudyStatus(preparedSnapshot.studyStatus)) {
       return;
     }
 
@@ -108,6 +160,104 @@ export const runStudyLifecycle = workflow.define({
       { studyId: args.studyId },
       { inline: true, name: "complete-study-lifecycle" },
     );
+  },
+});
+
+export const prepareStudyForLaunch = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+    launchRequestedBy: z.string().optional(),
+  },
+  handler: async (ctx, args) => {
+    let study = await getStudyById(ctx, args.studyId);
+
+    if (isTerminalStudyStatus(study.status) || study.status === "analyzing") {
+      return {
+        studyStatus: study.status,
+        needsVariantGeneration: false,
+      };
+    }
+
+    if (
+      study.status === "queued" ||
+      study.status === "running" ||
+      study.status === "replaying"
+    ) {
+      return {
+        studyStatus: study.status,
+        needsVariantGeneration: false,
+      };
+    }
+
+    if (study.status === "draft") {
+      study = await ctx.runMutation(internal.studies.transitionStudyState, {
+        studyId: args.studyId,
+        nextStatus: "persona_review",
+      });
+    }
+
+    const runBudget = study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET;
+    const hasConfirmedVariants = await hasEnoughAcceptedVariantsForStudy(
+      ctx,
+      args.studyId,
+      runBudget,
+    );
+
+    if (!hasConfirmedVariants) {
+      const updatedAt = Date.now();
+      await ctx.db.patch(args.studyId, {
+        status: "persona_review",
+        ...(args.launchRequestedBy !== undefined
+          ? { launchRequestedBy: args.launchRequestedBy }
+          : {}),
+        updatedAt,
+      });
+
+      return {
+        studyStatus: "persona_review" as const,
+        needsVariantGeneration: true,
+      };
+    }
+
+    return await queuePreparedStudy(ctx, args.studyId, args.launchRequestedBy);
+  },
+});
+
+export const finalizePreparedStudyLaunch = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+    launchRequestedBy: z.string().optional(),
+  },
+  handler: async (ctx, args) => {
+    const study = await getStudyById(ctx, args.studyId);
+
+    if (
+      isTerminalStudyStatus(study.status) ||
+      study.status === "queued" ||
+      study.status === "running" ||
+      study.status === "replaying" ||
+      study.status === "analyzing"
+    ) {
+      return {
+        studyStatus: study.status,
+        needsVariantGeneration: false,
+      };
+    }
+
+    const runBudget = study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET;
+    const hasConfirmedVariants = await hasEnoughAcceptedVariantsForStudy(
+      ctx,
+      args.studyId,
+      runBudget,
+    );
+
+    if (!hasConfirmedVariants) {
+      throw new ConvexError(
+        "Variant generation did not produce enough accepted persona variants for launch.",
+      );
+    }
+
+    return await queuePreparedStudy(ctx, args.studyId, args.launchRequestedBy);
   },
 });
 
@@ -313,6 +463,15 @@ export const completeStudyLifecycleAfterReplay = zInternalMutation({
 
     if (!runs.every((run) => isTerminalRunStatus(run.status))) {
       throw new ConvexError("Replay verification cannot complete before all runs are terminal.");
+    }
+
+    if (runs.every((run) => run.status === "infra_error")) {
+      await ctx.runMutation(internal.studies.transitionStudyState, {
+        studyId: args.studyId,
+        nextStatus: "failed",
+      });
+
+      return await getStudyById(ctx, args.studyId);
     }
 
     await ctx.runMutation(internal.studies.transitionStudyState, {
@@ -643,6 +802,30 @@ function isTerminalStudyStatus(
   return lifecycleTerminalStatusSchema.safeParse(status).success;
 }
 
+async function hasEnoughAcceptedVariantsForStudy(
+  ctx: MutationCtx,
+  studyId: Id<"studies">,
+  requiredAcceptedCount: number,
+) {
+  let acceptedCount = 0;
+
+  for await (const variant of ctx.db
+    .query("personaVariants")
+    .withIndex("by_studyId", (q) => q.eq("studyId", studyId))) {
+    if (!variant.accepted) {
+      continue;
+    }
+
+    acceptedCount += 1;
+
+    if (acceptedCount >= requiredAcceptedCount) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function listRunsForStudy(
   ctx: QueryCtx | MutationCtx,
   studyId: Id<"studies">,
@@ -677,6 +860,45 @@ async function getStudyById(
   }
 
   return study;
+}
+
+async function queuePreparedStudy(
+  ctx: MutationCtx,
+  studyId: Id<"studies">,
+  launchRequestedBy: string | undefined,
+) {
+  let study = await getStudyById(ctx, studyId);
+
+  if (study.status === "persona_review") {
+    study = await ctx.runMutation(internal.studies.transitionStudyState, {
+      studyId,
+      nextStatus: "ready",
+    });
+  }
+
+  if (study.status === "ready") {
+    const launchTimestamp = Date.now();
+    await ctx.db.patch(studyId, {
+      status: "queued",
+      ...(launchRequestedBy !== undefined
+        ? { launchRequestedBy }
+        : study.launchRequestedBy !== undefined
+          ? { launchRequestedBy: study.launchRequestedBy }
+          : {}),
+      launchedAt: launchTimestamp,
+      updatedAt: launchTimestamp,
+    });
+
+    return {
+      studyStatus: "queued" as const,
+      needsVariantGeneration: false,
+    };
+  }
+
+  return {
+    studyStatus: study.status,
+    needsVariantGeneration: false,
+  };
 }
 
 type ReplayCandidate = {

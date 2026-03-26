@@ -122,6 +122,35 @@ describe("heartbeatMonitor.monitorStaleRuns", () => {
     expect(result.dispatchedRunCount).toBe(1);
     expect(nextQueuedRun?.status).toBe("dispatching");
   });
+
+  it("dispatches queued replay runs after stale replay recovery", async () => {
+    const t = createTest();
+    const now = Date.now();
+    const originalRunId = await insertRun(t, {
+      studyStatus: "replaying",
+      status: "success",
+    });
+    const originalRun = await getRunDoc(t, originalRunId);
+    const staleRunId = await insertRun(t, {
+      studyId: originalRun!.studyId,
+      status: "running",
+      replayOfRunId: originalRunId,
+      startedAt: now - 180_000,
+      lastHeartbeatAt: now - 120_000,
+    });
+    const staleRun = await getRunDoc(t, staleRunId);
+    const queuedReplayRunId = await insertRun(t, {
+      studyId: staleRun!.studyId,
+      replayOfRunId: staleRunId,
+    });
+
+    const result = await t.mutation(internal.heartbeatMonitor.monitorStaleRuns, {});
+    const queuedReplayRun = await getRunDoc(t, queuedReplayRunId);
+
+    expect(result.staleRunCount).toBe(1);
+    expect(result.dispatchedRunCount).toBe(1);
+    expect(queuedReplayRun?.status).toBe("dispatching");
+  });
 });
 
 type RunStatus =
@@ -141,9 +170,12 @@ type TestInstance = ReturnType<typeof createTest>;
 
 async function insertRun(
   t: TestInstance,
-  overrides: Partial<Doc<"runs">> = {},
+  overrides: Partial<Doc<"runs">> & {
+    studyStatus?: Doc<"studies">["status"];
+  } = {},
 ) {
   const now = Date.now();
+  const { studyStatus, ...runOverrides } = overrides;
 
   if (overrides.studyId !== undefined) {
     const study = await t.run(async (ctx) => ctx.db.get(overrides.studyId!));
@@ -211,7 +243,7 @@ async function insertRun(
       taskSpec: sampleTaskSpec,
       runBudget: 2,
       activeConcurrency: 1,
-      status: "running",
+      status: studyStatus ?? "running",
       createdBy: "user_1",
       createdAt: now,
       updatedAt: now,
@@ -257,7 +289,7 @@ async function insertRun(
       status: "queued",
       frustrationCount: 0,
       milestoneKeys: [],
-      ...overrides,
+      ...runOverrides,
     }),
   );
 }
