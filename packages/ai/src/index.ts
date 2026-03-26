@@ -13,11 +13,11 @@ export type TaskCategory =
 // -- Model config ------------------------------------------------------------
 
 export const MODEL_CONFIG: Record<TaskCategory, string> = {
-  expansion: "gpt-4o",
-  action: "gpt-4o-mini",
-  summarization: "gpt-4o",
-  clustering: "gpt-4o-mini",
-  recommendation: "gpt-4o",
+  expansion: "gpt-5.4-nano",
+  action: "gpt-5.4-nano",
+  summarization: "gpt-5.4-nano",
+  clustering: "gpt-5.4-nano",
+  recommendation: "gpt-5.4-nano",
 };
 
 // -- Model resolution --------------------------------------------------------
