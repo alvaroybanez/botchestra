@@ -203,7 +203,8 @@ export default defineSchema({
   })
     .index("by_studyId", ["studyId"])
     .index("by_studyId_status", ["studyId", "status"])
-    .index("by_studyId_and_protoPersonaId", ["studyId", "protoPersonaId"]),
+    .index("by_studyId_and_protoPersonaId", ["studyId", "protoPersonaId"])
+    .index("by_status", ["status"]),
 
   // 6. runMilestones
   runMilestones: defineTable({
