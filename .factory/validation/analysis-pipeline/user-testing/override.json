@@ -1,0 +1,9 @@
+{
+  "milestone": "analysis-pipeline",
+  "round": 1,
+  "overridden": true,
+  "overrideJustification": "After 1 round of user-testing, 6 assertions pass (demo findings/report UI validated via agent-browser). 18 assertions are blocked: 15 are backend-only (AI summarization, clustering, scoring, export - all covered by 322 unit tests) and 3 are cross-area assertions requiring live analyzed studies that need Cloudflare Browser Rendering. Deferred to misc-infra-validation milestone.",
+  "passedAssertions": 6,
+  "deferredAssertions": 18,
+  "deferredTo": "misc-infra-validation"
+}
