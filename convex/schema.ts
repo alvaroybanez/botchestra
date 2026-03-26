@@ -288,7 +288,19 @@ export default defineSchema({
     .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
     .index("by_eventType_and_createdAt", ["eventType", "createdAt"]),
 
-  // 11. credentials
+  // 11. guardrailEvents
+  guardrailEvents: defineTable({
+    orgId: v.string(),
+    studyId: v.id("studies"),
+    actorId: v.string(),
+    outcome: v.union(v.literal("pass"), v.literal("fail")),
+    reasons: v.array(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_studyId_and_createdAt", ["studyId", "createdAt"])
+    .index("by_orgId_and_createdAt", ["orgId", "createdAt"]),
+
+  // 12. credentials
   credentials: defineTable({
     label: v.string(),
     encryptedPayload: v.string(),
@@ -300,7 +312,7 @@ export default defineSchema({
     updatedAt: v.number(),
   }),
 
-  // 11. settings
+  // 13. settings
   settings: defineTable({
     orgId: v.string(),
     domainAllowlist: v.array(v.string()),
@@ -311,5 +323,5 @@ export default defineSchema({
     runBudgetCap: v.number(),
     updatedBy: v.string(),
     updatedAt: v.number(),
-  }),
+  }).index("by_orgId", ["orgId"]),
 });

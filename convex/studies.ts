@@ -133,6 +133,42 @@ export const DEFAULT_STUDY_RUN_BUDGET = 64;
 export const ACTIVE_CONCURRENCY_HARD_CAP = 30;
 export const DEFAULT_CANCELLATION_REASON = "Cancelled by user.";
 
+const FORBIDDEN_ACTION_PATTERNS: Record<
+  z.infer<typeof forbiddenActionSchema>,
+  readonly RegExp[]
+> = {
+  external_download: [
+    /\bdownload\b/i,
+    /\bexport (?:a|the)? ?file\b/i,
+    /\bsave (?:a|the)? ?file\b/i,
+  ],
+  payment_submission: [
+    /\bpayment submission\b/i,
+    /\bsubmit payment\b/i,
+    /\bpay now\b/i,
+    /\bcharge (?:the )?card\b/i,
+    /\bplace (?:the )?order\b/i,
+  ],
+  email_send: [/\bsend (?:an? )?email\b/i, /\bemail (?:the|a) /i],
+  sms_send: [/\bsend (?:an? )?(?:sms|text)\b/i, /\btext message\b/i],
+  captcha_bypass: [/\bbypass (?:a )?captcha\b/i, /\brecaptcha\b/i],
+  account_creation_without_fixture: [
+    /\bcreate (?:an )?account\b/i,
+    /\bregister (?:an )?account\b/i,
+    /\bsign up\b/i,
+  ],
+  cross_domain_escape: [
+    /\bnavigate to (?:another|a different) domain\b/i,
+    /\bleave the allow(?:ed)? domain\b/i,
+    /\bthird-party site\b/i,
+  ],
+  file_upload_unless_allowed: [
+    /\bupload (?:a|the)? ?file\b/i,
+    /\battach (?:a|the)? ?file\b/i,
+    /\bchoose (?:a|the)? ?file\b/i,
+  ],
+};
+
 const VALID_STUDY_TRANSITIONS: Record<StudyStatus, readonly StudyStatus[]> = {
   draft: ["persona_review"],
   persona_review: ["ready", "cancelled"],
@@ -223,6 +259,23 @@ export const updateStudy = zMutation({
   },
 });
 
+export const validateStudyLaunch = zMutation({
+  args: {
+    studyId: zid("studies"),
+    productionAck: z.boolean().optional(),
+  },
+  handler: async (ctx, args) => {
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
+    const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+
+    return await validateStudyLaunchWithRecording(ctx, {
+      study,
+      actorId: identity.tokenIdentifier,
+      productionAck: args.productionAck === true,
+    });
+  },
+});
+
 export const launchStudy = zMutation({
   args: {
     studyId: zid("studies"),
@@ -271,13 +324,14 @@ export const launchStudy = zMutation({
       throw new ConvexError("A published persona pack is required before launch.");
     }
 
-    if (
-      study.taskSpec.environmentLabel === "production" &&
-      args.productionAck !== true
-    ) {
-      throw new ConvexError(
-        "Production acknowledgement is required before launching this study.",
-      );
+    const guardrailValidation = await validateStudyLaunchWithRecording(ctx, {
+      study,
+      actorId: identity.tokenIdentifier,
+      productionAck: args.productionAck === true,
+    });
+
+    if (!guardrailValidation.pass) {
+      throw new ConvexError(guardrailValidation.reasons.join(" "));
     }
 
     const hasConfirmedVariants = await hasEnoughAcceptedVariants(
@@ -455,6 +509,28 @@ export const transitionStudyState = zInternalMutation({
   },
 });
 
+export const recordGuardrailEvent = zInternalMutation({
+  args: {
+    studyId: zid("studies"),
+    actorId: z.string(),
+    outcome: z.enum(["pass", "fail"]),
+    reasons: z.array(z.string()),
+    createdAt: z.number().optional(),
+  },
+  handler: async (ctx, args) => {
+    const study = await getStudyById(ctx, args.studyId);
+
+    return await ctx.db.insert("guardrailEvents", {
+      orgId: study.orgId,
+      studyId: study._id,
+      actorId: args.actorId,
+      outcome: args.outcome,
+      reasons: args.reasons,
+      createdAt: args.createdAt ?? Date.now(),
+    });
+  },
+});
+
 export const finalizeCancelledStudyIfComplete = zInternalMutation({
   args: {
     studyId: zid("studies"),
@@ -503,6 +579,30 @@ function capActiveConcurrency(activeConcurrency: number) {
 
 function isTerminalStudyStatus(status: StudyStatus) {
   return status === "completed" || status === "failed" || status === "cancelled";
+}
+
+export function evaluateStudyLaunchGuardrails({
+  taskSpec,
+  domainAllowlist,
+  productionAck,
+}: {
+  taskSpec: StudyTaskSpecInput;
+  domainAllowlist: readonly string[];
+  productionAck: boolean;
+}): GuardrailValidationResult {
+  const reasons = [
+    ...getDomainAllowlistReasons(taskSpec, domainAllowlist),
+    ...getForbiddenActionReasons(taskSpec),
+    ...(requiresProductionAcknowledgement(taskSpec.environmentLabel) &&
+    !productionAck
+      ? ["Production acknowledgement is required before launching this study."]
+      : []),
+  ];
+
+  return {
+    pass: reasons.length === 0,
+    reasons,
+  };
 }
 
 function isActiveRunStatus(status: Doc<"runs">["status"]) {
@@ -571,6 +671,13 @@ async function getPackForOrg(
   return pack;
 }
 
+async function getSettingsForOrg(ctx: QueryCtx | MutationCtx, orgId: string) {
+  return await ctx.db
+    .query("settings")
+    .withIndex("by_orgId", (query) => query.eq("orgId", orgId))
+    .unique();
+}
+
 async function listRunsForStudy(
   ctx: QueryCtx | MutationCtx,
   studyId: Id<"studies">,
@@ -610,8 +717,105 @@ async function finalizeCancelledStudyIfCompleteInPlace(
   return await getStudyById(ctx, studyId);
 }
 
+async function validateStudyLaunchWithRecording(
+  ctx: MutationCtx,
+  {
+    study,
+    actorId,
+    productionAck,
+  }: {
+    study: Doc<"studies">;
+    actorId: string;
+    productionAck: boolean;
+  },
+) {
+  const settings = await getSettingsForOrg(ctx, study.orgId);
+  const validation = evaluateStudyLaunchGuardrails({
+    taskSpec: study.taskSpec,
+    domainAllowlist:
+      (settings?.domainAllowlist.length ?? 0) > 0
+        ? settings!.domainAllowlist
+        : study.taskSpec.allowedDomains,
+    productionAck,
+  });
+
+  await ctx.runMutation(internal.studies.recordGuardrailEvent, {
+    studyId: study._id,
+    actorId,
+    outcome: validation.pass ? "pass" : "fail",
+    reasons: validation.reasons,
+  });
+
+  return validation;
+}
+
+function getDomainAllowlistReasons(
+  taskSpec: StudyTaskSpecInput,
+  domainAllowlist: readonly string[],
+) {
+  const normalizedAllowlist = new Set(
+    domainAllowlist
+      .map((domain) => normalizeHostname(domain))
+      .filter((domain): domain is string => domain !== null),
+  );
+  const studyDomains = new Set(
+    [taskSpec.startingUrl, ...taskSpec.allowedDomains]
+      .map((domain) => normalizeHostname(domain))
+      .filter((domain): domain is string => domain !== null),
+  );
+
+  return [...studyDomains]
+    .filter((domain) => !normalizedAllowlist.has(domain))
+    .map((domain) => `Domain "${domain}" is not on the allowlist.`);
+}
+
+function getForbiddenActionReasons(taskSpec: StudyTaskSpecInput) {
+  const taskSpecText = [
+    taskSpec.scenario,
+    taskSpec.goal,
+    ...taskSpec.successCriteria,
+    ...taskSpec.stopConditions,
+  ].join("\n");
+
+  return taskSpec.forbiddenActions.flatMap((action) =>
+    FORBIDDEN_ACTION_PATTERNS[action].some((pattern) => pattern.test(taskSpecText))
+      ? [`Task spec references forbidden action "${action}".`]
+      : [],
+  );
+}
+
+function normalizeHostname(value: string) {
+  const trimmedValue = value.trim();
+  if (trimmedValue.length === 0) {
+    return null;
+  }
+
+  try {
+    if (trimmedValue.includes("://")) {
+      return new URL(trimmedValue).hostname.toLowerCase();
+    }
+
+    return new URL(`https://${trimmedValue}`).hostname.toLowerCase();
+  } catch {
+    return trimmedValue
+      .replace(/^https?:\/\//i, "")
+      .replace(/\/.*$/, "")
+      .replace(/:\d+$/, "")
+      .toLowerCase();
+  }
+}
+
+function requiresProductionAcknowledgement(environmentLabel: string) {
+  return /\bprod(?:uction)?\b/i.test(environmentLabel);
+}
+
 type StudyStatus = z.infer<typeof studyStatusSchema>;
-type StudyTaskSpecInput = z.infer<typeof taskSpecInputSchema>;
+type GuardrailValidationResult = {
+  pass: boolean;
+  reasons: string[];
+};
+
+export type StudyTaskSpecInput = z.infer<typeof taskSpecInputSchema>;
 type StudyTaskSpec = StudyTaskSpecInput & {
   postTaskQuestions: string[];
 };
