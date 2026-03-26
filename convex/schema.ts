@@ -321,6 +321,20 @@ export default defineSchema({
       v.object({ taskCategory: v.string(), modelId: v.string() }),
     ),
     runBudgetCap: v.number(),
+    budgetLimits: v.optional(
+      v.object({
+        maxTokensPerStudy: v.optional(v.number()),
+        maxBrowserSecPerStudy: v.optional(v.number()),
+      }),
+    ),
+    browserPolicy: v.optional(
+      v.object({
+        blockAnalytics: v.boolean(),
+        blockHeavyMedia: v.boolean(),
+        screenshotFormat: v.string(),
+        screenshotMode: v.string(),
+      }),
+    ),
     signedUrlExpirySeconds: v.optional(v.number()),
     updatedBy: v.string(),
     updatedAt: v.number(),

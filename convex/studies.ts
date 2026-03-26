@@ -16,6 +16,11 @@ import {
   query,
 } from "./_generated/server";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import {
+  capStudyActiveConcurrency,
+  capStudyRunBudget,
+  loadEffectiveSettingsForOrg,
+} from "./settings";
 import { workflow } from "./workflow";
 
 const zMutation = zCustomMutation(mutation, NoOp);
@@ -193,6 +198,10 @@ export const createStudy = zMutation({
       args.study.personaPackId,
       identity.tokenIdentifier,
     );
+    const effectiveSettings = await loadEffectiveSettingsForOrg(
+      ctx,
+      identity.tokenIdentifier,
+    );
     const now = Date.now();
     const studyId = await ctx.db.insert("studies", {
       orgId: identity.tokenIdentifier,
@@ -202,8 +211,14 @@ export const createStudy = zMutation({
         ? { description: args.study.description }
         : {}),
       taskSpec: normalizeTaskSpec(args.study.taskSpec),
-      runBudget: args.study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
-      activeConcurrency: capActiveConcurrency(args.study.activeConcurrency),
+      runBudget: capStudyRunBudget(
+        args.study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
+        effectiveSettings.runBudgetCap,
+      ),
+      activeConcurrency: capStudyActiveConcurrency(
+        args.study.activeConcurrency,
+        effectiveSettings.maxConcurrency,
+      ),
       status: "draft",
       createdBy: identity.tokenIdentifier,
       createdAt: now,
@@ -222,6 +237,10 @@ export const updateStudy = zMutation({
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+    const effectiveSettings = await loadEffectiveSettingsForOrg(
+      ctx,
+      identity.tokenIdentifier,
+    );
 
     if (study.status !== "draft") {
       throw new ConvexError("Only draft studies can be updated.");
@@ -243,14 +262,14 @@ export const updateStudy = zMutation({
       ...(args.patch.description !== undefined
         ? { description: args.patch.description }
         : {}),
-      ...(args.patch.runBudget !== undefined
-        ? { runBudget: args.patch.runBudget }
-        : {}),
-      ...(args.patch.activeConcurrency !== undefined
-        ? {
-            activeConcurrency: capActiveConcurrency(args.patch.activeConcurrency),
-          }
-        : {}),
+      runBudget: capStudyRunBudget(
+        args.patch.runBudget ?? study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
+        effectiveSettings.runBudgetCap,
+      ),
+      activeConcurrency: capStudyActiveConcurrency(
+        args.patch.activeConcurrency ?? study.activeConcurrency,
+        effectiveSettings.maxConcurrency,
+      ),
       ...(args.patch.taskSpec !== undefined ? { taskSpec } : {}),
       updatedAt: Date.now(),
     });
@@ -284,7 +303,18 @@ export const launchStudy = zMutation({
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
-    const runBudget = study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET;
+    const effectiveSettings = await loadEffectiveSettingsForOrg(
+      ctx,
+      identity.tokenIdentifier,
+    );
+    const runBudget = capStudyRunBudget(
+      study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
+      effectiveSettings.runBudgetCap,
+    );
+    const activeConcurrency = capStudyActiveConcurrency(
+      study.activeConcurrency,
+      effectiveSettings.maxConcurrency,
+    );
 
     if (
       study.status !== "draft" &&
@@ -308,10 +338,21 @@ export const launchStudy = zMutation({
       throw new ConvexError("Study run budget must be greater than 0 before launch.");
     }
 
-    if (study.activeConcurrency <= 0) {
+    if (activeConcurrency <= 0) {
       throw new ConvexError(
         "Study active concurrency must be greater than 0 before launch.",
       );
+    }
+
+    if (
+      runBudget !== study.runBudget ||
+      activeConcurrency !== study.activeConcurrency
+    ) {
+      await ctx.db.patch(study._id, {
+        runBudget,
+        activeConcurrency,
+        updatedAt: Date.now(),
+      });
     }
 
     const pack = await getPackForOrg(
@@ -573,10 +614,6 @@ function normalizeTaskSpec(taskSpec: StudyTaskSpecInput): StudyTaskSpec {
   };
 }
 
-function capActiveConcurrency(activeConcurrency: number) {
-  return Math.min(activeConcurrency, ACTIVE_CONCURRENCY_HARD_CAP);
-}
-
 function isTerminalStudyStatus(status: StudyStatus) {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
@@ -671,13 +708,6 @@ async function getPackForOrg(
   return pack;
 }
 
-async function getSettingsForOrg(ctx: QueryCtx | MutationCtx, orgId: string) {
-  return await ctx.db
-    .query("settings")
-    .withIndex("by_orgId", (query) => query.eq("orgId", orgId))
-    .unique();
-}
-
 async function listRunsForStudy(
   ctx: QueryCtx | MutationCtx,
   studyId: Id<"studies">,
@@ -729,12 +759,12 @@ async function validateStudyLaunchWithRecording(
     productionAck: boolean;
   },
 ) {
-  const settings = await getSettingsForOrg(ctx, study.orgId);
+  const settings = await loadEffectiveSettingsForOrg(ctx, study.orgId);
   const validation = evaluateStudyLaunchGuardrails({
     taskSpec: study.taskSpec,
     domainAllowlist:
-      (settings?.domainAllowlist.length ?? 0) > 0
-        ? settings!.domainAllowlist
+      settings.domainAllowlist.length > 0
+        ? settings.domainAllowlist
         : study.taskSpec.allowedDomains,
     productionAck,
   });

@@ -33,6 +33,7 @@ import type * as rbac from "../rbac.js";
 import type * as reportExports from "../reportExports.js";
 import type * as runProgress from "../runProgress.js";
 import type * as runs from "../runs.js";
+import type * as settings from "../settings.js";
 import type * as studies from "../studies.js";
 import type * as studyLifecycleWorkflow from "../studyLifecycleWorkflow.js";
 import type * as waveDispatch from "../waveDispatch.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   reportExports: typeof reportExports;
   runProgress: typeof runProgress;
   runs: typeof runs;
+  settings: typeof settings;
   studies: typeof studies;
   studyLifecycleWorkflow: typeof studyLifecycleWorkflow;
   waveDispatch: typeof waveDispatch;
