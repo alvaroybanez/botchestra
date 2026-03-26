@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
+  RunStatusBadge,
   StudyStatusBadge,
   StudyTabsNav,
   emptyStudyDetailSearch,
@@ -17,6 +19,17 @@ import {
 
 const DEFAULT_ALLOWED_ACTIONS = ["goto", "click", "type", "select", "scroll", "wait", "back", "finish"] as const;
 const DEFAULT_FORBIDDEN_ACTIONS = ["payment_submission", "external_download"] as const;
+const ACTIVE_RUN_STATUSES = new Set(["dispatching", "running"]);
+const TERMINAL_OUTCOME_LABELS = [
+  { key: "success", label: "Success" },
+  { key: "hard_fail", label: "Hard fail" },
+  { key: "soft_fail", label: "Soft fail" },
+  { key: "gave_up", label: "Gave up" },
+  { key: "timeout", label: "Timeout" },
+  { key: "blocked_by_guardrail", label: "Guardrail blocked" },
+  { key: "infra_error", label: "Infra error" },
+  { key: "cancelled", label: "Cancelled" },
+] as const;
 
 type PersonaPackListItem = Doc<"personaPacks">;
 
@@ -677,6 +690,26 @@ function StudyOverviewResolved({
   study: Doc<"studies">;
 }) {
   const runSummary = useQuery(api.runs.getRunSummary, { studyId: study._id });
+  const runs = useQuery(api.runs.listRuns, { studyId: study._id });
+  const activeRuns = useMemo(
+    () =>
+      (runs ?? [])
+        .filter((run) => ACTIVE_RUN_STATUSES.has(run.status))
+        .sort((left, right) => {
+          if (left.status !== right.status) {
+            return left.status === "running" ? -1 : 1;
+          }
+
+          return (right.stepCount ?? 0) - (left.stepCount ?? 0);
+        }),
+    [runs],
+  );
+  const overallCompletion =
+    runSummary === undefined
+      ? undefined
+      : getCompletionPercentage(runSummary.terminalCount, runSummary.totalRuns);
+  const replayStatus = getReplayChipStatus(study.status);
+  const analysisStatus = getAnalysisChipStatus(study.status);
 
   return (
     <section className="space-y-6">
@@ -787,41 +820,87 @@ function StudyOverviewResolved({
 
           <Card>
             <CardHeader>
-              <CardTitle>Run progress</CardTitle>
+              <CardTitle>Live monitor</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              <SummaryValue
-                label="Total runs"
-                value={
-                  runSummary === undefined
-                    ? "Loading..."
-                    : String(runSummary.totalRuns)
-                }
-              />
-              <SummaryValue
-                label="Terminal runs"
-                value={
-                  runSummary === undefined
-                    ? "Loading..."
-                    : String(runSummary.terminalCount)
-                }
-              />
-              <SummaryValue
-                label="Running"
-                value={
-                  runSummary === undefined
-                    ? "Loading..."
-                    : String(runSummary.runningCount)
-                }
-              />
-              <SummaryValue
-                label="Queued"
-                value={
-                  runSummary === undefined
-                    ? "Loading..."
-                    : String(runSummary.queuedCount)
-                }
-              />
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <PhaseStatusChip
+                    label="Replay"
+                    tone={replayStatus.tone}
+                    value={replayStatus.label}
+                  />
+                  <PhaseStatusChip
+                    label="Analysis"
+                    tone={analysisStatus.tone}
+                    value={analysisStatus.label}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Completion progress
+                      </p>
+                      <p className="text-2xl font-semibold tracking-tight">
+                        {overallCompletion === undefined
+                          ? "Loading..."
+                          : `${overallCompletion}% complete`}
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {runSummary === undefined
+                        ? "Waiting for run updates..."
+                        : `${runSummary.terminalCount} of ${runSummary.totalRuns} runs reached a terminal outcome`}
+                    </p>
+                  </div>
+                  <ProgressBar
+                    value={overallCompletion ?? 0}
+                    valueText={
+                      overallCompletion === undefined
+                        ? "Loading overall completion"
+                        : `${overallCompletion}% complete`
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SummaryValue
+                  label="Completed"
+                  value={
+                    runSummary === undefined
+                      ? "Loading..."
+                      : `${runSummary.terminalCount} / ${runSummary.totalRuns}`
+                  }
+                />
+                <SummaryValue
+                  label="Running"
+                  value={
+                    runSummary === undefined
+                      ? "Loading..."
+                      : String(runSummary.runningCount)
+                  }
+                />
+                <SummaryValue
+                  label="Queued / dispatching"
+                  value={
+                    runSummary === undefined
+                      ? "Loading..."
+                      : String(runSummary.queuedCount)
+                  }
+                />
+                <SummaryValue
+                  label="Active variants"
+                  value={
+                    runs === undefined
+                      ? "Loading..."
+                      : String(activeRuns.length)
+                  }
+                />
+              </div>
+
               <Button asChild variant="outline">
                 <Link
                   params={{ studyId: study._id }}
@@ -831,6 +910,84 @@ function StudyOverviewResolved({
                   Open runs tab
                 </Link>
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Outcome breakdown</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {TERMINAL_OUTCOME_LABELS.map((outcome) => (
+                <SummaryValue
+                  key={outcome.key}
+                  label={outcome.label}
+                  value={
+                    runSummary === undefined
+                      ? "Loading..."
+                      : String(runSummary.outcomeCounts[outcome.key])
+                  }
+                />
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Active persona variants</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {runs === undefined ? (
+                <p className="text-sm text-muted-foreground">
+                  Loading currently dispatching and running variants...
+                </p>
+              ) : activeRuns.length === 0 ? (
+                <div className="rounded-lg border border-dashed bg-background p-4">
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    No persona variants are actively dispatching or running for
+                    this study right now.
+                  </p>
+                </div>
+              ) : (
+                activeRuns.map((run) => {
+                  const stepProgress = getCompletionPercentage(
+                    run.stepCount ?? 0,
+                    study.taskSpec.maxSteps,
+                  );
+
+                  return (
+                    <div
+                      key={run._id}
+                      className="rounded-lg border bg-background p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="font-medium">{run.protoPersonaName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {run._id}
+                          </p>
+                        </div>
+                        <RunStatusBadge status={run.status} />
+                      </div>
+
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        {run.firstPersonBio}
+                      </p>
+
+                      <div className="mt-3 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+                          <span>Step {(run.stepCount ?? 0).toString()}</span>
+                          <span>{stepProgress}% of step budget</span>
+                        </div>
+                        <ProgressBar
+                          value={stepProgress}
+                          valueText={`${stepProgress}% of step budget`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
         </div>
@@ -938,6 +1095,87 @@ function SummaryValue({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
     </div>
   );
+}
+
+function ProgressBar({
+  value,
+  valueText,
+}: {
+  value: number;
+  valueText: string;
+}) {
+  return (
+    <div
+      aria-label={valueText}
+      aria-valuemax={100}
+      aria-valuemin={0}
+      aria-valuenow={value}
+      className="h-2 rounded-full bg-muted"
+      role="progressbar"
+    >
+      <div
+        className="h-full rounded-full bg-primary transition-[width]"
+        style={{ width: `${Math.max(0, Math.min(value, 100))}%` }}
+      />
+    </div>
+  );
+}
+
+function PhaseStatusChip({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone: "idle" | "active" | "complete";
+  value: string;
+}) {
+  return (
+    <div
+      aria-label={`${label}: ${value}`}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
+        tone === "idle" && "bg-muted text-muted-foreground",
+        tone === "active" && "bg-primary/10 text-primary",
+        tone === "complete" && "bg-emerald-100 text-emerald-800",
+      )}
+    >
+      <span>{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function getCompletionPercentage(count: number, total: number) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return Math.round((count / total) * 100);
+}
+
+function getReplayChipStatus(studyStatus: Doc<"studies">["status"]) {
+  if (studyStatus === "replaying") {
+    return { label: "Replaying", tone: "active" as const };
+  }
+
+  if (studyStatus === "analyzing" || studyStatus === "completed") {
+    return { label: "Complete", tone: "complete" as const };
+  }
+
+  return { label: "Waiting", tone: "idle" as const };
+}
+
+function getAnalysisChipStatus(studyStatus: Doc<"studies">["status"]) {
+  if (studyStatus === "analyzing") {
+    return { label: "Analyzing", tone: "active" as const };
+  }
+
+  if (studyStatus === "completed") {
+    return { label: "Complete", tone: "complete" as const };
+  }
+
+  return { label: "Waiting", tone: "idle" as const };
 }
 
 function parseLineSeparatedList(value: string) {

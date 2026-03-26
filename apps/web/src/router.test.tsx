@@ -703,7 +703,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Checkout usability benchmark");
     expect(container.textContent).toContain("Task specification");
     expect(container.textContent).toContain("A shopper wants to complete checkout.");
-    expect(container.textContent).toContain("Run progress");
+    expect(container.textContent).toContain("Live monitor");
 
     const links = [...container.querySelectorAll("a")].map((link) => ({
       href: link.getAttribute("href"),
@@ -734,6 +734,143 @@ describe("@botchestra/web routing", () => {
         }),
       ]),
     );
+  });
+
+  it("renders the live monitor with outcome breakdown, active variants, and progress details", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "running",
+        taskSpec: {
+          ...makeStudy().taskSpec,
+          maxSteps: 20,
+        },
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live", {
+        totalRuns: 8,
+        terminalCount: 4,
+        runningCount: 1,
+        queuedCount: 2,
+        outcomeCounts: {
+          success: 3,
+          hard_fail: 1,
+          soft_fail: 0,
+          gave_up: 0,
+          timeout: 0,
+          blocked_by_guardrail: 0,
+          infra_error: 0,
+          cancelled: 0,
+        },
+      }),
+    };
+    mockedRunsByStudyId = {
+      "study-live": [
+        {
+          _id: "run-careful",
+          status: "running",
+          protoPersonaId: "proto-careful",
+          protoPersonaName: "Careful shopper",
+          protoPersonaSummary: "Moves slowly and checks every total.",
+          firstPersonBio:
+            "A careful shopper is currently validating the address step and comparing every number before continuing.",
+          axisValues: [{ key: "digital_confidence", value: -0.42 }],
+          stepCount: 6,
+        },
+        {
+          _id: "run-speedy",
+          status: "dispatching",
+          protoPersonaId: "proto-speedy",
+          protoPersonaName: "Speedy repeat buyer",
+          protoPersonaSummary: "Moves quickly and expects autofill to work.",
+          firstPersonBio:
+            "A speedy repeat buyer is dispatching into the flow and expects most of checkout to be familiar.",
+          axisValues: [{ key: "digital_confidence", value: 0.78 }],
+          stepCount: 1,
+        },
+        {
+          _id: "run-success",
+          status: "success",
+          protoPersonaId: "proto-complete",
+          protoPersonaName: "Completed run",
+          protoPersonaSummary: "Already finished.",
+          firstPersonBio: "Completed successfully.",
+          axisValues: [{ key: "digital_confidence", value: 0.2 }],
+          stepCount: 5,
+        },
+      ],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+    });
+
+    expect(container.textContent).toContain("Live monitor");
+    expect(container.textContent).toContain("50% complete");
+    expect(container.textContent).toContain("Outcome breakdown");
+    expect(container.textContent).toContain("Success");
+    expect(container.textContent).toContain("Hard fail");
+    expect(container.textContent).toContain("Queued / dispatching");
+    expect(container.textContent).toContain("Active persona variants");
+    expect(container.textContent).toContain("Careful shopper");
+    expect(container.textContent).toContain("Speedy repeat buyer");
+    expect(container.textContent).toContain("Step 6");
+    expect(container.textContent).toContain("30% of step budget");
+    expect(
+      container.querySelector('[aria-label="Replay: Waiting"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[aria-label="Analysis: Waiting"]'),
+    ).not.toBeNull();
+  });
+
+  it("updates replay and analysis chips on the overview monitor", async () => {
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live"),
+    };
+    mockedRunsByStudyId = {
+      "study-live": [],
+    };
+
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "replaying",
+      }),
+    };
+
+    const replayingView = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+    });
+
+    expect(
+      replayingView.container.querySelector('[aria-label="Replay: Replaying"]'),
+    ).not.toBeNull();
+    expect(
+      replayingView.container.querySelector('[aria-label="Analysis: Waiting"]'),
+    ).not.toBeNull();
+
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "analyzing",
+      }),
+    };
+
+    const analyzingView = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+    });
+
+    expect(
+      analyzingView.container.querySelector('[aria-label="Replay: Complete"]'),
+    ).not.toBeNull();
+    expect(
+      analyzingView.container.querySelector('[aria-label="Analysis: Analyzing"]'),
+    ).not.toBeNull();
   });
 
   it("renders run detail content and filters runs by outcome, persona, and URL", async () => {
