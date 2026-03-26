@@ -28,10 +28,8 @@ import { StudyFindingsPage as StudyFindingsRoutePage } from "@/routes/study-find
 import { StudyPersonasPage as StudyPersonasRoutePage } from "@/routes/study-personas-page";
 import { StudyReportPage as StudyReportRoutePage } from "@/routes/study-report-page";
 import { StudyRunsPage as StudyRunsRoutePage } from "@/routes/study-runs-page";
+import { SettingsPage as SettingsRoutePage } from "@/routes/settings-page";
 import { validateStudyDetailSearch } from "@/routes/study-shared";
-import {
-  SettingsSkeletonPage,
-} from "@/routes/skeleton-pages";
 import { SignupPage } from "@/routes/signup";
 
 export type AppAuthState = {
@@ -429,7 +427,7 @@ function SettingsPage() {
     );
   }
 
-  return <SettingsSkeletonPage />;
+  return <SettingsRoutePage />;
 }
 
 function AdminDiagnosticsPage() {

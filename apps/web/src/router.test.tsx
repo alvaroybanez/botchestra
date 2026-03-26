@@ -277,6 +277,47 @@ type AuditEventView = {
   reason?: string;
 };
 
+type CredentialSummary = {
+  _id: string;
+  ref: string;
+  label: string;
+  description: string;
+  allowedStudyIds: string[];
+  createdBy: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+type SettingsView = {
+  orgId: string;
+  domainAllowlist: string[];
+  maxConcurrency: number;
+  modelConfig: Array<{
+    taskCategory:
+      | "expansion"
+      | "action"
+      | "summarization"
+      | "clustering"
+      | "recommendation";
+    modelId: string;
+  }>;
+  runBudgetCap: number;
+  budgetLimits: {
+    maxTokensPerStudy?: number;
+    maxBrowserSecPerStudy?: number;
+  };
+  browserPolicy: {
+    blockAnalytics: boolean;
+    blockHeavyMedia: boolean;
+    screenshotFormat: string;
+    screenshotMode: string;
+  };
+  signedUrlExpirySeconds: number;
+  updatedBy: string | null;
+  updatedAt: number | null;
+  credentials: CredentialSummary[];
+};
+
 let mockedVariantReview: ReviewData | null | undefined = undefined;
 let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
 let mockedStudyList: Doc<"studies">[] | undefined = [];
@@ -289,6 +330,7 @@ let mockedReportsByStudyId: Record<string, StudyReportView | null | undefined> =
   {};
 let mockedAdminDiagnosticsOverview: DiagnosticsOverview | undefined = undefined;
 let mockedAuditEvents: AuditEventView[] | undefined = [];
+let mockedSettingsView: SettingsView | undefined = undefined;
 const MOCK_ARTIFACT_BASE_URL = "http://localhost:8787";
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
@@ -370,6 +412,10 @@ vi.mock("convex/react", () => ({
 
     if (queryName === "rbac:getViewerAccess") {
       return mockedViewerAccess;
+    }
+
+    if (queryName === "settings:getSettings") {
+      return mockedSettingsView;
     }
 
     if (queryName === "studies:listStudies") {
@@ -550,6 +596,7 @@ beforeEach(() => {
   mockedReportsByStudyId = {};
   mockedAdminDiagnosticsOverview = undefined;
   mockedAuditEvents = [];
+  mockedSettingsView = makeSettingsView();
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
   createStudyMock.mockReset();
@@ -662,8 +709,9 @@ describe("@botchestra/web routing", () => {
       viewerRole: "admin",
     });
 
-    expect(container.textContent).toContain("Settings");
-    expect(container.textContent).toContain("Current route");
+    expect(container.textContent).toContain("Workspace settings");
+    expect(container.textContent).toContain("Domain allowlist");
+    expect(container.textContent).toContain("Credentials");
 
     const linkLabels = [...container.querySelectorAll("a")].map((link) =>
       link.textContent?.trim(),
@@ -2233,6 +2281,44 @@ function makeAuditEvents(): AuditEventView[] {
       resourceType: "settings",
     },
   ];
+}
+
+function makeSettingsView(): SettingsView {
+  return {
+    orgId: "admin|org-a",
+    domainAllowlist: ["checkout.example.com"],
+    maxConcurrency: 6,
+    modelConfig: [
+      { taskCategory: "action", modelId: "gpt-5.4-nano" },
+      { taskCategory: "summarization", modelId: "gpt-5.4-mini" },
+    ],
+    runBudgetCap: 64,
+    budgetLimits: {
+      maxTokensPerStudy: 1800,
+      maxBrowserSecPerStudy: 600,
+    },
+    browserPolicy: {
+      blockAnalytics: false,
+      blockHeavyMedia: false,
+      screenshotFormat: "jpeg",
+      screenshotMode: "milestones",
+    },
+    signedUrlExpirySeconds: 14_400,
+    updatedBy: "admin|org-a",
+    updatedAt: 1_710_000_000_000,
+    credentials: [
+      {
+        _id: "credential-checkout",
+        ref: "cred_checkout",
+        label: "Checkout fixture",
+        description: "Shared checkout account",
+        allowedStudyIds: ["study-checkout"],
+        createdBy: "admin|org-a",
+        createdAt: 1_710_000_000_000,
+        updatedAt: 1_710_000_000_000,
+      },
+    ],
+  };
 }
 
 function makeRunList(): RunListItem[] {
