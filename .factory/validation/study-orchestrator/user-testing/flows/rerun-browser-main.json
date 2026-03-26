@@ -1,0 +1,577 @@
+{
+  "groupId": "rerun-browser-main",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-STUDY-007",
+      "status": "blocked",
+      "reason": "The Environment label control still only exposes non-empty staging/qa/production options, so the required-field rejection path is not reachable through visible controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/create-study-wizard-with-pack.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-008",
+      "status": "blocked",
+      "reason": "The study creation and detail surfaces do not expose the persisted createdBy identity, so this backend field cannot be validated through the real user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/invalid-study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-011",
+      "status": "fail",
+      "reason": "Draft studies still visibly expose Launch Study and the launch confirmation dialog, and confirming launch starts orchestration instead of rejecting the draft state.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-draft.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/invalid-study-launch-dialog.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/invalid-study-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-012",
+      "status": "blocked",
+      "reason": "The study wizard only lists published persona packs; there is no visible path to create a study against an unpublished pack from the user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/create-study-wizard-with-pack.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-013",
+      "status": "blocked",
+      "reason": "The visible launch dialog still only provides Confirm Launch and Cancel, so there is no exposed no-ack production submission path to exercise through the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/invalid-study-launch-dialog.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-014",
+      "status": "pass",
+      "reason": "Launching a study with no generated variants now visibly enters persona_review before later failure, confirming the missing-variants path reaches persona_review on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-015",
+      "status": "blocked",
+      "reason": "The queued path still could not be reached because manual Generate variants on a runBudget=50 study produced 0 accepted variants (100 rejected, 150 retries).",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-generate-attempt.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-057",
+      "status": "fail",
+      "reason": "The real study Personas tab still shows 0 accepted variants; after triggering generation on a runBudget=50 study it reported 100 rejected variants and 150 retries, so no accepted rows rendered.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-personas-after-fail.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-generate-attempt.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "status": "fail",
+      "reason": "The observed lifecycle still skips required active states: one launch went draft -> persona_review -> failed and another went draft -> failed, with no ready/queued/running states visible.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-012",
+      "status": "blocked",
+      "reason": "No study reached running status and no runs were created, so real-time execution updates could not be observed on overview or runs surfaces.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-016",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-018",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-019",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-020",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-022",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-047",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-048",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-049",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-050",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-051",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-064",
+      "status": "blocked",
+      "reason": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-017",
+      "status": "blocked",
+      "reason": "The full state-transition matrix is not exposed on the current user surface; the rerun only surfaced draft -> persona_review -> failed and draft -> failed outcomes.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-021",
+      "status": "blocked",
+      "reason": "The study never reached completed and the Report tab remained a placeholder surface, so completed-study/report behavior could not be validated through the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-023",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-024",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-027",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-028",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-029",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-035",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-036",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-037",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-038",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-039",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-040",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-041",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-052",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-053",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-054",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-055",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-056",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-057",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-058",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-065",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-068",
+      "status": "blocked",
+      "reason": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-042",
+      "status": "blocked",
+      "reason": "No study reached a stable queued/running state with real runs, so cancellation fan-out across queued/running runs could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-043",
+      "status": "blocked",
+      "reason": "No study reached a stable queued/running state with real runs, so cancellation fan-out across queued/running runs could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-044",
+      "status": "blocked",
+      "reason": "No study reached a stable queued/running state with real runs, so cancellation fan-out across queued/running runs could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-045",
+      "status": "blocked",
+      "reason": "The current user surface does not expose audit trail entries for cancellation, and no cancellable run fan-out state was reachable.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "status": "blocked",
+      "reason": "No study reached a running state with queued/running runs, so cancellation propagation across overview/runs/findings could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-059",
+      "status": "blocked",
+      "reason": "The rerun never produced a completed study, and Findings/Report remain placeholder surfaces without final analysis content.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-060",
+      "status": "blocked",
+      "reason": "The rerun never produced a completed study, and Findings/Report remain placeholder surfaces without final analysis content.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-061",
+      "status": "blocked",
+      "reason": "The rerun never produced a completed study, and Findings/Report remain placeholder surfaces without final analysis content.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-062",
+      "status": "pass",
+      "reason": "The create-study surface now rejects runBudget=0 via native HTML validation and keeps the user on /studies/new.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/zero-budget-create-result.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/zero-budget-validation.json"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-063",
+      "status": "pass",
+      "reason": "The create-study surface now rejects activeConcurrency=0 via native HTML validation and keeps the user on /studies/new.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/zero-concurrency-create-result.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/zero-concurrency-validation.json"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-066",
+      "status": "blocked",
+      "reason": "A launch briefly reached persona_review with Cancel Study visible, but the state auto-transitioned to failed before cancellation could complete, so a stable persona_review cancel path was not achievable.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-after-launch.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/cancel-study-current-state.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-067",
+      "status": "blocked",
+      "reason": "Replaying was never reached on the real surface, so replay cancellation could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-069",
+      "status": "blocked",
+      "reason": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-071",
+      "status": "blocked",
+      "reason": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-072",
+      "status": "blocked",
+      "reason": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-073",
+      "status": "blocked",
+      "reason": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/valid-study-overview-after-generation.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-070",
+      "status": "blocked",
+      "reason": "The rerun did not have a safe visible path to archive/delete the only published pack before launch without destroying the remaining study-creation setup, so this pack-status rejection path was not exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/published-pack-detail.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/create-study-wizard-with-pack.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-074",
+      "status": "blocked",
+      "reason": "The create-study wizard never exposes a way to submit a non-existent personaPackId through visible controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-main/create-study-wizard-with-pack.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [
+    "Fresh authenticated orgs had no published persona packs in the study wizard; importing JSON via /persona-packs and publishing the pack was required before study creation.",
+    "agent-browser clicks still did not reliably submit study create/edit forms in this environment; requestSubmit() on the existing rendered form was the reliable fallback."
+  ],
+  "blockers": [
+    "Study launches still failed before any runs were created, so queued/running/replaying/analyzing/report behaviors remain blocked on the real user surface.",
+    "Manual variant generation on a runBudget=50 study still produced 0 accepted variants (100 rejected, 150 retries), leaving the Personas tab empty.",
+    "The Findings and Report tabs remain placeholder surfaces for these failed studies and do not expose completed-study analysis content."
+  ]
+}

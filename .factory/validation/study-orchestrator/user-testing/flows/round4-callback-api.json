@@ -1,0 +1,90 @@
+{
+  "groupId": "round4-callback-api",
+  "testedAt": "2026-03-26T16:26:55.738068+00:00",
+  "surface": "api",
+  "isolation": {
+    "callbackBaseUrl": "https://tame-lark-825.eu-west-1.convex.site",
+    "localWorkerUrl": "http://localhost:8787",
+    "browserSession": "cd4052c65070"
+  },
+  "assertions": [
+    {
+      "id": "VAL-STUDY-025",
+      "status": "blocked",
+      "reason": "The real user surface still does not expose a runs-table id or any way to drive a run to terminal state and then resend completion against that same run.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/run-button-attrs.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/signed-study-id-completion.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-026",
+      "status": "blocked",
+      "reason": "The real user surface still does not expose a cancellable runs-table id that can be used for late-callback testing.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/run-button-attrs.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/signed-study-id-heartbeat.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-031",
+      "status": "blocked",
+      "reason": "Invalid tokens are rejected and signed callbacks with a study-table id get past auth but fail v.id(\"runs\") validation, so a valid heartbeat could not be exercised without a real runs-table id from the user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/invalid-token-heartbeat.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/signed-study-id-heartbeat.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/run-button-attrs.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-032",
+      "status": "blocked",
+      "reason": "The callback receiver accepts signed requests, but the user surface still does not expose a real runs-table id that can be used for milestone insertion.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/signed-study-id-milestone.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/run-button-attrs.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-033",
+      "status": "blocked",
+      "reason": "The callback receiver accepts signed requests, but the user surface still does not expose a real runs-table id that can be used for completion finalization.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/signed-study-id-completion.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/run-button-attrs.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-034",
+      "status": "blocked",
+      "reason": "The callback receiver accepts signed requests, but the user surface still does not expose a real runs-table id that can be used for failure finalization.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/signed-study-id-failure.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/run-button-attrs.txt"
+      ]
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "status": "blocked",
+      "reason": "The worker and callback receiver are reachable, but the real user surface still does not expose the full execute-run payload and real runs-table id needed for an end-to-end success path.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/callback-site-url.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-callback-api/run-button-attrs.txt"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "curl",
+    "python3",
+    "bunx convex env get",
+    "agent-browser"
+  ],
+  "frictions": [
+    "The real callback receiver now accepts signed requests, but using a study-table id immediately fails v.id(\"runs\") validation.",
+    "The runs tab exposes rich persona text but still no run identifier in visible text or button attributes."
+  ],
+  "blockers": [
+    "No real runs-table id is exposed on the user surface, so valid heartbeat/milestone/completion/failure or duplicate/late-callback scenarios cannot be exercised end-to-end.",
+    "The real user surface still does not expose the full execute-run payload needed for a success-path worker request."
+  ]
+}

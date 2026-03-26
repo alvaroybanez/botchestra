@@ -1,0 +1,64 @@
+{
+  "groupId": "rerun-callback-api",
+  "surface": "api",
+  "assertions": [
+    {
+      "id": "VAL-STUDY-030",
+      "status": "fail",
+      "reason": "A syntactically valid heartbeat callback with a garbage bearer token still returned HTTP 500 {\"error\":\"misconfigured_callback_secret\"} instead of HTTP 401.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-callback-api/invalid-token-heartbeat.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-031",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid heartbeat callback path cannot be exercised on the real API surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-callback-api/invalid-callback-and-secret.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-032",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid milestone callback path cannot be exercised on the real API surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-callback-api/invalid-callback-and-secret.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-033",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid completion callback path cannot be exercised on the real API surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-callback-api/invalid-callback-and-secret.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-034",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid failure callback path cannot be exercised on the real API surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-callback-api/invalid-callback-and-secret.txt"
+      ]
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "status": "blocked",
+      "reason": "A real successful /execute-run round-trip still cannot be exercised because the callback receiver is misconfigured and the browser launch flow never produces a valid running study context.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/rerun-callback-api/invalid-callback-and-secret.txt"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "curl",
+    "bunx convex env get"
+  ],
+  "frictions": [
+    "Posting an empty JSON body to /api/run-progress now returns a 400 schema error before token validation; a syntactically valid event body is needed to reach the token-validation branch."
+  ],
+  "blockers": [
+    "The Convex deployment still lacks CALLBACK_SIGNING_SECRET, which keeps valid callback-path and real execute-run round-trip testing blocked."
+  ]
+}

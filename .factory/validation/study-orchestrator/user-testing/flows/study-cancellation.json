@@ -1,0 +1,77 @@
+{
+  "groupId": "study-cancellation",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-STUDY-042",
+      "status": "blocked",
+      "reason": "The launch flow failed before any queued runs existed, so queued-run cancellation could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-043",
+      "status": "blocked",
+      "reason": "The launch flow failed before any running runs existed, so cancellationRequestedAt/heartbeat stop signaling could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-044",
+      "status": "blocked",
+      "reason": "No active study state was reachable, so cancellation fan-out to a cancelled study state could not be observed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-045",
+      "status": "blocked",
+      "reason": "Audit trail data for cancellation is not exposed on the current user surface, and no cancellable active study could be produced.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-046",
+      "status": "pass",
+      "reason": "Once the study was terminal failed after launch, the overview exposed no Cancel Study control, so terminal studies were not cancellable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-066",
+      "status": "blocked",
+      "reason": "A cancellable persona_review state was not reachable because the launch flow failed instead of settling into persona_review.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-067",
+      "status": "blocked",
+      "reason": "Replaying was never reached through the real browser flow, so replay cancellation could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "status": "blocked",
+      "reason": "The study never reached an active execution state with queued/running runs, so cancellation propagation across overview and runs pages could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [],
+  "blockers": [
+    "The launch flow failed before any active or replaying study state was available to cancel."
+  ]
+}

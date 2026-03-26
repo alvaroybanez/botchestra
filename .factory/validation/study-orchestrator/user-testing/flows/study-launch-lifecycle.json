@@ -1,0 +1,164 @@
+{
+  "groupId": "study-launch-lifecycle",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-STUDY-003",
+      "status": "pass",
+      "reason": "After the launch attempt failed, the overview no longer exposed the Edit Study control, so the non-draft study was no longer editable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-011",
+      "status": "fail",
+      "reason": "A draft study visibly exposed Launch Study, opened a launch confirmation dialog, and after confirmation showed \u201cStudy launch started.\u201d instead of blocking launch while still draft.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-draft.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/launch-confirmation.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-014",
+      "status": "fail",
+      "reason": "Launching a draft study with no variants did not land in persona_review; the visible study status became failed almost immediately.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-015",
+      "status": "blocked",
+      "reason": "The browser flow never reached queued because manual variant generation from the Personas tab failed with \u201cRun budget must be an integer between 50 and 100.\u201d",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-personas-generated.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-018",
+      "status": "blocked",
+      "reason": "The study failed before any runs were created, so no queued or running dispatch state was observable from the real UI.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-019",
+      "status": "blocked",
+      "reason": "The study never produced initial runs, so replaying was never reached through the browser flow.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-020",
+      "status": "blocked",
+      "reason": "The study never reached replaying, so analyzing could not be observed through the browser flow.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-021",
+      "status": "blocked",
+      "reason": "The study failed before any analysis/report generation could occur, so completed state was not reachable in user testing.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-report-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-047",
+      "status": "blocked",
+      "reason": "No runs were created after launch, so queued/running/completed live counts never had a chance to update reactively.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-048",
+      "status": "blocked",
+      "reason": "No runs were created after launch, so no live outcome breakdown updates were observable.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-049",
+      "status": "blocked",
+      "reason": "No runs entered dispatching or running, so the Active persona variants monitor stayed empty.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-050",
+      "status": "blocked",
+      "reason": "The failed launch prevented the study from reaching replaying, so the Replaying state could not be observed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-051",
+      "status": "blocked",
+      "reason": "The failed launch prevented the study from reaching analyzing, so the Analyzing state could not be observed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-059",
+      "status": "blocked",
+      "reason": "The study never completed, so completedAt could not be observed on the user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-report-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-061",
+      "status": "blocked",
+      "reason": "The Report tab remained a status placeholder and the study never reached completed, so headline metrics and issue cards were not available to validate.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-report-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-057",
+      "status": "fail",
+      "reason": "The real study Personas tab showed 0 accepted variants and clicking Generate variants surfaced a server error requiring a run budget between 50 and 100.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-personas-failed.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-personas-generated.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "status": "fail",
+      "reason": "The observed lifecycle jumped from draft directly to failed after launch rather than progressing through persona_review, ready, queued, and running.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-draft.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-012",
+      "status": "blocked",
+      "reason": "Because the study failed before creating any runs, no real-time execution updates were observable on overview or runs pages.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [
+    "The study creation wizard accepts run budgets below 50, but both launch and manual Generate variants later expose a stricter 50-100 budget requirement."
+  ],
+  "blockers": [
+    "The launch flow failed before any runs were created because variant generation rejected the visible run budget of 5.",
+    "The Report tab is still a placeholder surface and does not expose completed-study metrics or issue cards."
+  ]
+}

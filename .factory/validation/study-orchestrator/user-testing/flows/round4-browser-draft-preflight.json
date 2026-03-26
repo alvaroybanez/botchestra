@@ -1,0 +1,91 @@
+{
+  "groupId": "round4-browser-draft-preflight",
+  "testedAt": "2026-03-26T16:26:55.738068+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "study-round4-main-1774540385@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "cd4052c65070"
+  },
+  "assertions": [
+    {
+      "id": "VAL-STUDY-007",
+      "status": "blocked",
+      "reason": "The Environment label control still only exposes preset staging/qa/production options, so the empty-value rejection path is not reachable through visible controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-create-study-wizard.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-environment-options.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-008",
+      "status": "blocked",
+      "reason": "The create/detail study surfaces still do not expose the persisted createdBy identity on the real user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-after-save-study-click.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-011",
+      "status": "fail",
+      "reason": "Draft studies still visibly expose a Launch Study button and launch dialog.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-after-save-study-click.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-draft-launch-dialog.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-012",
+      "status": "pass",
+      "reason": "A study created against a draft persona pack reached the launch confirmation dialog, but confirming launch returned \u201cA published persona pack is required before launch.\u201d",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-create-study-only-draft-pack.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-draft-pack-study-overview.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-after-draft-pack-launch-confirm.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-013",
+      "status": "blocked",
+      "reason": "The production launch dialog warns that acknowledgement is required, but it only exposes Cancel and Confirm Launch, so there is no visible no-ack submission path to validate rejection.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-draft-launch-dialog.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-029",
+      "status": "blocked",
+      "reason": "Entering activeConcurrency=40 through the visible control saved the study summary as 30, so the runtime-bypass path required by the assertion remains unreachable through the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-after-save-study-click.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-070",
+      "status": "pass",
+      "reason": "After archiving the linked pack, confirming launch returned \u201cA published persona pack is required before launch.\u201d",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-pack-before-archive.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-after-archived-pack-confirm.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-074",
+      "status": "blocked",
+      "reason": "The study wizard still offers only selector-based pack choices and no visible way to submit an arbitrary non-existent personaPackId.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round4-create-study-wizard.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [
+    "The Active concurrency field accepted 40 in the wizard, but the saved study summary clamped the visible value back to 30."
+  ],
+  "blockers": [
+    "The Environment label and persona-pack inputs are still selector-driven, so empty environment and arbitrary non-existent-pack submission paths remain unreachable through visible controls.",
+    "The current study detail surface still does not expose creator identity metadata."
+  ]
+}

@@ -1,0 +1,288 @@
+{
+  "milestone": "study-orchestrator",
+  "round": 2,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 68,
+    "passed": 3,
+    "failed": 4,
+    "blocked": 61
+  },
+  "passedAssertions": [
+    "VAL-STUDY-014",
+    "VAL-STUDY-062",
+    "VAL-STUDY-063"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-CROSS-003",
+      "reason": "The observed lifecycle still skips required active states: one launch went draft -> persona_review -> failed and another went draft -> failed, with no ready/queued/running states visible."
+    },
+    {
+      "id": "VAL-PERSONA-057",
+      "reason": "The real study Personas tab still shows 0 accepted variants; after triggering generation on a runBudget=50 study it reported 100 rejected variants and 150 retries, so no accepted rows rendered."
+    },
+    {
+      "id": "VAL-STUDY-011",
+      "reason": "Draft studies still visibly expose Launch Study and the launch confirmation dialog, and confirming launch starts orchestration instead of rejecting the draft state."
+    },
+    {
+      "id": "VAL-STUDY-030",
+      "reason": "A syntactically valid heartbeat callback with a garbage bearer token still returned HTTP 500 {\"error\":\"misconfigured_callback_secret\"} instead of HTTP 401."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-CROSS-012",
+      "blockedBy": "No study reached running status and no runs were created, so real-time execution updates could not be observed on overview or runs surfaces."
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "blockedBy": "No study reached a running state with queued/running runs, so cancellation propagation across overview/runs/findings could not be validated."
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "blockedBy": "A real successful /execute-run round-trip still cannot be exercised because the callback receiver is misconfigured and the browser launch flow never produces a valid running study context."
+    },
+    {
+      "id": "VAL-STUDY-007",
+      "blockedBy": "The Environment label control still only exposes non-empty staging/qa/production options, so the required-field rejection path is not reachable through visible controls."
+    },
+    {
+      "id": "VAL-STUDY-008",
+      "blockedBy": "The study creation and detail surfaces do not expose the persisted createdBy identity, so this backend field cannot be validated through the real user surface."
+    },
+    {
+      "id": "VAL-STUDY-012",
+      "blockedBy": "The study wizard only lists published persona packs; there is no visible path to create a study against an unpublished pack from the user surface."
+    },
+    {
+      "id": "VAL-STUDY-013",
+      "blockedBy": "The visible launch dialog still only provides Confirm Launch and Cancel, so there is no exposed no-ack production submission path to exercise through the browser."
+    },
+    {
+      "id": "VAL-STUDY-015",
+      "blockedBy": "The queued path still could not be reached because manual Generate variants on a runBudget=50 study produced 0 accepted variants (100 rejected, 150 retries)."
+    },
+    {
+      "id": "VAL-STUDY-016",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-017",
+      "blockedBy": "The full state-transition matrix is not exposed on the current user surface; the rerun only surfaced draft -> persona_review -> failed and draft -> failed outcomes."
+    },
+    {
+      "id": "VAL-STUDY-018",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-019",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-020",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-021",
+      "blockedBy": "The study never reached completed and the Report tab remained a placeholder surface, so completed-study/report behavior could not be validated through the browser."
+    },
+    {
+      "id": "VAL-STUDY-022",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-023",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-024",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-027",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-028",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-029",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-031",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid heartbeat callback path cannot be exercised on the real API surface."
+    },
+    {
+      "id": "VAL-STUDY-032",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid milestone callback path cannot be exercised on the real API surface."
+    },
+    {
+      "id": "VAL-STUDY-033",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid completion callback path cannot be exercised on the real API surface."
+    },
+    {
+      "id": "VAL-STUDY-034",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is still absent from the Convex deployment, so a valid failure callback path cannot be exercised on the real API surface."
+    },
+    {
+      "id": "VAL-STUDY-035",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-036",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-037",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-038",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-039",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-040",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-041",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-042",
+      "blockedBy": "No study reached a stable queued/running state with real runs, so cancellation fan-out across queued/running runs could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-043",
+      "blockedBy": "No study reached a stable queued/running state with real runs, so cancellation fan-out across queued/running runs could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-044",
+      "blockedBy": "No study reached a stable queued/running state with real runs, so cancellation fan-out across queued/running runs could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-045",
+      "blockedBy": "The current user surface does not expose audit trail entries for cancellation, and no cancellable run fan-out state was reachable."
+    },
+    {
+      "id": "VAL-STUDY-047",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-048",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-049",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-050",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-051",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-052",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-053",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-054",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-055",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-056",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-057",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-058",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-059",
+      "blockedBy": "The rerun never produced a completed study, and Findings/Report remain placeholder surfaces without final analysis content."
+    },
+    {
+      "id": "VAL-STUDY-060",
+      "blockedBy": "The rerun never produced a completed study, and Findings/Report remain placeholder surfaces without final analysis content."
+    },
+    {
+      "id": "VAL-STUDY-061",
+      "blockedBy": "The rerun never produced a completed study, and Findings/Report remain placeholder surfaces without final analysis content."
+    },
+    {
+      "id": "VAL-STUDY-064",
+      "blockedBy": "No successful launch reached queued, running, replaying, or analyzing; the real surface stayed at persona_review/failed with 0 runs created."
+    },
+    {
+      "id": "VAL-STUDY-065",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-066",
+      "blockedBy": "A launch briefly reached persona_review with Cancel Study visible, but the state auto-transitioned to failed before cancellation could complete, so a stable persona_review cancel path was not achievable."
+    },
+    {
+      "id": "VAL-STUDY-067",
+      "blockedBy": "Replaying was never reached on the real surface, so replay cancellation could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-068",
+      "blockedBy": "The launch flow still failed before any runs were created, so run-state transitions, replay behavior, run detail content, and run filtering could not be exercised on real run data."
+    },
+    {
+      "id": "VAL-STUDY-069",
+      "blockedBy": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-070",
+      "blockedBy": "The rerun did not have a safe visible path to archive/delete the only published pack before launch without destroying the remaining study-creation setup, so this pack-status rejection path was not exercised."
+    },
+    {
+      "id": "VAL-STUDY-071",
+      "blockedBy": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-072",
+      "blockedBy": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-073",
+      "blockedBy": "These behaviors depend on admin/settings/report surfaces that are not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-074",
+      "blockedBy": "The create-study wizard never exposes a way to submit a non-existent personaPackId through visible controls."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Recorded rerun findings that fresh orgs may need an imported/published pack before study creation, runBudget=0 and activeConcurrency=0 are blocked by native form validation, and runBudget=50 variant generation still yields 0 accepted variants.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": ".factory/validation/study-orchestrator/user-testing/synthesis.round1.json"
+}

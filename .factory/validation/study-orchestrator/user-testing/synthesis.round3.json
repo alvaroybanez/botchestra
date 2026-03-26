@@ -1,0 +1,262 @@
+{
+  "milestone": "study-orchestrator",
+  "round": 3,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 66,
+    "passed": 9,
+    "failed": 2,
+    "blocked": 55
+  },
+  "passedAssertions": [
+    "VAL-PERSONA-057",
+    "VAL-STUDY-014",
+    "VAL-STUDY-018",
+    "VAL-STUDY-022",
+    "VAL-STUDY-049",
+    "VAL-STUDY-052",
+    "VAL-STUDY-065",
+    "VAL-STUDY-066",
+    "VAL-STUDY-030"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-CROSS-003",
+      "reason": "The real lifecycle improved but still does not visibly follow the full defined progression: one study went draft -> persona_review -> cancelled, while another went draft -> running -> failed, with no ready, queued, replaying, analyzing, or completed state exposed on the real surface."
+    },
+    {
+      "id": "VAL-STUDY-011",
+      "reason": "Draft studies still visibly expose Launch Study and the launch confirmation dialog, so the real surface still allows launch from draft."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-CROSS-012",
+      "blockedBy": "A study did reach running with live counts, but all visible runs failed immediately at 0 steps, so step-count progression during execution could not be observed through the real UI."
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "blockedBy": "Cancellation works in persona_review, but this rerun did not cancel a study while queued/running before it failed, so running-study cancellation propagation across overview/runs/findings was not validated."
+    },
+    {
+      "id": "VAL-STUDY-007",
+      "blockedBy": "The Environment label control still only exposes non-empty staging/qa/production options, so the required-field rejection path is not reachable through visible controls."
+    },
+    {
+      "id": "VAL-STUDY-008",
+      "blockedBy": "The study create/detail surfaces still do not expose the persisted createdBy identity on the real user surface."
+    },
+    {
+      "id": "VAL-STUDY-012",
+      "blockedBy": "The study wizard still only exposes published persona packs in the selector."
+    },
+    {
+      "id": "VAL-STUDY-013",
+      "blockedBy": "The launch dialog still only exposes Confirm Launch and Cancel, so there is no visible no-ack submission path."
+    },
+    {
+      "id": "VAL-STUDY-015",
+      "blockedBy": "Even with 50 accepted variants visible, the real surface did not expose ready or queued as stable user-visible states before the study advanced to running, so the persona_review -> ready -> queued progression could not be confirmed through the UI."
+    },
+    {
+      "id": "VAL-STUDY-016",
+      "blockedBy": "The study reached running, but launchRequestedBy and launchedAt are not exposed on the real user surface."
+    },
+    {
+      "id": "VAL-STUDY-017",
+      "blockedBy": "The browser surface now showed draft -> persona_review -> cancelled and draft -> running -> failed, but it still does not expose the full valid/invalid transition matrix needed for user-surface validation."
+    },
+    {
+      "id": "VAL-STUDY-019",
+      "blockedBy": "The running study never reached replaying; it failed after infra_error terminal runs."
+    },
+    {
+      "id": "VAL-STUDY-020",
+      "blockedBy": "The study never reached replaying or analyzing; it failed after infra_error terminal runs."
+    },
+    {
+      "id": "VAL-STUDY-021",
+      "blockedBy": "The study never reached completed, so completed-study report behavior could not be validated through the browser."
+    },
+    {
+      "id": "VAL-STUDY-023",
+      "blockedBy": "The real surface now shows infra_error terminal runs, but it does not expose the full valid/invalid run-transition matrix needed for user-surface validation."
+    },
+    {
+      "id": "VAL-STUDY-024",
+      "blockedBy": "The overview showed active dispatching work, but the real runs UI did not capture a stable per-run dispatching-before-running transition window for validation."
+    },
+    {
+      "id": "VAL-STUDY-027",
+      "blockedBy": "The running study used activeConcurrency=1 and showed one active persona variant, but this rerun did not provide enough timed sampling to validate the dedicated concurrency assertion end-to-end."
+    },
+    {
+      "id": "VAL-STUDY-028",
+      "blockedBy": "The study eventually failed with 52/52 terminal runs visible for a runBudget of 50, so this rerun did not provide a clean end-to-end confirmation of budget-matched dispatch completion."
+    },
+    {
+      "id": "VAL-STUDY-029",
+      "blockedBy": "The real user surface provides no visible path to bypass creation-time validation and launch with activeConcurrency above the hard cap."
+    },
+    {
+      "id": "VAL-STUDY-035",
+      "blockedBy": "The running study failed quickly with infra_error outcomes, but the stale-heartbeat monitor behavior itself was not isolated or user-visible."
+    },
+    {
+      "id": "VAL-STUDY-036",
+      "blockedBy": "The running study failed quickly with infra_error outcomes, but the non-stale-heartbeat path was not isolated or user-visible."
+    },
+    {
+      "id": "VAL-STUDY-037",
+      "blockedBy": "The running study failed quickly with infra_error outcomes, but Workpool-slot release after stale-heartbeat recovery was not isolated on the real user surface."
+    },
+    {
+      "id": "VAL-STUDY-038",
+      "blockedBy": "The study never reached replaying, so replay-candidate selection could not be validated on the real surface."
+    },
+    {
+      "id": "VAL-STUDY-039",
+      "blockedBy": "The study never reached replaying, so replay-run dispatch count could not be validated on the real surface."
+    },
+    {
+      "id": "VAL-STUDY-040",
+      "blockedBy": "The study never reached replaying, so replay confidence computation could not be validated on the real surface."
+    },
+    {
+      "id": "VAL-STUDY-041",
+      "blockedBy": "The study never reached replaying, so promotion-with-replay-evidence could not be validated on the real surface."
+    },
+    {
+      "id": "VAL-STUDY-042",
+      "blockedBy": "A running study was observed, but queued/running cancellation fan-out was not exercised before the study failed."
+    },
+    {
+      "id": "VAL-STUDY-043",
+      "blockedBy": "A running study was observed, but heartbeat ACK stop signaling after cancellation was not exercised before the study failed."
+    },
+    {
+      "id": "VAL-STUDY-044",
+      "blockedBy": "A running study was observed, but cancel-while-running fan-out to a final cancelled study state was not exercised before the study failed."
+    },
+    {
+      "id": "VAL-STUDY-045",
+      "blockedBy": "Audit trail entries for cancellation are not exposed on the user surface."
+    },
+    {
+      "id": "VAL-STUDY-047",
+      "blockedBy": "The overview displayed live counts, but this rerun did not capture a strong no-refresh before/after sequence dedicated to the reactive-count assertion."
+    },
+    {
+      "id": "VAL-STUDY-048",
+      "blockedBy": "The outcome breakdown showed only infra_error outcomes, so live accumulation across multiple outcome types was not validated."
+    },
+    {
+      "id": "VAL-STUDY-050",
+      "blockedBy": "The study never reached replaying, so replaying-state UI could not be validated."
+    },
+    {
+      "id": "VAL-STUDY-051",
+      "blockedBy": "The study never reached analyzing, so analyzing-state UI could not be validated."
+    },
+    {
+      "id": "VAL-STUDY-053",
+      "blockedBy": "The selected infra_error run displayed no captured milestones."
+    },
+    {
+      "id": "VAL-STUDY-054",
+      "blockedBy": "The selected infra_error run displayed no self-report answers."
+    },
+    {
+      "id": "VAL-STUDY-055",
+      "blockedBy": "The selected infra_error run displayed no artifact manifest or artifact links."
+    },
+    {
+      "id": "VAL-STUDY-056",
+      "blockedBy": "Only infra_error runs were available, so outcome filtering could not be meaningfully validated across multiple outcomes."
+    },
+    {
+      "id": "VAL-STUDY-057",
+      "blockedBy": "Only one proto-persona was present in the study, so persona filtering could not be meaningfully validated."
+    },
+    {
+      "id": "VAL-STUDY-058",
+      "blockedBy": "Infra_error runs had no final URL values, so URL filtering could not be meaningfully validated."
+    },
+    {
+      "id": "VAL-STUDY-059",
+      "blockedBy": "The study failed rather than completed, so completedAt could not be validated."
+    },
+    {
+      "id": "VAL-STUDY-060",
+      "blockedBy": "The study failed rather than completed, so StudyReport output could not be validated."
+    },
+    {
+      "id": "VAL-STUDY-061",
+      "blockedBy": "The study failed rather than completed, so the Report tab did not render completed-study metrics/cards."
+    },
+    {
+      "id": "VAL-STUDY-064",
+      "blockedBy": "This rerun did not exercise a true double-launch race on an active study with stable run creation."
+    },
+    {
+      "id": "VAL-STUDY-067",
+      "blockedBy": "The study never reached replaying, so replay cancellation could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-068",
+      "blockedBy": "All visible terminal runs were infra_error, so mixed-outcome summary counts could not be validated."
+    },
+    {
+      "id": "VAL-STUDY-069",
+      "blockedBy": "Admin run-budget-cap settings are not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-070",
+      "blockedBy": "This rerun did not archive a pack between study creation and launch on the real surface."
+    },
+    {
+      "id": "VAL-STUDY-071",
+      "blockedBy": "Audit-event records for launch are not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-072",
+      "blockedBy": "Per-study token/browser usage is not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-073",
+      "blockedBy": "Admin concurrency-cap settings are not exposed on the current study-orchestrator user surface."
+    },
+    {
+      "id": "VAL-STUDY-074",
+      "blockedBy": "The create-study wizard still does not expose a way to submit a non-existent personaPackId through visible controls."
+    },
+    {
+      "id": "VAL-STUDY-031",
+      "blockedBy": "The callback endpoint is configured and a signed heartbeat reached deeper mutation validation, but this rerun had no real running runId from the user surface. A signed request using a study-table id instead of a runs-table id failed validation, so a valid heartbeat update could not be exercised against a real running run."
+    },
+    {
+      "id": "VAL-STUDY-032",
+      "blockedBy": "The callback endpoint is configured, but the rerun still had no real runs-table id or milestone-bearing run context to send a valid milestone callback against the real API surface."
+    },
+    {
+      "id": "VAL-STUDY-033",
+      "blockedBy": "The callback endpoint is configured, but the rerun still had no real runs-table id or completed-run context to send a valid completion callback against the real API surface."
+    },
+    {
+      "id": "VAL-STUDY-034",
+      "blockedBy": "The callback endpoint is configured, but the rerun still had no real runs-table id or failure-run callback context to send a valid failure callback against the real API surface."
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "blockedBy": "The worker and callback receiver are both reachable, but this rerun still had no user-surface path to a complete valid execute-run payload with a real runs-table id/callback context, so a terminal /execute-run round-trip could not be exercised end-to-end."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Corrected callback testing guidance to use CONVEX_SITE_URL/api/run-progress, recorded that CALLBACK_SIGNING_SECRET is now configured, and noted that invalid callback tokens now return 401 on the real endpoint.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": ".factory/validation/study-orchestrator/user-testing/synthesis.round2.json"
+}

@@ -1,0 +1,65 @@
+{
+  "groupId": "study-callback-apis",
+  "surface": "api",
+  "assertions": [
+    {
+      "id": "VAL-STUDY-030",
+      "status": "fail",
+      "reason": "A real POST to /api/run-progress with a garbage bearer token returned HTTP 500 with {\"error\":\"misconfigured_callback_secret\"} instead of the expected HTTP 401 invalid token response.",
+      "evidence": [
+        "curl -X POST https://tame-lark-825.eu-west-1.convex.site/api/run-progress ... -> HTTP 500",
+        "{\"error\":\"misconfigured_callback_secret\"}",
+        "bunx convex env get CALLBACK_SIGNING_SECRET -> Environment variable not found."
+      ]
+    },
+    {
+      "id": "VAL-STUDY-031",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid heartbeat callback path could not be established on the real API surface.",
+      "evidence": [
+        "bunx convex env get CALLBACK_SIGNING_SECRET -> Environment variable not found."
+      ]
+    },
+    {
+      "id": "VAL-STUDY-032",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid milestone callback path could not be established on the real API surface.",
+      "evidence": [
+        "bunx convex env get CALLBACK_SIGNING_SECRET -> Environment variable not found."
+      ]
+    },
+    {
+      "id": "VAL-STUDY-033",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid completion callback path could not be established on the real API surface.",
+      "evidence": [
+        "bunx convex env get CALLBACK_SIGNING_SECRET -> Environment variable not found."
+      ]
+    },
+    {
+      "id": "VAL-STUDY-034",
+      "status": "blocked",
+      "reason": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid failure callback path could not be established on the real API surface.",
+      "evidence": [
+        "bunx convex env get CALLBACK_SIGNING_SECRET -> Environment variable not found."
+      ]
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "status": "blocked",
+      "reason": "A real successful /execute-run round-trip could not be exercised because the callback receiver is misconfigured and the browser launch flow never produced a valid run context.",
+      "evidence": [
+        "bunx convex env get CALLBACK_SIGNING_SECRET -> Environment variable not found.",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-failed-after-launch.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "curl",
+    "bunx convex env get"
+  ],
+  "frictions": [],
+  "blockers": [
+    "The Convex deployment is missing CALLBACK_SIGNING_SECRET, so callback API validation cannot proceed past the misconfigured_callback_secret error."
+  ]
+}

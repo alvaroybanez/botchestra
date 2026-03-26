@@ -1,0 +1,88 @@
+{
+  "groupId": "study-create-draft",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-021",
+      "status": "pass",
+      "reason": "A brand-new authenticated workspace opened on /studies with the empty-state CTA \u201cCreate your first study.\u201d",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/studies-empty-state.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-009",
+      "status": "pass",
+      "reason": "After creating a draft, the /studies list rendered a study card with the study name, draft status chip, run progress summary, environment, and last-updated timestamp.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/studies-list-with-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-010",
+      "status": "pass",
+      "reason": "The /studies/new route displayed the creation wizard fields for pack selection, task spec, run budget, active concurrency, environment label, and guardrail review.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/study-create-wizard.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-001",
+      "status": "pass",
+      "reason": "Submitting the real creation wizard navigated to /studies/<id>/overview and the visible status chip on the new study showed draft.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/study-overview-draft.png",
+        "Observed route changed to /studies/m17cd93jbec00xr29e1429jzk583nv38/overview."
+      ]
+    },
+    {
+      "id": "VAL-STUDY-004",
+      "status": "pass",
+      "reason": "Clearing the Post-task questions textarea before creation still produced the five default post-task questions on the overview page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-006",
+      "status": "pass",
+      "reason": "Entering active concurrency 50 on the creation form persisted as Active concurrency 30 in the study summary.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-002",
+      "status": "pass",
+      "reason": "Editing the draft through the visible editor saved successfully and the updated name, run budget, and questionnaire rendered immediately on the overview page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/study-overview-edited.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-005",
+      "status": "pass",
+      "reason": "Custom post-task questions entered in the draft editor persisted and rendered back exactly as entered.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/study-overview-edited.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-007",
+      "status": "blocked",
+      "reason": "The browser surface only exposed non-empty environment options (staging, qa, production), so the required-field rejection path was not reachable through visible controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-create-draft/study-create-wizard.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [
+    "agent-browser button clicks did not submit the study creation/edit forms in this environment; dispatching the already-rendered form submit event from the browser was required to continue the UI flow."
+  ],
+  "blockers": [
+    "Environment label validation cannot be exercised from the visible form because the control never exposes an empty value."
+  ]
+}

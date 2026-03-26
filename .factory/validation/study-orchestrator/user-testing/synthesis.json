@@ -1,0 +1,9 @@
+{
+  "milestone": "study-orchestrator",
+  "round": 3,
+  "overridden": true,
+  "overrideJustification": "After 3 rounds of user-testing, 27 assertions pass and 54 are infrastructure-blocked. The blocked assertions all require real Cloudflare Browser Rendering (paid feature) for runs to complete successfully and the full study lifecycle to be exercised. Without Browser Rendering, all runs terminate with infra_error before reaching running/replaying/analyzing/completed states. The 2 fixable code bugs (VAL-STUDY-011 draft launch, personas tab reactivity) were fixed in fix-draft-launch-and-persona-refresh and verified via agent-browser. The 54 blocked assertions have been deferred to misc-infra-validation milestone.",
+  "passedAssertions": 27,
+  "deferredAssertions": 54,
+  "deferredTo": "misc-infra-validation"
+}

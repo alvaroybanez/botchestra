@@ -1,0 +1,78 @@
+{
+  "groupId": "study-runs-detail",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-STUDY-052",
+      "status": "blocked",
+      "reason": "No runs were created after launch, so no run detail existed to inspect persona summary fields.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-053",
+      "status": "blocked",
+      "reason": "No runs were created after launch, so there was no milestone timeline to inspect.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-054",
+      "status": "blocked",
+      "reason": "No runs were created after launch, so no self-report fields were rendered on the real runs surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-055",
+      "status": "blocked",
+      "reason": "No runs were created after launch, so no artifact links were rendered on the runs surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-056",
+      "status": "blocked",
+      "reason": "The Outcome filter UI rendered, but with zero runs after launch there was no real outcome subset to validate.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-057",
+      "status": "blocked",
+      "reason": "The Persona filter UI rendered, but with zero runs after launch there was no real proto-persona subset to validate.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-058",
+      "status": "blocked",
+      "reason": "The URL filter field rendered, but with zero runs after launch there was no real finalUrl data to validate against.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-075",
+      "status": "pass",
+      "reason": "Setting finalUrlContains=guard on the Runs tab persisted in the URL and in the URL contains filter after navigating to Overview and back to Runs.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/study-launch-lifecycle/lifecycle-study-runs-empty.png",
+        "Observed URL before and after tab switch: /runs?finalUrlContains=guard; visible URL contains filter value remained \u201cguard\u201d."
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [],
+  "blockers": [
+    "The study launch failed before any runs were created, so run-level inspection and filter behavior could not be exercised on real data."
+  ]
+}

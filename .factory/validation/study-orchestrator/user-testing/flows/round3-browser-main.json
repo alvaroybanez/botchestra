@@ -1,0 +1,517 @@
+{
+  "groupId": "round3-browser-main",
+  "surface": "browser",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-003",
+      "status": "fail",
+      "reason": "The real lifecycle improved but still does not visibly follow the full defined progression: one study went draft -> persona_review -> cancelled, while another went draft -> running -> failed, with no ready, queued, replaying, analyzing, or completed state exposed on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/persona-review-after-cancel.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-012",
+      "status": "blocked",
+      "reason": "A study did reach running with live counts, but all visible runs failed immediately at 0 steps, so step-count progression during execution could not be observed through the real UI.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "status": "blocked",
+      "reason": "Cancellation works in persona_review, but this rerun did not cancel a study while queued/running before it failed, so running-study cancellation propagation across overview/runs/findings was not validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/persona-review-after-cancel.png"
+      ]
+    },
+    {
+      "id": "VAL-PERSONA-057",
+      "status": "pass",
+      "reason": "After refreshing back into the study Personas tab, the real variant review grid rendered 50 accepted variants for the study.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-personas-after-refresh.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-007",
+      "status": "blocked",
+      "reason": "The Environment label control still only exposes non-empty staging/qa/production options, so the required-field rejection path is not reachable through visible controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/create-study-wizard.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-008",
+      "status": "blocked",
+      "reason": "The study create/detail surfaces still do not expose the persisted createdBy identity on the real user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-011",
+      "status": "fail",
+      "reason": "Draft studies still visibly expose Launch Study and the launch confirmation dialog, so the real surface still allows launch from draft.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-overview-draft.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-launch-dialog.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-012",
+      "status": "blocked",
+      "reason": "The study wizard still only exposes published persona packs in the selector.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/create-study-wizard.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-013",
+      "status": "blocked",
+      "reason": "The launch dialog still only exposes Confirm Launch and Cancel, so there is no visible no-ack submission path.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-launch-dialog.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-014",
+      "status": "pass",
+      "reason": "Launching the study without user-visible confirmed variants visibly entered persona_review before any runs were created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-015",
+      "status": "blocked",
+      "reason": "Even with 50 accepted variants visible, the real surface did not expose ready or queued as stable user-visible states before the study advanced to running, so the persona_review -> ready -> queued progression could not be confirmed through the UI.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-personas-after-refresh.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-016",
+      "status": "blocked",
+      "reason": "The study reached running, but launchRequestedBy and launchedAt are not exposed on the real user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-017",
+      "status": "blocked",
+      "reason": "The browser surface now showed draft -> persona_review -> cancelled and draft -> running -> failed, but it still does not expose the full valid/invalid transition matrix needed for user-surface validation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/persona-review-after-cancel.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-018",
+      "status": "pass",
+      "reason": "After launching the study with 50 accepted variants visible, the overview showed study status running with queued/dispatching work on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-019",
+      "status": "blocked",
+      "reason": "The running study never reached replaying; it failed after infra_error terminal runs.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-020",
+      "status": "blocked",
+      "reason": "The study never reached replaying or analyzing; it failed after infra_error terminal runs.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-021",
+      "status": "blocked",
+      "reason": "The study never reached completed, so completed-study report behavior could not be validated through the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-report-tab.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-022",
+      "status": "pass",
+      "reason": "The launched study with generated variants eventually transitioned to failed after all visible runs settled as infra_error, confirming the unrecoverable-error failed path on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/running-study-overview-after-live-wait.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-023",
+      "status": "blocked",
+      "reason": "The real surface now shows infra_error terminal runs, but it does not expose the full valid/invalid run-transition matrix needed for user-surface validation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-024",
+      "status": "blocked",
+      "reason": "The overview showed active dispatching work, but the real runs UI did not capture a stable per-run dispatching-before-running transition window for validation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-027",
+      "status": "blocked",
+      "reason": "The running study used activeConcurrency=1 and showed one active persona variant, but this rerun did not provide enough timed sampling to validate the dedicated concurrency assertion end-to-end.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-028",
+      "status": "blocked",
+      "reason": "The study eventually failed with 52/52 terminal runs visible for a runBudget of 50, so this rerun did not provide a clean end-to-end confirmation of budget-matched dispatch completion.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-029",
+      "status": "blocked",
+      "reason": "The real user surface provides no visible path to bypass creation-time validation and launch with activeConcurrency above the hard cap.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/create-study-wizard.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-035",
+      "status": "blocked",
+      "reason": "The running study failed quickly with infra_error outcomes, but the stale-heartbeat monitor behavior itself was not isolated or user-visible.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-036",
+      "status": "blocked",
+      "reason": "The running study failed quickly with infra_error outcomes, but the non-stale-heartbeat path was not isolated or user-visible.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-037",
+      "status": "blocked",
+      "reason": "The running study failed quickly with infra_error outcomes, but Workpool-slot release after stale-heartbeat recovery was not isolated on the real user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-038",
+      "status": "blocked",
+      "reason": "The study never reached replaying, so replay-candidate selection could not be validated on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-039",
+      "status": "blocked",
+      "reason": "The study never reached replaying, so replay-run dispatch count could not be validated on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-040",
+      "status": "blocked",
+      "reason": "The study never reached replaying, so replay confidence computation could not be validated on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-041",
+      "status": "blocked",
+      "reason": "The study never reached replaying, so promotion-with-replay-evidence could not be validated on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-042",
+      "status": "blocked",
+      "reason": "A running study was observed, but queued/running cancellation fan-out was not exercised before the study failed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-043",
+      "status": "blocked",
+      "reason": "A running study was observed, but heartbeat ACK stop signaling after cancellation was not exercised before the study failed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-044",
+      "status": "blocked",
+      "reason": "A running study was observed, but cancel-while-running fan-out to a final cancelled study state was not exercised before the study failed.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-045",
+      "status": "blocked",
+      "reason": "Audit trail entries for cancellation are not exposed on the user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/persona-review-after-cancel.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-047",
+      "status": "blocked",
+      "reason": "The overview displayed live counts, but this rerun did not capture a strong no-refresh before/after sequence dedicated to the reactive-count assertion.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/running-study-overview-after-live-wait.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-048",
+      "status": "blocked",
+      "reason": "The outcome breakdown showed only infra_error outcomes, so live accumulation across multiple outcome types was not validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/running-study-overview-after-live-wait.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-049",
+      "status": "pass",
+      "reason": "While the study was running, the overview displayed an active persona variant card with dispatching status and bio preview.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-050",
+      "status": "blocked",
+      "reason": "The study never reached replaying, so replaying-state UI could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-051",
+      "status": "blocked",
+      "reason": "The study never reached analyzing, so analyzing-state UI could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-052",
+      "status": "pass",
+      "reason": "The runs tab rendered a selected run detail with proto-persona name, first-person bio text, and a confidence axis value.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-053",
+      "status": "blocked",
+      "reason": "The selected infra_error run displayed no captured milestones.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-054",
+      "status": "blocked",
+      "reason": "The selected infra_error run displayed no self-report answers.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-055",
+      "status": "blocked",
+      "reason": "The selected infra_error run displayed no artifact manifest or artifact links.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-056",
+      "status": "blocked",
+      "reason": "Only infra_error runs were available, so outcome filtering could not be meaningfully validated across multiple outcomes.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-057",
+      "status": "blocked",
+      "reason": "Only one proto-persona was present in the study, so persona filtering could not be meaningfully validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-058",
+      "status": "blocked",
+      "reason": "Infra_error runs had no final URL values, so URL filtering could not be meaningfully validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/failed-study-runs-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-059",
+      "status": "blocked",
+      "reason": "The study failed rather than completed, so completedAt could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-report-tab.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-060",
+      "status": "blocked",
+      "reason": "The study failed rather than completed, so StudyReport output could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-report-tab.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-061",
+      "status": "blocked",
+      "reason": "The study failed rather than completed, so the Report tab did not render completed-study metrics/cards.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-report-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-064",
+      "status": "blocked",
+      "reason": "This rerun did not exercise a true double-launch race on an active study with stable run creation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-launch-dialog.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-065",
+      "status": "pass",
+      "reason": "The launched study ended in failed with only infra_error terminal runs visible instead of replaying.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/running-study-overview-after-live-wait.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-066",
+      "status": "pass",
+      "reason": "Cancelling a study in persona_review transitioned it to cancelled while the UI still showed 0/0 runs.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/persona-review-after-cancel.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-067",
+      "status": "blocked",
+      "reason": "The study never reached replaying, so replay cancellation could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-068",
+      "status": "blocked",
+      "reason": "All visible terminal runs were infra_error, so mixed-outcome summary counts could not be validated.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/studies-list-after-failed-run.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-069",
+      "status": "blocked",
+      "reason": "Admin run-budget-cap settings are not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-report-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-070",
+      "status": "blocked",
+      "reason": "This rerun did not archive a pack between study creation and launch on the real surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/published-pack-before-archive.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-071",
+      "status": "blocked",
+      "reason": "Audit-event records for launch are not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-after-launch-3s.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-072",
+      "status": "blocked",
+      "reason": "Per-study token/browser usage is not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-report-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-073",
+      "status": "blocked",
+      "reason": "Admin concurrency-cap settings are not exposed on the current study-orchestrator user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/variants-study-report-tab.png"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-074",
+      "status": "blocked",
+      "reason": "The create-study wizard still does not expose a way to submit a non-existent personaPackId through visible controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-browser-main/create-study-wizard.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "frictions": [
+    "The study Personas tab stayed at 0 accepted variants with a stuck \"Generating variants...\" button until the page was refreshed via pack-detail navigation; after refresh the same study showed 50 accepted variants.",
+    "The failed study surfaced 52/52 terminal infra_error runs even though the visible run budget was 50, which made budget-matched dispatch verification ambiguous on the user surface."
+  ],
+  "blockers": [
+    "Replaying, analyzing, and completed states were never reached on the real surface because the launched study failed with infra_error runs before those phases.",
+    "Several assertions still depend on admin/audit metadata (createdBy, launch audit events, settings caps, usage totals) that are not exposed on the current study-orchestrator user surface.",
+    "Queued/ready study statuses and per-run dispatch windows remain too transient or insufficiently exposed to validate some state-transition assertions strictly through the browser."
+  ]
+}

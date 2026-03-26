@@ -1,0 +1,316 @@
+{
+  "milestone": "study-orchestrator",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 81,
+    "passed": 11,
+    "failed": 5,
+    "blocked": 65
+  },
+  "passedAssertions": [
+    "VAL-CROSS-021",
+    "VAL-STUDY-001",
+    "VAL-STUDY-002",
+    "VAL-STUDY-003",
+    "VAL-STUDY-004",
+    "VAL-STUDY-005",
+    "VAL-STUDY-006",
+    "VAL-STUDY-009",
+    "VAL-STUDY-010",
+    "VAL-STUDY-046",
+    "VAL-STUDY-075"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-CROSS-003",
+      "reason": "The observed lifecycle went draft -> failed after launch, skipping persona_review/ready/queued/running."
+    },
+    {
+      "id": "VAL-PERSONA-057",
+      "reason": "The real study Personas tab stayed at 0 accepted variants and Generate variants surfaced a server error requiring run budget 50-100."
+    },
+    {
+      "id": "VAL-STUDY-011",
+      "reason": "Draft studies are launchable from the real overview page; the UI showed Launch Study and started the launch flow instead of blocking while draft."
+    },
+    {
+      "id": "VAL-STUDY-014",
+      "reason": "Launching a draft study with missing variants visibly transitioned to failed instead of persona_review."
+    },
+    {
+      "id": "VAL-STUDY-030",
+      "reason": "The real /api/run-progress endpoint returned 500 misconfigured_callback_secret for an invalid token request instead of 401 invalid_callback_token."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-CROSS-012",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid real callback flow could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-007",
+      "blockedBy": "The Environment label control only exposes non-empty options, so the required-field rejection path is not reachable from visible UI controls."
+    },
+    {
+      "id": "VAL-STUDY-008",
+      "blockedBy": "This behavior is not exposed on the current study-orchestrator browser/API surface, so it could not be validated via user testing."
+    },
+    {
+      "id": "VAL-STUDY-012",
+      "blockedBy": "The study creation wizard only exposes published packs, so the unpublished-pack launch rejection path is not reachable from visible UI controls."
+    },
+    {
+      "id": "VAL-STUDY-013",
+      "blockedBy": "The production acknowledgement path is auto-confirmed by the visible launch dialog and does not expose a no-ack submission path for user testing."
+    },
+    {
+      "id": "VAL-STUDY-015",
+      "blockedBy": "Manual Generate variants failed with \u201cRun budget must be an integer between 50 and 100.\u201d, so a confirmed-variants queued launch path could not be reached through the browser."
+    },
+    {
+      "id": "VAL-STUDY-016",
+      "blockedBy": "No successful launch reached queued/running, and launchRequestedBy/launchedAt are not exposed on the current user surface."
+    },
+    {
+      "id": "VAL-STUDY-017",
+      "blockedBy": "This behavior is not exposed on the current study-orchestrator browser/API surface, so it could not be validated via user testing."
+    },
+    {
+      "id": "VAL-STUDY-018",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-019",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-020",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-021",
+      "blockedBy": "The Report/Findings tabs are still placeholder surfaces and the study never reached completed after the failed launch."
+    },
+    {
+      "id": "VAL-STUDY-022",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-023",
+      "blockedBy": "This behavior is not exposed on the current study-orchestrator browser/API surface, so it could not be validated via user testing."
+    },
+    {
+      "id": "VAL-STUDY-024",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-025",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid real callback flow could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-026",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid real callback flow could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-027",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-028",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-029",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-031",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid real callback flow could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-032",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid real callback flow could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-033",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid real callback flow could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-034",
+      "blockedBy": "CALLBACK_SIGNING_SECRET is missing from the Convex deployment, so a valid real callback flow could not be exercised."
+    },
+    {
+      "id": "VAL-STUDY-035",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-036",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-037",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-038",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-039",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-040",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-041",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-042",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-043",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-044",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-045",
+      "blockedBy": "This depends on admin/settings/audit/report functionality that is not exposed on the current milestone user surface."
+    },
+    {
+      "id": "VAL-STUDY-047",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-048",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-049",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-050",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-051",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-052",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-053",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-054",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-055",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-056",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-057",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-058",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-059",
+      "blockedBy": "The Report/Findings tabs are still placeholder surfaces and the study never reached completed after the failed launch."
+    },
+    {
+      "id": "VAL-STUDY-060",
+      "blockedBy": "The Report/Findings tabs are still placeholder surfaces and the study never reached completed after the failed launch."
+    },
+    {
+      "id": "VAL-STUDY-061",
+      "blockedBy": "The Report/Findings tabs are still placeholder surfaces and the study never reached completed after the failed launch."
+    },
+    {
+      "id": "VAL-STUDY-062",
+      "blockedBy": "This behavior is not exposed on the current study-orchestrator browser/API surface, so it could not be validated via user testing."
+    },
+    {
+      "id": "VAL-STUDY-063",
+      "blockedBy": "This behavior is not exposed on the current study-orchestrator browser/API surface, so it could not be validated via user testing."
+    },
+    {
+      "id": "VAL-STUDY-064",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-065",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-066",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-067",
+      "blockedBy": "The study launch failed before any active execution state was reached, so this behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-068",
+      "blockedBy": "The study launch failed before any runs were created, so this run-dependent behavior could not be exercised through the real UI."
+    },
+    {
+      "id": "VAL-STUDY-069",
+      "blockedBy": "This depends on admin/settings/audit/report functionality that is not exposed on the current milestone user surface."
+    },
+    {
+      "id": "VAL-STUDY-070",
+      "blockedBy": "This behavior is not exposed on the current study-orchestrator browser/API surface, so it could not be validated via user testing."
+    },
+    {
+      "id": "VAL-STUDY-071",
+      "blockedBy": "This depends on admin/settings/audit/report functionality that is not exposed on the current milestone user surface."
+    },
+    {
+      "id": "VAL-STUDY-072",
+      "blockedBy": "This depends on admin/settings/audit/report functionality that is not exposed on the current milestone user surface."
+    },
+    {
+      "id": "VAL-STUDY-073",
+      "blockedBy": "This depends on admin/settings/audit/report functionality that is not exposed on the current milestone user surface."
+    },
+    {
+      "id": "VAL-STUDY-074",
+      "blockedBy": "The study creation UI never exposes a way to submit a non-existent personaPackId, so this validation is not reachable from visible controls."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Recorded study-orchestrator user-testing findings about the hidden 50-100 runBudget requirement, the missing Convex CALLBACK_SIGNING_SECRET, and the agent-browser form-submit automation workaround.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null
+}

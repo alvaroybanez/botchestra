@@ -1,0 +1,73 @@
+{
+  "groupId": "round3-callback-api",
+  "surface": "api",
+  "assertions": [
+    {
+      "id": "VAL-STUDY-030",
+      "status": "pass",
+      "reason": "A garbage bearer token sent to CONVEX_SITE_URL/api/run-progress with a valid heartbeat body now returns HTTP 401 invalid_callback_token.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/invalid-token-heartbeat.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/callback-env.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-031",
+      "status": "blocked",
+      "reason": "The callback endpoint is configured and a signed heartbeat reached deeper mutation validation, but this rerun had no real running runId from the user surface. A signed request using a study-table id instead of a runs-table id failed validation, so a valid heartbeat update could not be exercised against a real running run.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/callback-env.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/valid-token-fake-run-heartbeat.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-032",
+      "status": "blocked",
+      "reason": "The callback endpoint is configured, but the rerun still had no real runs-table id or milestone-bearing run context to send a valid milestone callback against the real API surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/callback-env.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/valid-token-fake-run-heartbeat.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-033",
+      "status": "blocked",
+      "reason": "The callback endpoint is configured, but the rerun still had no real runs-table id or completed-run context to send a valid completion callback against the real API surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/callback-env.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/valid-token-fake-run-heartbeat.txt"
+      ]
+    },
+    {
+      "id": "VAL-STUDY-034",
+      "status": "blocked",
+      "reason": "The callback endpoint is configured, but the rerun still had no real runs-table id or failure-run callback context to send a valid failure callback against the real API surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/callback-env.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/valid-token-fake-run-heartbeat.txt"
+      ]
+    },
+    {
+      "id": "VAL-EXEC-004",
+      "status": "blocked",
+      "reason": "The worker and callback receiver are both reachable, but this rerun still had no user-surface path to a complete valid execute-run payload with a real runs-table id/callback context, so a terminal /execute-run round-trip could not be exercised end-to-end.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/execute-run-probe.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/callback-env.txt",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/study-orchestrator/round3-callback-api/valid-token-fake-run-heartbeat.txt"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "curl",
+    "bunx convex env get",
+    "python3"
+  ],
+  "frictions": [
+    "The real callback surface is CONVEX_SITE_URL/api/run-progress; the local Vite app route at localhost:5180/api/run-progress returns 404 and is not the real receiver.",
+    "Valid callback auth can now be exercised because CALLBACK_SIGNING_SECRET is configured, but the real endpoint still requires an actual runs-table id rather than any other Convex document id."
+  ],
+  "blockers": [
+    "The user surface did not expose a real runs-table id or full execute-run payload, so valid heartbeat/milestone/completion/failure callbacks could not be exercised against a real run context."
+  ]
+}
