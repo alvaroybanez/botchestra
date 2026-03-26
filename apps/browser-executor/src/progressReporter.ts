@@ -3,6 +3,7 @@ import {
   type ExecuteRunRequest,
   type RunProgressUpdate,
 } from "@botchestra/shared";
+import { redactSecrets, type MaskableSecret } from "./guardrails";
 
 export const RUN_FAILURE_ERROR_CODES = [
   "LEASE_UNAVAILABLE",
@@ -21,6 +22,7 @@ type ProgressReporterOptions = {
   callbackBaseUrl: string;
   callbackToken: string;
   fetch?: FetchLike;
+  secretValues?: readonly MaskableSecret[];
 };
 
 type ProgressReporterRequest = Pick<ExecuteRunRequest, "runId" | "callbackBaseUrl" | "callbackToken">;
@@ -69,8 +71,9 @@ async function postUpdate(
   callbackUrl: string,
   callbackToken: string,
   update: RunProgressUpdate,
+  secretValues: readonly MaskableSecret[],
 ) {
-  const validatedUpdate = validateRunProgressUpdate(update);
+  const validatedUpdate = validateRunProgressUpdate(redactSecrets(update, secretValues));
   const response = await fetchImplementation(callbackUrl, {
     method: "POST",
     headers: {
@@ -100,41 +103,42 @@ export function createProgressReporter(options: ProgressReporterOptions) {
         payload: {
           timestamp: payload.timestamp ?? Date.now(),
         },
-      });
+      }, options.secretValues ?? []);
     },
     sendMilestone(payload: RunProgressPayload<"milestone">) {
       return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
         runId: options.runId,
         eventType: "milestone",
         payload,
-      });
+      }, options.secretValues ?? []);
     },
     sendCompletion(payload: RunProgressPayload<"completion">) {
       return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
         runId: options.runId,
         eventType: "completion",
         payload,
-      });
+      }, options.secretValues ?? []);
     },
     sendFailure(payload: FailurePayload) {
       return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
         runId: options.runId,
         eventType: "failure",
         payload,
-      });
+      }, options.secretValues ?? []);
     },
   };
 }
 
 export function createProgressReporterFromRequest(
   request: ProgressReporterRequest,
-  options: Pick<ProgressReporterOptions, "fetch"> = {},
+  options: Pick<ProgressReporterOptions, "fetch" | "secretValues"> = {},
 ) {
   return createProgressReporter({
     runId: request.runId,
     callbackBaseUrl: request.callbackBaseUrl,
     callbackToken: request.callbackToken,
     fetch: options.fetch,
+    secretValues: options.secretValues,
   });
 }
 

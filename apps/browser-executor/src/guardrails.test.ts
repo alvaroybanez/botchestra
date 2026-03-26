@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  MASKED_VALUE,
-  maskCredentials,
-  validateAction,
+  REDACTED_VALUE,
+  isActionAllowed,
+  maskSecrets,
   validateCallbackToken,
   validateNavigation,
 } from "./guardrails";
@@ -82,47 +82,89 @@ describe("validateNavigation", () => {
   });
 });
 
-describe("validateAction", () => {
+describe("isActionAllowed", () => {
   it.each(forbiddenActions)("blocks %s when it appears in the forbidden action list", (actionType) => {
-    expect(validateAction(actionType, [actionType])).toMatchObject({
+    expect(isActionAllowed(
+      { type: actionType },
+      {
+        allowedActions: ["goto", "click", "type", "select", "scroll", "wait", "back", "finish", "abort"],
+        allowedDomains: ["staging.example.com"],
+        forbiddenActions: [actionType],
+      },
+    )).toMatchObject({
       ok: false,
       code: "forbidden_action",
     });
   });
 
-  it("passes when the action is not forbidden for the current study", () => {
-    expect(validateAction("email_send", ["payment_submission"])).toEqual({ ok: true });
+  it("blocks actions that are outside the runtime allowlist", () => {
+    expect(isActionAllowed(
+      { type: "type" },
+      {
+        allowedActions: ["click", "finish"],
+        allowedDomains: ["staging.example.com"],
+        forbiddenActions: [],
+      },
+    )).toMatchObject({
+      ok: false,
+      code: "action_not_allowed",
+    });
+  });
+
+  it("blocks goto actions that leave the allowed domains", () => {
+    expect(isActionAllowed(
+      { type: "goto", url: "https://billing.example.com" },
+      {
+        allowedActions: ["goto", "finish"],
+        allowedDomains: ["staging.example.com"],
+        forbiddenActions: [],
+      },
+    )).toMatchObject({
+      ok: false,
+      code: "domain_not_allowed",
+    });
+  });
+
+  it("passes when the action satisfies the runtime guardrails", () => {
+    expect(isActionAllowed(
+      { type: "goto", url: "https://staging.example.com/checkout" },
+      {
+        allowedActions: ["goto", "click", "finish"],
+        allowedDomains: ["staging.example.com"],
+        forbiddenActions: ["payment_submission"],
+      },
+    )).toEqual({ ok: true });
   });
 });
 
-describe("maskCredentials", () => {
+describe("maskSecrets", () => {
   it("masks a single credential value", () => {
-    expect(maskCredentials("username=alice@example.com", ["alice@example.com"])).toBe(
-      "username=[MASKED]",
+    expect(maskSecrets("username=alice@example.com", ["alice@example.com"])).toBe(
+      "username=[REDACTED]",
     );
   });
 
   it("masks multiple credential values and repeated occurrences", () => {
     expect(
-      maskCredentials(
+      maskSecrets(
         "alice@example.com logged in with password swordfish, then alice@example.com retried.",
         ["alice@example.com", "swordfish"],
       ),
-    ).toBe("[MASKED] logged in with password [MASKED], then [MASKED] retried.");
+    ).toBe("[REDACTED] logged in with password [REDACTED], then [REDACTED] retried.");
   });
 
   it("masks credential values embedded inside URLs", () => {
     expect(
-      maskCredentials(
+      maskSecrets(
         "https://alice@example.com:swordfish@staging.example.com/login",
         ["alice@example.com", "swordfish"],
       ),
-    ).toBe("https://[MASKED]:[MASKED]@staging.example.com/login");
+    ).toBe("https://[REDACTED]:[REDACTED]@staging.example.com/login");
   });
 
   it("returns the original text when there are no credentials to mask", () => {
-    expect(maskCredentials("no secrets here", [])).toBe("no secrets here");
-    expect(MASKED_VALUE).toBe("[MASKED]");
+    expect(maskSecrets("no secrets here", [])).toBe("no secrets here");
+    expect(REDACTED_VALUE).toBe("[REDACTED]");
   });
 });
 

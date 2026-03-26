@@ -1,5 +1,6 @@
 import type { ExecuteRunRequest } from "@botchestra/shared";
 import { createArtifactUploader } from "./artifactUploader";
+import { redactSecrets, type MaskableSecret } from "./guardrails";
 import { createProgressReporterFromRequest } from "./progressReporter";
 import {
   createRunExecutor,
@@ -51,6 +52,9 @@ export type ExecuteRunIntegrationOptions = {
   leaseClient?: BrowserLeaseClient;
   selectAction?: (input: SelectActionInput) => Promise<AgentAction>;
   fetch?: ProgressReporterFetch;
+  resolveSecrets?: (
+    request: ExecuteRunRequest,
+  ) => Promise<readonly MaskableSecret[]> | readonly MaskableSecret[];
   generateSelfReport?: (options: {
     request: ExecuteRunRequest;
     result: Awaited<ReturnType<ReturnType<typeof createRunExecutor>["execute"]>>;
@@ -241,13 +245,16 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
       return misconfiguredWorker("BROWSER binding is required for run execution");
     }
 
+    const secretValues = (await options.resolveSecrets?.(request)) ?? [];
     const progressReporter = createProgressReporterFromRequest(request, {
       fetch: options.fetch,
+      secretValues,
     });
     const uploader = createArtifactUploader({
       runId: request.runId,
       bucket: env.ARTIFACTS,
       now: options.now,
+      secretValues,
     });
 
     try {
@@ -273,46 +280,42 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
       });
 
       const result = await runExecutor.execute(request);
-      const artifactManifestKey = await uploader.writeManifest(result);
+      const redactedResult = redactSecrets(result, secretValues);
+      const artifactManifestKey = await uploader.writeManifest(redactedResult);
       const selfReport = await reportGenerator({
-        request,
-        result,
+        request: redactSecrets(request, secretValues),
+        result: redactedResult,
       });
+      const redactedSelfReport = redactSecrets(selfReport, secretValues);
+      const responseBody = redactSecrets(
+        {
+          ...redactedResult,
+          selfReport: redactedSelfReport,
+          artifactManifestKey,
+        },
+        secretValues,
+      );
 
-      if (!result.ok) {
+      if (!redactedResult.ok) {
         await progressReporter.sendFailure({
-          errorCode: result.errorCode,
-          message: result.message,
-          selfReport,
+          errorCode: redactedResult.errorCode,
+          message: redactedResult.message,
+          selfReport: redactedSelfReport,
         });
 
-        return json(
-          {
-            ...result,
-            selfReport,
-            artifactManifestKey,
-          },
-          getFailureStatus(result.errorCode),
-        );
+        return json(responseBody, getFailureStatus(redactedResult.errorCode));
       }
 
       await progressReporter.sendCompletion({
-        finalOutcome: result.finalOutcome,
-        stepCount: result.stepCount,
-        durationSec: result.durationSec,
-        frustrationCount: result.frustrationCount,
-        selfReport,
+        finalOutcome: redactedResult.finalOutcome,
+        stepCount: redactedResult.stepCount,
+        durationSec: redactedResult.durationSec,
+        frustrationCount: redactedResult.frustrationCount,
+        selfReport: redactedSelfReport,
         artifactManifestKey,
       });
 
-      return json(
-        {
-          ...result,
-          selfReport,
-          artifactManifestKey,
-        },
-        200,
-      );
+      return json(responseBody, 200);
     } finally {
       await resolvedBrowser.closeBrowser();
     }

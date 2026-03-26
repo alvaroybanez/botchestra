@@ -1,4 +1,9 @@
 import type { RunExecutionResult, RunMilestone } from "./runExecutor";
+import {
+  maskSecretsInBytes,
+  redactSecrets,
+  type MaskableSecret,
+} from "./guardrails";
 
 type ArtifactBucket = {
   put(
@@ -12,6 +17,7 @@ type ArtifactUploaderOptions = {
   runId: string;
   bucket?: ArtifactBucket;
   now?: () => number;
+  secretValues?: readonly MaskableSecret[];
 };
 
 type UploadedMilestoneArtifact = {
@@ -61,20 +67,22 @@ export function createArtifactUploader(options: ArtifactUploaderOptions) {
       }
 
       const key = getMilestoneScreenshotKey(options.runId, milestone);
+      const redactedMilestone = redactSecrets(milestone, options.secretValues ?? []);
+      const redactedScreenshot = maskSecretsInBytes(screenshot, options.secretValues ?? []);
 
       try {
-        await options.bucket.put(key, screenshot, {
+        await options.bucket.put(key, redactedScreenshot, {
           httpMetadata: { contentType: "image/jpeg" },
         });
         uploadedArtifacts.push({
           kind: "milestone_screenshot",
           key,
-          stepIndex: milestone.stepIndex,
-          actionType: milestone.actionType,
-          url: milestone.url,
-          title: milestone.title,
-          rationaleShort: milestone.rationaleShort,
-          captureReason: milestone.captureReason,
+          stepIndex: redactedMilestone.stepIndex,
+          actionType: redactedMilestone.actionType,
+          url: redactedMilestone.url,
+          title: redactedMilestone.title,
+          rationaleShort: redactedMilestone.rationaleShort,
+          captureReason: redactedMilestone.captureReason,
         });
         return key;
       } catch {
@@ -99,7 +107,7 @@ export function createArtifactUploader(options: ArtifactUploaderOptions) {
       };
 
       try {
-        await options.bucket.put(key, JSON.stringify(manifest), {
+        await options.bucket.put(key, JSON.stringify(redactSecrets(manifest, options.secretValues ?? [])), {
           httpMetadata: { contentType: "application/json" },
         });
         return key;

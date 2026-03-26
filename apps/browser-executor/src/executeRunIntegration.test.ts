@@ -19,15 +19,18 @@ class MockBrowserPage {
   readonly screenshotCalls: Array<{ type: "jpeg"; quality: number } | undefined> = [];
 
   private currentState: BrowserPageSnapshot;
+  private readonly screenshotBytes: Uint8Array;
 
   constructor(
     initialState: BrowserPageSnapshot,
     private readonly options: {
       nextStates?: BrowserPageSnapshot[];
+      screenshotBytes?: Uint8Array;
       throwOn?: Partial<Record<MockActionMethod, Error>>;
     } = {},
   ) {
     this.currentState = structuredClone(initialState);
+    this.screenshotBytes = options.screenshotBytes ?? new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
   }
 
   async snapshot() {
@@ -36,7 +39,7 @@ class MockBrowserPage {
 
   async screenshot(options?: { type: "jpeg"; quality: number }) {
     this.screenshotCalls.push(options);
-    return new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    return this.screenshotBytes;
   }
 
   async goto(url: string) {
@@ -512,5 +515,91 @@ describe("execute-run integration", () => {
         selfReport,
       },
     });
+  });
+
+  it("redacts credential plaintext from callbacks, manifests, screenshots, and response bodies", async () => {
+    const secretEmail = "alice@example.com";
+    const secretPassword = "swordfish";
+    const screenshotBytes = new TextEncoder().encode(
+      `visual transcript ${secretEmail} / ${secretPassword}`,
+    );
+    const page = new MockBrowserPage(
+      createPageState({
+        url: `https://${secretEmail}:${secretPassword}@shop.example.com/cart`,
+        title: `Cart for ${secretEmail}`,
+      }),
+      {
+        screenshotBytes,
+      },
+    );
+    const { browser } = createMockBrowser(page);
+    const leaseClient = createLeaseClient();
+    const callbackFetch = createFetchMock();
+    const bucket = {
+      get: vi.fn(async () => null),
+      put: vi.fn(async (_key: string, _value: unknown, _options?: unknown) => undefined),
+    };
+    const worker = createWorker({
+      runtime: {
+        browser,
+        leaseClient,
+        fetch: callbackFetch.fetch,
+        resolveSecrets: vi.fn(async () => [secretEmail, secretPassword]),
+        selectAction: vi.fn(async () => ({
+          type: "finish",
+          rationale: `Submitted credentials ${secretEmail} / ${secretPassword}`,
+        })),
+        generateSelfReport: vi.fn(async () => ({
+          perceivedSuccess: true,
+          hardestPart: `Typing ${secretPassword}`,
+          confusion: `${secretEmail} appeared in the header`,
+          confidence: 0.7,
+          suggestedChange: `Hide ${secretPassword} after login`,
+          answers: {
+            "Did you complete the task?": `Yes, using ${secretEmail}`,
+          },
+        })),
+      },
+    });
+    const request = await createValidExecuteRunRequest({
+      taskSpec: {
+        ...(await createValidExecuteRunRequest()).taskSpec,
+        credentialsRef: "cred_checkout",
+      },
+    });
+
+    const response = await worker.fetch(
+      new Request("https://example.com/execute-run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+      }),
+      {
+        ...env,
+        ARTIFACTS: bucket,
+      },
+      executionContext,
+    );
+
+    expect(response.status).toBe(200);
+
+    const responseBody = JSON.stringify(await response.json());
+    expect(responseBody).not.toContain(secretEmail);
+    expect(responseBody).not.toContain(secretPassword);
+    expect(responseBody).toContain("[REDACTED]");
+
+    const callbackBodies = getPostedUpdates(callbackFetch).map((update) => JSON.stringify(update));
+    expect(callbackBodies.every((body) => !body.includes(secretEmail) && !body.includes(secretPassword))).toBe(true);
+    expect(callbackBodies.some((body) => body.includes("[REDACTED]"))).toBe(true);
+
+    const uploadedBodies = bucket.put.mock.calls.map((call) => call[1]);
+    const uploadedTextBodies = uploadedBodies.map((body) =>
+      typeof body === "string" ? body : new TextDecoder().decode(body as Uint8Array),
+    );
+
+    expect(uploadedTextBodies.every((body) => !body.includes(secretEmail) && !body.includes(secretPassword))).toBe(
+      true,
+    );
+    expect(uploadedTextBodies.some((body) => body.includes("[REDACTED]"))).toBe(true);
   });
 });

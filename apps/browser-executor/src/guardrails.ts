@@ -1,8 +1,10 @@
 import type { ExecuteRunRequest } from "@botchestra/shared";
 
-export const MASKED_VALUE = "[MASKED]" as const;
+export const REDACTED_VALUE = "[REDACTED]" as const;
+export const MASKED_VALUE = REDACTED_VALUE;
 
 export type ForbiddenAction = ExecuteRunRequest["taskSpec"]["forbiddenActions"][number];
+export type AllowedAction = ExecuteRunRequest["taskSpec"]["allowedActions"][number];
 
 export type CallbackTokenPayload = {
   runId: string;
@@ -24,6 +26,9 @@ export type NavigationValidationResult =
   | GuardrailFailure<"invalid_url" | "domain_not_allowed">;
 
 export type ActionValidationResult = GuardrailPass | GuardrailFailure<"forbidden_action">;
+export type RuntimeActionValidationResult =
+  | GuardrailPass
+  | GuardrailFailure<"action_not_allowed" | "forbidden_action" | "invalid_url" | "domain_not_allowed">;
 
 export type CallbackTokenValidationResult =
   | {
@@ -42,7 +47,17 @@ type CallbackTokenValidationOptions = {
   now?: number;
 };
 
-type MaskableCredential =
+export type RuntimeActionGuardrails = Pick<
+  ExecuteRunRequest["taskSpec"],
+  "allowedActions" | "allowedDomains" | "forbiddenActions"
+>;
+
+export type RuntimeAction = {
+  type: string;
+  url?: string;
+};
+
+export type MaskableSecret =
   | string
   | {
       value: string;
@@ -124,20 +139,117 @@ export function validateAction(
   return { ok: true };
 }
 
-function normalizeCredentialValues(credentials: readonly MaskableCredential[]) {
+export function isActionAllowed(
+  action: RuntimeAction,
+  guardrails: RuntimeActionGuardrails,
+): RuntimeActionValidationResult {
+  const actionValidation = validateAction(action.type, guardrails.forbiddenActions);
+  if (!actionValidation.ok) {
+    return actionValidation;
+  }
+
+  if (!guardrails.allowedActions.includes(action.type as AllowedAction)) {
+    return failure("action_not_allowed", `Action ${action.type} is not allowed for this task`);
+  }
+
+  if (action.type === "goto") {
+    const url = action.url?.trim();
+    if (!url) {
+      return failure("invalid_url", "Action goto requires a non-empty URL");
+    }
+
+    return validateNavigation(url, guardrails.allowedDomains);
+  }
+
+  return { ok: true };
+}
+
+function normalizeSecretValues(secrets: readonly MaskableSecret[]) {
   return [...new Set(
-    credentials
+    secrets
       .map((credential) => (typeof credential === "string" ? credential : credential.value))
       .map((value) => value.trim())
       .filter((value) => value.length > 0),
   )].sort((left, right) => right.length - left.length);
 }
 
-export function maskCredentials(text: string, credentials: readonly MaskableCredential[]) {
-  return normalizeCredentialValues(credentials).reduce(
-    (maskedText, credentialValue) => maskedText.split(credentialValue).join(MASKED_VALUE),
+export function maskSecrets(text: string, secrets: readonly MaskableSecret[]) {
+  return normalizeSecretValues(secrets).reduce(
+    (maskedText, credentialValue) => maskedText.split(credentialValue).join(REDACTED_VALUE),
     text,
   );
+}
+
+export const maskCredentials = maskSecrets;
+
+function isProbablyText(value: string) {
+  if (value.length === 0) {
+    return true;
+  }
+
+  let printableCount = 0;
+
+  for (const char of value) {
+    const codePoint = char.codePointAt(0) ?? 0;
+    const isWhitespace = char === "\n" || char === "\r" || char === "\t";
+    const isPrintableAscii = codePoint >= 0x20 && codePoint <= 0x7e;
+    const isPrintableUnicode = codePoint > 0x7e && codePoint !== 0xfffd;
+
+    if (isWhitespace || isPrintableAscii || isPrintableUnicode) {
+      printableCount += 1;
+    }
+  }
+
+  return printableCount / value.length >= 0.85;
+}
+
+export function maskSecretsInBytes(value: Uint8Array, secrets: readonly MaskableSecret[]) {
+  if (normalizeSecretValues(secrets).length === 0) {
+    return value;
+  }
+
+  try {
+    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(value);
+
+    if (!isProbablyText(decoded)) {
+      return value;
+    }
+
+    const masked = maskSecrets(decoded, secrets);
+    if (masked === decoded) {
+      return value;
+    }
+
+    return new TextEncoder().encode(masked);
+  } catch {
+    return value;
+  }
+}
+
+export function redactSecrets<T>(value: T, secrets: readonly MaskableSecret[]): T {
+  if (normalizeSecretValues(secrets).length === 0) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return maskSecrets(value, secrets) as T;
+  }
+
+  if (value instanceof Uint8Array) {
+    return maskSecretsInBytes(value, secrets) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSecrets(item, secrets)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, redactSecrets(entryValue, secrets)]),
+    ) as T;
+  }
+
+  return value;
 }
 
 export async function validateCallbackToken(

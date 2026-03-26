@@ -12,7 +12,7 @@ import {
   type MilestoneStepState,
 } from "./milestonePolicy";
 import {
-  validateAction,
+  isActionAllowed,
   validateNavigation,
 } from "./guardrails";
 import {
@@ -246,10 +246,6 @@ function toStepState(stepIndex: number, action: AgentAction, page: BrowserPageSn
     navigationError: page.navigationError ?? null,
     httpStatus: page.httpStatus ?? null,
   };
-}
-
-function isActionAllowed(actionType: string, allowedActions: readonly AllowedAction[]) {
-  return allowedActions.includes(actionType as AllowedAction);
 }
 
 function getRequiredString(value: string | undefined, label: string) {
@@ -507,22 +503,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             actionHistory,
           });
 
-          if (!isActionAllowed(action.type, request.taskSpec.allowedActions)) {
-            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
-              stepIndex: stepCount,
-              actionType: "guardrail_violation",
-              rationaleShort: `Action ${action.type} is not allowed for this task`,
-            });
-            return failure("GUARDRAIL_VIOLATION", `Action ${action.type} is not allowed for this task`, {
-              startedAt,
-              now,
-              stepCount,
-              frustrationCount,
-              milestones,
-            });
-          }
-
-          const actionValidation = validateAction(action.type, request.taskSpec.forbiddenActions);
+          const actionValidation = isActionAllowed(action, request.taskSpec);
           if (!actionValidation.ok) {
             await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
               stepIndex: stepCount,
@@ -536,28 +517,6 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
               frustrationCount,
               milestones,
             });
-          }
-
-          if (action.type === "goto") {
-            const navigationValidation = validateNavigation(
-              getRequiredString(action.url, "action.url"),
-              request.taskSpec.allowedDomains,
-            );
-
-            if (!navigationValidation.ok) {
-              await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
-                stepIndex: stepCount,
-                actionType: "guardrail_violation",
-                rationaleShort: navigationValidation.message,
-              });
-              return failure("GUARDRAIL_VIOLATION", navigationValidation.message, {
-                startedAt,
-                now,
-                stepCount,
-                frustrationCount,
-                milestones,
-              });
-            }
           }
 
           if (action.type === "finish" || action.type === "abort") {
