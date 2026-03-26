@@ -765,6 +765,7 @@ describe("credentials", () => {
 
     const id = await t.run(async (ctx) =>
       ctx.db.insert("credentials", {
+        ref: "cred_checkout",
         label: "Staging checkout test account",
         encryptedPayload: "enc:base64==abcdef1234567890",
         description: "Shared test account for checkout studies",
@@ -779,6 +780,7 @@ describe("credentials", () => {
     const doc = await t.run(async (ctx) => ctx.db.get(id));
 
     expect(doc).not.toBeNull();
+    expect(doc!.ref).toBe("cred_checkout");
     expect(doc!.label).toBe("Staging checkout test account");
     expect(doc!.orgId).toBe("org_1");
     expect(doc!.allowedStudyIds).toHaveLength(1);
@@ -790,6 +792,7 @@ describe("credentials", () => {
 
     const id = await t.run(async (ctx) =>
       ctx.db.insert("credentials", {
+        ref: "cred_global",
         label: "Global test account",
         encryptedPayload: "enc:base64==xyz",
         description: "Unrestricted credential",

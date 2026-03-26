@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { listCredentialSummariesForOrg } from "./credentials";
 import { ADMIN_ROLES, requireRole } from "./rbac";
 
 const zMutation = zCustomMutation(mutation, NoOp);
@@ -76,7 +77,14 @@ export const getSettings = zQuery({
   args: {},
   handler: async (ctx) => {
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    return await loadEffectiveSettingsForOrg(ctx, identity.tokenIdentifier);
+
+    return {
+      ...(await loadEffectiveSettingsForOrg(ctx, identity.tokenIdentifier)),
+      credentials: await listCredentialSummariesForOrg(
+        ctx,
+        identity.tokenIdentifier,
+      ),
+    };
   },
 });
 

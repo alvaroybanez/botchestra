@@ -302,6 +302,7 @@ export default defineSchema({
 
   // 12. credentials
   credentials: defineTable({
+    ref: v.string(),
     label: v.string(),
     encryptedPayload: v.string(),
     description: v.string(),
@@ -310,7 +311,9 @@ export default defineSchema({
     createdBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  })
+    .index("by_orgId_and_ref", ["orgId", "ref"])
+    .index("by_orgId_and_updatedAt", ["orgId", "updatedAt"]),
 
   // 13. settings
   settings: defineTable({

@@ -20,6 +20,7 @@ import type * as analysisQueries from "../analysisQueries.js";
 import type * as artifactResolver from "../artifactResolver.js";
 import type * as auditEvents from "../auditEvents.js";
 import type * as auth from "../auth.js";
+import type * as credentials from "../credentials.js";
 import type * as crons from "../crons.js";
 import type * as heartbeatMonitor from "../heartbeatMonitor.js";
 import type * as http from "../http.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   artifactResolver: typeof artifactResolver;
   auditEvents: typeof auditEvents;
   auth: typeof auth;
+  credentials: typeof credentials;
   crons: typeof crons;
   heartbeatMonitor: typeof heartbeatMonitor;
   http: typeof http;
