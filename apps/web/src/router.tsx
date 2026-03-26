@@ -16,12 +16,18 @@ import {
   PersonaPackDetailPage as PersonaPackDetailRoutePage,
   PersonaPacksPage as PersonaPacksRoutePage,
 } from "@/routes/persona-pack-pages";
+import {
+  StudiesListPage as StudiesRoutePage,
+  StudyCreationWizardPage as StudyCreationWizardRoutePage,
+  StudyFindingsPage as StudyFindingsRoutePage,
+  StudyOverviewPage as StudyOverviewRoutePage,
+  StudyReportPage as StudyReportRoutePage,
+} from "@/routes/study-pages";
 import { StudyPersonasPage as StudyPersonasRoutePage } from "@/routes/study-personas-page";
+import { StudyRunsPage as StudyRunsRoutePage } from "@/routes/study-runs-page";
+import { validateStudyDetailSearch } from "@/routes/study-shared";
 import {
   SettingsSkeletonPage,
-  StudiesNewSkeletonPage,
-  StudiesSkeletonPage,
-  StudyDetailSkeletonPage,
 } from "@/routes/skeleton-pages";
 import { SignupPage } from "@/routes/signup";
 
@@ -152,30 +158,35 @@ const studiesNewRoute = createRoute({
 const studyOverviewRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "studies/$studyId/overview",
+  validateSearch: validateStudyDetailSearch,
   component: StudyOverviewPage,
 });
 
 const studyPersonasRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "studies/$studyId/personas",
+  validateSearch: validateStudyDetailSearch,
   component: StudyPersonasPage,
 });
 
 const studyRunsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "studies/$studyId/runs",
+  validateSearch: validateStudyDetailSearch,
   component: StudyRunsPage,
 });
 
 const studyFindingsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "studies/$studyId/findings",
+  validateSearch: validateStudyDetailSearch,
   component: StudyFindingsPage,
 });
 
 const studyReportRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "studies/$studyId/report",
+  validateSearch: validateStudyDetailSearch,
   component: StudyReportPage,
 });
 
@@ -302,62 +313,69 @@ function SignupRouteComponent() {
 }
 
 function StudiesPage() {
-  return <StudiesSkeletonPage />;
+  return <StudiesRoutePage />;
 }
 
 function StudiesNewPage() {
-  return <StudiesNewSkeletonPage />;
+  return <StudyCreationWizardRoutePage />;
 }
 
 function StudyOverviewPage() {
   const { studyId } = studyOverviewRoute.useParams();
-  return (
-    <StudyDetailSkeletonPage
-      activeTab="overview"
-      routePath={`/studies/${studyId}/overview`}
-      studyId={studyId}
-      tabIndex={2}
-    />
-  );
+  const detailSearch = studyOverviewRoute.useSearch();
+  return <StudyOverviewRoutePage detailSearch={detailSearch} studyId={studyId} />;
 }
 
 function StudyPersonasPage() {
   const { studyId } = studyPersonasRoute.useParams();
-  return <StudyPersonasRoutePage studyId={studyId} />;
+  const detailSearch = studyPersonasRoute.useSearch();
+  return (
+    <StudyPersonasRoutePage
+      detailSearch={detailSearch}
+      studyId={studyId}
+    />
+  );
 }
 
 function StudyRunsPage() {
   const { studyId } = studyRunsRoute.useParams();
+  const detailSearch = studyRunsRoute.useSearch();
+  const navigate = studyRunsRoute.useNavigate();
   return (
-    <StudyDetailSkeletonPage
-      activeTab="runs"
-      routePath={`/studies/${studyId}/runs`}
+    <StudyRunsRoutePage
+      detailSearch={detailSearch}
+      onSearchChange={(patch) =>
+        void navigate({
+          replace: true,
+          search: (previous) => ({
+            ...previous,
+            ...patch,
+          }),
+        })
+      }
       studyId={studyId}
-      tabIndex={4}
     />
   );
 }
 
 function StudyFindingsPage() {
   const { studyId } = studyFindingsRoute.useParams();
+  const detailSearch = studyFindingsRoute.useSearch();
   return (
-    <StudyDetailSkeletonPage
-      activeTab="findings"
-      routePath={`/studies/${studyId}/findings`}
+    <StudyFindingsRoutePage
+      detailSearch={detailSearch}
       studyId={studyId}
-      tabIndex={5}
     />
   );
 }
 
 function StudyReportPage() {
   const { studyId } = studyReportRoute.useParams();
+  const detailSearch = studyReportRoute.useSearch();
   return (
-    <StudyDetailSkeletonPage
-      activeTab="report"
-      routePath={`/studies/${studyId}/report`}
+    <StudyReportRoutePage
+      detailSearch={detailSearch}
       studyId={studyId}
-      tabIndex={6}
     />
   );
 }

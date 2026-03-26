@@ -10,34 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
-
-const studyTabs = [
-  {
-    key: "overview",
-    label: "Overview",
-    to: "/studies/$studyId/overview" as const,
-  },
-  {
-    key: "personas",
-    label: "Personas",
-    to: "/studies/$studyId/personas" as const,
-  },
-  {
-    key: "runs",
-    label: "Runs",
-    to: "/studies/$studyId/runs" as const,
-  },
-  {
-    key: "findings",
-    label: "Findings",
-    to: "/studies/$studyId/findings" as const,
-  },
-  {
-    key: "report",
-    label: "Report",
-    to: "/studies/$studyId/report" as const,
-  },
-] as const;
+import {
+  StudyTabsNav,
+  type StudyDetailSearch,
+} from "@/routes/study-shared";
 
 const demoReviewData: VariantReviewData = {
   study: {
@@ -130,15 +106,30 @@ const demoReviewData: VariantReviewData = {
   ],
 };
 
-export function StudyPersonasPage({ studyId }: { studyId: string }) {
+export function StudyPersonasPage({
+  detailSearch,
+  studyId,
+}: {
+  detailSearch: StudyDetailSearch;
+  studyId: string;
+}) {
   if (studyId === DEMO_STUDY_ID) {
-    return <DemoStudyPersonasPage />;
+    return <DemoStudyPersonasPage detailSearch={detailSearch} />;
   }
 
-  return <LiveStudyPersonasPage studyId={studyId as Id<"studies">} />;
+  return (
+    <LiveStudyPersonasPage
+      detailSearch={detailSearch}
+      studyId={studyId as Id<"studies">}
+    />
+  );
 }
 
-function DemoStudyPersonasPage() {
+function DemoStudyPersonasPage({
+  detailSearch,
+}: {
+  detailSearch: StudyDetailSearch;
+}) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -161,6 +152,7 @@ function DemoStudyPersonasPage() {
   return (
     <VariantReviewContent
       actionError={null}
+      detailSearch={detailSearch}
       isGenerating={isGenerating}
       reviewData={
         demoReviewData as VariantReviewData & {
@@ -173,7 +165,13 @@ function DemoStudyPersonasPage() {
   );
 }
 
-function LiveStudyPersonasPage({ studyId }: { studyId: Id<"studies"> }) {
+function LiveStudyPersonasPage({
+  detailSearch,
+  studyId,
+}: {
+  detailSearch: StudyDetailSearch;
+  studyId: Id<"studies">;
+}) {
   const reviewData = useQuery(api.personaVariantReview.getStudyVariantReview, {
     studyId,
   });
@@ -222,6 +220,7 @@ function LiveStudyPersonasPage({ studyId }: { studyId: Id<"studies"> }) {
   return (
     <VariantReviewContent
       actionError={actionError}
+      detailSearch={detailSearch}
       isGenerating={isGenerating}
       reviewData={
         reviewData as VariantReviewData & {
@@ -239,6 +238,7 @@ function VariantReviewContent({
   isGenerating,
   statusMessage,
   actionError,
+  detailSearch,
   onGenerate,
 }: {
   reviewData: VariantReviewData & {
@@ -247,6 +247,7 @@ function VariantReviewContent({
   isGenerating: boolean;
   statusMessage: string | null;
   actionError: string | null;
+  detailSearch: StudyDetailSearch;
   onGenerate: () => void;
 }) {
   return (
@@ -272,36 +273,11 @@ function VariantReviewContent({
         </Button>
       </div>
 
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              Study detail tabs
-            </p>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Move between Overview, Personas, Runs, Findings, and Report for this
-              study without leaving the workspace.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {studyTabs.map((tab) => (
-              <Link
-                key={tab.key}
-                className={
-                  tab.key === "personas"
-                    ? "rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-                    : "rounded-md bg-muted px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                }
-                params={{ studyId: reviewData.study._id }}
-                to={tab.to}
-              >
-                {tab.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      <StudyTabsNav
+        activeTab="personas"
+        detailSearch={detailSearch}
+        studyId={reviewData.study._id}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <div className="space-y-6 xl:col-span-2">

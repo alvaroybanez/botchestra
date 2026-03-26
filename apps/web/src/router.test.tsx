@@ -88,9 +88,77 @@ type PackReviewData = ReviewData & {
   >;
 };
 
+type RunSummary = {
+  studyId: string;
+  totalRuns: number;
+  queuedCount: number;
+  runningCount: number;
+  terminalCount: number;
+  outcomeCounts: Record<string, number>;
+};
+
+type RunListItem = {
+  _id: string;
+  status: string;
+  protoPersonaId: string;
+  protoPersonaName: string;
+  protoPersonaSummary: string;
+  firstPersonBio: string;
+  axisValues: { key: string; value: number }[];
+  finalUrl?: string;
+  finalOutcome?: string;
+  durationSec?: number;
+  stepCount?: number;
+};
+
+type RunDetail = {
+  run: {
+    _id: string;
+    status: string;
+    finalUrl?: string;
+    finalOutcome?: string;
+    durationSec?: number;
+    stepCount?: number;
+    selfReport?: {
+      perceivedSuccess: boolean;
+      hardestPart?: string;
+      confusion?: string;
+      confidence?: number;
+      suggestedChange?: string;
+    };
+    artifactManifestKey?: string;
+    summaryKey?: string;
+  };
+  personaVariant: {
+    _id: string;
+    firstPersonBio: string;
+    axisValues: { key: string; value: number }[];
+  };
+  protoPersona: {
+    _id: string;
+    name: string;
+  };
+  milestones: Array<{
+    _id: string;
+    stepIndex: number;
+    timestamp: number;
+    url: string;
+    title: string;
+    actionType: string;
+    rationaleShort: string;
+    screenshotKey?: string;
+  }>;
+};
+
 let mockedVariantReview: ReviewData | null | undefined = undefined;
 let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
+let mockedStudyList: Doc<"studies">[] | undefined = [];
+let mockedStudyById: Record<string, Doc<"studies"> | null | undefined> = {};
+let mockedRunSummariesByStudyId: Record<string, RunSummary | undefined> = {};
+let mockedRunsByStudyId: Record<string, RunListItem[] | undefined> = {};
+let mockedRunDetailsById: Record<string, RunDetail | null | undefined> = {};
 const createDraftMock = vi.fn();
+const createStudyMock = vi.fn();
 const importJsonMock = vi.fn();
 const updateDraftMock = vi.fn();
 const createProtoPersonaMock = vi.fn();
@@ -109,6 +177,10 @@ vi.mock("convex/react", () => ({
   useConvexAuth: () => mockedAuthState,
   useMutation: (mutation: unknown) => {
     const mutationName = getFunctionName(mutation as never);
+
+    if (mutationName === "studies:createStudy") {
+      return createStudyMock;
+    }
 
     if (mutationName === "personaPacks:createDraft") {
       return createDraftMock;
@@ -145,8 +217,57 @@ vi.mock("convex/react", () => ({
 
     return vi.fn();
   },
-  useQuery: (query: unknown) => {
+  useQuery: (query: unknown, args: Record<string, unknown> | undefined) => {
     const queryName = getFunctionName(query as never);
+
+    if (queryName === "studies:listStudies") {
+      return mockedStudyList;
+    }
+
+    if (queryName === "studies:getStudy") {
+      return mockedStudyById[String(args?.studyId)];
+    }
+
+    if (queryName === "runs:getRunSummary") {
+      return mockedRunSummariesByStudyId[String(args?.studyId)];
+    }
+
+    if (queryName === "runs:listRuns") {
+      const studyRuns = mockedRunsByStudyId[String(args?.studyId)];
+
+      if (studyRuns === undefined) {
+        return undefined;
+      }
+
+      return studyRuns.filter((run) => {
+        if (
+          typeof args?.outcome === "string" &&
+          run.status !== args.outcome
+        ) {
+          return false;
+        }
+
+        if (
+          typeof args?.protoPersonaId === "string" &&
+          run.protoPersonaId !== args.protoPersonaId
+        ) {
+          return false;
+        }
+
+        if (
+          typeof args?.finalUrlContains === "string" &&
+          !(run.finalUrl?.includes(args.finalUrlContains) ?? false)
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    if (queryName === "runs:getRun") {
+      return mockedRunDetailsById[String(args?.runId)];
+    }
 
     if (queryName === "personaPacks:list") {
       return mockedPackList;
@@ -192,8 +313,17 @@ beforeEach(() => {
   mockedProtoPersonas = [];
   mockedVariantReview = undefined;
   mockedPackVariantReview = undefined;
+  mockedStudyList = [];
+  mockedStudyById = {};
+  mockedRunSummariesByStudyId = {};
+  mockedRunsByStudyId = {};
+  mockedRunDetailsById = {};
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
+  createStudyMock.mockReset();
+  createStudyMock.mockResolvedValue(
+    makeStudy({ _id: "study-created" as Id<"studies"> }),
+  );
   importJsonMock.mockReset();
   importJsonMock.mockResolvedValue("imported-pack-id" as Id<"personaPacks">);
   updateDraftMock.mockReset();
@@ -270,7 +400,7 @@ describe("@botchestra/web routing", () => {
     expect(container.querySelector("#login-email")).toBeNull();
   });
 
-  it("renders an empty state CTA and in-page navigation links on /studies", async () => {
+  it("renders an empty state CTA on /studies when no studies exist", async () => {
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
       initialEntries: ["/studies"],
@@ -294,34 +424,164 @@ describe("@botchestra/web routing", () => {
           href: "/studies/new",
           text: expect.stringContaining("Create your first study"),
         }),
-        expect.objectContaining({
-          href: "/studies/demo-study/overview",
-          text: expect.stringContaining("Checkout usability benchmark"),
-        }),
       ]),
     );
   });
 
-  it("renders study tab navigation for the demo study detail routes", async () => {
+  it("renders studies with status chips, run progress, and last updated details", async () => {
+    mockedStudyList = [
+      makeStudy({
+        _id: "study-ready" as Id<"studies">,
+        name: "Checkout baseline",
+        status: "ready",
+        updatedAt: 1_700_000_000_000,
+      }),
+      makeStudy({
+        _id: "study-running" as Id<"studies">,
+        name: "Returns friction audit",
+        status: "running",
+        updatedAt: 1_700_000_000_500,
+      }),
+    ];
+    mockedRunSummariesByStudyId = {
+      "study-ready": makeRunSummary("study-ready", {
+        totalRuns: 12,
+        terminalCount: 5,
+        runningCount: 4,
+        queuedCount: 3,
+      }),
+      "study-running": makeRunSummary("study-running", {
+        totalRuns: 8,
+        terminalCount: 6,
+        runningCount: 1,
+        queuedCount: 1,
+      }),
+    };
+
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/studies/demo-study/overview"],
+      initialEntries: ["/studies"],
     });
 
-    const links = [...container.querySelectorAll("a")].map((link) => ({
-      href: link.getAttribute("href"),
-      text: link.textContent,
-    }));
+    expect(container.textContent).toContain("Checkout baseline");
+    expect(container.textContent).toContain("Returns friction audit");
+    expect(container.textContent).toContain("ready");
+    expect(container.textContent).toContain("running");
+    expect(container.textContent).toContain("5/12 terminal");
+    expect(container.textContent).toContain("6/8 terminal");
+    expect(container.textContent).toContain("Nov");
+  });
 
-    expect(links).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ href: "/studies/demo-study/overview", text: "Overview" }),
-        expect.objectContaining({ href: "/studies/demo-study/personas", text: "Personas" }),
-        expect.objectContaining({ href: "/studies/demo-study/runs", text: "Runs" }),
-        expect.objectContaining({ href: "/studies/demo-study/findings", text: "Findings" }),
-        expect.objectContaining({ href: "/studies/demo-study/report", text: "Report" }),
-      ]),
+  it("renders the study creation wizard and submits a new study", async () => {
+    mockedPackList = [
+      makePack({
+        _id: "pack-published" as Id<"personaPacks">,
+        name: "Checkout Pack",
+        status: "published",
+      }),
+    ];
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/new"],
+    });
+
+    expect(container.textContent).toContain("Create a new study");
+    expect(container.textContent).toContain("Persona pack selector");
+    expect(container.textContent).toContain("Guardrail review");
+
+    await updateInput(container, "#study-name", "New Checkout Study");
+    await updateTextarea(
+      container,
+      "#study-description",
+      "Evaluates the purchase flow for first-time shoppers.",
     );
+    await updateTextarea(
+      container,
+      "#study-scenario",
+      "A shopper needs to buy a pair of shoes before a weekend trip.",
+    );
+    await updateTextarea(
+      container,
+      "#study-goal",
+      "Reach order confirmation.",
+    );
+    await updateInput(
+      container,
+      "#study-starting-url",
+      "https://example.com/products/shoes",
+    );
+    await updateTextarea(
+      container,
+      "#study-allowed-domains",
+      "example.com\ncheckout.example.com",
+    );
+    await updateInput(container, "#study-run-budget", "32");
+    await updateInput(container, "#study-active-concurrency", "6");
+    await updateSelect(container, "#study-environment-label", "qa");
+    await updateTextarea(
+      container,
+      "#study-success-criteria",
+      "See order confirmation",
+    );
+    await updateTextarea(
+      container,
+      "#study-stop-conditions",
+      "Leave the allowlisted domain",
+    );
+    await updateTextarea(
+      container,
+      "#study-post-task-questions",
+      "Did you finish?",
+    );
+    await updateInput(container, "#study-max-steps", "18");
+    await updateInput(container, "#study-max-duration", "360");
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+
+    await act(async () => {
+      form!.dispatchEvent(
+        new Event("submit", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(createStudyMock).toHaveBeenCalledWith({
+      study: {
+        personaPackId: "pack-published",
+        name: "New Checkout Study",
+        description: "Evaluates the purchase flow for first-time shoppers.",
+        taskSpec: {
+          scenario:
+            "A shopper needs to buy a pair of shoes before a weekend trip.",
+          goal: "Reach order confirmation.",
+          startingUrl: "https://example.com/products/shoes",
+          allowedDomains: ["example.com", "checkout.example.com"],
+          allowedActions: [
+            "goto",
+            "click",
+            "type",
+            "select",
+            "scroll",
+            "wait",
+            "back",
+            "finish",
+          ],
+          forbiddenActions: ["payment_submission", "external_download"],
+          successCriteria: ["See order confirmation"],
+          stopConditions: ["Leave the allowlisted domain"],
+          postTaskQuestions: ["Did you finish?"],
+          maxSteps: 18,
+          maxDurationSec: 360,
+          environmentLabel: "qa",
+          locale: "en-US",
+          viewport: { width: 1440, height: 900 },
+        },
+        runBudget: 32,
+        activeConcurrency: 6,
+      },
+    });
+    expect(getRouterLocationHref(router)).toBe("/studies/study-created/overview");
   });
 
   it("renders accepted variants with required review columns", async () => {
@@ -420,6 +680,157 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain(
       "Generated 64 accepted variants (0 rejected, 0 retries).",
     );
+  });
+
+  it("renders overview tabs and study task details", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        name: "Checkout usability benchmark",
+        description: "Investigates friction in the core checkout funnel.",
+        status: "persona_review",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live"),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/overview"],
+    });
+
+    expect(container.textContent).toContain("Checkout usability benchmark");
+    expect(container.textContent).toContain("Task specification");
+    expect(container.textContent).toContain("A shopper wants to complete checkout.");
+    expect(container.textContent).toContain("Run progress");
+
+    const links = [...container.querySelectorAll("a")].map((link) => ({
+      href: link.getAttribute("href"),
+      text: link.textContent,
+    }));
+
+    expect(links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: "/studies/study-live/overview",
+          text: "Overview",
+        }),
+        expect.objectContaining({
+          href: "/studies/study-live/personas",
+          text: "Personas",
+        }),
+        expect.objectContaining({
+          href: "/studies/study-live/runs",
+          text: "Runs",
+        }),
+        expect.objectContaining({
+          href: "/studies/study-live/findings",
+          text: "Findings",
+        }),
+        expect.objectContaining({
+          href: "/studies/study-live/report",
+          text: "Report",
+        }),
+      ]),
+    );
+  });
+
+  it("renders run detail content and filters runs by outcome, persona, and URL", async () => {
+    mockedRunsByStudyId = {
+      "study-live": makeRunList(),
+    };
+    mockedRunDetailsById = {
+      "run-hard-fail": makeRunDetail(),
+      "run-success": makeRunDetail({
+        run: {
+          _id: "run-success",
+          status: "success",
+          finalUrl: "https://example.com/checkout/confirmation",
+          finalOutcome: "order_confirmed",
+        },
+      }),
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/runs"],
+    });
+
+    expect(container.textContent).toContain("Run detail");
+    expect(container.textContent).toContain("Persona summary");
+    expect(container.textContent).toContain("Careful shopper");
+    expect(container.textContent).toContain("Milestone timeline");
+    expect(container.textContent).toContain("Open artifact manifest");
+    expect(container.innerHTML).not.toContain("r2://");
+
+    await updateSelect(container, "#run-outcome-filter", "hard_fail");
+    expect(container.textContent).toContain("Filtered runs (1)");
+    expect(container.textContent).toContain("Checkout failed at address");
+
+    await updateSelect(container, "#run-persona-filter", "proto-careful");
+    expect(container.textContent).toContain("Filtered runs (1)");
+
+    await updateInput(container, "#run-url-filter", "confirmation");
+    expect(container.textContent).toContain("Filtered runs (0)");
+  });
+
+  it("preserves run filter state when switching between study detail tabs", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({ _id: "study-live" as Id<"studies"> }),
+    };
+    mockedRunsByStudyId = {
+      "study-live": makeRunList(),
+    };
+    mockedRunDetailsById = {
+      "run-hard-fail": makeRunDetail(),
+    };
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/study-live/runs"],
+    });
+
+    await updateSelect(container, "#run-outcome-filter", "hard_fail");
+    await updateSelect(container, "#run-persona-filter", "proto-careful");
+    await updateInput(container, "#run-url-filter", "address");
+
+    const findingsLink = [...container.querySelectorAll("a")].find(
+      (link) => link.textContent === "Findings",
+    );
+    expect(findingsLink).not.toBeNull();
+
+    await act(async () => {
+      findingsLink!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(getRouterLocationHref(router)).toContain(
+      "/studies/study-live/findings",
+    );
+    expect(getRouterLocationHref(router)).toContain("outcome=hard_fail");
+    expect(getRouterLocationHref(router)).toContain("protoPersonaId=proto-careful");
+    expect(getRouterLocationHref(router)).toContain("finalUrlContains=address");
+
+    const runsLink = [...container.querySelectorAll("a")].find(
+      (link) => link.textContent === "Runs",
+    );
+    expect(runsLink).not.toBeNull();
+
+    await act(async () => {
+      runsLink!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const outcomeSelect = container.querySelector<HTMLSelectElement>(
+      "#run-outcome-filter",
+    );
+    const personaSelect = container.querySelector<HTMLSelectElement>(
+      "#run-persona-filter",
+    );
+    const urlInput = container.querySelector<HTMLInputElement>("#run-url-filter");
+
+    expect(outcomeSelect?.value).toBe("hard_fail");
+    expect(personaSelect?.value).toBe("proto-careful");
+    expect(urlInput?.value).toBe("address");
   });
 
   it("renders the persona pack empty state when no packs exist", async () => {
@@ -780,6 +1191,152 @@ function getVariantRows(container: HTMLDivElement) {
 
 function firstVariantRowText(container: HTMLDivElement) {
   return getVariantRows(container)[0] ?? "";
+}
+
+function makeStudy(overrides: Partial<Doc<"studies">> = {}): Doc<"studies"> {
+  return {
+    _creationTime: 1,
+    _id: (overrides._id ?? "study-1") as Id<"studies">,
+    orgId: "researcher|org-a",
+    personaPackId: "pack-1" as Id<"personaPacks">,
+    name: "Checkout usability benchmark",
+    description: "Evaluates friction in the checkout flow.",
+    taskSpec: {
+      scenario: "A shopper wants to complete checkout.",
+      goal: "Reach order confirmation.",
+      startingUrl: "https://example.com/checkout",
+      allowedDomains: ["example.com"],
+      allowedActions: ["goto", "click", "type", "finish"],
+      forbiddenActions: ["payment_submission"],
+      successCriteria: ["Order confirmation is visible"],
+      stopConditions: ["Leave the allowlisted domain"],
+      postTaskQuestions: ["Did you complete the task?"],
+      maxSteps: 25,
+      maxDurationSec: 420,
+      environmentLabel: "staging",
+      locale: "en-US",
+      viewport: { width: 1440, height: 900 },
+    },
+    runBudget: 64,
+    activeConcurrency: 8,
+    status: "draft",
+    createdBy: "researcher|org-a",
+    createdAt: 1,
+    updatedAt: 2,
+    ...overrides,
+  };
+}
+
+function makeRunSummary(
+  studyId: string,
+  overrides: Partial<RunSummary> = {},
+): RunSummary {
+  return {
+    studyId,
+    totalRuns: 10,
+    queuedCount: 2,
+    runningCount: 3,
+    terminalCount: 5,
+    outcomeCounts: {
+      success: 3,
+      hard_fail: 1,
+      soft_fail: 0,
+      gave_up: 1,
+      timeout: 0,
+      blocked_by_guardrail: 0,
+      infra_error: 0,
+      cancelled: 0,
+    },
+    ...overrides,
+  };
+}
+
+function makeRunList(): RunListItem[] {
+  return [
+    {
+      _id: "run-hard-fail",
+      status: "hard_fail",
+      protoPersonaId: "proto-careful",
+      protoPersonaName: "Careful shopper",
+      protoPersonaSummary: "Moves slowly and checks every total.",
+      firstPersonBio: "Checkout failed at address entry after the shipping form became confusing.",
+      axisValues: [{ key: "digital_confidence", value: -0.42 }],
+      finalUrl: "https://example.com/checkout/address",
+      finalOutcome: "address_validation_failed",
+      durationSec: 185,
+      stepCount: 7,
+    },
+    {
+      _id: "run-success",
+      status: "success",
+      protoPersonaId: "proto-speedy",
+      protoPersonaName: "Speedy repeat buyer",
+      protoPersonaSummary: "Moves quickly and expects autofill to work.",
+      firstPersonBio: "Fast repeat buyer who completed the flow without friction.",
+      axisValues: [{ key: "digital_confidence", value: 0.78 }],
+      finalUrl: "https://example.com/checkout/confirmation",
+      finalOutcome: "order_confirmed",
+      durationSec: 92,
+      stepCount: 5,
+    },
+  ];
+}
+
+function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
+  return {
+    run: {
+      _id: "run-hard-fail",
+      status: "hard_fail",
+      finalUrl: "https://example.com/checkout/address",
+      finalOutcome: "address_validation_failed",
+      durationSec: 185,
+      stepCount: 7,
+      selfReport: {
+        perceivedSuccess: false,
+        hardestPart: "The shipping address step",
+        confusion: "I could not tell which field was invalid.",
+        confidence: 0.32,
+        suggestedChange: "Explain which fields need to change.",
+      },
+      artifactManifestKey: "runs/run-hard-fail/artifacts.json",
+      summaryKey: "runs/run-hard-fail/summary.json",
+      ...overrides.run,
+    },
+    personaVariant: {
+      _id: "variant-careful",
+      firstPersonBio:
+        "I move carefully through checkout and need reassurance before I commit to payment.",
+      axisValues: [{ key: "digital_confidence", value: -0.42 }],
+      ...overrides.personaVariant,
+    },
+    protoPersona: {
+      _id: "proto-careful",
+      name: "Careful shopper",
+      ...overrides.protoPersona,
+    },
+    milestones: [
+      {
+        _id: "milestone-1",
+        stepIndex: 1,
+        timestamp: 1_700_000_000_000,
+        url: "https://example.com/checkout/cart",
+        title: "Cart",
+        actionType: "click",
+        rationaleShort: "Started checkout from the cart page.",
+        screenshotKey: "runs/run-hard-fail/milestones/1.png",
+      },
+      {
+        _id: "milestone-2",
+        stepIndex: 2,
+        timestamp: 1_700_000_000_500,
+        url: "https://example.com/checkout/address",
+        title: "Address",
+        actionType: "type",
+        rationaleShort: "Entered the shipping address and hit a validation issue.",
+      },
+      ...(overrides.milestones ?? []),
+    ],
+  };
 }
 
 async function updateTextarea(

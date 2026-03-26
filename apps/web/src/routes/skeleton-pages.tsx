@@ -5,6 +5,7 @@ import {
   contentRoutePlaceholders,
   RoutePlaceholder,
 } from "@/routes/placeholders";
+import { emptyStudyDetailSearch } from "@/routes/study-shared";
 
 export const DEMO_STUDY_ID = "demo-study" as const;
 export const DEMO_PACK_ID = "demo-pack" as const;
@@ -99,6 +100,7 @@ export function StudiesSkeletonPage() {
           <Link
             className="block rounded-lg border bg-background p-4 transition-colors hover:border-primary hover:bg-muted/50"
             params={{ studyId: DEMO_STUDY_ID }}
+            search={emptyStudyDetailSearch}
             to="/studies/$studyId/overview"
           >
             <span className="block text-sm font-medium text-muted-foreground">
@@ -185,6 +187,7 @@ export function StudyDetailSkeletonPage({
                     : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
                 params={{ studyId }}
+                search={emptyStudyDetailSearch}
                 to={tab.to}
               >
                 {tab.label}
