@@ -561,6 +561,8 @@ describe("analysisPipeline clustering", () => {
     expect(clusters).toHaveLength(2);
     expect(replayedCluster?.replayConfidence).toBe(0.5);
     expect(unreplayedCluster?.replayConfidence).toBe(0);
+    expect(report.issueClusterIds[0]).toBe(replayedCluster?._id);
+    expect(report.issueClusterIds[1]).toBe(unreplayedCluster?._id);
     expect(unreplayedCluster?.representativeRunIds).toContain(unreplayedFailureRun);
   });
 

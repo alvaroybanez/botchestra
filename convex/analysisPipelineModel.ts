@@ -10,6 +10,7 @@ import { z } from "zod";
 import { type Doc, type Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { buildIssueClusters } from "./analysis/issueClustering";
+import { rankIssueClusters } from "./analysis/ranking";
 
 const zInternalMutation = zCustomMutation(internalMutation, NoOp);
 const zInternalQuery = zCustomQuery(internalQuery, NoOp);
@@ -176,5 +177,19 @@ export const replaceIssueClustersForStudy = zInternalMutation({
     }
 
     return insertedClusterIds;
+  },
+});
+
+export const listRankedIssueClusterIds = zInternalQuery({
+  args: {
+    studyId: zid("studies"),
+  },
+  handler: async (ctx, args): Promise<Id<"issueClusters">[]> => {
+    const issueClusters = await ctx.db
+      .query("issueClusters")
+      .withIndex("by_studyId", (query) => query.eq("studyId", args.studyId))
+      .take(200);
+
+    return rankIssueClusters(issueClusters).map((cluster) => cluster._id);
   },
 });

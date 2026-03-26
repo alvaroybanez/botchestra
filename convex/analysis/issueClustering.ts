@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import { computeImpactScore, computeSegmentSpread, type AnalysisSeverity } from "./pure";
+import { rankIssueClusters } from "./ranking";
 import {
   buildFallbackRunSummary,
   decodeRunSummaryKey,
@@ -139,43 +140,32 @@ export function buildIssueClusters(params: {
       const confidenceNote = buildConfidenceNote(affectedRunCount, replayStats);
 
       return {
-        firstSeenIndex: members[0]!.index,
-        draft: {
-          studyId: params.studyId,
-          title,
-          summary,
+        studyId: params.studyId,
+        title,
+        summary,
+        severity,
+        affectedRunCount,
+        affectedRunRate,
+        affectedProtoPersonaIds,
+        affectedAxisRanges,
+        representativeRunIds,
+        replayConfidence: replayStats.replayConfidence,
+        evidenceKeys: uniqueStrings([
+          ...members.flatMap((member) => member.run.milestoneKeys),
+          ...replayStats.reproducedEvidenceKeys,
+        ]),
+        recommendation,
+        confidenceNote,
+        score: computeImpactScore(
           severity,
-          affectedRunCount,
           affectedRunRate,
-          affectedProtoPersonaIds,
-          affectedAxisRanges,
-          representativeRunIds,
-          replayConfidence: replayStats.replayConfidence,
-          evidenceKeys: uniqueStrings([
-            ...members.flatMap((member) => member.run.milestoneKeys),
-            ...replayStats.reproducedEvidenceKeys,
-          ]),
-          recommendation,
-          confidenceNote,
-          score: computeImpactScore(
-            severity,
-            affectedRunRate,
-            replayStats.replayConfidence,
-            segmentSpread,
-          ),
-        } satisfies IssueClusterDraft,
-      };
+          replayStats.replayConfidence,
+          segmentSpread,
+        ),
+      } satisfies IssueClusterDraft;
     });
 
-  return drafts
-    .sort((left, right) => {
-      if (left.draft.score !== right.draft.score) {
-        return right.draft.score - left.draft.score;
-      }
-
-      return left.firstSeenIndex - right.firstSeenIndex;
-    })
-    .map((entry) => entry.draft);
+  return rankIssueClusters(drafts);
 }
 
 function collectReplayStats(

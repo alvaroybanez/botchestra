@@ -347,8 +347,12 @@ export const createStudyLifecycleReport = zInternalMutation({
 
     const headlineMetrics = computeHeadlineMetrics(primaryRuns);
 
-    const issueClusterIds: Id<"issueClusters">[] = await ctx.runMutation(
+    await ctx.runMutation(
       internal.analysisPipelineModel.replaceIssueClustersForStudy,
+      { studyId: args.studyId },
+    );
+    const issueClusterIds: Id<"issueClusters">[] = await ctx.runQuery(
+      internal.analysisPipelineModel.listRankedIssueClusterIds,
       { studyId: args.studyId },
     );
     const createdAt = Date.now();
