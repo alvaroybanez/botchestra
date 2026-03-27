@@ -1,23 +1,22 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { DEFAULT_RUN_BUDGET, MAX_RUN_BUDGET } from "./personaEngine/variantGeneration";
-import { zid, zQuery } from "./zodHelpers";
 
 const studySummarySchema = z.object({
-  _id: zid("studies"),
+  _id: z.string(),
   name: z.string(),
   status: z.string(),
   runBudget: z.number(),
   updatedAt: z.number(),
 });
 
-export const getStudyVariantReview = zQuery({
+export const getStudyVariantReview = query({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
@@ -39,10 +38,10 @@ export const getStudyVariantReview = zQuery({
   },
 });
 
-export const getPackVariantReview = zQuery({
+export const getPackVariantReview = query({
   args: {
-    packId: zid("personaPacks"),
-    studyId: studySummarySchema.shape._id.optional(),
+    packId: v.id("personaPacks"),
+    studyId: v.optional(v.id("studies")),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);

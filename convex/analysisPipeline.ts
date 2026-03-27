@@ -1,7 +1,6 @@
 "use node";
-
-import { NoOp } from "convex-helpers/server/customFunctions";
 import { z } from "zod";
+import { v } from "convex/values";
 
 import { generateWithModel } from "../packages/ai/src/index";
 
@@ -20,7 +19,6 @@ import {
   type RunSummaryContext,
   type SummarizableRunSummaryContext,
 } from "./analysis/runSummaries";
-import { zid, zInternalAction } from "./zodHelpers";
 
 const aiRunSummarySchema = z.object({
   outcomeClassification: z.enum(["success", "failure", "abandoned"]),
@@ -33,9 +31,9 @@ const aiRunSummarySchema = z.object({
   representativeQuote: z.string(),
 });
 
-export const summarizeStudyRuns = zInternalAction({
+export const summarizeStudyRuns = internalAction({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<SummarizeStudyRunsResult> => {
     const context: RunSummarizationContextResult = await ctx.runQuery(
@@ -66,7 +64,10 @@ export const summarizeStudyRuns = zInternalAction({
       const summary = await summarizeRun(
         ctx,
         run as SummarizableRunSummaryContext & { summaryKey?: string },
-        settings.modelConfig.find((entry) => entry.taskCategory === "summarization")?.modelId,
+        settings.modelConfig.find(
+          (entry: { taskCategory: string; modelId: string }) =>
+            entry.taskCategory === "summarization",
+        )?.modelId,
       );
       await ctx.runMutation(internal.analysisPipelineModel.persistRunSummary, {
         runId: run._id,
@@ -88,9 +89,9 @@ export const summarizeStudyRuns = zInternalAction({
   },
 });
 
-export const analyzeStudy = zInternalAction({
+export const analyzeStudy = internalAction({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<AnalyzeStudyResult> => {
     const analysisSnapshot: StudyAnalysisSnapshot = await ctx.runQuery(

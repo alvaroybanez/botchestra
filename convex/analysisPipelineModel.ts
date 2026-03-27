@@ -1,19 +1,18 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import { type Doc, type Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { buildIssueClusters } from "./analysis/issueClustering";
 import { rankIssueClusters } from "./analysis/ranking";
-import { zid, zInternalMutation, zInternalQuery } from "./zodHelpers";
 type RunMilestoneContext = Pick<
   Doc<"runMilestones">,
   "actionType" | "title" | "url" | "note" | "stepIndex"
 >;
 
-export const getRunSummarizationContext = zInternalQuery({
+export const getRunSummarizationContext = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await ctx.db.get(args.studyId);
@@ -51,9 +50,9 @@ export const getRunSummarizationContext = zInternalQuery({
   },
 });
 
-export const getStudyAnalysisSnapshot = zInternalQuery({
+export const getStudyAnalysisSnapshot = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await ctx.db.get(args.studyId);
@@ -82,32 +81,38 @@ export const getStudyAnalysisSnapshot = zInternalQuery({
   },
 });
 
-export const persistRunSummary = zInternalMutation({
+export const persistRunSummary = internalMutation({
   args: {
-    runId: zid("runs"),
-    summaryKey: z.string().min(1),
+    runId: v.id("runs"),
+    summaryKey: v.string(),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        runId: z.string(),
+        summaryKey: z.string().min(1),
+      })
+      .parse(args);
     const run = await ctx.db.get(args.runId);
 
     if (run === null) {
       throw new ConvexError("Run not found.");
     }
 
-    await ctx.db.patch(args.runId, {
-      summaryKey: args.summaryKey,
+    await ctx.db.patch(parsedArgs.runId as Id<"runs">, {
+      summaryKey: parsedArgs.summaryKey,
     });
 
     return {
-      runId: args.runId,
-      summaryKey: args.summaryKey,
+      runId: parsedArgs.runId as Id<"runs">,
+      summaryKey: parsedArgs.summaryKey,
     };
   },
 });
 
-export const replaceIssueClustersForStudy = zInternalMutation({
+export const replaceIssueClustersForStudy = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<Id<"issueClusters">[]> => {
     const study = await ctx.db.get(args.studyId);
@@ -204,9 +209,9 @@ export const replaceIssueClustersForStudy = zInternalMutation({
   },
 });
 
-export const listRankedIssueClusterIds = zInternalQuery({
+export const listRankedIssueClusterIds = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<Id<"issueClusters">[]> => {
     const issueClusters = await ctx.db

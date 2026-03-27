@@ -1,5 +1,4 @@
-import { zInternalMutation } from "./zodHelpers";
-import { z } from "zod";
+import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
@@ -9,9 +8,9 @@ export const STALE_HEARTBEAT_THRESHOLD_MS = 60_000;
 export const HEARTBEAT_MONITOR_INTERVAL_SECONDS = 15;
 export const STALE_HEARTBEAT_ERROR_CODE = "HEARTBEAT_STALE";
 
-export const monitorStaleRuns = zInternalMutation({
+export const monitorStaleRuns = internalMutation({
   args: {
-    now: z.number().optional(),
+    now: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const now = args.now ?? Date.now();

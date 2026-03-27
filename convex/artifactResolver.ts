@@ -1,11 +1,10 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { buildStudyReportArtifactKeys } from "./analysis/reportArtifacts";
-import { zQuery } from "./zodHelpers";
 
 const LOCAL_ARTIFACT_PROXY_BASE_URL = "http://localhost:8787";
 const DEFAULT_SIGNED_URL_EXPIRY_SECONDS = 4 * 60 * 60;
@@ -22,13 +21,18 @@ type ArtifactScope = {
   signedUrlExpirySeconds: number;
 };
 
-export const getArtifactUrl = zQuery({
+export const getArtifactUrl = query({
   args: {
-    key: z.string().trim().min(1, "Artifact key is required."),
+    key: v.string(),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        key: z.string().trim().min(1, "Artifact key is required."),
+      })
+      .parse(args);
     const identity = await requireIdentity(ctx);
-    const normalizedKey = args.key.trim();
+    const normalizedKey = parsedArgs.key.trim();
 
     if (isDirectArtifactUrl(normalizedKey)) {
       return normalizedKey;

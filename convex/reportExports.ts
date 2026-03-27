@@ -1,5 +1,4 @@
-import { ConvexError } from "convex/values";
-import { z } from "zod";
+import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -13,7 +12,6 @@ import {
   type StudyReportExportCluster,
 } from "./analysis/reportArtifacts";
 import { collectIssueClusterArtifactKeys, resolveArtifactUrlsForStudy } from "./artifactResolver";
-import { zid, zAction, zInternalQuery } from "./zodHelpers";
 
 type ReportArtifactsPayload = ReturnType<typeof buildStudyReportArtifacts>;
 type ExportedReportArtifact = {
@@ -24,9 +22,9 @@ type ExportedReportArtifact = {
   content: string;
 };
 
-export const exportJson = zAction({
+export const exportJson = action({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<ExportedReportArtifact> => {
     const identity = await requireIdentity(ctx);
@@ -48,9 +46,9 @@ export const exportJson = zAction({
   },
 });
 
-export const exportHtml = zAction({
+export const exportHtml = action({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<ExportedReportArtifact> => {
     const identity = await requireIdentity(ctx);
@@ -72,10 +70,10 @@ export const exportHtml = zAction({
   },
 });
 
-export const getArtifactsForOrg = zInternalQuery({
+export const getArtifactsForOrg = internalQuery({
   args: {
-    studyId: zid("studies"),
-    orgId: z.string(),
+    studyId: v.id("studies"),
+    orgId: v.string(),
   },
   handler: async (ctx, args) => {
     await getStudyForOrg(ctx, args.studyId, args.orgId);

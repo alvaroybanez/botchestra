@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc } from "./_generated/dataModel";
@@ -7,7 +7,6 @@ import { internalQuery, mutation, query } from "./_generated/server";
 import { listCredentialSummariesForOrg } from "./credentials";
 import { recordAuditEvent } from "./observability";
 import { ADMIN_ROLES, requireRole } from "./rbac";
-import { zInternalQuery, zMutation, zQuery } from "./zodHelpers";
 
 const taskCategorySchema = z.enum([
   "expansion",
@@ -70,7 +69,42 @@ const settingsPatchSchema = z
     "At least one settings field must be provided.",
   );
 
-export const getSettings = zQuery({
+const taskCategoryValidator = v.union(
+  v.literal("expansion"),
+  v.literal("action"),
+  v.literal("summarization"),
+  v.literal("clustering"),
+  v.literal("recommendation"),
+);
+
+const modelConfigEntryValidator = v.object({
+  taskCategory: taskCategoryValidator,
+  modelId: v.string(),
+});
+
+const budgetLimitsPatchValidator = v.object({
+  maxTokensPerStudy: v.optional(v.number()),
+  maxBrowserSecPerStudy: v.optional(v.number()),
+});
+
+const browserPolicyPatchValidator = v.object({
+  blockAnalytics: v.optional(v.boolean()),
+  blockHeavyMedia: v.optional(v.boolean()),
+  screenshotFormat: v.optional(v.string()),
+  screenshotMode: v.optional(v.string()),
+});
+
+const settingsPatchValidator = v.object({
+  domainAllowlist: v.optional(v.array(v.string())),
+  maxConcurrency: v.optional(v.number()),
+  modelConfig: v.optional(v.array(modelConfigEntryValidator)),
+  runBudgetCap: v.optional(v.number()),
+  budgetLimits: v.optional(budgetLimitsPatchValidator),
+  browserPolicy: v.optional(browserPolicyPatchValidator),
+  signedUrlExpirySeconds: v.optional(v.number()),
+});
+
+export const getSettings = query({
   args: {},
   handler: async (ctx) => {
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
@@ -85,35 +119,50 @@ export const getSettings = zQuery({
   },
 });
 
-export const getEffectiveSettingsForOrg = zInternalQuery({
+export const getEffectiveSettingsForOrg = internalQuery({
   args: {
-    orgId: requiredString("Org ID"),
+    orgId: v.string(),
   },
   handler: async (ctx, args) => {
-    return await loadEffectiveSettingsForOrg(ctx, args.orgId);
+    const parsedArgs = z
+      .object({
+        orgId: requiredString("Org ID"),
+      })
+      .parse(args);
+    return await loadEffectiveSettingsForOrg(ctx, parsedArgs.orgId);
   },
 });
 
-export const updateSettings = zMutation({
+export const updateSettings = mutation({
   args: {
-    patch: settingsPatchSchema,
+    patch: settingsPatchValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        patch: settingsPatchSchema,
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
 
     return await upsertSettingsForOrg(ctx, {
       orgId: identity.tokenIdentifier,
       actorId: identity.tokenIdentifier,
-      patch: args.patch,
+      patch: parsedArgs.patch,
     });
   },
 });
 
-export const addDomainToAllowlist = zMutation({
+export const addDomainToAllowlist = mutation({
   args: {
-    domain: requiredString("Domain"),
+    domain: v.string(),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        domain: requiredString("Domain"),
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
     const currentSettings = await loadEffectiveSettingsForOrg(
       ctx,
@@ -124,19 +173,24 @@ export const addDomainToAllowlist = zMutation({
       orgId: identity.tokenIdentifier,
       actorId: identity.tokenIdentifier,
       patch: {
-        domainAllowlist: [...currentSettings.domainAllowlist, args.domain],
+        domainAllowlist: [...currentSettings.domainAllowlist, parsedArgs.domain],
       },
     });
   },
 });
 
-export const removeDomainFromAllowlist = zMutation({
+export const removeDomainFromAllowlist = mutation({
   args: {
-    domain: requiredString("Domain"),
+    domain: v.string(),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        domain: requiredString("Domain"),
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    const normalizedDomain = normalizeHostname(args.domain);
+    const normalizedDomain = normalizeHostname(parsedArgs.domain);
 
     if (normalizedDomain === null) {
       throw new ConvexError("Domain is required.");

@@ -1,6 +1,5 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
-import { zid, zInternalMutation, zInternalQuery } from "./zodHelpers";
 
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery } from "./_generated/server";
@@ -16,10 +15,15 @@ const axisValueSchema = z.object({
   value: z.number(),
 });
 
+const axisValueValidator = v.object({
+  key: v.string(),
+  value: v.number(),
+});
+
 const persistedVariantSchema = z.object({
-  studyId: zid("studies"),
-  personaPackId: zid("personaPacks"),
-  protoPersonaId: zid("protoPersonas"),
+  studyId: z.string(),
+  personaPackId: z.string(),
+  protoPersonaId: z.string(),
   axisValues: z.array(axisValueSchema),
   edgeScore: z.number(),
   tensionSeed: z.string(),
@@ -41,7 +45,7 @@ const generationSummarySchema = z.object({
     minimumPairwiseDistance: z.number().nonnegative(),
     perProtoPersona: z.array(
       z.object({
-        protoPersonaId: zid("protoPersonas"),
+        protoPersonaId: z.string(),
         acceptedCount: z.number().int().nonnegative(),
         rejectedCount: z.number().int().nonnegative(),
       }),
@@ -49,10 +53,43 @@ const generationSummarySchema = z.object({
   }),
 });
 
-export const getGenerationContext = zInternalQuery({
+const persistedVariantValidator = v.object({
+  studyId: v.id("studies"),
+  personaPackId: v.id("personaPacks"),
+  protoPersonaId: v.id("protoPersonas"),
+  axisValues: v.array(axisValueValidator),
+  edgeScore: v.number(),
+  tensionSeed: v.string(),
+  firstPersonBio: v.string(),
+  behaviorRules: v.array(v.string()),
+  coherenceScore: v.number(),
+  distinctnessScore: v.number(),
+  accepted: v.boolean(),
+});
+
+const generationSummaryValidator = v.object({
+  acceptedCount: v.number(),
+  rejectedCount: v.number(),
+  retryCount: v.number(),
+  coverage: v.object({
+    budget: v.number(),
+    edgeCount: v.number(),
+    interiorCount: v.number(),
+    minimumPairwiseDistance: v.number(),
+    perProtoPersona: v.array(
+      v.object({
+        protoPersonaId: v.id("protoPersonas"),
+        acceptedCount: v.number(),
+        rejectedCount: v.number(),
+      }),
+    ),
+  }),
+});
+
+export const getGenerationContext = internalQuery({
   args: {
-    studyId: zid("studies"),
-    orgId: z.string(),
+    studyId: v.id("studies"),
+    orgId: v.string(),
   },
   handler: async (ctx, args) => {
     const study = await ctx.db.get(args.studyId);
@@ -99,9 +136,9 @@ export const getGenerationContext = zInternalQuery({
   },
 });
 
-export const getStudyGenerationOwner = zInternalQuery({
+export const getStudyGenerationOwner = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await ctx.db.get(args.studyId);
@@ -116,10 +153,10 @@ export const getStudyGenerationOwner = zInternalQuery({
   },
 });
 
-export const getPreviewContext = zInternalQuery({
+export const getPreviewContext = internalQuery({
   args: {
-    packId: zid("personaPacks"),
-    orgId: z.string(),
+    packId: v.id("personaPacks"),
+    orgId: v.string(),
   },
   handler: async (ctx, args) => {
     const pack = await ctx.db.get(args.packId);
@@ -150,17 +187,25 @@ export const getPreviewContext = zInternalQuery({
   },
 });
 
-export const persistVariantsIfAbsent = zInternalMutation({
+export const persistVariantsIfAbsent = internalMutation({
   args: {
-    studyId: zid("studies"),
-    orgId: z.string(),
-    variants: z.array(persistedVariantSchema),
-    summary: generationSummarySchema,
+    studyId: v.id("studies"),
+    orgId: v.string(),
+    variants: v.array(persistedVariantValidator),
+    summary: generationSummaryValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        orgId: z.string(),
+        variants: z.array(persistedVariantSchema),
+        summary: generationSummarySchema,
+      })
+      .parse(args);
     const study = await ctx.db.get(args.studyId);
 
-    if (study === null || study.orgId !== args.orgId) {
+    if (study === null || study.orgId !== parsedArgs.orgId) {
       throw new ConvexError("Study not found.");
     }
 
@@ -176,15 +221,20 @@ export const persistVariantsIfAbsent = zInternalMutation({
       (variant) => variant.accepted,
     ).length;
 
-    if (args.variants.length === 0 || acceptedExistingCount >= resolvedBudget) {
+    if (parsedArgs.variants.length === 0 || acceptedExistingCount >= resolvedBudget) {
       return buildSummary(existingVariants, resolvedBudget);
     }
 
-    for (const variant of args.variants) {
-      await ctx.db.insert("personaVariants", variant);
+    for (const variant of parsedArgs.variants) {
+      await ctx.db.insert("personaVariants", {
+        ...variant,
+        studyId: variant.studyId as Id<"studies">,
+        personaPackId: variant.personaPackId as Id<"personaPacks">,
+        protoPersonaId: variant.protoPersonaId as Id<"protoPersonas">,
+      });
     }
 
-    return args.summary;
+    return parsedArgs.summary;
   },
 });
 

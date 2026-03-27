@@ -122,7 +122,7 @@ describe("rbac", () => {
   it("falls back to the stored users table role when no role claim is present", async () => {
     const t = createTest();
     await t.run(async (ctx) =>
-      ctx.db.insert("userRoles", {
+      ctx.db.insert("users", {
         email: "stored-admin@example.com",
         role: "admin",
       }),
@@ -146,7 +146,7 @@ describe("rbac", () => {
   it("prefers a JWT role claim over the stored users table role", async () => {
     const t = createTest();
     await t.run(async (ctx) =>
-      ctx.db.insert("userRoles", {
+      ctx.db.insert("users", {
         email: "claim-admin@example.com",
         role: "reviewer",
       }),

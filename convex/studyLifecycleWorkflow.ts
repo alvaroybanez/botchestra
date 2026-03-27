@@ -30,13 +30,6 @@ import {
 import { recordAuditEvent } from "./observability";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
-import {
-  zid,
-  zInternalAction,
-  zInternalMutation,
-  zInternalQuery,
-  zQuery,
-} from "./zodHelpers";
 
 const WORKFLOW_POLL_INTERVAL_MS = 1_000;
 
@@ -61,6 +54,38 @@ type StudyLifecycleReportDraft = {
   report: StudyLifecycleReportRecord;
   issueClusters: StudyReportExportCluster[];
 };
+
+const studyLifecycleReportRecordSchema = z.object({
+  studyId: z.string(),
+  headlineMetrics: z.object({
+    completionRate: z.number(),
+    abandonmentRate: z.number(),
+    medianSteps: z.number(),
+    medianDurationSec: z.number(),
+  }),
+  issueClusterIds: z.array(z.string()),
+  segmentBreakdownKey: z.string().min(1),
+  limitations: z.array(z.string()),
+  htmlReportKey: z.string().min(1),
+  jsonReportKey: z.string().min(1),
+  createdAt: z.number(),
+});
+
+const studyLifecycleReportRecordValidator = v.object({
+  studyId: v.id("studies"),
+  headlineMetrics: v.object({
+    completionRate: v.number(),
+    abandonmentRate: v.number(),
+    medianSteps: v.number(),
+    medianDurationSec: v.number(),
+  }),
+  issueClusterIds: v.array(v.id("issueClusters")),
+  segmentBreakdownKey: v.string(),
+  limitations: v.array(v.string()),
+  htmlReportKey: v.string(),
+  jsonReportKey: v.string(),
+  createdAt: v.number(),
+});
 
 export const startStudyLifecycleWorkflow = internalMutation({
   args: {
@@ -187,10 +212,10 @@ export const runStudyLifecycle = workflow.define({
   },
 });
 
-export const prepareStudyForLaunch = zInternalMutation({
+export const prepareStudyForLaunch = internalMutation({
   args: {
-    studyId: zid("studies"),
-    launchRequestedBy: z.string().optional(),
+    studyId: v.id("studies"),
+    launchRequestedBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     let study = await getStudyById(ctx, args.studyId);
@@ -247,10 +272,10 @@ export const prepareStudyForLaunch = zInternalMutation({
   },
 });
 
-export const finalizePreparedStudyLaunch = zInternalMutation({
+export const finalizePreparedStudyLaunch = internalMutation({
   args: {
-    studyId: zid("studies"),
-    launchRequestedBy: z.string().optional(),
+    studyId: v.id("studies"),
+    launchRequestedBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -322,9 +347,9 @@ export const handleStudyLifecycleComplete = internalMutation({
   },
 });
 
-export const getStudyLifecycleSnapshot = zInternalQuery({
+export const getStudyLifecycleSnapshot = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -346,9 +371,9 @@ export const getStudyLifecycleSnapshot = zInternalQuery({
   },
 });
 
-export const createStudyLifecycleReport = zInternalAction({
+export const createStudyLifecycleReport = internalAction({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<Doc<"studyReports">> => {
     const existingReport: Doc<"studyReports"> | null = await ctx.runQuery(
@@ -393,18 +418,18 @@ export const createStudyLifecycleReport = zInternalAction({
   },
 });
 
-export const getStudyReportRecord = zInternalQuery({
+export const getStudyReportRecord = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<Doc<"studyReports"> | null> => {
     return await findStudyReportByStudyId(ctx, args.studyId);
   },
 });
 
-export const buildStudyLifecycleReportDraft = zInternalMutation({
+export const buildStudyLifecycleReportDraft = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<StudyLifecycleReportDraft> => {
     await getStudyById(ctx, args.studyId);
@@ -445,61 +470,59 @@ export const buildStudyLifecycleReportDraft = zInternalMutation({
   },
 });
 
-export const insertStudyLifecycleReport = zInternalMutation({
+export const insertStudyLifecycleReport = internalMutation({
   args: {
-    report: z.object({
-      studyId: zid("studies"),
-      headlineMetrics: z.object({
-        completionRate: z.number(),
-        abandonmentRate: z.number(),
-        medianSteps: z.number(),
-        medianDurationSec: z.number(),
-      }),
-      issueClusterIds: z.array(zid("issueClusters")),
-      segmentBreakdownKey: z.string().min(1),
-      limitations: z.array(z.string()),
-      htmlReportKey: z.string().min(1),
-      jsonReportKey: z.string().min(1),
-      createdAt: z.number(),
-    }),
-    htmlReportStorageId: z.string().min(1),
-    jsonReportStorageId: z.string().min(1),
+    report: studyLifecycleReportRecordValidator,
+    htmlReportStorageId: v.id("_storage"),
+    jsonReportStorageId: v.id("_storage"),
   },
   handler: async (ctx, args): Promise<Doc<"studyReports">> => {
-    const existingReport = await findStudyReportByStudyId(ctx, args.report.studyId);
+    const parsedArgs = z
+      .object({
+        report: studyLifecycleReportRecordSchema,
+        htmlReportStorageId: z.string().min(1),
+        jsonReportStorageId: z.string().min(1),
+      })
+      .parse(args);
+    const report = {
+      ...parsedArgs.report,
+      studyId: parsedArgs.report.studyId as Id<"studies">,
+      issueClusterIds: parsedArgs.report.issueClusterIds as Id<"issueClusters">[],
+    };
+    const existingReport = await findStudyReportByStudyId(ctx, report.studyId);
 
     if (existingReport !== null) {
       return existingReport;
     }
 
     const reportId = await ctx.db.insert("studyReports", {
-      ...args.report,
-      htmlReportStorageId: args.htmlReportStorageId as Id<"_storage">,
-      jsonReportStorageId: args.jsonReportStorageId as Id<"_storage">,
+      ...report,
+      htmlReportStorageId: parsedArgs.htmlReportStorageId as Id<"_storage">,
+      jsonReportStorageId: parsedArgs.jsonReportStorageId as Id<"_storage">,
     });
-    const report = await ctx.db.get(reportId);
+    const insertedReport = await ctx.db.get(reportId);
 
-    if (report === null) {
+    if (insertedReport === null) {
       throw new ConvexError("Study report was not created.");
     }
 
-    const study = await getStudyById(ctx, args.report.studyId);
+    const study = await getStudyById(ctx, insertedReport.studyId);
     await recordAuditEvent(ctx, {
       actorId: study.launchRequestedBy ?? study.createdBy,
       eventType: "report.published",
       studyId: study._id,
       resourceType: "studyReport",
-      resourceId: String(report._id),
-      createdAt: args.report.createdAt,
+      resourceId: String(insertedReport._id),
+      createdAt: insertedReport.createdAt,
     });
 
-    return report;
+    return insertedReport;
   },
 });
 
-export const advanceStudyLifecycleAfterInitialCohort = zInternalMutation({
+export const advanceStudyLifecycleAfterInitialCohort = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -537,9 +560,9 @@ export const advanceStudyLifecycleAfterInitialCohort = zInternalMutation({
   },
 });
 
-export const queueReplayRunsForStudy = zInternalMutation({
+export const queueReplayRunsForStudy = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -555,9 +578,9 @@ export const queueReplayRunsForStudy = zInternalMutation({
   },
 });
 
-export const completeStudyLifecycleAfterReplay = zInternalMutation({
+export const completeStudyLifecycleAfterReplay = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -590,9 +613,9 @@ export const completeStudyLifecycleAfterReplay = zInternalMutation({
   },
 });
 
-export const getReplayCandidates = zInternalQuery({
+export const getReplayCandidates = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     await getStudyById(ctx, args.studyId);
@@ -601,9 +624,9 @@ export const getReplayCandidates = zInternalQuery({
   },
 });
 
-export const getStudyReport = zQuery({
+export const getStudyReport = query({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     await getStudyForOrg(ctx, args.studyId);
@@ -611,9 +634,9 @@ export const getStudyReport = zQuery({
   },
 });
 
-export const getStudyReportArtifacts = zInternalQuery({
+export const getStudyReportArtifacts = internalQuery({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     await getStudyById(ctx, args.studyId);

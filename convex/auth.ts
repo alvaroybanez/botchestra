@@ -199,6 +199,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   callbacks: {
     async afterUserCreatedOrUpdated(ctx, args) {
       await syncUserFromAuth(ctx as never, {
+        userId: args.userId,
         profile: args.profile,
       });
     },
@@ -213,18 +214,9 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         return {};
       }
 
-      const userRoleRecord = await ctx.db
-        .query("userRoles")
-        .withIndex("by_email", (query) => query.eq("email", email))
-        .unique();
-
-      if (userRoleRecord === null) {
-        return {};
-      }
-
       return {
-        email: userRoleRecord.email,
-        role: userRoleRecord.role ?? DEFAULT_USER_ROLE,
+        email,
+        role: user.role ?? DEFAULT_USER_ROLE,
       };
     },
   },

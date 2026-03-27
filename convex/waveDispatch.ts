@@ -20,12 +20,6 @@ import {
   mapCompletionOutcomeToRunStatus,
   mapFailureCodeToRunStatus,
 } from "./runProgress";
-import {
-  zid,
-  zInternalAction,
-  zInternalMutation,
-  zInternalQuery,
-} from "./zodHelpers";
 
 const dispatchPool = new Workpool(components.browserPool, {
   maxParallelism: ACTIVE_CONCURRENCY_HARD_CAP,
@@ -74,9 +68,9 @@ const workerResponseSchema = z.union([
 
 type WorkerResponse = z.infer<typeof workerResponseSchema>;
 
-export const dispatchStudyWave = zInternalMutation({
+export const dispatchStudyWave = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -108,9 +102,9 @@ export const dispatchStudyWave = zInternalMutation({
   },
 });
 
-export const dispatchQueuedRunsForStudy = zInternalMutation({
+export const dispatchQueuedRunsForStudy = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -125,9 +119,9 @@ export const dispatchQueuedRunsForStudy = zInternalMutation({
   },
 });
 
-export const getRunDispatchPayload = zInternalQuery({
+export const getRunDispatchPayload = internalQuery({
   args: {
-    runId: zid("runs"),
+    runId: v.id("runs"),
   },
   handler: async (ctx, args) => {
     const run = await ctx.db.get(args.runId);
@@ -177,9 +171,9 @@ export const getRunDispatchPayload = zInternalQuery({
   },
 });
 
-export const executeRun = zInternalAction({
+export const executeRun = internalAction({
   args: {
-    runId: zid("runs"),
+    runId: v.id("runs"),
   },
   handler: async (ctx, args) => {
     const payload = await ctx.runQuery(internal.waveDispatch.getRunDispatchPayload, {

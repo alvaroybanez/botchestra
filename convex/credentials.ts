@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -10,7 +10,6 @@ import {
 } from "./_generated/server";
 import { recordAuditEvent } from "./observability";
 import { ADMIN_ROLES, requireRole } from "./rbac";
-import { zid, zInternalQuery, zMutation, zQuery } from "./zodHelpers";
 
 const CREDENTIAL_ENCRYPTION_PREFIX = "encv1";
 const CREDENTIAL_ENCRYPTION_SALT = "botchestra.credentials.v1";
@@ -53,7 +52,7 @@ const createCredentialSchema = z.object({
   ref: requiredString("Credential reference"),
   label: requiredString("Credential label"),
   description: z.string().trim().optional(),
-  allowedStudyIds: z.array(zid("studies")).optional(),
+  allowedStudyIds: z.array(z.string()).optional(),
   payload: credentialPayloadSchema,
 });
 
@@ -62,7 +61,7 @@ const updateCredentialPatchSchema = z
     ref: requiredString("Credential reference").optional(),
     label: requiredString("Credential label").optional(),
     description: z.string().trim().optional(),
-    allowedStudyIds: z.union([z.array(zid("studies")), z.null()]).optional(),
+    allowedStudyIds: z.union([z.array(z.string()), z.null()]).optional(),
     payload: credentialPayloadSchema.optional(),
   })
   .refine(
@@ -70,7 +69,28 @@ const updateCredentialPatchSchema = z
     "At least one credential field must be provided.",
   );
 
-export const listCredentials = zQuery({
+const credentialPayloadEntryValidator = v.object({
+  key: v.string(),
+  value: v.string(),
+});
+
+const createCredentialValidator = v.object({
+  ref: v.string(),
+  label: v.string(),
+  description: v.optional(v.string()),
+  allowedStudyIds: v.optional(v.array(v.id("studies"))),
+  payload: v.array(credentialPayloadEntryValidator),
+});
+
+const updateCredentialPatchValidator = v.object({
+  ref: v.optional(v.string()),
+  label: v.optional(v.string()),
+  description: v.optional(v.string()),
+  allowedStudyIds: v.optional(v.union(v.array(v.id("studies")), v.null())),
+  payload: v.optional(v.array(credentialPayloadEntryValidator)),
+});
+
+export const listCredentials = query({
   args: {},
   handler: async (ctx) => {
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
@@ -78,14 +98,19 @@ export const listCredentials = zQuery({
   },
 });
 
-export const createCredential = zMutation({
+export const createCredential = mutation({
   args: {
-    credential: createCredentialSchema,
+    credential: createCredentialValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        credential: createCredentialSchema,
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
     const orgId = identity.tokenIdentifier;
-    const ref = normalizeCredentialRef(args.credential.ref);
+    const ref = normalizeCredentialRef(parsedArgs.credential.ref);
     const existing = await loadCredentialByRef(ctx, orgId, ref);
 
     if (existing !== null) {
@@ -95,14 +120,14 @@ export const createCredential = zMutation({
     const allowedStudyIds = await normalizeAllowedStudyIds(
       ctx,
       orgId,
-      args.credential.allowedStudyIds,
+      parsedArgs.credential.allowedStudyIds as Id<"studies">[] | undefined,
     );
     const now = Date.now();
     const credentialId = await ctx.db.insert("credentials", {
       ref,
-      label: args.credential.label.trim(),
-      encryptedPayload: await encryptCredentialPayload(args.credential.payload),
-      description: args.credential.description?.trim() ?? "",
+      label: parsedArgs.credential.label.trim(),
+      encryptedPayload: await encryptCredentialPayload(parsedArgs.credential.payload),
+      description: parsedArgs.credential.description?.trim() ?? "",
       ...(allowedStudyIds !== undefined ? { allowedStudyIds } : {}),
       orgId,
       createdBy: orgId,
@@ -129,19 +154,26 @@ export const createCredential = zMutation({
   },
 });
 
-export const updateCredential = zMutation({
+export const updateCredential = mutation({
   args: {
-    credentialId: zid("credentials"),
-    patch: updateCredentialPatchSchema,
+    credentialId: v.id("credentials"),
+    patch: updateCredentialPatchValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        credentialId: z.string(),
+        patch: updateCredentialPatchSchema,
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
     const orgId = identity.tokenIdentifier;
-    const existing = await loadCredentialForOrg(ctx, args.credentialId, orgId);
+    const credentialId = parsedArgs.credentialId as Id<"credentials">;
+    const existing = await loadCredentialForOrg(ctx, credentialId, orgId);
     const nextRef =
-      args.patch.ref === undefined
+      parsedArgs.patch.ref === undefined
         ? existing.ref
-        : normalizeCredentialRef(args.patch.ref);
+        : normalizeCredentialRef(parsedArgs.patch.ref);
 
     if (nextRef !== existing.ref) {
       const refConflict = await loadCredentialByRef(ctx, orgId, nextRef);
@@ -152,29 +184,31 @@ export const updateCredential = zMutation({
     }
 
     const allowedStudyIds =
-      args.patch.allowedStudyIds === undefined
+      parsedArgs.patch.allowedStudyIds === undefined
         ? existing.allowedStudyIds
         : await normalizeAllowedStudyIds(
             ctx,
             orgId,
-            args.patch.allowedStudyIds === null ? undefined : args.patch.allowedStudyIds,
+            parsedArgs.patch.allowedStudyIds === null
+              ? undefined
+              : (parsedArgs.patch.allowedStudyIds as Id<"studies">[]),
           );
 
     const updatedAt = Date.now();
     await ctx.db.replace(existing._id, {
       ref: nextRef,
       label:
-        args.patch.label === undefined
+        parsedArgs.patch.label === undefined
           ? existing.label
-          : args.patch.label.trim(),
+          : parsedArgs.patch.label.trim(),
       encryptedPayload:
-        args.patch.payload === undefined
+        parsedArgs.patch.payload === undefined
           ? existing.encryptedPayload
-          : await encryptCredentialPayload(args.patch.payload),
+          : await encryptCredentialPayload(parsedArgs.patch.payload),
       description:
-        args.patch.description === undefined
+        parsedArgs.patch.description === undefined
           ? existing.description
-          : args.patch.description.trim(),
+          : parsedArgs.patch.description.trim(),
       ...(allowedStudyIds !== undefined ? { allowedStudyIds } : {}),
       orgId: existing.orgId,
       createdBy: existing.createdBy,
@@ -195,9 +229,9 @@ export const updateCredential = zMutation({
   },
 });
 
-export const deleteCredential = zMutation({
+export const deleteCredential = mutation({
   args: {
-    credentialId: zid("credentials"),
+    credentialId: v.id("credentials"),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
@@ -225,12 +259,18 @@ export const deleteCredential = zMutation({
   },
 });
 
-export const resolveCredentialForStudy = zInternalQuery({
+export const resolveCredentialForStudy = internalQuery({
   args: {
-    studyId: zid("studies"),
-    credentialsRef: requiredString("Credentials reference"),
+    studyId: v.id("studies"),
+    credentialsRef: v.string(),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        credentialsRef: requiredString("Credentials reference"),
+      })
+      .parse(args);
     const study = await ctx.db.get(args.studyId);
 
     if (study === null) {
@@ -240,8 +280,8 @@ export const resolveCredentialForStudy = zInternalQuery({
     const credential = await requireCredentialForStudy(
       ctx,
       study.orgId,
-      args.studyId,
-      args.credentialsRef,
+      parsedArgs.studyId as Id<"studies">,
+      parsedArgs.credentialsRef,
     );
     const payload = await decryptCredentialPayload(credential.encryptedPayload);
 

@@ -1,31 +1,42 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
-import { zid, zInternalMutation } from "./zodHelpers";
 
 const auditEventTypeSchema = z.enum(["study.cancelled"]);
 
-export const recordAuditEvent = zInternalMutation({
+export const recordAuditEvent = internalMutation({
   args: {
-    studyId: zid("studies"),
-    actorId: z.string(),
-    eventType: auditEventTypeSchema,
-    reason: z.string().optional(),
-    timestamp: z.number().optional(),
+    studyId: v.id("studies"),
+    actorId: v.string(),
+    eventType: v.literal("study.cancelled"),
+    reason: v.optional(v.string()),
+    timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const study = await getStudyById(ctx, args.studyId);
-    const createdAt = args.timestamp ?? Date.now();
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        actorId: z.string(),
+        eventType: auditEventTypeSchema,
+        reason: z.string().optional(),
+        timestamp: z.number().optional(),
+      })
+      .parse(args);
+    const study = await getStudyById(
+      ctx,
+      parsedArgs.studyId as Id<"studies">,
+    );
+    const createdAt = parsedArgs.timestamp ?? Date.now();
 
     return await ctx.db.insert("auditEvents", {
       orgId: study.orgId,
-      actorId: args.actorId,
-      eventType: args.eventType,
+      actorId: parsedArgs.actorId,
+      eventType: parsedArgs.eventType,
       studyId: study._id,
-      ...(args.reason !== undefined ? { reason: args.reason } : {}),
+      ...(parsedArgs.reason !== undefined ? { reason: parsedArgs.reason } : {}),
       createdAt,
     });
   },

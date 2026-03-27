@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -10,7 +10,6 @@ import {
   recordMetric,
 } from "./observability";
 import { resolveArtifactUrlsForStudy } from "./artifactResolver";
-import { zid, zInternalMutation, zQuery } from "./zodHelpers";
 
 const runStatusSchema = z.enum([
   "queued",
@@ -63,11 +62,68 @@ const callbackPatchSchema = z.object({
 });
 
 const listRunsArgsSchema = z.object({
-  studyId: zid("studies"),
+  studyId: z.string(),
   outcome: runStatusSchema.optional(),
-  protoPersonaId: zid("protoPersonas").optional(),
+  protoPersonaId: z.string().optional(),
   finalUrlContains: z.string().trim().min(1).optional(),
 });
+
+const runStatusValidator = v.union(
+  v.literal("queued"),
+  v.literal("dispatching"),
+  v.literal("running"),
+  v.literal("success"),
+  v.literal("hard_fail"),
+  v.literal("soft_fail"),
+  v.literal("gave_up"),
+  v.literal("timeout"),
+  v.literal("blocked_by_guardrail"),
+  v.literal("infra_error"),
+  v.literal("cancelled"),
+);
+
+const callbackTerminalStatusValidator = v.union(
+  v.literal("success"),
+  v.literal("hard_fail"),
+  v.literal("soft_fail"),
+  v.literal("gave_up"),
+  v.literal("timeout"),
+  v.literal("blocked_by_guardrail"),
+  v.literal("infra_error"),
+);
+
+const runSelfReportValidator = v.object({
+  perceivedSuccess: v.boolean(),
+  hardestPart: v.optional(v.string()),
+  confusion: v.optional(v.string()),
+  confidence: v.optional(v.number()),
+  suggestedChange: v.optional(v.string()),
+  answers: v.optional(v.record(v.string(), v.union(v.string(), v.number(), v.boolean()))),
+});
+
+const callbackPatchValidator = v.object({
+  endedAt: v.optional(v.number()),
+  durationSec: v.optional(v.number()),
+  stepCount: v.optional(v.number()),
+  finalUrl: v.optional(v.string()),
+  finalOutcome: v.optional(v.string()),
+  selfReport: v.optional(runSelfReportValidator),
+  frustrationCount: v.optional(v.number()),
+  milestoneKeys: v.optional(v.array(v.string())),
+  artifactManifestKey: v.optional(v.string()),
+  summaryKey: v.optional(v.string()),
+  workerSessionId: v.optional(v.string()),
+  errorCode: v.optional(v.string()),
+  guardrailCode: v.optional(v.string()),
+  errorMessage: v.optional(v.string()),
+});
+
+const listRunsArgsValidator = {
+  studyId: v.id("studies"),
+  outcome: v.optional(runStatusValidator),
+  protoPersonaId: v.optional(v.id("protoPersonas")),
+  finalUrlContains: v.optional(v.string()),
+};
 
 const VALID_RUN_TRANSITIONS: Record<RunStatus, readonly RunStatus[]> = {
   queued: ["dispatching", "cancelled"],
@@ -92,10 +148,10 @@ const VALID_RUN_TRANSITIONS: Record<RunStatus, readonly RunStatus[]> = {
   cancelled: [],
 };
 
-export const transitionRunState = zInternalMutation({
+export const transitionRunState = internalMutation({
   args: {
-    runId: zid("runs"),
-    nextStatus: runStatusSchema,
+    runId: v.id("runs"),
+    nextStatus: runStatusValidator,
   },
   handler: async (ctx, args) => {
     const run = await getRunById(ctx, args.runId);
@@ -114,72 +170,82 @@ export const transitionRunState = zInternalMutation({
   },
 });
 
-export const settleRunFromCallback = zInternalMutation({
+export const settleRunFromCallback = internalMutation({
   args: {
-    runId: zid("runs"),
-    nextStatus: callbackTerminalStatusSchema,
-    patch: callbackPatchSchema.optional(),
+    runId: v.id("runs"),
+    nextStatus: callbackTerminalStatusValidator,
+    patch: v.optional(callbackPatchValidator),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        runId: z.string(),
+        nextStatus: callbackTerminalStatusSchema,
+        patch: callbackPatchSchema.optional(),
+      })
+      .parse(args);
+    const runId = parsedArgs.runId as Id<"runs">;
     const run = await getRunById(ctx, args.runId);
 
     if (run.status === "cancelled" || isTerminalRunStatus(run.status)) {
       return run;
     }
 
-    assertValidRunTransition(run.status, args.nextStatus);
+    assertValidRunTransition(run.status, parsedArgs.nextStatus);
 
-    const endedAt = args.patch?.endedAt ?? Date.now();
+    const endedAt = parsedArgs.patch?.endedAt ?? Date.now();
     const normalizedErrorCode =
-      args.nextStatus === "infra_error"
+      parsedArgs.nextStatus === "infra_error"
         ? normalizeInfraErrorCode(
-            args.patch?.errorCode,
-            args.patch?.errorMessage,
+            parsedArgs.patch?.errorCode,
+            parsedArgs.patch?.errorMessage,
           )
-        : args.patch?.errorCode;
+        : parsedArgs.patch?.errorCode;
 
-    await ctx.db.patch(args.runId, {
-      status: args.nextStatus,
+    await ctx.db.patch(runId, {
+      status: parsedArgs.nextStatus,
       endedAt,
-      ...(args.patch?.durationSec !== undefined
-        ? { durationSec: args.patch.durationSec }
+      ...(parsedArgs.patch?.durationSec !== undefined
+        ? { durationSec: parsedArgs.patch.durationSec }
         : run.startedAt !== undefined
           ? { durationSec: Math.max(0, Math.round((endedAt - run.startedAt) / 1000)) }
           : {}),
-      ...(args.patch?.stepCount !== undefined
-        ? { stepCount: args.patch.stepCount }
+      ...(parsedArgs.patch?.stepCount !== undefined
+        ? { stepCount: parsedArgs.patch.stepCount }
         : {}),
-      ...(args.patch?.finalUrl !== undefined ? { finalUrl: args.patch.finalUrl } : {}),
-      ...(args.patch?.finalOutcome !== undefined
-        ? { finalOutcome: args.patch.finalOutcome }
+      ...(parsedArgs.patch?.finalUrl !== undefined
+        ? { finalUrl: parsedArgs.patch.finalUrl }
         : {}),
-      ...(args.patch?.selfReport !== undefined
-        ? { selfReport: args.patch.selfReport }
+      ...(parsedArgs.patch?.finalOutcome !== undefined
+        ? { finalOutcome: parsedArgs.patch.finalOutcome }
         : {}),
-      ...(args.patch?.frustrationCount !== undefined
-        ? { frustrationCount: args.patch.frustrationCount }
+      ...(parsedArgs.patch?.selfReport !== undefined
+        ? { selfReport: parsedArgs.patch.selfReport }
         : {}),
-      ...(args.patch?.milestoneKeys !== undefined
-        ? { milestoneKeys: args.patch.milestoneKeys }
+      ...(parsedArgs.patch?.frustrationCount !== undefined
+        ? { frustrationCount: parsedArgs.patch.frustrationCount }
         : {}),
-      ...(args.patch?.artifactManifestKey !== undefined
-        ? { artifactManifestKey: args.patch.artifactManifestKey }
+      ...(parsedArgs.patch?.milestoneKeys !== undefined
+        ? { milestoneKeys: parsedArgs.patch.milestoneKeys }
         : {}),
-      ...(args.patch?.summaryKey !== undefined
-        ? { summaryKey: args.patch.summaryKey }
+      ...(parsedArgs.patch?.artifactManifestKey !== undefined
+        ? { artifactManifestKey: parsedArgs.patch.artifactManifestKey }
         : {}),
-      ...(args.patch?.workerSessionId !== undefined
-        ? { workerSessionId: args.patch.workerSessionId }
+      ...(parsedArgs.patch?.summaryKey !== undefined
+        ? { summaryKey: parsedArgs.patch.summaryKey }
+        : {}),
+      ...(parsedArgs.patch?.workerSessionId !== undefined
+        ? { workerSessionId: parsedArgs.patch.workerSessionId }
         : {}),
       ...(normalizedErrorCode !== undefined
         ? { errorCode: normalizedErrorCode }
         : {}),
-      ...(args.patch?.guardrailCode !== undefined
-        ? { guardrailCode: args.patch.guardrailCode }
+      ...(parsedArgs.patch?.guardrailCode !== undefined
+        ? { guardrailCode: parsedArgs.patch.guardrailCode }
         : {}),
     });
 
-    const updatedRun = await getRunById(ctx, args.runId);
+    const updatedRun = await getRunById(ctx, runId);
 
     if (isTerminalRunStatus(updatedRun.status)) {
       await recordMetric(ctx, {
@@ -209,9 +275,9 @@ export const settleRunFromCallback = zInternalMutation({
   },
 });
 
-export const getRunSummary = zQuery({
+export const getRunSummary = query({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     await getStudyForOrg(ctx, args.studyId);
@@ -257,9 +323,9 @@ export const getRunSummary = zQuery({
   },
 });
 
-export const getRun = zQuery({
+export const getRun = query({
   args: {
-    runId: zid("runs"),
+    runId: v.id("runs"),
   },
   handler: async (ctx, args) => {
     const run = await ctx.db.get(args.runId);
@@ -320,44 +386,49 @@ export const getRun = zQuery({
   },
 });
 
-export const listRuns = zQuery({
-  args: listRunsArgsSchema.shape,
+export const listRuns = query({
+  args: listRunsArgsValidator,
   handler: async (ctx, args) => {
-    const study = await getStudyForOrg(ctx, args.studyId);
+    const parsedArgs = listRunsArgsSchema.parse(args);
+    const studyId = parsedArgs.studyId as Id<"studies">;
+    const outcome = parsedArgs.outcome;
+    const protoPersonaId =
+      parsedArgs.protoPersonaId as Id<"protoPersonas"> | undefined;
+    const study = await getStudyForOrg(ctx, studyId);
 
     const baseRuns =
-      args.outcome !== undefined
+      outcome !== undefined
         ? await ctx.db
             .query("runs")
             .withIndex("by_studyId_status", (q) =>
-              q.eq("studyId", args.studyId).eq("status", args.outcome!),
+              q.eq("studyId", studyId).eq("status", outcome),
             )
             .order("desc")
             .take(200)
-        : args.protoPersonaId !== undefined
+        : protoPersonaId !== undefined
           ? await ctx.db
               .query("runs")
               .withIndex("by_studyId_and_protoPersonaId", (q) =>
                 q
-                  .eq("studyId", args.studyId)
-                  .eq("protoPersonaId", args.protoPersonaId!),
+                  .eq("studyId", studyId)
+                  .eq("protoPersonaId", protoPersonaId),
               )
               .order("desc")
               .take(200)
           : await ctx.db
               .query("runs")
-              .withIndex("by_studyId", (q) => q.eq("studyId", args.studyId))
+              .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
               .order("desc")
               .take(200);
 
     const filteredRuns = baseRuns.filter((run) => {
-      if (args.protoPersonaId !== undefined && run.protoPersonaId !== args.protoPersonaId) {
+      if (protoPersonaId !== undefined && run.protoPersonaId !== protoPersonaId) {
         return false;
       }
 
       if (
-        args.finalUrlContains !== undefined &&
-        !(run.finalUrl?.includes(args.finalUrlContains) ?? false)
+        parsedArgs.finalUrlContains !== undefined &&
+        !(run.finalUrl?.includes(parsedArgs.finalUrlContains) ?? false)
       ) {
         return false;
       }

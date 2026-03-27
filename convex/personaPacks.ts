@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import { internal } from "./_generated/api";
@@ -12,14 +12,6 @@ import {
   query,
 } from "./_generated/server";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
-import {
-  zid,
-  zAction,
-  zInternalMutation,
-  zInternalQuery,
-  zMutation,
-  zQuery,
-} from "./zodHelpers";
 
 const draftStatusSchema = z.enum(["draft", "published", "archived"]);
 
@@ -133,16 +125,79 @@ const importedPackJsonSchema = z.object({
     ),
 });
 
-export const createDraft = zMutation({
+const draftStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("published"),
+  v.literal("archived"),
+);
+
+const axisValidator = v.object({
+  key: v.string(),
+  label: v.string(),
+  description: v.string(),
+  lowAnchor: v.string(),
+  midAnchor: v.string(),
+  highAnchor: v.string(),
+  weight: v.number(),
+});
+
+const sharedAxesValidator = v.array(axisValidator);
+
+const createDraftValidator = v.object({
+  name: v.string(),
+  description: v.string(),
+  context: v.string(),
+  sharedAxes: sharedAxesValidator,
+});
+
+const updateDraftValidator = v.object({
+  name: v.optional(v.string()),
+  description: v.optional(v.string()),
+  context: v.optional(v.string()),
+  sharedAxes: v.optional(sharedAxesValidator),
+});
+
+const protoPersonaValidator = v.object({
+  name: v.string(),
+  summary: v.string(),
+  axes: v.array(axisValidator),
+  evidenceSnippets: v.array(v.string()),
+  notes: v.optional(v.string()),
+});
+
+const updateProtoPersonaValidator = v.object({
+  name: v.optional(v.string()),
+  summary: v.optional(v.string()),
+  axes: v.optional(v.array(axisValidator)),
+  evidenceSnippets: v.optional(v.array(v.string())),
+  notes: v.optional(v.string()),
+});
+
+const importedPackJsonValidator = v.object({
+  name: v.string(),
+  description: v.string(),
+  context: v.string(),
+  status: v.optional(draftStatusValidator),
+  version: v.optional(v.number()),
+  sharedAxes: sharedAxesValidator,
+  protoPersonas: v.array(protoPersonaValidator),
+});
+
+export const createDraft = mutation({
   args: {
-    pack: createDraftSchema,
+    pack: createDraftValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        pack: createDraftSchema,
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const now = Date.now();
 
     return await ctx.db.insert("personaPacks", {
-      ...args.pack,
+      ...parsedArgs.pack,
       version: 1,
       status: "draft",
       orgId: identity.tokenIdentifier,
@@ -154,9 +209,9 @@ export const createDraft = zMutation({
   },
 });
 
-export const importJson = zAction({
+export const importJson = action({
   args: {
-    json: z.string(),
+    json: v.string(),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
@@ -174,9 +229,9 @@ export const importJson = zAction({
   },
 });
 
-export const exportJson = zAction({
+export const exportJson = action({
   args: {
-    packId: zid("personaPacks"),
+    packId: v.id("personaPacks"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
@@ -192,30 +247,37 @@ export const exportJson = zAction({
   },
 });
 
-export const updateDraft = zMutation({
+export const updateDraft = mutation({
   args: {
-    packId: zid("personaPacks"),
-    patch: updateDraftSchema,
+    packId: v.id("personaPacks"),
+    patch: updateDraftValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        packId: z.string(),
+        patch: updateDraftSchema,
+      })
+      .parse(args);
+    const packId = parsedArgs.packId as Id<"personaPacks">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const pack = await getPackForIdentity(ctx, args.packId, identity.tokenIdentifier);
+    const pack = await getPackForIdentity(ctx, packId, identity.tokenIdentifier);
 
     assertPackIsDraft(pack);
 
-    await ctx.db.patch(args.packId, {
-      ...args.patch,
+    await ctx.db.patch(packId, {
+      ...parsedArgs.patch,
       updatedBy: identity.tokenIdentifier,
       updatedAt: Date.now(),
     });
 
-    return args.packId;
+    return packId;
   },
 });
 
-export const publish = zMutation({
+export const publish = mutation({
   args: {
-    packId: zid("personaPacks"),
+    packId: v.id("personaPacks"),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
@@ -254,9 +316,9 @@ export const publish = zMutation({
   },
 });
 
-export const archive = zMutation({
+export const archive = mutation({
   args: {
-    packId: zid("personaPacks"),
+    packId: v.id("personaPacks"),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
@@ -280,69 +342,83 @@ export const archive = zMutation({
   },
 });
 
-export const createProtoPersona = zMutation({
+export const createProtoPersona = mutation({
   args: {
-    packId: zid("personaPacks"),
-    protoPersona: protoPersonaSchema,
+    packId: v.id("personaPacks"),
+    protoPersona: protoPersonaValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        packId: z.string(),
+        protoPersona: protoPersonaSchema,
+      })
+      .parse(args);
+    const packId = parsedArgs.packId as Id<"personaPacks">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const pack = await getPackForIdentity(ctx, args.packId, identity.tokenIdentifier);
+    const pack = await getPackForIdentity(ctx, packId, identity.tokenIdentifier);
 
     assertPackIsDraft(pack);
-    assertProtoPersonaAxisKeys(pack.sharedAxes, args.protoPersona.axes);
-    await assertProtoPersonaCapacity(ctx, args.packId);
+    assertProtoPersonaAxisKeys(pack.sharedAxes, parsedArgs.protoPersona.axes);
+    await assertProtoPersonaCapacity(ctx, packId);
 
     const protoPersonaId = await ctx.db.insert("protoPersonas", {
-      packId: args.packId,
-      name: args.protoPersona.name,
-      summary: args.protoPersona.summary,
-      axes: args.protoPersona.axes,
+      packId,
+      name: parsedArgs.protoPersona.name,
+      summary: parsedArgs.protoPersona.summary,
+      axes: parsedArgs.protoPersona.axes,
       sourceType: "manual",
       sourceRefs: [],
-      evidenceSnippets: args.protoPersona.evidenceSnippets,
-      ...(args.protoPersona.notes !== undefined
-        ? { notes: args.protoPersona.notes }
+      evidenceSnippets: parsedArgs.protoPersona.evidenceSnippets,
+      ...(parsedArgs.protoPersona.notes !== undefined
+        ? { notes: parsedArgs.protoPersona.notes }
         : {}),
     });
 
-    await touchPack(ctx, args.packId, identity.tokenIdentifier);
+    await touchPack(ctx, packId, identity.tokenIdentifier);
 
     return protoPersonaId;
   },
 });
 
-export const updateProtoPersona = zMutation({
+export const updateProtoPersona = mutation({
   args: {
-    protoPersonaId: zid("protoPersonas"),
-    patch: updateProtoPersonaSchema,
+    protoPersonaId: v.id("protoPersonas"),
+    patch: updateProtoPersonaValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        protoPersonaId: z.string(),
+        patch: updateProtoPersonaSchema,
+      })
+      .parse(args);
+    const protoPersonaId = parsedArgs.protoPersonaId as Id<"protoPersonas">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const { pack } = await getProtoPersonaForIdentity(
       ctx,
-      args.protoPersonaId,
+      protoPersonaId,
       identity.tokenIdentifier,
     );
 
     assertPackIsDraft(pack);
 
-    if (args.patch.axes !== undefined) {
-      assertProtoPersonaAxisKeys(pack.sharedAxes, args.patch.axes);
+    if (parsedArgs.patch.axes !== undefined) {
+      assertProtoPersonaAxisKeys(pack.sharedAxes, parsedArgs.patch.axes);
     }
 
-    await ctx.db.patch(args.protoPersonaId, {
-      ...args.patch,
+    await ctx.db.patch(protoPersonaId, {
+      ...parsedArgs.patch,
     });
     await touchPack(ctx, pack._id, identity.tokenIdentifier);
 
-    return args.protoPersonaId;
+    return protoPersonaId;
   },
 });
 
-export const deleteProtoPersona = zMutation({
+export const deleteProtoPersona = mutation({
   args: {
-    protoPersonaId: zid("protoPersonas"),
+    protoPersonaId: v.id("protoPersonas"),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
@@ -361,9 +437,9 @@ export const deleteProtoPersona = zMutation({
   },
 });
 
-export const get = zQuery({
+export const get = query({
   args: {
-    packId: zid("personaPacks"),
+    packId: v.id("personaPacks"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
@@ -377,7 +453,7 @@ export const get = zQuery({
   },
 });
 
-export const list = zQuery({
+export const list = query({
   args: {},
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
@@ -390,9 +466,9 @@ export const list = zQuery({
   },
 });
 
-export const getProtoPersona = zQuery({
+export const getProtoPersona = query({
   args: {
-    protoPersonaId: zid("protoPersonas"),
+    protoPersonaId: v.id("protoPersonas"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
@@ -405,9 +481,9 @@ export const getProtoPersona = zQuery({
   },
 });
 
-export const listProtoPersonas = zQuery({
+export const listProtoPersonas = query({
   args: {
-    packId: zid("personaPacks"),
+    packId: v.id("personaPacks"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
@@ -424,29 +500,36 @@ export const listProtoPersonas = zQuery({
   },
 });
 
-export const persistImportedPack = zInternalMutation({
+export const persistImportedPack = internalMutation({
   args: {
-    importedPack: importedPackJsonSchema,
-    orgId: z.string(),
-    createdBy: z.string(),
+    importedPack: importedPackJsonValidator,
+    orgId: v.string(),
+    createdBy: v.string(),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        importedPack: importedPackJsonSchema,
+        orgId: z.string(),
+        createdBy: z.string(),
+      })
+      .parse(args);
     const now = Date.now();
     const packId = await ctx.db.insert("personaPacks", {
-      name: args.importedPack.name,
-      description: args.importedPack.description,
-      context: args.importedPack.context,
-      sharedAxes: args.importedPack.sharedAxes,
+      name: parsedArgs.importedPack.name,
+      description: parsedArgs.importedPack.description,
+      context: parsedArgs.importedPack.context,
+      sharedAxes: parsedArgs.importedPack.sharedAxes,
       version: 1,
       status: "draft",
-      orgId: args.orgId,
-      createdBy: args.createdBy,
-      updatedBy: args.createdBy,
+      orgId: parsedArgs.orgId,
+      createdBy: parsedArgs.createdBy,
+      updatedBy: parsedArgs.createdBy,
       createdAt: now,
       updatedAt: now,
     });
 
-    for (const protoPersona of args.importedPack.protoPersonas) {
+    for (const protoPersona of parsedArgs.importedPack.protoPersonas) {
       await ctx.db.insert("protoPersonas", {
         packId,
         name: protoPersona.name,
@@ -465,10 +548,10 @@ export const persistImportedPack = zInternalMutation({
   },
 });
 
-export const getExportPayload = zInternalQuery({
+export const getExportPayload = internalQuery({
   args: {
-    packId: zid("personaPacks"),
-    orgId: z.string(),
+    packId: v.id("personaPacks"),
+    orgId: v.string(),
   },
   handler: async (ctx, args) => {
     const pack = await getPackForOrg(ctx, args.packId, args.orgId);

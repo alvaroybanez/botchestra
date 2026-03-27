@@ -14,20 +14,27 @@ const modules = {
 const createTest = () => convexTest(schema, modules);
 
 describe("userManagement", () => {
-  it("creates auth-linked role records with a default researcher role", async () => {
+  it("assigns a default researcher role on the auth user record", async () => {
     const t = createTest();
-    const roleRecordId = await t.run(async (ctx) =>
+    const userId = await t.run(async (ctx) =>
+      ctx.db.insert("users", {
+        email: "  ADMIN@Example.com  ",
+      }),
+    );
+
+    await t.run(async (ctx) =>
       syncUserFromAuth(ctx as never, {
+        userId,
         profile: {
           email: "  ADMIN@Example.com  ",
         },
       }),
     );
 
-    const storedRoleRecord = await t.run(async (ctx) => ctx.db.get(roleRecordId));
+    const storedUser = await t.run(async (ctx) => ctx.db.get(userId));
 
-    expect(storedRoleRecord).toMatchObject({
-      _id: roleRecordId,
+    expect(storedUser).toMatchObject({
+      _id: userId,
       email: "admin@example.com",
       role: "researcher",
     });
@@ -35,33 +42,26 @@ describe("userManagement", () => {
 
   it("preserves an existing promoted role when auth sync runs again", async () => {
     const t = createTest();
-    const roleRecordId = await t.run(async (ctx) =>
-      syncUserFromAuth(ctx as never, {
-        profile: {
-          email: "reviewer@example.com",
-        },
-      }),
-    );
-
-    await t.run(async (ctx) =>
-      ctx.db.patch(roleRecordId, {
+    const userId = await t.run(async (ctx) =>
+      ctx.db.insert("users", {
+        email: "reviewer@example.com",
         role: "admin",
       }),
     );
 
-    const syncedRoleRecordId = await t.run(async (ctx) =>
+    await t.run(async (ctx) =>
       syncUserFromAuth(ctx as never, {
+        userId,
         profile: {
           email: "REVIEWER@example.com",
         },
       }),
     );
 
-    const storedRoleRecord = await t.run(async (ctx) => ctx.db.get(roleRecordId));
+    const storedUser = await t.run(async (ctx) => ctx.db.get(userId));
 
-    expect(syncedRoleRecordId).toBe(roleRecordId);
-    expect(storedRoleRecord).toMatchObject({
-      _id: roleRecordId,
+    expect(storedUser).toMatchObject({
+      _id: userId,
       email: "reviewer@example.com",
       role: "admin",
     });
@@ -69,12 +69,19 @@ describe("userManagement", () => {
 
   it("updates a user's role by email through the internal mutation", async () => {
     const t = createTest();
+    const userId = await t.run(async (ctx) =>
+      ctx.db.insert("users", {
+        email: "admin@example.com",
+      }),
+    );
+
     const updatedUser = await t.mutation((internal as any).userManagement.setUserRole, {
       email: "admin@example.com",
       role: "admin",
     });
 
     expect(updatedUser).toMatchObject({
+      _id: userId,
       email: "admin@example.com",
       role: "admin",
     });

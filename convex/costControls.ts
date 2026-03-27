@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -7,19 +7,31 @@ import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { recordAuditEvent } from "./observability";
 import { loadEffectiveSettingsForOrg } from "./settings";
-import { zid, zInternalMutation } from "./zodHelpers";
 
 export const DEFAULT_CUMULATIVE_FAILURE_THRESHOLD = 3;
 export const SYSTEM_COST_CONTROL_ACTOR = "system:cost-controls";
 
-export const evaluateStudyCostControls = zInternalMutation({
+export const evaluateStudyCostControls = internalMutation({
   args: {
-    studyId: zid("studies"),
-    observedAt: z.number().optional(),
+    studyId: v.id("studies"),
+    observedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const study = await getStudyById(ctx, args.studyId);
-    const snapshot = await buildStudyCostSnapshot(ctx, args.studyId, args.observedAt);
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        observedAt: z.number().optional(),
+      })
+      .parse(args);
+    const study = await getStudyById(
+      ctx,
+      parsedArgs.studyId as Id<"studies">,
+    );
+    const snapshot = await buildStudyCostSnapshot(
+      ctx,
+      parsedArgs.studyId as Id<"studies">,
+      parsedArgs.observedAt,
+    );
 
     if (
       isTerminalStudyStatus(study.status) ||
@@ -46,7 +58,7 @@ export const evaluateStudyCostControls = zInternalMutation({
       };
     }
 
-    const cancelledAt = args.observedAt ?? Date.now();
+    const cancelledAt = parsedArgs.observedAt ?? Date.now();
     const cancellationSummary = await requestStudyCancellation(ctx, {
       study,
       cancelledAt,

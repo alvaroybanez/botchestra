@@ -1,20 +1,29 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
-import { zid, zInternalMutation } from "./zodHelpers";
 
-const runMilestoneArgsSchema = {
-  runId: zid("runs"),
+const runMilestoneArgsSchema = z.object({
+  runId: z.string(),
   stepIndex: z.number().int().nonnegative(),
   url: z.string().url(),
   title: z.string(),
   actionType: z.string(),
   rationaleShort: z.string(),
   screenshotKey: z.string().optional(),
+});
+
+const runMilestoneArgsValidator = {
+  runId: v.id("runs"),
+  stepIndex: v.number(),
+  url: v.string(),
+  title: v.string(),
+  actionType: v.string(),
+  rationaleShort: v.string(),
+  screenshotKey: v.optional(v.string()),
 };
 
 const SELF_REPORT_ANSWER_SCHEMA = z.union([z.string(), z.number(), z.boolean()]);
@@ -28,13 +37,19 @@ const selfReportSchema = z.object({
   answers: z.record(SELF_REPORT_ANSWER_SCHEMA).optional(),
 });
 
-export const recordRunHeartbeat = zInternalMutation({
+export const recordRunHeartbeat = internalMutation({
   args: {
-    runId: zid("runs"),
-    timestamp: z.number(),
+    runId: v.id("runs"),
+    timestamp: v.number(),
   },
   handler: async (ctx, args) => {
-    const run = await getRunById(ctx, args.runId);
+    const parsedArgs = z
+      .object({
+        runId: z.string(),
+        timestamp: z.number(),
+      })
+      .parse(args);
+    const run = await getRunById(ctx, parsedArgs.runId as Id<"runs">);
 
     if (isCallbackClosed(run.status)) {
       return {
@@ -43,15 +58,15 @@ export const recordRunHeartbeat = zInternalMutation({
       };
     }
 
-    await ctx.db.patch(args.runId, {
-      lastHeartbeatAt: args.timestamp,
+    await ctx.db.patch(parsedArgs.runId as Id<"runs">, {
+      lastHeartbeatAt: parsedArgs.timestamp,
     });
     await ctx.runMutation(internal.costControls.evaluateStudyCostControls, {
       studyId: run.studyId,
-      observedAt: args.timestamp,
+      observedAt: parsedArgs.timestamp,
     });
 
-    const updatedRun = await getRunById(ctx, args.runId);
+    const updatedRun = await getRunById(ctx, parsedArgs.runId as Id<"runs">);
 
     return {
       run: updatedRun,
@@ -60,10 +75,11 @@ export const recordRunHeartbeat = zInternalMutation({
   },
 });
 
-export const appendRunMilestone = zInternalMutation({
-  args: runMilestoneArgsSchema,
+export const appendRunMilestone = internalMutation({
+  args: runMilestoneArgsValidator,
   handler: async (ctx, args) => {
-    const run = await getRunById(ctx, args.runId);
+    const parsedArgs = runMilestoneArgsSchema.parse(args);
+    const run = await getRunById(ctx, parsedArgs.runId as Id<"runs">);
 
     if (isCallbackClosed(run.status)) {
       return null;
@@ -72,7 +88,7 @@ export const appendRunMilestone = zInternalMutation({
     const existingMilestone = await ctx.db
       .query("runMilestones")
       .withIndex("by_runId_and_stepIndex", (q) =>
-        q.eq("runId", args.runId).eq("stepIndex", args.stepIndex),
+        q.eq("runId", parsedArgs.runId as Id<"runs">).eq("stepIndex", parsedArgs.stepIndex),
       )
       .unique();
 
@@ -81,23 +97,25 @@ export const appendRunMilestone = zInternalMutation({
     }
 
     const milestoneId = await ctx.db.insert("runMilestones", {
-      runId: args.runId,
+      runId: parsedArgs.runId as Id<"runs">,
       studyId: run.studyId,
-      stepIndex: args.stepIndex,
+      stepIndex: parsedArgs.stepIndex,
       timestamp: Date.now(),
-      url: args.url,
-      title: args.title,
-      actionType: args.actionType,
-      rationaleShort: args.rationaleShort,
-      ...(args.screenshotKey !== undefined ? { screenshotKey: args.screenshotKey } : {}),
+      url: parsedArgs.url,
+      title: parsedArgs.title,
+      actionType: parsedArgs.actionType,
+      rationaleShort: parsedArgs.rationaleShort,
+      ...(parsedArgs.screenshotKey !== undefined
+        ? { screenshotKey: parsedArgs.screenshotKey }
+        : {}),
     });
 
     if (
-      args.screenshotKey !== undefined &&
-      !run.milestoneKeys.includes(args.screenshotKey)
+      parsedArgs.screenshotKey !== undefined &&
+      !run.milestoneKeys.includes(parsedArgs.screenshotKey)
     ) {
-      await ctx.db.patch(args.runId, {
-        milestoneKeys: [...run.milestoneKeys, args.screenshotKey],
+      await ctx.db.patch(parsedArgs.runId as Id<"runs">, {
+        milestoneKeys: [...run.milestoneKeys, parsedArgs.screenshotKey],
       });
     }
 

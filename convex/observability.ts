@@ -1,11 +1,10 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { ADMIN_ROLES, requireRole } from "./rbac";
-import { zid, zQuery } from "./zodHelpers";
 
 export const AUDIT_EVENT_TYPES = [
   "study.launched",
@@ -39,6 +38,22 @@ const standardInfraErrorCodeSchema = z.enum(STANDARD_INFRA_ERROR_CODES);
 const boundedLimitSchema = z.number().int().positive().max(200);
 const dashboardLimitSchema = z.number().int().positive().max(50);
 
+const auditEventTypeValidator = v.union(
+  v.literal("study.launched"),
+  v.literal("study.cancelled"),
+  v.literal("report.published"),
+  v.literal("settings.updated"),
+  v.literal("credential.created"),
+  v.literal("credential.updated"),
+  v.literal("credential.deleted"),
+);
+
+const metricTypeValidator = v.union(
+  v.literal("wave.dispatched_runs"),
+  v.literal("run.completed"),
+  v.literal("study.completed"),
+);
+
 const studyStatuses = [
   "draft",
   "persona_review",
@@ -63,15 +78,21 @@ const terminalRunStatuses = [
   "cancelled",
 ] as const;
 
-export const getAdminDiagnosticsOverview = zQuery({
+export const getAdminDiagnosticsOverview = query({
   args: {
-    recentMetricLimit: dashboardLimitSchema.optional(),
-    recentStudyLimit: dashboardLimitSchema.optional(),
+    recentMetricLimit: v.optional(v.number()),
+    recentStudyLimit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        recentMetricLimit: dashboardLimitSchema.optional(),
+        recentStudyLimit: dashboardLimitSchema.optional(),
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    const recentMetricLimit = args.recentMetricLimit ?? 40;
-    const recentStudyLimit = args.recentStudyLimit ?? 20;
+    const recentMetricLimit = parsedArgs.recentMetricLimit ?? 40;
+    const recentStudyLimit = parsedArgs.recentStudyLimit ?? 20;
 
     const [recentMetrics, recentStudies] = await Promise.all([
       ctx.db
@@ -200,45 +221,58 @@ export const getAdminDiagnosticsOverview = zQuery({
   },
 });
 
-export const listAuditEvents = zQuery({
+export const listAuditEvents = query({
   args: {
-    actorId: z.string().trim().min(1).optional(),
-    studyId: zid("studies").optional(),
-    eventType: auditEventTypeSchema.optional(),
-    startAt: z.number().optional(),
-    endAt: z.number().optional(),
-    limit: boundedLimitSchema.optional(),
+    actorId: v.optional(v.string()),
+    studyId: v.optional(v.id("studies")),
+    eventType: v.optional(auditEventTypeValidator),
+    startAt: v.optional(v.number()),
+    endAt: v.optional(v.number()),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        actorId: z.string().trim().min(1).optional(),
+        studyId: z.string().optional(),
+        eventType: auditEventTypeSchema.optional(),
+        startAt: z.number().optional(),
+        endAt: z.number().optional(),
+        limit: boundedLimitSchema.optional(),
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    const limit = args.limit ?? 100;
+    const limit = parsedArgs.limit ?? 100;
     const rows = await loadAuditEventsForOrg(ctx, identity.tokenIdentifier, {
-      actorId: args.actorId,
-      studyId: args.studyId,
-      eventType: args.eventType,
-      startAt: args.startAt,
-      endAt: args.endAt,
+      actorId: parsedArgs.actorId,
+      studyId: parsedArgs.studyId as Id<"studies"> | undefined,
+      eventType: parsedArgs.eventType,
+      startAt: parsedArgs.startAt,
+      endAt: parsedArgs.endAt,
       limit,
     });
 
     return rows.filter((row) => {
-      if (args.startAt !== undefined && row.createdAt < args.startAt) {
+      if (parsedArgs.startAt !== undefined && row.createdAt < parsedArgs.startAt) {
         return false;
       }
 
-      if (args.endAt !== undefined && row.createdAt > args.endAt) {
+      if (parsedArgs.endAt !== undefined && row.createdAt > parsedArgs.endAt) {
         return false;
       }
 
-      if (args.actorId !== undefined && row.actorId !== args.actorId) {
+      if (parsedArgs.actorId !== undefined && row.actorId !== parsedArgs.actorId) {
         return false;
       }
 
-      if (args.studyId !== undefined && row.studyId !== args.studyId) {
+      if (
+        parsedArgs.studyId !== undefined &&
+        row.studyId !== (parsedArgs.studyId as Id<"studies">)
+      ) {
         return false;
       }
 
-      if (args.eventType !== undefined && row.eventType !== args.eventType) {
+      if (parsedArgs.eventType !== undefined && row.eventType !== parsedArgs.eventType) {
         return false;
       }
 
@@ -247,39 +281,51 @@ export const listAuditEvents = zQuery({
   },
 });
 
-export const listMetrics = zQuery({
+export const listMetrics = query({
   args: {
-    studyId: zid("studies").optional(),
-    metricType: metricTypeSchema.optional(),
-    startAt: z.number().optional(),
-    endAt: z.number().optional(),
-    limit: boundedLimitSchema.optional(),
+    studyId: v.optional(v.id("studies")),
+    metricType: v.optional(metricTypeValidator),
+    startAt: v.optional(v.number()),
+    endAt: v.optional(v.number()),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        studyId: z.string().optional(),
+        metricType: metricTypeSchema.optional(),
+        startAt: z.number().optional(),
+        endAt: z.number().optional(),
+        limit: boundedLimitSchema.optional(),
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    const limit = args.limit ?? 100;
+    const limit = parsedArgs.limit ?? 100;
     const rows = await loadMetricsForOrg(ctx, identity.tokenIdentifier, {
-      studyId: args.studyId,
-      metricType: args.metricType,
-      startAt: args.startAt,
-      endAt: args.endAt,
+      studyId: parsedArgs.studyId as Id<"studies"> | undefined,
+      metricType: parsedArgs.metricType,
+      startAt: parsedArgs.startAt,
+      endAt: parsedArgs.endAt,
       limit,
     });
 
     return rows.filter((row) => {
-      if (args.startAt !== undefined && row.recordedAt < args.startAt) {
+      if (parsedArgs.startAt !== undefined && row.recordedAt < parsedArgs.startAt) {
         return false;
       }
 
-      if (args.endAt !== undefined && row.recordedAt > args.endAt) {
+      if (parsedArgs.endAt !== undefined && row.recordedAt > parsedArgs.endAt) {
         return false;
       }
 
-      if (args.studyId !== undefined && row.studyId !== args.studyId) {
+      if (
+        parsedArgs.studyId !== undefined &&
+        row.studyId !== (parsedArgs.studyId as Id<"studies">)
+      ) {
         return false;
       }
 
-      if (args.metricType !== undefined && row.metricType !== args.metricType) {
+      if (parsedArgs.metricType !== undefined && row.metricType !== parsedArgs.metricType) {
         return false;
       }
 

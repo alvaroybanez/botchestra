@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -6,7 +6,6 @@ import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { resolveArtifactUrlsForStudy } from "./artifactResolver";
 import { decodeRunSummaryKey } from "./analysis/runSummaries";
-import { zid, zQuery } from "./zodHelpers";
 
 const severitySchema = z.enum(["blocker", "major", "minor", "cosmetic"]);
 const runStatusSchema = z.enum([
@@ -44,9 +43,36 @@ const axisRangeFilterSchema = z
     "Axis range filter min cannot exceed max.",
   );
 
-export const getReport = zQuery({
+const severityValidator = v.union(
+  v.literal("blocker"),
+  v.literal("major"),
+  v.literal("minor"),
+  v.literal("cosmetic"),
+);
+
+const runStatusValidator = v.union(
+  v.literal("queued"),
+  v.literal("dispatching"),
+  v.literal("running"),
+  v.literal("success"),
+  v.literal("hard_fail"),
+  v.literal("soft_fail"),
+  v.literal("gave_up"),
+  v.literal("timeout"),
+  v.literal("blocked_by_guardrail"),
+  v.literal("infra_error"),
+  v.literal("cancelled"),
+);
+
+const axisRangeFilterValidator = v.object({
+  key: v.string(),
+  min: v.optional(v.number()),
+  max: v.optional(v.number()),
+});
+
+export const getReport = query({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     await getStudyForOrg(ctx, args.studyId);
@@ -54,18 +80,29 @@ export const getReport = zQuery({
   },
 });
 
-export const listFindings = zQuery({
+export const listFindings = query({
   args: {
-    studyId: zid("studies"),
-    severity: severitySchema.optional(),
-    protoPersonaId: zid("protoPersonas").optional(),
-    axisRange: axisRangeFilterSchema.optional(),
-    outcome: runStatusSchema.optional(),
-    urlPrefix: requiredString("URL prefix").optional(),
+    studyId: v.id("studies"),
+    severity: v.optional(severityValidator),
+    protoPersonaId: v.optional(v.id("protoPersonas")),
+    axisRange: v.optional(axisRangeFilterValidator),
+    outcome: v.optional(runStatusValidator),
+    urlPrefix: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        severity: severitySchema.optional(),
+        protoPersonaId: z.string().optional(),
+        axisRange: axisRangeFilterSchema.optional(),
+        outcome: runStatusSchema.optional(),
+        urlPrefix: requiredString("URL prefix").optional(),
+      })
+      .parse(args);
+    const studyId = parsedArgs.studyId as Id<"studies">;
     await getStudyForOrg(ctx, args.studyId);
-    const report = await findStudyReportByStudyId(ctx, args.studyId);
+    const report = await findStudyReportByStudyId(ctx, studyId);
 
     if (report === null) {
       return [];
@@ -74,13 +111,23 @@ export const listFindings = zQuery({
     const orderedClusters = await listIssueClustersByIds(ctx, report.issueClusterIds);
     const findingViews = await buildFindingViews(ctx, orderedClusters);
 
-    return findingViews.filter((finding) => matchesFilters(finding, args));
+    return findingViews.filter((finding) =>
+      matchesFilters(finding, {
+        severity: parsedArgs.severity,
+        axisRange: parsedArgs.axisRange,
+        outcome: parsedArgs.outcome,
+        urlPrefix: parsedArgs.urlPrefix,
+        ...(parsedArgs.protoPersonaId !== undefined
+          ? { protoPersonaId: parsedArgs.protoPersonaId as Id<"protoPersonas"> }
+          : {}),
+      }),
+    );
   },
 });
 
-export const getIssueCluster = zQuery({
+export const getIssueCluster = query({
   args: {
-    issueId: zid("issueClusters"),
+    issueId: v.id("issueClusters"),
   },
   handler: async (ctx, args) => {
     const issueCluster = await ctx.db.get(args.issueId);
@@ -95,17 +142,23 @@ export const getIssueCluster = zQuery({
   },
 });
 
-export const resolveArtifactUrls = zQuery({
+export const resolveArtifactUrls = query({
   args: {
-    studyId: zid("studies"),
-    keys: z.array(requiredString("Artifact key")),
+    studyId: v.id("studies"),
+    keys: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        keys: z.array(requiredString("Artifact key")),
+      })
+      .parse(args);
     await getStudyForOrg(ctx, args.studyId);
 
     return await resolveArtifactUrlsForStudy(ctx, {
       studyId: args.studyId,
-      keys: args.keys,
+      keys: parsedArgs.keys,
     });
   },
 });

@@ -3,8 +3,7 @@ import { ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
-import { USER_ROLES, userRoleSchema, type UserRole } from "./userRoles";
-import { zQuery } from "./zodHelpers";
+import { USER_ROLES, userRoleSchema, type UserRole } from "./roles";
 
 export const ALL_ROLES = USER_ROLES;
 export const ADMIN_ROLES = ["admin"] as const satisfies readonly UserRole[];
@@ -18,7 +17,7 @@ export const COMMENTER_ROLES = [
   "admin",
 ] as const satisfies readonly UserRole[];
 
-export const getViewerAccess = zQuery({
+export const getViewerAccess = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -97,7 +96,7 @@ export async function getRoleFromIdentity(
 
   if (email !== null) {
     const storedRole: UserRole | null = await ctx.runQuery(
-      (internal as any).userManagement.getStoredRoleForEmail,
+      internal.userManagement.getStoredRoleForEmail,
       { email },
     );
 

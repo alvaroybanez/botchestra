@@ -1,6 +1,6 @@
 "use node";
 
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import { generateWithModel } from "../packages/ai/src/index";
@@ -20,25 +20,30 @@ import {
   validateGeneratedVariantCandidate,
 } from "./personaEngine/variantGeneration";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
-import { zid, zAction, zInternalAction } from "./zodHelpers";
 
-export const previewVariants = zAction({
+export const previewVariants = action({
   args: {
-    packId: zid("personaPacks"),
-    budget: z.number().int(),
+    packId: v.id("personaPacks"),
+    budget: v.number(),
   },
   handler: async (ctx, args): Promise<PreviewSummary> => {
+    const parsedArgs = z
+      .object({
+        packId: z.string(),
+        budget: z.number().int(),
+      })
+      .parse(args);
     const identity = await requireIdentity(ctx);
 
     const previewContext: PreviewContext = await ctx.runQuery(
       internal.personaVariantGenerationModel.getPreviewContext,
       {
-        packId: args.packId,
+        packId: parsedArgs.packId as Id<"personaPacks">,
         orgId: identity.tokenIdentifier,
       },
     );
 
-    const budget = resolveRunBudget(args.budget);
+    const budget = resolveRunBudget(parsedArgs.budget);
     const protoPersonasForAllocation: ProtoPersonaForAllocation[] =
       previewContext.protoPersonas.map((protoPersona) => ({
         id: protoPersona._id,
@@ -72,9 +77,9 @@ export const previewVariants = zAction({
   },
 });
 
-export const generateVariantsForStudy = zAction({
+export const generateVariantsForStudy = action({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<GenerationSummary> => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
@@ -87,9 +92,9 @@ export const generateVariantsForStudy = zAction({
   },
 });
 
-export const generateVariantsForStudyInternal = zInternalAction({
+export const generateVariantsForStudyInternal = internalAction({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args): Promise<GenerationSummary> => {
     const { orgId } = await ctx.runQuery(
@@ -121,7 +126,8 @@ async function generateVariantsForStudyForOrg(
     orgId,
   });
   const expansionModelOverride = settings.modelConfig.find(
-    (entry) => entry.taskCategory === "expansion",
+    (entry: { taskCategory: string; modelId: string }) =>
+      entry.taskCategory === "expansion",
   )?.modelId;
   const acceptedExistingVariants = generationContext.existingVariants.filter(
     (variant) => variant.accepted,

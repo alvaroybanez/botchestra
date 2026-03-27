@@ -1,12 +1,14 @@
 import { z } from "zod";
+import { v } from "convex/values";
 
+import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
-import { userRoleSchema, type UserRole } from "./userRoles";
-import { zInternalMutation, zInternalQuery } from "./zodHelpers";
+import { userRoleSchema, userRoleValidator, type UserRole } from "./roles";
 
 export const DEFAULT_USER_ROLE: UserRole = "researcher";
 
 type AuthSyncArgs = {
+  userId: string;
   profile: Record<string, unknown> & {
     email?: string;
   };
@@ -17,63 +19,82 @@ type AuthSyncCtx = {
 };
 
 export async function syncUserFromAuth(ctx: AuthSyncCtx, args: AuthSyncArgs) {
-  const email = getRequiredEmail(args.profile);
-  const existingRecord = await ctx.db
-    .query("userRoles")
-    .withIndex("by_email", (query) => query.eq("email", email))
-    .unique();
+  const user = await ctx.db.get("users", args.userId as Id<"users">);
 
-  if (existingRecord !== null) {
-    return existingRecord._id;
+  if (user === null) {
+    throw new Error("Authenticated user is missing from the users table.");
   }
 
-  return await ctx.db.insert("userRoles", {
-    email,
-    role: DEFAULT_USER_ROLE,
-  });
+  const email = getRequiredEmail(args.profile, user.email);
+  const patch: {
+    email?: string;
+    role?: UserRole;
+  } = {};
+
+  if (user.email !== email) {
+    patch.email = email;
+  }
+
+  if (user.role === undefined) {
+    patch.role = DEFAULT_USER_ROLE;
+  }
+
+  if (patch.email !== undefined || patch.role !== undefined) {
+    await ctx.db.patch("users", args.userId as Id<"users">, patch);
+  }
+
+  return args.userId;
 }
 
-export const getStoredRoleForEmail = zInternalQuery({
+export const getStoredRoleForEmail = internalQuery({
   args: {
-    email: z.string().email(),
+    email: v.string(),
   },
   handler: async (ctx, args) => {
-    const record = await ctx.db
-      .query("userRoles")
-      .withIndex("by_email", (query) => query.eq("email", normalizeUserEmail(args.email)))
+    const parsedArgs = z
+      .object({
+        email: z.string().email(),
+      })
+      .parse(args);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (query) =>
+        query.eq("email", normalizeUserEmail(parsedArgs.email)),
+      )
       .unique();
-    return record?.role ?? null;
+    return user?.role ?? null;
   },
 });
 
-export const setUserRole = zInternalMutation({
+export const setUserRole = internalMutation({
   args: {
-    email: z.string().email(),
-    role: userRoleSchema,
+    email: v.string(),
+    role: userRoleValidator,
   },
   handler: async (ctx, args) => {
-    const email = normalizeUserEmail(args.email);
+    const parsedArgs = z
+      .object({
+        email: z.string().email(),
+        role: userRoleSchema,
+      })
+      .parse(args);
+    const email = normalizeUserEmail(parsedArgs.email);
 
-    const existingRecord = await ctx.db
-      .query("userRoles")
-      .withIndex("by_email", (query) => query.eq("email", email))
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (query) => query.eq("email", email))
       .unique();
 
-    if (existingRecord !== null) {
-      await ctx.db.patch(existingRecord._id, {
-        email,
-        role: args.role,
-      });
-
-      return (await ctx.db.get(existingRecord._id))!;
+    if (user === null) {
+      throw new Error(`User ${email} was not found.`);
     }
 
-    const roleRecordId = await ctx.db.insert("userRoles", {
+    await ctx.db.patch(user._id, {
       email,
-      role: args.role,
+      role: parsedArgs.role,
     });
 
-    return (await ctx.db.get(roleRecordId))!;
+    return (await ctx.db.get(user._id))!;
   },
 });
 

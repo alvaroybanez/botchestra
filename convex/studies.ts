@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -20,7 +20,6 @@ import {
   recordMetric,
 } from "./observability";
 import { workflow } from "./workflow";
-import { zid, zInternalMutation, zMutation, zQuery } from "./zodHelpers";
 
 const allowedActionSchema = z.enum([
   "goto",
@@ -100,7 +99,7 @@ const taskSpecInputSchema = z.object({
 const taskSpecPatchSchema = taskSpecInputSchema.partial();
 
 const createStudySchema = z.object({
-  personaPackId: zid("personaPacks"),
+  personaPackId: z.string(),
   name: requiredString("Study name"),
   description: requiredString("Study description").optional(),
   taskSpec: taskSpecInputSchema,
@@ -120,6 +119,102 @@ const updateStudyPatchSchema = z
     (patch) => Object.values(patch).some((value) => value !== undefined),
     "At least one study field must be provided.",
   );
+
+const allowedActionValidator = v.union(
+  v.literal("goto"),
+  v.literal("click"),
+  v.literal("type"),
+  v.literal("select"),
+  v.literal("scroll"),
+  v.literal("wait"),
+  v.literal("back"),
+  v.literal("finish"),
+  v.literal("abort"),
+);
+
+const forbiddenActionValidator = v.union(
+  v.literal("external_download"),
+  v.literal("payment_submission"),
+  v.literal("email_send"),
+  v.literal("sms_send"),
+  v.literal("captcha_bypass"),
+  v.literal("account_creation_without_fixture"),
+  v.literal("cross_domain_escape"),
+  v.literal("file_upload_unless_allowed"),
+);
+
+const studyStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("persona_review"),
+  v.literal("ready"),
+  v.literal("queued"),
+  v.literal("running"),
+  v.literal("replaying"),
+  v.literal("analyzing"),
+  v.literal("completed"),
+  v.literal("failed"),
+  v.literal("cancelled"),
+);
+
+const viewportValidator = v.object({
+  width: v.number(),
+  height: v.number(),
+});
+
+const taskSpecInputValidator = v.object({
+  scenario: v.string(),
+  goal: v.string(),
+  startingUrl: v.string(),
+  allowedDomains: v.array(v.string()),
+  allowedActions: v.array(allowedActionValidator),
+  forbiddenActions: v.array(forbiddenActionValidator),
+  successCriteria: v.array(v.string()),
+  stopConditions: v.array(v.string()),
+  postTaskQuestions: v.optional(v.array(v.string())),
+  maxSteps: v.number(),
+  maxDurationSec: v.number(),
+  environmentLabel: v.string(),
+  locale: v.string(),
+  viewport: viewportValidator,
+  credentialsRef: v.optional(v.string()),
+  randomSeed: v.optional(v.string()),
+});
+
+const taskSpecPatchValidator = v.object({
+  scenario: v.optional(v.string()),
+  goal: v.optional(v.string()),
+  startingUrl: v.optional(v.string()),
+  allowedDomains: v.optional(v.array(v.string())),
+  allowedActions: v.optional(v.array(allowedActionValidator)),
+  forbiddenActions: v.optional(v.array(forbiddenActionValidator)),
+  successCriteria: v.optional(v.array(v.string())),
+  stopConditions: v.optional(v.array(v.string())),
+  postTaskQuestions: v.optional(v.array(v.string())),
+  maxSteps: v.optional(v.number()),
+  maxDurationSec: v.optional(v.number()),
+  environmentLabel: v.optional(v.string()),
+  locale: v.optional(v.string()),
+  viewport: v.optional(viewportValidator),
+  credentialsRef: v.optional(v.string()),
+  randomSeed: v.optional(v.string()),
+});
+
+const createStudyValidator = v.object({
+  personaPackId: v.id("personaPacks"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  taskSpec: taskSpecInputValidator,
+  runBudget: v.optional(v.number()),
+  activeConcurrency: v.number(),
+});
+
+const updateStudyPatchValidator = v.object({
+  name: v.optional(v.string()),
+  description: v.optional(v.string()),
+  taskSpec: v.optional(taskSpecPatchValidator),
+  runBudget: v.optional(v.number()),
+  activeConcurrency: v.optional(v.number()),
+});
 
 export const DEFAULT_POST_TASK_QUESTIONS = [
   "Do you think you completed the task?",
@@ -182,15 +277,20 @@ const VALID_STUDY_TRANSITIONS: Record<StudyStatus, readonly StudyStatus[]> = {
   cancelled: [],
 };
 
-export const createStudy = zMutation({
+export const createStudy = mutation({
   args: {
-    study: createStudySchema,
+    study: createStudyValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        study: createStudySchema,
+      })
+      .parse(args);
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const pack = await getPackForOrg(
       ctx,
-      args.study.personaPackId,
+      parsedArgs.study.personaPackId as Id<"personaPacks">,
       identity.tokenIdentifier,
     );
     const effectiveSettings = await loadEffectiveSettingsForOrg(
@@ -201,17 +301,17 @@ export const createStudy = zMutation({
     const studyId = await ctx.db.insert("studies", {
       orgId: identity.tokenIdentifier,
       personaPackId: pack._id,
-      name: args.study.name,
-      ...(args.study.description !== undefined
-        ? { description: args.study.description }
+      name: parsedArgs.study.name,
+      ...(parsedArgs.study.description !== undefined
+        ? { description: parsedArgs.study.description }
         : {}),
-      taskSpec: normalizeTaskSpec(args.study.taskSpec),
+      taskSpec: normalizeTaskSpec(parsedArgs.study.taskSpec),
       runBudget: capStudyRunBudget(
-        args.study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
+        parsedArgs.study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
         effectiveSettings.runBudgetCap,
       ),
       activeConcurrency: capStudyActiveConcurrency(
-        args.study.activeConcurrency,
+        parsedArgs.study.activeConcurrency,
         effectiveSettings.maxConcurrency,
       ),
       status: "draft",
@@ -224,14 +324,21 @@ export const createStudy = zMutation({
   },
 });
 
-export const updateStudy = zMutation({
+export const updateStudy = mutation({
   args: {
-    studyId: zid("studies"),
-    patch: updateStudyPatchSchema,
+    studyId: v.id("studies"),
+    patch: updateStudyPatchValidator,
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        patch: updateStudyPatchSchema,
+      })
+      .parse(args);
+    const studyId = parsedArgs.studyId as Id<"studies">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+    const study = await getStudyForOrg(ctx, studyId, identity.tokenIdentifier);
     const effectiveSettings = await loadEffectiveSettingsForOrg(
       ctx,
       identity.tokenIdentifier,
@@ -242,41 +349,42 @@ export const updateStudy = zMutation({
     }
 
     const taskSpec =
-      args.patch.taskSpec === undefined
+      parsedArgs.patch.taskSpec === undefined
         ? study.taskSpec
         : normalizeTaskSpec({
             ...study.taskSpec,
-            ...args.patch.taskSpec,
-            viewport: args.patch.taskSpec.viewport ?? study.taskSpec.viewport,
+            ...parsedArgs.patch.taskSpec,
+            viewport: parsedArgs.patch.taskSpec.viewport ?? study.taskSpec.viewport,
             postTaskQuestions:
-              args.patch.taskSpec.postTaskQuestions ?? study.taskSpec.postTaskQuestions,
+              parsedArgs.patch.taskSpec.postTaskQuestions ??
+              study.taskSpec.postTaskQuestions,
           });
 
-    await ctx.db.patch(args.studyId, {
-      ...(args.patch.name !== undefined ? { name: args.patch.name } : {}),
-      ...(args.patch.description !== undefined
-        ? { description: args.patch.description }
+    await ctx.db.patch(studyId, {
+      ...(parsedArgs.patch.name !== undefined ? { name: parsedArgs.patch.name } : {}),
+      ...(parsedArgs.patch.description !== undefined
+        ? { description: parsedArgs.patch.description }
         : {}),
       runBudget: capStudyRunBudget(
-        args.patch.runBudget ?? study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
+        parsedArgs.patch.runBudget ?? study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
         effectiveSettings.runBudgetCap,
       ),
       activeConcurrency: capStudyActiveConcurrency(
-        args.patch.activeConcurrency ?? study.activeConcurrency,
+        parsedArgs.patch.activeConcurrency ?? study.activeConcurrency,
         effectiveSettings.maxConcurrency,
       ),
-      ...(args.patch.taskSpec !== undefined ? { taskSpec } : {}),
+      ...(parsedArgs.patch.taskSpec !== undefined ? { taskSpec } : {}),
       updatedAt: Date.now(),
     });
 
-    return await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+    return await getStudyForOrg(ctx, studyId, identity.tokenIdentifier);
   },
 });
 
-export const validateStudyLaunch = zMutation({
+export const validateStudyLaunch = mutation({
   args: {
-    studyId: zid("studies"),
-    productionAck: z.boolean().optional(),
+    studyId: v.id("studies"),
+    productionAck: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
@@ -290,10 +398,10 @@ export const validateStudyLaunch = zMutation({
   },
 });
 
-export const launchStudy = zMutation({
+export const launchStudy = mutation({
   args: {
-    studyId: zid("studies"),
-    productionAck: z.boolean().optional(),
+    studyId: v.id("studies"),
+    productionAck: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
@@ -417,14 +525,21 @@ export const launchStudy = zMutation({
   },
 });
 
-export const cancelStudy = zMutation({
+export const cancelStudy = mutation({
   args: {
-    studyId: zid("studies"),
-    reason: requiredString("Cancellation reason").optional(),
+    studyId: v.id("studies"),
+    reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        reason: requiredString("Cancellation reason").optional(),
+      })
+      .parse(args);
+    const studyId = parsedArgs.studyId as Id<"studies">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+    const study = await getStudyForOrg(ctx, studyId, identity.tokenIdentifier);
 
     if (isTerminalStudyStatus(study.status)) {
       throw new ConvexError(
@@ -437,7 +552,7 @@ export const cancelStudy = zMutation({
     }
 
     const cancellationRequestedAt = Date.now();
-    const cancellationReason = args.reason ?? DEFAULT_CANCELLATION_REASON;
+    const cancellationReason = parsedArgs.reason ?? DEFAULT_CANCELLATION_REASON;
 
     if (study.status === "persona_review") {
       await ctx.db.patch(study._id, {
@@ -501,9 +616,9 @@ export const cancelStudy = zMutation({
   },
 });
 
-export const getStudy = zQuery({
+export const getStudy = query({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
@@ -517,7 +632,7 @@ export const getStudy = zQuery({
   },
 });
 
-export const listStudies = zQuery({
+export const listStudies = query({
   args: {},
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
@@ -532,51 +647,59 @@ export const listStudies = zQuery({
   },
 });
 
-export const transitionStudyState = zInternalMutation({
+export const transitionStudyState = internalMutation({
   args: {
-    studyId: zid("studies"),
-    nextStatus: studyStatusSchema,
-    failureReason: z.string().trim().min(1).optional(),
+    studyId: v.id("studies"),
+    nextStatus: studyStatusValidator,
+    failureReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const study = await getStudyById(ctx, args.studyId);
+    const parsedArgs = z
+      .object({
+        studyId: z.string(),
+        nextStatus: studyStatusSchema,
+        failureReason: z.string().trim().min(1).optional(),
+      })
+      .parse(args);
+    const studyId = parsedArgs.studyId as Id<"studies">;
+    const study = await getStudyById(ctx, studyId);
 
-    assertValidStudyTransition(study.status, args.nextStatus);
+    assertValidStudyTransition(study.status, parsedArgs.nextStatus);
 
     const transitionTimestamp = Date.now();
-    await ctx.db.patch(args.studyId, {
-      status: args.nextStatus,
-      ...(args.nextStatus === "completed"
+    await ctx.db.patch(studyId, {
+      status: parsedArgs.nextStatus,
+      ...(parsedArgs.nextStatus === "completed"
         ? { completedAt: transitionTimestamp }
         : {}),
-      ...(args.nextStatus === "failed" && args.failureReason !== undefined
-        ? { failureReason: args.failureReason }
+      ...(parsedArgs.nextStatus === "failed" && parsedArgs.failureReason !== undefined
+        ? { failureReason: parsedArgs.failureReason }
         : {}),
       updatedAt: transitionTimestamp,
     });
 
-    if (args.nextStatus === "completed") {
+    if (parsedArgs.nextStatus === "completed") {
       await recordMetric(ctx, {
-        studyId: args.studyId,
+        studyId,
         metricType: "study.completed",
         value: 1,
         unit: "count",
-        status: args.nextStatus,
+        status: parsedArgs.nextStatus,
         recordedAt: transitionTimestamp,
       });
     }
 
-    return await getStudyById(ctx, args.studyId);
+    return await getStudyById(ctx, studyId);
   },
 });
 
-export const recordGuardrailEvent = zInternalMutation({
+export const recordGuardrailEvent = internalMutation({
   args: {
-    studyId: zid("studies"),
-    actorId: z.string(),
-    outcome: z.enum(["pass", "fail"]),
-    reasons: z.array(z.string()),
-    createdAt: z.number().optional(),
+    studyId: v.id("studies"),
+    actorId: v.string(),
+    outcome: v.union(v.literal("pass"), v.literal("fail")),
+    reasons: v.array(v.string()),
+    createdAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const study = await getStudyById(ctx, args.studyId);
@@ -592,9 +715,9 @@ export const recordGuardrailEvent = zInternalMutation({
   },
 });
 
-export const finalizeCancelledStudyIfComplete = zInternalMutation({
+export const finalizeCancelledStudyIfComplete = internalMutation({
   args: {
-    studyId: zid("studies"),
+    studyId: v.id("studies"),
   },
   handler: async (ctx, args) => {
     return await finalizeCancelledStudyIfCompleteInPlace(ctx, args.studyId);
