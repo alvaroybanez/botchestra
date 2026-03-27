@@ -66,6 +66,7 @@ const callbackPatchSchema = z.object({
   summaryKey: z.string().optional(),
   workerSessionId: z.string().optional(),
   errorCode: z.string().optional(),
+  guardrailCode: z.string().optional(),
   errorMessage: z.string().optional(),
 });
 
@@ -180,6 +181,9 @@ export const settleRunFromCallback = zInternalMutation({
         : {}),
       ...(normalizedErrorCode !== undefined
         ? { errorCode: normalizedErrorCode }
+        : {}),
+      ...(args.patch?.guardrailCode !== undefined
+        ? { guardrailCode: args.patch.guardrailCode }
         : {}),
     });
 

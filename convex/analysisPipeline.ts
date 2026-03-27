@@ -47,6 +47,9 @@ export const summarizeStudyRuns = zInternalAction({
       internal.analysisPipelineModel.getRunSummarizationContext,
       { studyId: args.studyId },
     );
+    const settings = await ctx.runQuery(internal.settings.getEffectiveSettingsForOrg, {
+      orgId: context.orgId,
+    });
 
     if (context.hasNonTerminalRuns) {
       throw new Error("Cannot summarize study runs before every run is terminal.");
@@ -68,6 +71,7 @@ export const summarizeStudyRuns = zInternalAction({
       const summary = await summarizeRun(
         ctx,
         run as SummarizableRunSummaryContext & { summaryKey?: string },
+        settings.modelConfig.find((entry) => entry.taskCategory === "summarization")?.modelId,
       );
       await ctx.runMutation(internal.analysisPipelineModel.persistRunSummary, {
         runId: run._id,
@@ -155,9 +159,11 @@ async function summarizeRun(
   run: SummarizableRunSummaryContext & {
     summaryKey?: string;
   },
+  modelOverride?: string,
 ): Promise<RunSummary> {
   try {
     const result = await generateWithModel("summarization", {
+      modelOverride,
       system:
         "Return only valid JSON. Summarize one synthetic usability run using concise evidence-backed language.",
       prompt: buildSummarizationPrompt(run),
@@ -179,6 +185,7 @@ async function summarizeRun(
 
 type RunSummarizationContextResult = {
   studyId: Id<"studies">;
+  orgId: string;
   hasNonTerminalRuns: boolean;
   runs: Array<
     RunSummaryContext & {

@@ -121,6 +121,9 @@ http.route({
             endedAt: Date.now(),
             finalOutcome: "FAILED",
             errorCode: parseResult.data.payload.errorCode,
+            ...(parseResult.data.payload.guardrailCode !== undefined
+              ? { guardrailCode: parseResult.data.payload.guardrailCode }
+              : {}),
             errorMessage: parseResult.data.payload.message,
             ...(selfReport !== undefined ? { selfReport } : {}),
           },

@@ -64,6 +64,7 @@ const workerFailureResponseSchema = z.object({
     z.literal("GUARDRAIL_VIOLATION"),
     z.literal("BROWSER_ERROR"),
   ]),
+  guardrailCode: z.string().optional(),
   message: z.string(),
   stepCount: z.number().int().nonnegative(),
   durationSec: z.number().nonnegative(),
@@ -431,6 +432,9 @@ async function settleRunFromWorkerResponse(
       finalOutcome: response.finalOutcome,
       frustrationCount: response.frustrationCount,
       errorCode: response.errorCode,
+      ...(response.guardrailCode !== undefined
+        ? { guardrailCode: response.guardrailCode }
+        : {}),
       errorMessage: response.message,
       ...(response.artifactManifestKey !== undefined
         ? { artifactManifestKey: response.artifactManifestKey }

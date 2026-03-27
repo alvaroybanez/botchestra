@@ -180,6 +180,7 @@ describe("RunProgressUpdateSchema", () => {
       eventType: "failure",
       payload: {
         errorCode: "MAX_STEPS_EXCEEDED",
+        guardrailCode: "DOMAIN_BLOCKED",
         message: "Run exceeded 50 step limit",
         selfReport: {
           perceivedSuccess: false,
@@ -195,6 +196,7 @@ describe("RunProgressUpdateSchema", () => {
     expect(result.success).toBe(true);
     if (result.success && result.data.eventType === "failure") {
       expect(result.data.payload.errorCode).toBe("MAX_STEPS_EXCEEDED");
+      expect(result.data.payload.guardrailCode).toBe("DOMAIN_BLOCKED");
       expect(result.data.payload.selfReport?.answers).toEqual({
         "Did you complete the task?": false,
       });

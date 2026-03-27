@@ -191,6 +191,34 @@ describe("progressReporter", () => {
     });
   });
 
+  it("includes an optional guardrail code on failure callbacks", async () => {
+    const fetchMock = createFetchMock();
+    const progressReporter = createProgressReporter({
+      runId: "run_guardrail_failure",
+      callbackBaseUrl,
+      callbackToken,
+      fetch: fetchMock.fetch,
+    });
+
+    await progressReporter.sendFailure({
+      errorCode: "GUARDRAIL_VIOLATION",
+      guardrailCode: "DOMAIN_BLOCKED",
+      message: "Navigation left the allowed domains",
+    });
+
+    const update = getPostedUpdate(fetchMock);
+    expect(RunProgressUpdateSchema.safeParse(update).success).toBe(true);
+    expect(update).toEqual({
+      runId: "run_guardrail_failure",
+      eventType: "failure",
+      payload: {
+        errorCode: "GUARDRAIL_VIOLATION",
+        guardrailCode: "DOMAIN_BLOCKED",
+        message: "Navigation left the allowed domains",
+      },
+    });
+  });
+
   it("rejects invalid payloads before sending them", async () => {
     const fetchMock = createFetchMock();
     const progressReporter = createProgressReporter({

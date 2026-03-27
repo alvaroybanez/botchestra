@@ -21,6 +21,7 @@ const modules = {
   "./analysisPipeline.ts": () => import("./analysisPipeline"),
   "./analysisPipelineModel.ts": () => import("./analysisPipelineModel"),
   "./schema.ts": () => import("./schema"),
+  "./settings.ts": () => import("./settings"),
   "./studies.ts": () => import("./studies"),
   "./studyLifecycleWorkflow.ts": () => import("./studyLifecycleWorkflow"),
   "./workflow.ts": () => import("./workflow"),
@@ -248,6 +249,37 @@ describe("analysisPipeline.summarizeStudyRuns", () => {
     expect(gaveUpSummary.frustrationMarkers).toContain("gave up");
     expect(runMap.get(infraErrorRunId)?.summaryKey).toBeUndefined();
     expect(runMap.get(cancelledRunId)?.summaryKey).toBeUndefined();
+  });
+
+  it("passes org-level summarization model overrides into generateWithModel", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t);
+    await insertTerminalRun(t, studyId, {
+      status: "hard_fail",
+      finalOutcome: "FAILED",
+      errorCode: "CHECKOUT_BUTTON_MISSING",
+    });
+    await t.run(async (ctx) =>
+      ctx.db.insert("settings", {
+        orgId: "org_1",
+        domainAllowlist: [],
+        maxConcurrency: 30,
+        modelConfig: [{ taskCategory: "summarization", modelId: "org-summary-model" }],
+        runBudgetCap: 100,
+        updatedBy: "org_1",
+        updatedAt: Date.now(),
+      }),
+    );
+    mockedGenerateWithModel.mockResolvedValueOnce(createAiResult(makeSummary()));
+
+    await t.action(analysisPipelineApi.summarizeStudyRuns, { studyId });
+
+    expect(mockedGenerateWithModel).toHaveBeenCalledWith(
+      "summarization",
+      expect.objectContaining({
+        modelOverride: "org-summary-model",
+      }),
+    );
   });
 
   it("excludes infra_error and cancelled runs from clustering while keeping them in headline metrics", async () => {

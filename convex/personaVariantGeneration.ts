@@ -121,6 +121,12 @@ async function generateVariantsForStudyForOrg(
   );
 
   const budget = resolveRunBudget(generationContext.resolvedBudget);
+  const settings = await ctx.runQuery(internal.settings.getEffectiveSettingsForOrg, {
+    orgId,
+  });
+  const expansionModelOverride = settings.modelConfig.find(
+    (entry) => entry.taskCategory === "expansion",
+  )?.modelId;
   const acceptedExistingVariants = generationContext.existingVariants.filter(
     (variant) => variant.accepted,
   );
@@ -204,6 +210,7 @@ async function generateVariantsForStudyForOrg(
           generationContext.pack,
           protoPersona,
           variantPlan.axisValues,
+          expansionModelOverride,
         );
 
         const distinctness = evaluateDistinctness(
@@ -293,9 +300,11 @@ async function generateCandidate(
   pack: Doc<"personaPacks">,
   protoPersona: Doc<"protoPersonas">,
   axisValues: Record<string, number>,
+  modelOverride?: string,
 ): Promise<GeneratedVariantCandidate> {
   try {
     const result = await generateWithModel("expansion", {
+      modelOverride,
       system:
         "Return only valid JSON for a synthetic persona variant. Do not include markdown fences.",
       prompt: buildExpansionPrompt(pack, protoPersona, axisValues),

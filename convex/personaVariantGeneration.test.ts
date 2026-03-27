@@ -21,6 +21,7 @@ const modules = {
   "./personaVariantGeneration.ts": () => import("./personaVariantGeneration"),
   "./personaVariantGenerationModel.ts": () =>
     import("./personaVariantGenerationModel"),
+  "./settings.ts": () => import("./settings"),
 };
 
 const createTest = () => convexTest(schema, modules);
@@ -292,6 +293,36 @@ describe("generateVariantsForStudy", () => {
       expect(variant.distinctnessScore).toBeGreaterThanOrEqual(0);
       expect(variant.distinctnessScore).toBeLessThanOrEqual(1);
     }
+  });
+
+  it("passes org-level expansion model overrides into generateWithModel", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createPublishedPack(t, { protoPersonaCount: 1 });
+    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    await t.run(async (ctx) =>
+      ctx.db.insert("settings", {
+        orgId: researchIdentity.tokenIdentifier,
+        domainAllowlist: [],
+        maxConcurrency: 30,
+        modelConfig: [{ taskCategory: "expansion", modelId: "org-expansion-model" }],
+        runBudgetCap: 100,
+        updatedBy: researchIdentity.tokenIdentifier,
+        updatedAt: Date.now(),
+      }),
+    );
+    mockedGenerateWithModel.mockResolvedValue(createAiResult(makeCandidate()));
+
+    await asResearcher.action(variantGenerationApi.generateVariantsForStudy, {
+      studyId,
+    });
+
+    expect(mockedGenerateWithModel).toHaveBeenCalledWith(
+      "expansion",
+      expect.objectContaining({
+        modelOverride: "org-expansion-model",
+      }),
+    );
   });
 
   it("retries invalid generations until a valid candidate succeeds", async () => {

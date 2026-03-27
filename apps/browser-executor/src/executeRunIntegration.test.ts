@@ -517,6 +517,66 @@ describe("execute-run integration", () => {
     });
   });
 
+  it("propagates the specific guardrail rule code through failure callbacks and responses", async () => {
+    const page = new MockBrowserPage(createPageState());
+    const { browser, context } = createMockBrowser(page);
+    const leaseClient = createLeaseClient();
+    const callbackFetch = createFetchMock();
+    const worker = createWorker({
+      runtime: {
+        browser,
+        leaseClient,
+        selectAction: vi.fn(async () => ({
+          type: "payment_submission",
+          rationale: "Try to submit the order directly.",
+        })),
+        fetch: callbackFetch.fetch,
+        generateSelfReport: vi.fn(async () => ({
+          perceivedSuccess: false,
+          confidence: 0.1,
+          answers: {
+            "Did you complete the task?": false,
+          },
+        })),
+      },
+    });
+    const request = await createValidExecuteRunRequest({
+      taskSpec: {
+        ...(await createValidExecuteRunRequest()).taskSpec,
+        forbiddenActions: ["payment_submission"],
+      },
+    });
+
+    const response = await worker.fetch(
+      new Request("https://example.com/execute-run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+      }),
+      env,
+      executionContext,
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      errorCode: "GUARDRAIL_VIOLATION",
+      guardrailCode: "FORBIDDEN_ACTION",
+    });
+    expect(leaseClient.release).toHaveBeenCalledWith("lease-1");
+    expect(context.close).toHaveBeenCalledTimes(1);
+
+    const updates = getPostedUpdates(callbackFetch);
+    expect(updates.at(-1)).toMatchObject({
+      runId: request.runId,
+      eventType: "failure",
+      payload: {
+        errorCode: "GUARDRAIL_VIOLATION",
+        guardrailCode: "FORBIDDEN_ACTION",
+      },
+    });
+  });
+
   it("redacts credential plaintext from callbacks, manifests, screenshots, and response bodies", async () => {
     const secretEmail = "alice@example.com";
     const secretPassword = "swordfish";

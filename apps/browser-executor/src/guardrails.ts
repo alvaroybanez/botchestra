@@ -30,6 +30,18 @@ export type RuntimeActionValidationResult =
   | GuardrailPass
   | GuardrailFailure<"action_not_allowed" | "forbidden_action" | "invalid_url" | "domain_not_allowed">;
 
+export type GuardrailRuleCode =
+  | "ACTION_NOT_ALLOWED"
+  | "DOMAIN_BLOCKED"
+  | "FORBIDDEN_ACTION"
+  | "URL_VIOLATION";
+
+type GuardrailFailureCode =
+  | "action_not_allowed"
+  | "domain_not_allowed"
+  | "forbidden_action"
+  | "invalid_url";
+
 export type CallbackTokenValidationResult =
   | {
       ok: true;
@@ -182,6 +194,19 @@ export function maskSecrets(text: string, secrets: readonly MaskableSecret[]) {
 
 export const maskCredentials = maskSecrets;
 
+export function toGuardrailRuleCode(code: GuardrailFailureCode): GuardrailRuleCode {
+  switch (code) {
+    case "domain_not_allowed":
+      return "DOMAIN_BLOCKED";
+    case "forbidden_action":
+      return "FORBIDDEN_ACTION";
+    case "invalid_url":
+      return "URL_VIOLATION";
+    case "action_not_allowed":
+      return "ACTION_NOT_ALLOWED";
+  }
+}
+
 function isProbablyText(value: string) {
   if (value.length === 0) {
     return true;
@@ -208,6 +233,10 @@ export function maskSecretsInBytes(value: Uint8Array, secrets: readonly Maskable
     return value;
   }
 
+  // This helper only rewrites text-like byte payloads such as manifests, JSON callbacks,
+  // and other UTF-8 content. It is intentionally not used for visual redaction of rendered
+  // screenshot pixels because byte substitution cannot safely redact image content. JPEG
+  // screenshots are sanitized by stripping metadata segments before upload instead.
   try {
     const decoded = new TextDecoder("utf-8", { fatal: true }).decode(value);
 
@@ -224,6 +253,72 @@ export function maskSecretsInBytes(value: Uint8Array, secrets: readonly Maskable
   } catch {
     return value;
   }
+}
+
+export function stripJpegMetadata(value: Uint8Array) {
+  if (value.length < 4 || value[0] !== 0xff || value[1] !== 0xd8) {
+    return value;
+  }
+
+  const sanitized: number[] = [0xff, 0xd8];
+  let index = 2;
+
+  while (index < value.length) {
+    const markerStart = index;
+
+    if (value[index] !== 0xff) {
+      return value;
+    }
+
+    while (index < value.length && value[index] === 0xff) {
+      index += 1;
+    }
+
+    if (index >= value.length) {
+      return value;
+    }
+
+    const marker = value[index]!;
+    index += 1;
+
+    if (marker === 0xd9) {
+      sanitized.push(...value.slice(markerStart, index));
+      return Uint8Array.from(sanitized);
+    }
+
+    if (marker === 0xda) {
+      sanitized.push(...value.slice(markerStart));
+      return Uint8Array.from(sanitized);
+    }
+
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      sanitized.push(...value.slice(markerStart, index));
+      continue;
+    }
+
+    if (index + 1 >= value.length) {
+      return value;
+    }
+
+    const segmentLength = (value[index]! << 8) | value[index + 1]!;
+    if (segmentLength < 2) {
+      return value;
+    }
+
+    const segmentEnd = index + segmentLength;
+    if (segmentEnd > value.length) {
+      return value;
+    }
+
+    const isMetadataSegment = marker === 0xfe || (marker >= 0xe0 && marker <= 0xef);
+    if (!isMetadataSegment) {
+      sanitized.push(...value.slice(markerStart, segmentEnd));
+    }
+
+    index = segmentEnd;
+  }
+
+  return Uint8Array.from(sanitized);
 }
 
 export function redactSecrets<T>(value: T, secrets: readonly MaskableSecret[]): T {

@@ -3,6 +3,7 @@ import {
   REDACTED_VALUE,
   isActionAllowed,
   maskSecrets,
+  stripJpegMetadata,
   validateCallbackToken,
   validateNavigation,
 } from "./guardrails";
@@ -165,6 +166,33 @@ describe("maskSecrets", () => {
   it("returns the original text when there are no credentials to mask", () => {
     expect(maskSecrets("no secrets here", [])).toBe("no secrets here");
     expect(REDACTED_VALUE).toBe("[REDACTED]");
+  });
+});
+
+describe("stripJpegMetadata", () => {
+  it("removes APP and comment metadata segments from JPEG bytes", () => {
+    const jpegWithMetadata = Uint8Array.from([
+      0xff, 0xd8,
+      0xff, 0xe1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00,
+      0xff, 0xfe, 0x00, 0x05, 0x48, 0x69, 0x21,
+      0xff, 0xdb, 0x00, 0x04, 0x00, 0x00,
+      0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00,
+      0x11, 0x22,
+      0xff, 0xd9,
+    ]);
+
+    expect(stripJpegMetadata(jpegWithMetadata)).toEqual(Uint8Array.from([
+      0xff, 0xd8,
+      0xff, 0xdb, 0x00, 0x04, 0x00, 0x00,
+      0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00,
+      0x11, 0x22,
+      0xff, 0xd9,
+    ]));
+  });
+
+  it("leaves non-JPEG bytes unchanged", () => {
+    const textBytes = new TextEncoder().encode("username=alice@example.com");
+    expect(stripJpegMetadata(textBytes)).toEqual(textBytes);
   });
 });
 

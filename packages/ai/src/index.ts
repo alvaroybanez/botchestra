@@ -30,7 +30,13 @@ function getEnvValue(key: string) {
   return process.env[key];
 }
 
-export function resolveModel(category: TaskCategory): string {
+export function resolveModel(category: TaskCategory, modelOverride?: string): string;
+export function resolveModel(category: TaskCategory, modelOverride?: string): string {
+  const normalizedOverride = modelOverride?.trim();
+  if (normalizedOverride) {
+    return normalizedOverride;
+  }
+
   const envKey = `BOTCHESTRA_MODEL_${category.toUpperCase()}`;
   return getEnvValue(envKey) || MODEL_CONFIG[category];
 }
@@ -40,12 +46,14 @@ export function resolveModel(category: TaskCategory): string {
 type GenerateOptions = {
   prompt: string;
   system?: string;
+  modelOverride?: string;
   stream?: false;
 } & Omit<Parameters<typeof generateText>[0], "model" | "prompt" | "system">;
 
 type StreamOptions = {
   prompt: string;
   system?: string;
+  modelOverride?: string;
   stream: true;
 } & Omit<Parameters<typeof streamText>[0], "model" | "prompt" | "system">;
 
@@ -61,14 +69,14 @@ export async function generateWithModel(
   category: TaskCategory,
   options: GenerateOptions | StreamOptions,
 ) {
-  const modelId = resolveModel(category);
+  const modelId = resolveModel(category, options.modelOverride);
   const model = openai(modelId);
 
   if ("stream" in options && options.stream) {
-    const { stream: _, ...rest } = options;
+    const { stream: _, modelOverride: __, ...rest } = options;
     return streamText({ ...rest, model });
   }
 
-  const { stream: _, ...rest } = options as GenerateOptions & { stream?: false };
+  const { stream: _, modelOverride: __, ...rest } = options as GenerateOptions & { stream?: false };
   return generateText({ ...rest, model });
 }

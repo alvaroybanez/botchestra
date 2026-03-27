@@ -45,6 +45,15 @@ describe("model resolution", () => {
     expect(resolveModel("expansion")).toBe(MODEL_CONFIG.expansion);
   });
 
+  it("prefers an explicit model override over env and defaults", () => {
+    process.env.BOTCHESTRA_MODEL_EXPANSION = "env-model";
+    try {
+      expect(resolveModel("expansion", "org-model")).toBe("org-model");
+    } finally {
+      delete process.env.BOTCHESTRA_MODEL_EXPANSION;
+    }
+  });
+
   it("exports generateWithModel as a function", () => {
     expect(typeof generateWithModel).toBe("function");
   });

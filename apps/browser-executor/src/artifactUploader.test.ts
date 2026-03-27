@@ -7,8 +7,19 @@ import {
   type BrowserPageSnapshot,
 } from "./runExecutor";
 
+function createJpegWithMetadata() {
+  return Uint8Array.from([
+    0xff, 0xd8,
+    0xff, 0xe1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00,
+    0xff, 0xdb, 0x00, 0x04, 0x00, 0x00,
+    0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00,
+    0x11, 0x22,
+    0xff, 0xd9,
+  ]);
+}
+
 class MockBrowserPage {
-  readonly screenshot = vi.fn(async () => new Uint8Array([0xff, 0xd8, 0xff, 0xd9]));
+  readonly screenshot = vi.fn(async () => createJpegWithMetadata());
 
   private currentState: BrowserPageSnapshot;
 
@@ -183,6 +194,13 @@ describe("artifactUploader", () => {
     );
     expect(page.screenshot).toHaveBeenNthCalledWith(1, { type: "jpeg", quality: 80 });
     expect(page.screenshot).toHaveBeenNthCalledWith(2, { type: "jpeg", quality: 80 });
+    expect(bucket.put.mock.calls[0]?.[1]).toEqual(Uint8Array.from([
+      0xff, 0xd8,
+      0xff, 0xdb, 0x00, 0x04, 0x00, 0x00,
+      0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00,
+      0x11, 0x22,
+      0xff, 0xd9,
+    ]));
     expect(manifestKey).toBe("runs/run_123/manifest.json");
   });
 

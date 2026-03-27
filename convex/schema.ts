@@ -204,6 +204,7 @@ export default defineSchema({
     summaryKey: v.optional(v.string()),
     workerSessionId: v.optional(v.string()),
     errorCode: v.optional(v.string()),
+    guardrailCode: v.optional(v.string()),
   })
     .index("by_studyId", ["studyId"])
     .index("by_studyId_status", ["studyId", "status"])

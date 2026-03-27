@@ -299,6 +299,9 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
       if (!redactedResult.ok) {
         await progressReporter.sendFailure({
           errorCode: redactedResult.errorCode,
+          ...(redactedResult.guardrailCode !== undefined
+            ? { guardrailCode: redactedResult.guardrailCode }
+            : {}),
           message: redactedResult.message,
           selfReport: redactedSelfReport,
         });

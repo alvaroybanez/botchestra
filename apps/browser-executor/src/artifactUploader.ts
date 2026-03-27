@@ -2,6 +2,7 @@ import type { RunExecutionResult, RunMilestone } from "./runExecutor";
 import {
   maskSecretsInBytes,
   redactSecrets,
+  stripJpegMetadata,
   type MaskableSecret,
 } from "./guardrails";
 
@@ -68,10 +69,16 @@ export function createArtifactUploader(options: ArtifactUploaderOptions) {
 
       const key = getMilestoneScreenshotKey(options.runId, milestone);
       const redactedMilestone = redactSecrets(milestone, options.secretValues ?? []);
-      const redactedScreenshot = maskSecretsInBytes(screenshot, options.secretValues ?? []);
+      // Screenshot uploads are binary JPEGs. We strip textual metadata segments and only fall
+      // back to byte-level secret masking for non-JPEG/text fixtures used by tests and other
+      // text-like payloads.
+      const sanitizedScreenshot = maskSecretsInBytes(
+        stripJpegMetadata(screenshot),
+        options.secretValues ?? [],
+      );
 
       try {
-        await options.bucket.put(key, redactedScreenshot, {
+        await options.bucket.put(key, sanitizedScreenshot, {
           httpMetadata: { contentType: "image/jpeg" },
         });
         uploadedArtifacts.push({

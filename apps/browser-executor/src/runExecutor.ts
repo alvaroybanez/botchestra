@@ -13,7 +13,9 @@ import {
 } from "./milestonePolicy";
 import {
   isActionAllowed,
+  toGuardrailRuleCode,
   validateNavigation,
+  type GuardrailRuleCode,
 } from "./guardrails";
 import {
   updateFrustrationState,
@@ -122,6 +124,7 @@ export type RunExecutionFailure = {
     | "GUARDRAIL_VIOLATION"
     | "BROWSER_ERROR";
   message: string;
+  guardrailCode?: GuardrailRuleCode;
   stepCount: number;
   durationSec: number;
   frustrationCount: number;
@@ -172,12 +175,16 @@ function failure(
     frustrationCount: number;
     milestones: RunMilestone[];
   },
+  details: Pick<RunExecutionFailure, "guardrailCode"> = {},
 ): RunExecutionFailure {
   return {
     ok: false,
     finalOutcome: "FAILED",
     errorCode,
     message,
+    ...(details.guardrailCode !== undefined
+      ? { guardrailCode: details.guardrailCode }
+      : {}),
     stepCount: state.stepCount,
     durationSec: toDurationSec(state.startedAt, state.now),
     frustrationCount: state.frustrationCount,
@@ -440,6 +447,8 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             stepCount,
             frustrationCount,
             milestones,
+          }, {
+            guardrailCode: toGuardrailRuleCode(startingNavigation.code),
           });
         }
 
@@ -516,6 +525,8 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
               stepCount,
               frustrationCount,
               milestones,
+            }, {
+              guardrailCode: toGuardrailRuleCode(actionValidation.code),
             });
           }
 

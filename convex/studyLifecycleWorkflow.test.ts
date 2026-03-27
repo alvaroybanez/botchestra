@@ -20,6 +20,7 @@ const modules = {
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),
   "./schema.ts": () => import("./schema"),
+  "./settings.ts": () => import("./settings"),
   "./studies.ts": () => import("./studies"),
   "./studyLifecycleWorkflow.ts": () => import("./studyLifecycleWorkflow"),
   "./waveDispatch.ts": () => import("./waveDispatch"),

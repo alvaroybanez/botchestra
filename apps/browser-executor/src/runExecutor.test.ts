@@ -323,6 +323,7 @@ describe("runExecutor", () => {
     expect(result).toMatchObject({
       ok: false,
       errorCode: "GUARDRAIL_VIOLATION",
+      guardrailCode: "FORBIDDEN_ACTION",
       stepCount: 0,
     });
     expect(page.clickCalls).toEqual([]);
@@ -348,6 +349,7 @@ describe("runExecutor", () => {
     expect(result).toMatchObject({
       ok: false,
       errorCode: "GUARDRAIL_VIOLATION",
+      guardrailCode: "DOMAIN_BLOCKED",
       stepCount: 0,
     });
     expect(page.gotoCalls).toEqual(["https://shop.example.com/cart"]);

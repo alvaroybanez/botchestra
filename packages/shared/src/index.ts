@@ -127,6 +127,7 @@ const FailureSchema = z.object({
   eventType: z.literal("failure"),
   payload: z.object({
     errorCode: z.string(),
+    guardrailCode: z.string().optional(),
     message: z.string().optional(),
     selfReport: SelfReportSchema.optional(),
   }),

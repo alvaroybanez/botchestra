@@ -47,6 +47,7 @@ export const getRunSummarizationContext = zInternalQuery({
 
     return {
       studyId: study._id,
+      orgId: study.orgId,
       hasNonTerminalRuns: runContexts.some(
         (run) =>
           run.status === "queued" ||

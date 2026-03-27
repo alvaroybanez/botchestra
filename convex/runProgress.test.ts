@@ -229,6 +229,36 @@ describe("POST /api/run-progress", () => {
     expect(run?.status).toBe("infra_error");
     expect(run?.errorCode).toBe("WORKER_INTERNAL_ERROR");
   });
+
+  it("persists a specific guardrail code for blocked runs", async () => {
+    const t = createTest();
+    const runId = await insertRun(t, { status: "running", startedAt: 1_000 });
+    const callbackToken = await createCallbackToken(runId, CALLBACK_SECRET);
+
+    const response = await t.fetch("/api/run-progress", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${callbackToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        runId,
+        eventType: "failure",
+        payload: {
+          errorCode: "GUARDRAIL_VIOLATION",
+          guardrailCode: "DOMAIN_BLOCKED",
+          message: "Navigation left the allowed domains",
+        },
+      }),
+    });
+
+    expect(response.status).toBe(200);
+
+    const run = await getRunDoc(t, runId);
+    expect(run?.status).toBe("blocked_by_guardrail");
+    expect(run?.errorCode).toBe("GUARDRAIL_VIOLATION");
+    expect(run?.guardrailCode).toBe("DOMAIN_BLOCKED");
+  });
 });
 
 type RunStatus =

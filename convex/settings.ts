@@ -5,13 +5,14 @@ import { z } from "zod";
 
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { listCredentialSummariesForOrg } from "./credentials";
 import { recordAuditEvent } from "./observability";
 import { ADMIN_ROLES, requireRole } from "./rbac";
 
 const zMutation = zCustomMutation(mutation, NoOp);
 const zQuery = zCustomQuery(query, NoOp);
+const zInternalQuery = zCustomQuery(internalQuery, NoOp);
 
 const taskCategorySchema = z.enum([
   "expansion",
@@ -86,6 +87,15 @@ export const getSettings = zQuery({
         identity.tokenIdentifier,
       ),
     };
+  },
+});
+
+export const getEffectiveSettingsForOrg = zInternalQuery({
+  args: {
+    orgId: requiredString("Org ID"),
+  },
+  handler: async (ctx, args) => {
+    return await loadEffectiveSettingsForOrg(ctx, args.orgId);
   },
 });
 
