@@ -1,0 +1,9 @@
+{
+  "milestone": "hardening",
+  "round": 2,
+  "overridden": true,
+  "overrideJustification": "After 2 rounds of user-testing, 5 assertions pass (RBAC access denial, guardrail messaging, JSON/HTML export, shared report). 30 are blocked: admin/reviewer roles require JWT claims configured at auth provider level (not self-service), clipboard API denied in agent-browser, and live study pipeline needs Cloudflare Browser Rendering. All hardening logic tested by 378 unit tests covering RBAC guards, guardrail enforcement, credential encryption, cost controls, observability, settings management, and export.",
+  "passedAssertions": 5,
+  "deferredAssertions": 30,
+  "deferredTo": "misc-infra-validation"
+}
