@@ -1,11 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomAction,
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import { internal } from "./_generated/api";
@@ -19,12 +12,14 @@ import {
   query,
 } from "./_generated/server";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
-
-const zAction = zCustomAction(action, NoOp);
-const zMutation = zCustomMutation(mutation, NoOp);
-const zQuery = zCustomQuery(query, NoOp);
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
+import {
+  zid,
+  zAction,
+  zInternalMutation,
+  zInternalQuery,
+  zMutation,
+  zQuery,
+} from "./zodHelpers";
 
 const draftStatusSchema = z.enum(["draft", "published", "archived"]);
 

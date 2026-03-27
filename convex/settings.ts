@@ -1,6 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomMutation, zCustomQuery } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc } from "./_generated/dataModel";
@@ -9,10 +7,7 @@ import { internalQuery, mutation, query } from "./_generated/server";
 import { listCredentialSummariesForOrg } from "./credentials";
 import { recordAuditEvent } from "./observability";
 import { ADMIN_ROLES, requireRole } from "./rbac";
-
-const zMutation = zCustomMutation(mutation, NoOp);
-const zQuery = zCustomQuery(query, NoOp);
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
+import { zInternalQuery, zMutation, zQuery } from "./zodHelpers";
 
 const taskCategorySchema = z.enum([
   "expansion",

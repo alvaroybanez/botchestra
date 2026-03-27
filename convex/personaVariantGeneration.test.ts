@@ -22,6 +22,7 @@ const modules = {
   "./personaVariantGenerationModel.ts": () =>
     import("./personaVariantGenerationModel"),
   "./settings.ts": () => import("./settings"),
+  "./userManagement.ts": () => import("./userManagement"),
 };
 
 const createTest = () => convexTest(schema, modules);

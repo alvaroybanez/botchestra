@@ -1,9 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -11,8 +6,7 @@ import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { resolveArtifactUrlsForStudy } from "./artifactResolver";
 import { decodeRunSummaryKey } from "./analysis/runSummaries";
-
-const zQuery = zCustomQuery(query, NoOp);
+import { zid, zQuery } from "./zodHelpers";
 
 const severitySchema = z.enum(["blocker", "major", "minor", "cosmetic"]);
 const runStatusSchema = z.enum([

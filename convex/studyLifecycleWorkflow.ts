@@ -1,13 +1,6 @@
 import { type WorkflowCtx, vWorkflowId } from "@convex-dev/workflow";
 import { vResultValidator } from "@convex-dev/workpool";
 import { ConvexError, v } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomAction,
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import { internal } from "./_generated/api";
@@ -37,11 +30,13 @@ import {
 import { recordAuditEvent } from "./observability";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
-
-const zQuery = zCustomQuery(query, NoOp);
-const zInternalAction = zCustomAction(internalAction, NoOp);
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
+import {
+  zid,
+  zInternalAction,
+  zInternalMutation,
+  zInternalQuery,
+  zQuery,
+} from "./zodHelpers";
 
 const WORKFLOW_POLL_INTERVAL_MS = 1_000;
 

@@ -1,10 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -16,9 +10,7 @@ import {
   recordMetric,
 } from "./observability";
 import { resolveArtifactUrlsForStudy } from "./artifactResolver";
-
-const zQuery = zCustomQuery(query, NoOp);
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
+import { zid, zInternalMutation, zQuery } from "./zodHelpers";
 
 const runStatusSchema = z.enum([
   "queued",

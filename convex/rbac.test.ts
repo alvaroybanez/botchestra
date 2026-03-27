@@ -14,6 +14,7 @@ const modules = {
   "./rbac.ts": () => import("./rbac"),
   "./schema.ts": () => import("./schema"),
   "./studies.ts": () => import("./studies"),
+  "./userManagement.ts": () => import("./userManagement"),
 };
 
 const createTest = () => convexTest(schema, modules);
@@ -116,6 +117,52 @@ describe("rbac", () => {
         canManageStudies: true,
       },
     });
+  });
+
+  it("falls back to the stored users table role when no role claim is present", async () => {
+    const t = createTest();
+    await t.run(async (ctx) =>
+      ctx.db.insert("userRoles", {
+        email: "stored-admin@example.com",
+        role: "admin",
+      }),
+    );
+    const asStoredAdmin = t.withIdentity({
+      ...rolelessIdentity,
+      email: "stored-admin@example.com",
+    });
+
+    const access = await asStoredAdmin.query((api as any).rbac.getViewerAccess, {});
+
+    expect(access).toMatchObject({
+      role: "admin",
+      permissions: {
+        canAccessSettings: true,
+        canAccessAdminDiagnostics: true,
+      },
+    });
+  });
+
+  it("prefers a JWT role claim over the stored users table role", async () => {
+    const t = createTest();
+    await t.run(async (ctx) =>
+      ctx.db.insert("userRoles", {
+        email: "claim-admin@example.com",
+        role: "reviewer",
+      }),
+    );
+    const asClaimAdmin = t.withIdentity({
+      ...rolelessIdentity,
+      email: "claim-admin@example.com",
+      role: "admin",
+    });
+
+    const role = await asClaimAdmin.mutation(async (ctx) => {
+      const result = await requireRole(ctx, ADMIN_ROLES);
+      return result.role;
+    });
+
+    expect(role).toBe("admin");
   });
 
   it("blocks researchers from admin-only guards with FORBIDDEN", async () => {

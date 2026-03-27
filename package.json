@@ -6,7 +6,8 @@
     "dev": "concurrently --names web,convex \"bun run --filter @botchestra/web dev\" \"bunx convex dev\"",
     "build": "bun run --filter '*' build",
     "test": "vitest run",
-    "typecheck": "bun run --filter '*' typecheck"
+    "typecheck": "bun run --filter '*' typecheck",
+    "user:set-role": "bunx convex run userManagement:setUserRole"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

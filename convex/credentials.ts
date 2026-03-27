@@ -1,10 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -16,10 +10,7 @@ import {
 } from "./_generated/server";
 import { recordAuditEvent } from "./observability";
 import { ADMIN_ROLES, requireRole } from "./rbac";
-
-const zMutation = zCustomMutation(mutation, NoOp);
-const zQuery = zCustomQuery(query, NoOp);
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
+import { zid, zInternalQuery, zMutation, zQuery } from "./zodHelpers";
 
 const CREDENTIAL_ENCRYPTION_PREFIX = "encv1";
 const CREDENTIAL_ENCRYPTION_SALT = "botchestra.credentials.v1";

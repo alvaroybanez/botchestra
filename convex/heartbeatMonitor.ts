@@ -1,5 +1,4 @@
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomMutation } from "convex-helpers/server/zod";
+import { zInternalMutation } from "./zodHelpers";
 import { z } from "zod";
 
 import type { Id } from "./_generated/dataModel";
@@ -9,8 +8,6 @@ import { internalMutation } from "./_generated/server";
 export const STALE_HEARTBEAT_THRESHOLD_MS = 60_000;
 export const HEARTBEAT_MONITOR_INTERVAL_SECONDS = 15;
 export const STALE_HEARTBEAT_ERROR_CODE = "HEARTBEAT_STALE";
-
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
 
 export const monitorStaleRuns = zInternalMutation({
   args: {

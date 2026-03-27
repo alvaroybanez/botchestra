@@ -1,6 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomMutation, zid } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -9,8 +7,7 @@ import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { recordAuditEvent } from "./observability";
 import { loadEffectiveSettingsForOrg } from "./settings";
-
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
+import { zid, zInternalMutation } from "./zodHelpers";
 
 export const DEFAULT_CUMULATIVE_FAILURE_THRESHOLD = 3;
 export const SYSTEM_COST_CONTROL_ACTOR = "system:cost-controls";

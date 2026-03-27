@@ -1,17 +1,11 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { ADMIN_ROLES, requireRole } from "./rbac";
-
-const zQuery = zCustomQuery(query, NoOp);
+import { zid, zQuery } from "./zodHelpers";
 
 export const AUDIT_EVENT_TYPES = [
   "study.launched",

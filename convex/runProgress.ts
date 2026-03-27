@@ -1,14 +1,11 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomMutation, zid } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
-
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
+import { zid, zInternalMutation } from "./zodHelpers";
 
 const runMilestoneArgsSchema = {
   runId: zid("runs"),

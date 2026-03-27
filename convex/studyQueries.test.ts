@@ -11,6 +11,7 @@ const modules = {
   "./schema.ts": () => import("./schema"),
   "./studies.ts": () => import("./studies"),
   "./runs.ts": () => import("./runs"),
+  "./userManagement.ts": () => import("./userManagement"),
 };
 
 const createTest = () => convexTest(schema, modules);

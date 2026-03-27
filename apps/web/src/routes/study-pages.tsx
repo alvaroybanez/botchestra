@@ -165,7 +165,10 @@ export function StudyCreationWizardPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const availablePacks = useMemo<PersonaPackListItem[]>(
-    () => (personaPacks ?? []).filter((pack) => pack.status !== "archived"),
+    () =>
+      (personaPacks ?? []).filter(
+        (pack: PersonaPackListItem) => pack.status !== "archived",
+      ),
     [personaPacks],
   );
 

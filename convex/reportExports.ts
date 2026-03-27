@@ -1,10 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomAction,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import { internal } from "./_generated/api";
@@ -19,9 +13,7 @@ import {
   type StudyReportExportCluster,
 } from "./analysis/reportArtifacts";
 import { collectIssueClusterArtifactKeys, resolveArtifactUrlsForStudy } from "./artifactResolver";
-
-const zAction = zCustomAction(action, NoOp);
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
+import { zid, zAction, zInternalQuery } from "./zodHelpers";
 
 type ReportArtifactsPayload = ReturnType<typeof buildStudyReportArtifacts>;
 type ExportedReportArtifact = {

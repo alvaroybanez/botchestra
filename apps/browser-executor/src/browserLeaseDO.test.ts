@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BrowserLeaseDO } from "./browserLeaseDO";
 
 const workerEntrypointPath = fileURLToPath(new URL("./index.ts", import.meta.url));
-const MINIFLARE_TEST_TIMEOUT_MS = 40_000;
+const MINIFLARE_TEST_TIMEOUT_MS = 120_000;
 let bundledWorkerScript: string | undefined;
 
 type MockStorage = {

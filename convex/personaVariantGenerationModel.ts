@@ -1,11 +1,6 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
+import { zid, zInternalMutation, zInternalQuery } from "./zodHelpers";
 
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery } from "./_generated/server";
@@ -15,9 +10,6 @@ import {
   MIN_RUN_BUDGET,
   resolveRunBudget,
 } from "./personaEngine/variantGeneration";
-
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
 
 const axisValueSchema = z.object({
   key: z.string(),

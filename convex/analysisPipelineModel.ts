@@ -1,19 +1,11 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import { type Doc, type Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { buildIssueClusters } from "./analysis/issueClustering";
 import { rankIssueClusters } from "./analysis/ranking";
-
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
+import { zid, zInternalMutation, zInternalQuery } from "./zodHelpers";
 type RunMilestoneContext = Pick<
   Doc<"runMilestones">,
   "actionType" | "title" | "url" | "note" | "stepIndex"

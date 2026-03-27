@@ -1,20 +1,17 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomQuery } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { buildStudyReportArtifactKeys } from "./analysis/reportArtifacts";
+import { zQuery } from "./zodHelpers";
 
 const LOCAL_ARTIFACT_PROXY_BASE_URL = "http://localhost:8787";
 const DEFAULT_SIGNED_URL_EXPIRY_SECONDS = 4 * 60 * 60;
 const HTTP_URL_PATTERN = /^https?:\/\//i;
 const RUN_ARTIFACT_KEY_PATTERN = /^runs\/([^/]+)\/.+$/;
 const STUDY_REPORT_ARTIFACT_KEY_PATTERN = /^study-reports\/([^/]+)\/.+$/;
-
-const zQuery = zCustomQuery(query, NoOp);
 
 type ArtifactResolverCtx = Pick<QueryCtx | MutationCtx, "db" | "storage">;
 type ArtifactResolverQueryCtx = QueryCtx;

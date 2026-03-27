@@ -71,6 +71,12 @@ const taskSpecValidator = v.object({
 
 export default defineSchema({
   ...authTables,
+
+  userRoles: defineTable({
+    email: v.string(),
+    role: v.string(),
+  }).index("by_email", ["email"]),
+
   // 1. personaPacks
   personaPacks: defineTable({
     name: v.string(),

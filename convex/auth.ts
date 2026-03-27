@@ -7,6 +7,8 @@ import {
 import type { GenericActionCtxWithAuthConfig } from "@convex-dev/auth/server";
 import type { GenericDataModel } from "convex/server";
 
+import { DEFAULT_USER_ROLE, syncUserFromAuth } from "./userManagement";
+
 const PASSWORD_PROVIDER_ID = "password";
 const PASSWORD_HASH_ITERATIONS = 100_000;
 const PASSWORD_HASH_KEY_LENGTH = 32;
@@ -194,4 +196,36 @@ const passwordProvider = ConvexCredentials({
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [passwordProvider],
+  callbacks: {
+    async afterUserCreatedOrUpdated(ctx, args) {
+      await syncUserFromAuth(ctx as never, {
+        profile: args.profile,
+      });
+    },
+  },
+  jwt: {
+    customClaims: async (ctx, { userId }) => {
+      const user = await ctx.db.get(userId);
+      const email =
+        typeof user?.email === "string" ? normalizePasswordEmail(user.email) : null;
+
+      if (email === null) {
+        return {};
+      }
+
+      const userRoleRecord = await ctx.db
+        .query("userRoles")
+        .withIndex("by_email", (query) => query.eq("email", email))
+        .unique();
+
+      if (userRoleRecord === null) {
+        return {};
+      }
+
+      return {
+        email: userRoleRecord.email,
+        role: userRoleRecord.role ?? DEFAULT_USER_ROLE,
+      };
+    },
+  },
 });

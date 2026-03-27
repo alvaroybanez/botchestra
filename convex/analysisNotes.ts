@@ -1,14 +1,11 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomMutation, zid } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
 import { COMMENTER_ROLES, requireIdentity, requireRole } from "./rbac";
-
-const zMutation = zCustomMutation(mutation, NoOp);
+import { zid, zMutation } from "./zodHelpers";
 
 const requiredString = (label: string) =>
   z.string().trim().min(1, `${label} is required.`);

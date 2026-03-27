@@ -1,20 +1,12 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomQuery } from "convex-helpers/server/zod";
-import { z } from "zod";
 
+import { internal } from "./_generated/api";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
+import { USER_ROLES, userRoleSchema, type UserRole } from "./userRoles";
+import { zQuery } from "./zodHelpers";
 
-const zQuery = zCustomQuery(query, NoOp);
-
-const userRoleSchema = z.enum(["researcher", "reviewer", "admin"]);
-
-export const ALL_ROLES = [
-  "researcher",
-  "reviewer",
-  "admin",
-] as const satisfies readonly UserRole[];
+export const ALL_ROLES = USER_ROLES;
 export const ADMIN_ROLES = ["admin"] as const satisfies readonly UserRole[];
 export const STUDY_MANAGER_ROLES = [
   "researcher",
@@ -35,7 +27,7 @@ export const getViewerAccess = zQuery({
       return null;
     }
 
-    const role = getRoleFromIdentity(identity);
+    const role = await getRoleFromIdentity(ctx, identity);
 
     return {
       role,
@@ -59,7 +51,7 @@ export async function requireRole(
   allowedRoles: readonly UserRole[],
 ) {
   const identity = await requireIdentity(ctx);
-  const role = getRoleFromIdentity(identity);
+  const role = await getRoleFromIdentity(ctx, identity);
 
   if (!allowedRoles.includes(role)) {
     throw new ConvexError(
@@ -73,7 +65,10 @@ export async function requireRole(
   };
 }
 
-export function getRoleFromIdentity(identity: Record<string, unknown>) {
+export async function getRoleFromIdentity(
+  ctx: QueryCtx | MutationCtx | ActionCtx,
+  identity: Record<string, unknown>,
+) {
   const directRole = parseRole(identity.role);
 
   if (directRole !== null) {
@@ -94,6 +89,21 @@ export function getRoleFromIdentity(identity: Record<string, unknown>) {
 
   if (claimRole !== null) {
     return claimRole;
+  }
+
+  const email =
+    toEmail(identity.email) ??
+    (claims === null ? null : toEmail(claims.email));
+
+  if (email !== null) {
+    const storedRole: UserRole | null = await ctx.runQuery(
+      (internal as any).userManagement.getStoredRoleForEmail,
+      { email },
+    );
+
+    if (storedRole !== null) {
+      return storedRole;
+    }
   }
 
   return "researcher";
@@ -127,4 +137,11 @@ function getRecord(value: unknown) {
   return value as Record<string, unknown>;
 }
 
-export type UserRole = z.infer<typeof userRoleSchema>;
+function toEmail(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length === 0 ? null : trimmed;
+}

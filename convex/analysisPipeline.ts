@@ -1,10 +1,6 @@
 "use node";
 
 import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomAction,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import { generateWithModel } from "../packages/ai/src/index";
@@ -24,8 +20,7 @@ import {
   type RunSummaryContext,
   type SummarizableRunSummaryContext,
 } from "./analysis/runSummaries";
-
-const zInternalAction = zCustomAction(internalAction, NoOp);
+import { zid, zInternalAction } from "./zodHelpers";
 
 const aiRunSummarySchema = z.object({
   outcomeClassification: z.enum(["success", "failure", "abandoned"]),

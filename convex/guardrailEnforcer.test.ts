@@ -14,6 +14,7 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./schema.ts": () => import("./schema"),
   "./studies.ts": () => import("./studies"),
+  "./userManagement.ts": () => import("./userManagement"),
 };
 
 const createTest = () => convexTest(schema, modules);

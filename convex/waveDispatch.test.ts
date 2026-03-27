@@ -15,6 +15,7 @@ const modules = {
   "./runProgress.ts": () => import("./runProgress"),
   "./runs.ts": () => import("./runs"),
   "./studies.ts": () => import("./studies"),
+  "./userManagement.ts": () => import("./userManagement"),
   "./waveDispatch.ts": () => import("./waveDispatch"),
 };
 

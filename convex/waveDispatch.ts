@@ -1,12 +1,5 @@
 import { Workpool, vOnCompleteValidator } from "@convex-dev/workpool";
 import { v, ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomAction,
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import { components, internal } from "./_generated/api";
@@ -27,10 +20,12 @@ import {
   mapCompletionOutcomeToRunStatus,
   mapFailureCodeToRunStatus,
 } from "./runProgress";
-
-const zInternalQuery = zCustomQuery(internalQuery, NoOp);
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
-const zInternalAction = zCustomAction(internalAction, NoOp);
+import {
+  zid,
+  zInternalAction,
+  zInternalMutation,
+  zInternalQuery,
+} from "./zodHelpers";
 
 const dispatchPool = new Workpool(components.browserPool, {
   maxParallelism: ACTIVE_CONCURRENCY_HARD_CAP,

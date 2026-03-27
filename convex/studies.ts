@@ -1,10 +1,4 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import {
-  zCustomMutation,
-  zCustomQuery,
-  zid,
-} from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -26,10 +20,7 @@ import {
   recordMetric,
 } from "./observability";
 import { workflow } from "./workflow";
-
-const zMutation = zCustomMutation(mutation, NoOp);
-const zQuery = zCustomQuery(query, NoOp);
-const zInternalMutation = zCustomMutation(internalMutation, NoOp);
+import { zid, zInternalMutation, zMutation, zQuery } from "./zodHelpers";
 
 const allowedActionSchema = z.enum([
   "goto",

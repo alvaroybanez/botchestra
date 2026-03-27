@@ -1,8 +1,6 @@
 "use node";
 
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomAction, zid } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import { generateWithModel } from "../packages/ai/src/index";
@@ -22,9 +20,7 @@ import {
   validateGeneratedVariantCandidate,
 } from "./personaEngine/variantGeneration";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
-
-const zAction = zCustomAction(action, NoOp);
-const zInternalAction = zCustomAction(internalAction, NoOp);
+import { zid, zAction, zInternalAction } from "./zodHelpers";
 
 export const previewVariants = zAction({
   args: {

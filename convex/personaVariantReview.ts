@@ -1,14 +1,11 @@
 import { ConvexError } from "convex/values";
-import { NoOp } from "convex-helpers/server/customFunctions";
-import { zCustomQuery, zid } from "convex-helpers/server/zod";
 import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { DEFAULT_RUN_BUDGET, MAX_RUN_BUDGET } from "./personaEngine/variantGeneration";
-
-const zQuery = zCustomQuery(query, NoOp);
+import { zid, zQuery } from "./zodHelpers";
 
 const studySummarySchema = z.object({
   _id: zid("studies"),
