@@ -1820,6 +1820,38 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Shared link copied.");
   });
 
+  it("exports demo study artifacts locally without calling Convex report exports", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies/demo-study/report"],
+    });
+
+    await clickButton(container, "Export JSON");
+
+    expect(exportJsonReportMock).not.toHaveBeenCalled();
+    expect(clickedDownloads).toHaveLength(1);
+    expect(clickedDownloads[0]).toEqual({
+      download: "study-report-demo-study.json",
+      href: "blob:mock-1",
+    });
+    expect(JSON.parse(await downloadedBlobs.get("blob:mock-1")!.text())).toMatchObject({
+      studyId: "demo-study",
+      issueClusterIds: ["finding-demo-address", "finding-demo-payment"],
+    });
+
+    await clickButton(container, "Export HTML");
+
+    expect(exportHtmlReportMock).not.toHaveBeenCalled();
+    expect(clickedDownloads).toHaveLength(2);
+    expect(clickedDownloads[1]).toEqual({
+      download: "study-report-demo-study.html",
+      href: "blob:mock-2",
+    });
+    expect(await downloadedBlobs.get("blob:mock-2")!.text()).toContain(
+      "Checkout continue button hidden on the address step",
+    );
+  });
+
   it("renders the shared report with minimal chrome after authentication", async () => {
     mockedStudyById = {
       "study-live": makeStudy({

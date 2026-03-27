@@ -23,6 +23,10 @@ import {
   formatTimestamp,
   type StudyDetailSearch,
 } from "@/routes/study-shared";
+import {
+  buildDemoReportExportArtifacts,
+  type LocalReportExportArtifact,
+} from "@/routes/study-report-export";
 
 const severityOrder = [
   "blocker",
@@ -46,7 +50,7 @@ type RunSummary = {
 };
 
 type ReportExportArtifact = {
-  studyId: Id<"studies">;
+  studyId: string;
   artifactKey: string;
   contentType: string;
   fileName: string;
@@ -297,11 +301,23 @@ function ResolvedStudyReportPage({
       ),
     [orderedFindings],
   );
+  const localExportArtifacts = useMemo(() => {
+    if (study._id !== DEMO_STUDY_ID) {
+      return undefined;
+    }
+
+    return buildDemoReportExportArtifacts({
+      issueClusters: orderedFindings,
+      report,
+      resolvedArtifactUrls,
+    });
+  }, [orderedFindings, report, resolvedArtifactUrls, study._id]);
 
   return (
     <ReportShell
       detailSearch={detailSearch}
       isSharedView={isSharedView}
+      localExportArtifacts={localExportArtifacts}
       rightColumn={
         <div className="space-y-6">
           <Card>
@@ -421,12 +437,14 @@ function ReportShell({
   study,
   detailSearch,
   isSharedView,
+  localExportArtifacts,
   children,
   rightColumn,
 }: {
   study: ReportStudySummary;
   detailSearch: StudyDetailSearch;
   isSharedView: boolean;
+  localExportArtifacts?: Record<"json" | "html", LocalReportExportArtifact>;
   children: ReactNode;
   rightColumn: ReactNode;
 }) {
@@ -454,7 +472,11 @@ function ReportShell({
               </div>
             </div>
 
-            <ReportActionButtons isSharedView studyId={study._id} />
+            <ReportActionButtons
+              isSharedView
+              localExportArtifacts={localExportArtifacts}
+              studyId={study._id}
+            />
           </div>
         </div>
       ) : (
@@ -479,7 +501,11 @@ function ReportShell({
             </div>
 
             <div className="flex flex-col items-start gap-3 sm:items-end">
-              <ReportActionButtons isSharedView={false} studyId={study._id} />
+              <ReportActionButtons
+                isSharedView={false}
+                localExportArtifacts={localExportArtifacts}
+                studyId={study._id}
+              />
               <div className="flex flex-wrap gap-3">
                 <StudyOverviewLinkButton
                   detailSearch={detailSearch}
@@ -510,9 +536,11 @@ function ReportShell({
 
 function ReportActionButtons({
   isSharedView,
+  localExportArtifacts,
   studyId,
 }: {
   isSharedView: boolean;
+  localExportArtifacts?: Record<"json" | "html", LocalReportExportArtifact>;
   studyId: string;
 }) {
   const exportJson = useAction(api.reportExports.exportJson);
@@ -528,9 +556,10 @@ function ReportActionButtons({
 
     try {
       const exportedArtifact =
-        format === "json"
+        localExportArtifacts?.[format] ??
+        (format === "json"
           ? await exportJson({ studyId: studyId as Id<"studies"> })
-          : await exportHtml({ studyId: studyId as Id<"studies"> });
+          : await exportHtml({ studyId: studyId as Id<"studies"> }));
 
       downloadReportArtifact(exportedArtifact);
     } catch (error) {
@@ -547,7 +576,7 @@ function ReportActionButtons({
     setFeedback(null);
 
     try {
-      await copySharedReportLink(studyId as Id<"studies">);
+      await copySharedReportLink(studyId);
       setFeedback({
         tone: "default",
         text: "Shared link copied.",
@@ -883,11 +912,11 @@ function unique(values: string[]) {
   return [...new Set(values)];
 }
 
-function buildSharedReportLink(studyId: Id<"studies">) {
+function buildSharedReportLink(studyId: string) {
   return `/studies/${studyId}/report?shared=1`;
 }
 
-async function copySharedReportLink(studyId: Id<"studies">) {
+async function copySharedReportLink(studyId: string) {
   if (!navigator.clipboard?.writeText) {
     throw new Error("Clipboard is unavailable.");
   }

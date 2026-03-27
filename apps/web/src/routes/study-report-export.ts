@@ -1,0 +1,281 @@
+import type {
+  DemoFinding,
+  DemoStudyReport,
+} from "@/routes/study-demo-data";
+
+export type LocalReportExportArtifact = {
+  studyId: string;
+  artifactKey: string;
+  contentType: string;
+  fileName: string;
+  content: string;
+};
+
+export function buildDemoReportExportArtifacts({
+  issueClusters,
+  report,
+  resolvedArtifactUrls = {},
+}: {
+  issueClusters: DemoFinding[];
+  report: DemoStudyReport;
+  resolvedArtifactUrls?: Record<string, string>;
+}): Record<"json" | "html", LocalReportExportArtifact> {
+  const studyId = report.studyId;
+  const htmlArtifactKey =
+    report.htmlReportKey ?? `study-reports/${studyId}/report.html`;
+  const jsonArtifactKey =
+    report.jsonReportKey ?? `study-reports/${studyId}/report.json`;
+
+  return {
+    json: {
+      studyId,
+      artifactKey: jsonArtifactKey,
+      contentType: "application/json",
+      fileName: `study-report-${studyId}.json`,
+      content: JSON.stringify(
+        {
+          ...report,
+          issueClusters,
+        },
+        null,
+        2,
+      ),
+    },
+    html: {
+      studyId,
+      artifactKey: htmlArtifactKey,
+      contentType: "text/html; charset=utf-8",
+      fileName: `study-report-${studyId}.html`,
+      content: renderDemoStudyReportHtml({
+        issueClusters,
+        report,
+        resolvedArtifactUrls,
+      }),
+    },
+  };
+}
+
+function renderDemoStudyReportHtml({
+  issueClusters,
+  report,
+  resolvedArtifactUrls,
+}: {
+  issueClusters: DemoFinding[];
+  report: DemoStudyReport;
+  resolvedArtifactUrls: Record<string, string>;
+}) {
+  const headlineMetricCards = [
+    {
+      label: "Completion rate",
+      value: formatPercent(report.headlineMetrics.completionRate),
+    },
+    {
+      label: "Abandonment rate",
+      value: formatPercent(report.headlineMetrics.abandonmentRate),
+    },
+    {
+      label: "Median steps",
+      value: formatNumber(report.headlineMetrics.medianSteps),
+    },
+    {
+      label: "Median duration",
+      value: `${formatNumber(report.headlineMetrics.medianDurationSec)} sec`,
+    },
+  ]
+    .map(
+      (metric) => `
+        <article class="metric-card">
+          <dt>${escapeHtml(metric.label)}</dt>
+          <dd>${escapeHtml(metric.value)}</dd>
+        </article>
+      `,
+    )
+    .join("");
+
+  const issueClusterMarkup =
+    issueClusters.length === 0
+      ? `
+        <section class="empty-state">
+          <h2>No replay-backed issue clusters</h2>
+          <p>This study produced no clusterable failures. Headline metrics and limitations are still included for review.</p>
+        </section>
+      `
+      : issueClusters
+          .map(
+            (cluster, index) => `
+              <article class="issue-card">
+                <div class="issue-card__header">
+                  <span class="issue-rank">#${index + 1}</span>
+                  <div>
+                    <h2>${escapeHtml(cluster.title)}</h2>
+                    <p class="issue-summary">${escapeHtml(cluster.summary)}</p>
+                  </div>
+                </div>
+                <dl class="issue-metadata">
+                  <div><dt>Severity</dt><dd>${escapeHtml(cluster.severity)}</dd></div>
+                  <div><dt>Affected runs</dt><dd>${escapeHtml(String(cluster.affectedRunCount))}</dd></div>
+                  <div><dt>Affected rate</dt><dd>${escapeHtml(formatPercent(cluster.affectedRunRate))}</dd></div>
+                  <div><dt>Replay confidence</dt><dd>${escapeHtml(formatPercent(cluster.replayConfidence))}</dd></div>
+                </dl>
+                <section>
+                  <h3>Recommendation</h3>
+                  <p>${escapeHtml(cluster.recommendation)}</p>
+                </section>
+                <section>
+                  <h3>Confidence note</h3>
+                  <p>${escapeHtml(cluster.confidenceNote)}</p>
+                </section>
+                <section>
+                  <h3>Affected segments</h3>
+                  <ul>
+                    ${cluster.affectedProtoPersonas
+                      .map((segment) => `<li>${escapeHtml(segment.name)}</li>`)
+                      .join("")}
+                  </ul>
+                </section>
+                <section>
+                  <h3>Evidence</h3>
+                  ${
+                    cluster.evidence.length === 0
+                      ? "<p>No evidence artifacts were attached to this cluster.</p>"
+                      : `<div class="evidence-grid">
+                    ${cluster.evidence
+                      .map((evidence, evidenceIndex) =>
+                        renderEvidenceCard(
+                          {
+                            href: toArtifactHref(
+                              evidence.fullResolutionKey,
+                              resolvedArtifactUrls,
+                            ),
+                            imageSrc: toArtifactHref(
+                              evidence.thumbnailKey,
+                              resolvedArtifactUrls,
+                            ),
+                          },
+                          evidenceIndex,
+                        ),
+                      )
+                      .join("")}
+                  </div>`
+                  }
+                </section>
+              </article>
+            `,
+          )
+          .join("");
+
+  return [
+    "<!DOCTYPE html>",
+    '<html lang="en">',
+    "<head>",
+    '  <meta charset="utf-8" />',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1" />',
+    "  <title>Botchestra Study Report</title>",
+    "  <style>",
+    "    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }",
+    "    body { margin: 0; background: #f8fafc; color: #0f172a; }",
+    "    main { max-width: 960px; margin: 0 auto; padding: 32px 20px 64px; }",
+    "    h1, h2, h3 { margin: 0 0 12px; }",
+    "    p, li, dd { line-height: 1.6; }",
+    "    .report-meta { color: #475569; margin-bottom: 24px; }",
+    "    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 24px 0 32px; }",
+    "    .metric-card, .issue-card, .limitations, .empty-state { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }",
+    "    .metric-card dt { font-size: 0.875rem; color: #475569; }",
+    "    .metric-card dd { margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; }",
+    "    .issue-card { margin-top: 16px; }",
+    "    .issue-card__header { display: flex; gap: 16px; align-items: flex-start; }",
+    "    .issue-rank { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; border-radius: 999px; background: #0f172a; color: #f8fafc; font-weight: 700; }",
+    "    .issue-summary { color: #334155; margin-top: 4px; }",
+    "    .issue-metadata { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }",
+    "    .issue-metadata dt { color: #475569; font-size: 0.875rem; }",
+    "    .issue-metadata dd { margin: 4px 0 0; font-weight: 600; }",
+    "    .limitations { margin-top: 32px; }",
+    "    .evidence-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }",
+    "    .evidence-card { overflow: hidden; text-decoration: none; color: inherit; }",
+    "    .evidence-card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #e2e8f0; }",
+    "    .evidence-card__meta { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }",
+    "    .evidence-card__label { font-weight: 600; }",
+    "    .evidence-card__detail { color: #475569; font-size: 0.875rem; }",
+    "  </style>",
+    "</head>",
+    "<body>",
+    "  <main>",
+    "    <header>",
+    "      <h1>Study Report</h1>",
+    `      <p class="report-meta">Study ID: <code>${escapeHtml(report.studyId)}</code> · Generated ${escapeHtml(
+      new Date(report.createdAt).toISOString(),
+    )}</p>`,
+    "      <p>This HTML report is self-contained and can be reviewed without Botchestra app access.</p>",
+    "    </header>",
+    "    <section>",
+    "      <h2>Headline metrics</h2>",
+    `      <dl class="metric-grid">${headlineMetricCards}</dl>`,
+    "    </section>",
+    "    <section>",
+    "      <h2>Ranked issue clusters</h2>",
+    issueClusterMarkup,
+    "    </section>",
+    '    <section class="limitations">',
+    "      <h2>Limitations</h2>",
+    "      <ul>",
+    ...report.limitations.map(
+      (limitation) => `        <li>${escapeHtml(limitation)}</li>`,
+    ),
+    "      </ul>",
+    "    </section>",
+    "  </main>",
+    "</body>",
+    "</html>",
+  ].join("\n");
+}
+
+function renderEvidenceCard(
+  evidence: {
+    href: string;
+    imageSrc: string;
+  },
+  evidenceIndex: number,
+) {
+  const label = `Evidence ${evidenceIndex + 1}`;
+
+  return `
+    <a class="metric-card evidence-card" href="${escapeHtml(
+      evidence.href,
+    )}" rel="noreferrer" target="_blank">
+      <img alt="${escapeHtml(label)}" src="${escapeHtml(evidence.imageSrc)}" />
+      <div class="evidence-card__meta">
+        <span class="evidence-card__label">${escapeHtml(label)}</span>
+        <span class="evidence-card__detail">View full resolution</span>
+      </div>
+    </a>
+  `;
+}
+
+function toArtifactHref(
+  value: string,
+  resolvedArtifactUrls: Record<string, string>,
+) {
+  return resolvedArtifactUrls[value] ?? (value.startsWith("data:") ? value : "#");
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(sanitizeNumber(value) * 100)}%`;
+}
+
+function formatNumber(value: number) {
+  const safeValue = sanitizeNumber(value);
+  return Number.isInteger(safeValue) ? safeValue.toFixed(0) : safeValue.toFixed(1);
+}
+
+function sanitizeNumber(value: number) {
+  return Number.isFinite(value) ? value : 0;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
