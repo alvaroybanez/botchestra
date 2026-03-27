@@ -1,0 +1,100 @@
+{
+  "groupId": "guardrail-launch-surface-rerun",
+  "testedAt": "2026-03-27T01:50:18.934493+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-r2-endtoend@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "c5fe664c3fde",
+    "studyId": "m178kcakd1v7awndrbymch2nhh83q8gd",
+    "packId": "ks7ff2xr9mfm3sfnzsr5w13gc983qpnf"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-008",
+      "status": "blocked",
+      "reason": "The launch flow now exposes a confirmation modal and then transitions the study to persona review, but it still never surfaces the raw `validateStudyLaunch { pass, reasons[] }` result described by the assertion.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-surface-rerun/study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-009",
+      "status": "blocked",
+      "reason": "The launch confirmation flow exposes only Cancel and Confirm Launch controls; there is still no visible production-ack control or way to submit a production launch without acknowledgement and observe rejection.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-surface-rerun/study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-010",
+      "status": "blocked",
+      "reason": "The launched study reached persona review, but visible variant generation never completed and no run detail reached a blocked_by_guardrail terminal state.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/personas-generating-variants.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-013",
+      "status": "blocked",
+      "reason": "Cumulative-failure auto-cancel still requires real run execution with queued backlog, and the browser flow never progressed beyond persona review / generating variants.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/personas-generating-variants.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-021",
+      "status": "blocked",
+      "reason": "Budget-cap enforcement still depends on admin settings changes plus live execution; the admin settings surface remains inaccessible from the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-025",
+      "status": "blocked",
+      "reason": "guardrailEvents auditing remains a backend-table assertion and is still not directly observable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-surface-rerun/study-overview-draft.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-016",
+      "status": "blocked",
+      "reason": "Subsequent-study effects still require admin settings changes, but the browser surface never exposed an admin-capable settings session.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-settings-denied.png"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "The study launch modal appeared even while the study was still in draft status.",
+      "resolved": false,
+      "resolution": "Continued testing the visible launch flow to see which hardening behaviors were actually exposed.",
+      "affectedAssertions": [
+        "VAL-HARDEN-008",
+        "VAL-HARDEN-009"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Guardrail assertions that depend on admin settings, audit tables, or real blocked_by_guardrail run records remain unavailable from browser-only validation.",
+      "affectedAssertions": [
+        "VAL-HARDEN-008",
+        "VAL-HARDEN-009",
+        "VAL-HARDEN-010",
+        "VAL-HARDEN-013",
+        "VAL-HARDEN-021",
+        "VAL-HARDEN-025",
+        "VAL-CROSS-016"
+      ],
+      "quickFixAttempted": "Imported and published a pack, created a fresh study, opened the launch modal, and confirmed launch, but the flow only advanced to persona review and then stalled on generating variants."
+    }
+  ],
+  "summary": "The browser still only exposes high-level launch UI, not raw launch-validation payloads or blocked_by_guardrail run details."
+}

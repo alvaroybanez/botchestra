@@ -1,0 +1,94 @@
+{
+  "groupId": "report-share-surface-rerun",
+  "testedAt": "2026-03-27T01:50:18.934493+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-r2-role-admin@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "c5fe664c3fde"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-019",
+      "status": "blocked",
+      "reason": "The browser surface can render demo evidence and exported artifacts, but signed artifact URL signature and expiry behavior are still not directly provable from browser-visible UI alone.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/demo-report-initial.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/downloads/2b7ec4a6-d06c-41e0-b0b6-8a2c8e70dad8"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-020",
+      "status": "blocked",
+      "reason": "Per-task-category model routing remains an admin/backend behavior that is not directly observable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/demo-report-initial.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-022",
+      "status": "pass",
+      "reason": "Clicking Export JSON now downloads a report artifact. The downloaded JSON contains headlineMetrics, limitations, and inline issueClusters for the populated demo report.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/downloads/936c2282-cdcd-4dd1-843b-0ba5d9545e44"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-023",
+      "status": "pass",
+      "reason": "Clicking Export HTML now downloads a self-contained HTML report with embedded evidence links, a generation timestamp, and standalone report content.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/downloads/2b7ec4a6-d06c-41e0-b0b6-8a2c8e70dad8"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-024",
+      "status": "blocked",
+      "reason": "Copy Link still cannot be proven end-to-end under agent-browser because clicking it surfaces `Failed to execute 'writeText' on 'Clipboard': Write permission denied.` on the page, preventing clipboard verification.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/demo-report-copy-link-error.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-011",
+      "status": "blocked",
+      "reason": "The frontend-to-ArtifactStore boundary is still not directly observable from the browser surface without code or network-contract inspection.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/demo-report-initial.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/report-share-surface-rerun/downloads/2b7ec4a6-d06c-41e0-b0b6-8a2c8e70dad8"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Browser downloads only became inspectable after restarting the session with an explicit download path configured.",
+      "resolved": true,
+      "resolution": "Restarted the single browser session with `--download-path` and re-ran Export JSON / Export HTML, which produced downloadable files.",
+      "affectedAssertions": [
+        "VAL-HARDEN-022",
+        "VAL-HARDEN-023"
+      ]
+    },
+    {
+      "description": "Copy Link still hits clipboard permission denial under agent-browser.",
+      "resolved": false,
+      "resolution": "Captured the visible error state instead of clipboard contents.",
+      "affectedAssertions": [
+        "VAL-HARDEN-024"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Clipboard permissions under agent-browser still prevent proving the copy-to-clipboard share path directly.",
+      "affectedAssertions": [
+        "VAL-HARDEN-024"
+      ],
+      "quickFixAttempted": "Clicked Copy Link on the populated report and attempted clipboard reads, but the browser denied both write and read clipboard permissions."
+    }
+  ],
+  "summary": "Demo report exports now download successfully, while Copy Link remains blocked by clipboard permissions and backend-only report-storage behaviors remain non-browser-observable."
+}

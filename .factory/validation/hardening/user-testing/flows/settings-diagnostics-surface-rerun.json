@@ -1,0 +1,88 @@
+{
+  "groupId": "settings-diagnostics-surface-rerun",
+  "testedAt": "2026-03-27T01:50:18.934493+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-r2-role-admin@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "c5fe664c3fde"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-006",
+      "status": "blocked",
+      "reason": "Admin-only hardening surfaces still could not be exercised because the real browser surface exposes no way to obtain admin claims; direct /settings navigation rendered access denied.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-007",
+      "status": "blocked",
+      "reason": "Domain allowlist management remains unreachable from browser-only validation because the settings surface still requires admin claims that self-service signup does not provide.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-014",
+      "status": "blocked",
+      "reason": "The admin diagnostics surface never rendered; direct navigation still showed access denied for the admin-themed self-service account.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-015",
+      "status": "blocked",
+      "reason": "Audit-event recording is still not user-visible without the admin diagnostics surface, which remained inaccessible from the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-016",
+      "status": "blocked",
+      "reason": "Audit-trail filter controls live on the admin diagnostics surface, which still could not be reached from any browser-visible admin session.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-017",
+      "status": "blocked",
+      "reason": "Standardized infra error codes are presented on the admin diagnostics page, but that surface remained unreachable without real admin claims.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-018",
+      "status": "blocked",
+      "reason": "Lifecycle metrics are still presented only on the admin diagnostics page, and the browser surface never produced an admin-capable session to load that page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/settings-diagnostics-surface-rerun/admin-attempt-diagnostics-denied.png"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "Admin-only settings and diagnostics surfaces remain inaccessible from self-service browser accounts.",
+      "affectedAssertions": [
+        "VAL-HARDEN-006",
+        "VAL-HARDEN-007",
+        "VAL-HARDEN-014",
+        "VAL-HARDEN-015",
+        "VAL-HARDEN-016",
+        "VAL-HARDEN-017",
+        "VAL-HARDEN-018"
+      ],
+      "quickFixAttempted": "Retried direct /settings and /admin/diagnostics navigation with a fresh admin-themed signup, but both stayed on access-denied states."
+    }
+  ],
+  "summary": "All settings/diagnostics assertions remain blocked because browser-only self-service flows still cannot open admin surfaces."
+}

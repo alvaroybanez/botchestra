@@ -1,0 +1,95 @@
+{
+  "groupId": "end-to-end-surface-rerun",
+  "testedAt": "2026-03-27T01:50:18.934493+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-r2-endtoend@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "c5fe664c3fde",
+    "studyId": "m178kcakd1v7awndrbymch2nhh83q8gd",
+    "packId": "ks7ff2xr9mfm3sfnzsr5w13gc983qpnf"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-011",
+      "status": "blocked",
+      "reason": "Credential masking in screenshots/logs still requires a live credentialed run plus artifact inspection, and the fresh browser flow never reached executable runs or artifacts.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/personas-generating-variants.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-012",
+      "status": "blocked",
+      "reason": "Whether encrypted credential payloads are stripped from frontend query responses remains a backend/data-contract assertion rather than a browser-visible behavior.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/live-study-report-not-ready.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-001",
+      "status": "blocked",
+      "reason": "A fresh browser account could import/publish a pack and create a study, but the live study only reached persona review and the report tab stayed `Report not ready`, so a completed live pack\u2192study\u2192analysis\u2192report pipeline is still not reachable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/imported-pack-detail.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/personas-generating-variants.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/live-study-report-not-ready.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-010",
+      "status": "blocked",
+      "reason": "Credential-ref leakage still requires a live credentialed study with artifacts to inspect, and the browser flow never reached executable runs or artifacts.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/personas-generating-variants.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-018",
+      "status": "blocked",
+      "reason": "Concurrent-study isolation still requires two live completed studies with separate analysis outputs; this rerun did not reach even one live completed analyzed study from the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/live-study-report-not-ready.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-019",
+      "status": "blocked",
+      "reason": "Error-recovery integrity still requires inducing an analysis failure and then inspecting preserved run/milestone state, which is not directly observable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/end-to-end-surface-rerun/live-study-report-not-ready.png"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Visible variant generation remained stuck on `Generating variants...` for more than 28 seconds with no accepted variants surfacing.",
+      "resolved": false,
+      "resolution": "Captured the stalled personas tab and used the still-empty live report tab as evidence that the pipeline never completed.",
+      "affectedAssertions": [
+        "VAL-HARDEN-011",
+        "VAL-CROSS-001",
+        "VAL-CROSS-010",
+        "VAL-CROSS-018"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "The browser flow still cannot reach a completed live analyzed study; it stalls at persona review / generating variants and leaves the report tab not ready.",
+      "affectedAssertions": [
+        "VAL-HARDEN-011",
+        "VAL-HARDEN-012",
+        "VAL-CROSS-001",
+        "VAL-CROSS-010",
+        "VAL-CROSS-018",
+        "VAL-CROSS-019"
+      ],
+      "quickFixAttempted": "Imported and published a fresh pack, created a study from the browser, launched it, triggered variant generation, and checked the report tab, but the flow never progressed to a completed analyzed report."
+    }
+  ],
+  "summary": "The live hardening pipeline remains blocked from the browser because the study stalls before generating a real analyzed report or any credential-bearing run artifacts."
+}
