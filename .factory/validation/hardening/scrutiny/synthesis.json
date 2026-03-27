@@ -1,0 +1,65 @@
+{
+  "milestone": "hardening",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 11,
+    "passed": 9,
+    "failed": 2,
+    "failedFeatures": [
+      "guardrail-enforcer-worker",
+      "settings-management"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "guardrail-enforcer-worker",
+      "severity": "blocking",
+      "description": "Worker-side screenshot masking only performs UTF-8 byte substitution, so actual JPEG milestone screenshots can still contain rendered credential text even after `maskSecretsInBytes` runs."
+    },
+    {
+      "featureId": "guardrail-enforcer-worker",
+      "severity": "blocking",
+      "description": "Blocked runs still persist only the generic `GUARDRAIL_VIOLATION` code, dropping the specific breached-rule detail before it reaches the run record."
+    },
+    {
+      "featureId": "settings-management",
+      "severity": "blocking",
+      "description": "Org-scoped `settings.modelConfig` rows are persisted but never consulted by `packages/ai`, so admin model-configuration changes have no runtime effect."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "Skill: backend-worker",
+      "suggestion": "Document a verification-only completion path for cases where a worker is assigned a backend feature that is already implemented on the branch before the worker starts.",
+      "evidence": "The `guardrail-enforcer-convex` review found the code already present in commit `8a80588`, while `.factory/skills/backend-worker/SKILL.md` only describes RED/GREEN implementation work. The worker could only return a partial handoff even though targeted validators passed.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document how to provision or seed an Admin-role account for manual verification of admin-only routes during frontend work and user testing.",
+      "evidence": "Both `admin-diagnostics-page` and `settings-frontend-page` reviews flagged that the mission instructions only mention creating accounts through `/signup`, with no documented path to obtain admin permissions for `/admin/diagnostics` or `/settings` validation.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
