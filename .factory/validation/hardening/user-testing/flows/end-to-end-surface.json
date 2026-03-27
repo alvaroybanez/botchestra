@@ -1,0 +1,81 @@
+{
+  "groupId": "end-to-end-surface",
+  "testedAt": "2026-03-27T01:14:08.639607+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-role-reviewer@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "d98e0bfc9185"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-011",
+      "status": "blocked",
+      "reason": "Credential masking in screenshots/logs requires a live credentialed run and artifact inspection, which was not reachable from browser-only validation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-error.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-012",
+      "status": "blocked",
+      "reason": "Whether encrypted credential payloads are omitted from frontend query responses is a backend/data-contract assertion, not directly user-visible in the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-001",
+      "status": "blocked",
+      "reason": "A live pack\u2192study\u2192analysis\u2192report pipeline is still not reachable from the browser surface for a fresh self-service org, so assertions that require completed real studies or artifacts remain blocked. The created live pack/studies never reached a live report/export path, and the populated demo report exports fail.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/study-new-form.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-error.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-export-json-error.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-010",
+      "status": "blocked",
+      "reason": "Credential-ref leakage requires a live study configured with credentials plus run artifacts to inspect; that flow was not reachable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-error.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-018",
+      "status": "blocked",
+      "reason": "Concurrent-study isolation requires two live completed studies with separate variants, runs, and analysis outputs; browser-only hardening validation never reached live completions.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-error.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-019",
+      "status": "blocked",
+      "reason": "Error-recovery integrity requires inducing an analysis failure and then inspecting preserved run/milestone state, which is not directly observable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-forbidden-action-error.png"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "A live pack\u2192study\u2192analysis\u2192report pipeline is still not reachable from the browser surface for a fresh self-service org, so assertions that require completed real studies or artifacts remain blocked.",
+      "affectedAssertions": [
+        "VAL-HARDEN-011",
+        "VAL-HARDEN-012",
+        "VAL-CROSS-001",
+        "VAL-CROSS-010",
+        "VAL-CROSS-018",
+        "VAL-CROSS-019"
+      ],
+      "quickFixAttempted": "Created and published a live pack plus multiple studies from the browser, but only persona-review/guardrail-error states were reachable while the populated report surface remained demo-study-only."
+    }
+  ],
+  "summary": "The remaining end-to-end and credential-safety assertions stayed blocked because the browser surface still cannot reach a full live analyzed-study pipeline."
+}

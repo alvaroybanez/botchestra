@@ -1,0 +1,106 @@
+{
+  "groupId": "guardrail-launch-surface",
+  "testedAt": "2026-03-27T01:14:08.639607+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-role-reviewer@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "d98e0bfc9185"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-008",
+      "status": "blocked",
+      "reason": "The browser surface exposed a launchStudy error message for a forbidden-action conflict, but not the raw validateStudyLaunch(study) { pass, reasons[] } result the assertion specifies.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-forbidden-action-error.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-009",
+      "status": "blocked",
+      "reason": "The production launch confirmation modal auto-uses acknowledgement on Confirm Launch; the browser offered no way to submit a production launch without ack and observe mutation-level rejection.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/study-new-form.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-010",
+      "status": "blocked",
+      "reason": "No real run reached blocked_by_guardrail from the browser surface, so a run detail showing the violated rule could not be exercised.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-error.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-013",
+      "status": "blocked",
+      "reason": "Cumulative-failure auto-cancel requires real run execution and remaining queued runs, which were not reachable from browser-only hardening validation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-launch-error.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-021",
+      "status": "blocked",
+      "reason": "Budget-cap enforcement depends on admin settings changes and live execution; neither was reachable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-025",
+      "status": "blocked",
+      "reason": "guardrailEvents auditing is a backend-table assertion and was not directly observable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-forbidden-action-error.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-015",
+      "status": "pass",
+      "reason": "Launching a study whose task spec explicitly referenced payment submission surfaced a visible, human-readable failure reason: Task spec references forbidden action \"payment_submission\".",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/guardrail-forbidden-action-error.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-016",
+      "status": "blocked",
+      "reason": "Subsequent-study effects require admin settings changes, but the browser surface never exposed an admin-capable settings session.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "A staging study aimed at forbidden.example advanced to persona review instead of surfacing a domain-allowlist error on a fresh self-service org.",
+      "resolved": false,
+      "resolution": "Switched to a forbidden-action text conflict (payment_submission) to exercise a browser-visible pre-launch guardrail failure instead.",
+      "affectedAssertions": [
+        "VAL-HARDEN-008",
+        "VAL-CROSS-015"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Assertions that depend on admin settings changes, guardrail audit tables, or real blocked_by_guardrail run records remain unavailable from browser-only validation.",
+      "affectedAssertions": [
+        "VAL-HARDEN-008",
+        "VAL-HARDEN-009",
+        "VAL-HARDEN-010",
+        "VAL-HARDEN-013",
+        "VAL-HARDEN-021",
+        "VAL-HARDEN-025",
+        "VAL-CROSS-016"
+      ],
+      "quickFixAttempted": "Imported and published a real pack, created studies from the browser, and exercised launch flow with both forbidden.example and payment_submission test data."
+    }
+  ],
+  "summary": "Confirmed that a forbidden-action conflict surfaces in the study UI, while the remaining guardrail assertions stayed blocked by admin-only or live-run prerequisites."
+}

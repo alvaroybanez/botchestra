@@ -1,0 +1,100 @@
+{
+  "groupId": "role-access-surface",
+  "testedAt": "2026-03-27T01:14:08.639607+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accounts": [
+      "hardening-role-researcher@example.com",
+      "hardening-role-reviewer@example.com",
+      "hardening-role-admin@example.com"
+    ],
+    "appUrl": "http://localhost:5180",
+    "browserSession": "d98e0bfc9185"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-001",
+      "status": "blocked",
+      "reason": "The browser surface could not prove the exact three-role JWT model or mutation-level requireRole() enforcement. Only researcher-level self-service access was reachable.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-studies-sidebar.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/reviewer-attempt-studies.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-002",
+      "status": "pass",
+      "reason": "The self-service researcher account showed no Settings or Diagnostics navigation, and direct route entry to /settings rendered an access-denied page instead of admin controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-studies-sidebar.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-003",
+      "status": "blocked",
+      "reason": "No browser-visible path produced an actual reviewer session. A self-service account named reviewer still showed researcher-level controls such as Create Study.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/reviewer-attempt-studies.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-004",
+      "status": "blocked",
+      "reason": "No browser-visible path produced an actual admin session. A self-service account named admin still hit the admin diagnostics access-denied page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-005",
+      "status": "blocked",
+      "reason": "Researcher denial at /settings was confirmed, but the admin-render half of the assertion could not be exercised because no browser-visible admin claims path exists.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "status": "blocked",
+      "reason": "The real browser surface provides no visible way to obtain reviewer/admin JWT role claims; self-service password signups named reviewer/admin still landed with researcher-level UI, so role-specific behavior could not be exercised from user testing.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-studies-sidebar.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/reviewer-attempt-studies.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-020",
+      "status": "blocked",
+      "reason": "The real browser surface provides no visible way to obtain reviewer/admin JWT role claims; self-service password signups named reviewer/admin still landed with researcher-level UI, so role-specific behavior could not be exercised from user testing.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-studies-sidebar.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/reviewer-attempt-studies.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "The real browser surface provides no visible way to obtain reviewer/admin JWT role claims; self-service password signups named reviewer/admin still landed with researcher-level UI, so role-specific behavior could not be exercised from user testing.",
+      "affectedAssertions": [
+        "VAL-HARDEN-001",
+        "VAL-HARDEN-003",
+        "VAL-HARDEN-004",
+        "VAL-HARDEN-005",
+        "VAL-CROSS-005",
+        "VAL-CROSS-020"
+      ],
+      "quickFixAttempted": "Created self-service accounts with researcher/reviewer/admin-themed emails; the researcher and reviewer attempts both exposed Create Study, while the admin attempt still hit admin diagnostics access denied."
+    }
+  ],
+  "summary": "Validated researcher-side RBAC UI restrictions, but reviewer/admin browser validation was blocked because self-service signup never produced non-researcher permissions."
+}

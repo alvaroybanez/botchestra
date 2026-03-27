@@ -1,0 +1,109 @@
+{
+  "groupId": "report-share-surface",
+  "testedAt": "2026-03-27T01:14:08.639607+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-role-reviewer@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "d98e0bfc9185"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-019",
+      "status": "blocked",
+      "reason": "The report surface can open demo evidence thumbnails, but signed artifact URL signature and expiry behavior are not directly provable from browser-visible UI alone.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-full.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-020",
+      "status": "blocked",
+      "reason": "Per-task-category model routing is an admin/backend behavior that is not directly observable from the browser surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-022",
+      "status": "fail",
+      "reason": "Clicking Export JSON on the populated demo report route raised a Convex ArgumentValidationError because demo-study is not a real studies id, so no JSON download occurred.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-export-json-error.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-023",
+      "status": "fail",
+      "reason": "Clicking Export HTML on the populated demo report route raised the same Convex ArgumentValidationError for demo-study, so no self-contained HTML file downloaded.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-export-html-error.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-024",
+      "status": "blocked",
+      "reason": "The shared URL auth behavior was validated manually, but direct Copy Link verification was blocked under agent-browser because navigator.clipboard.writeText returned Write permission denied.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-copy-link-clipboard-error.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-shared-unauthenticated.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-shared-authenticated.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-011",
+      "status": "blocked",
+      "reason": "The frontend-to-ArtifactStore boundary is not directly observable from the browser surface without code or network-contract inspection.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-full.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-014",
+      "status": "pass",
+      "reason": "Opening /studies/demo-study/report?shared=1 while signed out redirected to /login?redirect=..., and logging back in returned to the focused shared-report surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-shared-unauthenticated.png",
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/demo-report-shared-authenticated.png"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Copy Link depends on navigator.clipboard.writeText; under agent-browser the browser denied clipboard-write permission after the button click.",
+      "resolved": false,
+      "resolution": "Validated the shared URL behavior by opening the expected /studies/demo-study/report?shared=1 link directly instead of relying on clipboard contents.",
+      "affectedAssertions": [
+        "VAL-HARDEN-024",
+        "VAL-CROSS-014"
+      ]
+    },
+    {
+      "description": "The only populated report surface reachable from a fresh org remained the demo-study route.",
+      "resolved": false,
+      "resolution": "Used the demo-study report strictly as the visible populated report surface and recorded that the export actions fail there because demo-study is not a real study id.",
+      "affectedAssertions": [
+        "VAL-HARDEN-022",
+        "VAL-HARDEN-023",
+        "VAL-HARDEN-024",
+        "VAL-CROSS-014"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "No live report generated from the current org was reachable from the browser surface; only demo-study was populated.",
+      "affectedAssertions": [
+        "VAL-HARDEN-019",
+        "VAL-HARDEN-020",
+        "VAL-HARDEN-024",
+        "VAL-CROSS-011"
+      ],
+      "quickFixAttempted": "Navigated directly to the populated demo report route and exercised the visible export/share controls there."
+    }
+  ],
+  "summary": "Verified shared-link auth behavior, but both export buttons failed on the populated demo report route and clipboard-based Copy Link verification was blocked by browser permission denial."
+}

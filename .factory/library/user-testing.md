@@ -105,3 +105,12 @@ Testing surface, required tools, and resource cost classification.
 - `/studies/demo-study/overview` currently crashes with a Convex `ArgumentValidationError` because the overview route does not share the demo fallback used by Runs/Findings/Report.
 - On the populated demo findings route, severity, proto-persona, axis-range, outcome, and URL-prefix filters all visibly narrow the result set, and representative-run links drill into the matching demo run detail.
 - On the populated demo report route, headline metrics, ranked issue cards, analyst notes, and evidence-thumbnail links all render, and clicking an evidence thumbnail opens a full-resolution artifact in a new tab.
+
+## Hardening validation notes (2026-03-27)
+
+- Self-service password signups currently surface researcher-level permissions only: accounts named `hardening-role-admin@example.com` and `hardening-role-reviewer@example.com` still showed the researcher sidebar, and direct `/admin/diagnostics` access stayed on the access-denied screen.
+- The only populated report route still reachable from a fresh self-service org is `/studies/demo-study/report`; clicking **Export JSON** or **Export HTML** there triggers a Convex `ArgumentValidationError` because `demo-study` is not a real `studies` id.
+- The shared report URL `/studies/demo-study/report?shared=1` correctly redirects signed-out users to `/login?redirect=...` and renders the focused shared-report surface after login.
+- Clicking **Copy Link** on the report page is currently blocked under `agent-browser` because `navigator.clipboard.writeText` returns `Write permission denied`; this is a tooling friction point for browser validation.
+- A fresh staging study pointed at `forbidden.example` advanced to `persona review` instead of surfacing an allowlist failure, so domain-based pre-launch guardrail failures were not provable from the default self-service browser setup.
+- A study whose task spec explicitly referenced payment submission surfaced the visible launch error `Task spec references forbidden action "payment_submission".` after **Confirm Launch**, which is currently the reliable browser path to validate guardrail failure messaging.

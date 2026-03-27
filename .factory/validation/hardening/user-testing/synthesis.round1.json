@@ -1,0 +1,156 @@
+{
+  "milestone": "hardening",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 35,
+    "passed": 3,
+    "failed": 2,
+    "blocked": 30
+  },
+  "passedAssertions": [
+    "VAL-HARDEN-002",
+    "VAL-CROSS-014",
+    "VAL-CROSS-015"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-HARDEN-022",
+      "reason": "Export JSON on the populated demo report route fails with a Convex ArgumentValidationError for demo-study instead of downloading a file."
+    },
+    {
+      "id": "VAL-HARDEN-023",
+      "reason": "Export HTML on the populated demo report route fails with a Convex ArgumentValidationError for demo-study instead of downloading a file."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-HARDEN-001",
+      "blockedBy": "The browser surface could not prove the exact three-role JWT model or mutation-level requireRole() enforcement; only researcher-level self-service access was reachable."
+    },
+    {
+      "id": "VAL-HARDEN-003",
+      "blockedBy": "No browser-visible path produced a real reviewer session; a self-service reviewer-named signup still exposed Create Study researcher controls."
+    },
+    {
+      "id": "VAL-HARDEN-004",
+      "blockedBy": "No browser-visible path produced a real admin session; a self-service admin-named signup still hit admin diagnostics access denied."
+    },
+    {
+      "id": "VAL-HARDEN-005",
+      "blockedBy": "Researcher denial at /settings was confirmed, but the admin-render half of the assertion could not be exercised because no browser-visible admin claims path exists."
+    },
+    {
+      "id": "VAL-HARDEN-006",
+      "blockedBy": "Settings categories could not be validated because the browser surface never provided an admin-capable session to open /settings."
+    },
+    {
+      "id": "VAL-HARDEN-007",
+      "blockedBy": "Domain allowlist management could not be exercised because the browser surface never provided an admin-capable settings session."
+    },
+    {
+      "id": "VAL-HARDEN-008",
+      "blockedBy": "The browser surface exposed a forbidden-action launch error, but not the raw validateStudyLaunch { pass, reasons[] } result specified by the assertion."
+    },
+    {
+      "id": "VAL-HARDEN-009",
+      "blockedBy": "The production launch confirmation flow auto-acknowledges on confirm; the browser offered no way to submit a production launch without ack and observe rejection."
+    },
+    {
+      "id": "VAL-HARDEN-010",
+      "blockedBy": "No real run reached blocked_by_guardrail from the browser surface, so a run detail showing the violated rule could not be exercised."
+    },
+    {
+      "id": "VAL-HARDEN-011",
+      "blockedBy": "Credential masking in screenshots/logs requires a live credentialed run and artifact inspection, which were not reachable from browser-only validation."
+    },
+    {
+      "id": "VAL-HARDEN-012",
+      "blockedBy": "Whether encrypted credential payloads are stripped from frontend query responses is a backend/data-contract assertion, not directly user-visible in the browser."
+    },
+    {
+      "id": "VAL-HARDEN-013",
+      "blockedBy": "Cumulative-failure auto-cancel requires real run execution and remaining queued runs, which were not reachable from browser-only hardening validation."
+    },
+    {
+      "id": "VAL-HARDEN-014",
+      "blockedBy": "Admin diagnostics could not be validated because the browser surface never provided an admin-capable session."
+    },
+    {
+      "id": "VAL-HARDEN-015",
+      "blockedBy": "Audit-event recording is not directly user-visible without the admin diagnostics surface, which remained inaccessible from the browser."
+    },
+    {
+      "id": "VAL-HARDEN-016",
+      "blockedBy": "Audit-trail filtering could not be exercised because the admin diagnostics surface was unreachable from the browser."
+    },
+    {
+      "id": "VAL-HARDEN-017",
+      "blockedBy": "Standardized infra error codes are presented on the admin diagnostics page, but that surface was unreachable without an admin role."
+    },
+    {
+      "id": "VAL-HARDEN-018",
+      "blockedBy": "Lifecycle metrics are presented on the admin diagnostics page, but the browser surface provided no admin session to load that page."
+    },
+    {
+      "id": "VAL-HARDEN-019",
+      "blockedBy": "Signed artifact URL signature and expiry behavior are not directly provable from browser-visible UI alone."
+    },
+    {
+      "id": "VAL-HARDEN-020",
+      "blockedBy": "Per-task-category model routing is an admin/backend behavior that is not directly observable from the browser surface."
+    },
+    {
+      "id": "VAL-HARDEN-021",
+      "blockedBy": "Budget-cap enforcement depends on admin settings changes and live execution; neither was reachable from the browser surface."
+    },
+    {
+      "id": "VAL-HARDEN-024",
+      "blockedBy": "Shared URL auth behavior was validated manually, but direct Copy Link verification was blocked under agent-browser because navigator.clipboard.writeText returned Write permission denied."
+    },
+    {
+      "id": "VAL-HARDEN-025",
+      "blockedBy": "guardrailEvents auditing is a backend-table assertion and was not directly observable from the browser surface."
+    },
+    {
+      "id": "VAL-CROSS-001",
+      "blockedBy": "A live pack\u2192study\u2192analysis\u2192report pipeline is still not reachable from the browser surface for a fresh self-service org; the populated demo report exports also fail."
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "blockedBy": "The real browser surface provides no visible way to obtain reviewer/admin JWT role claims; self-service password signups named reviewer/admin still landed with researcher-level UI, so role-specific behavior could not be exercised from user testing."
+    },
+    {
+      "id": "VAL-CROSS-010",
+      "blockedBy": "Credential-ref leakage requires a live study configured with credentials plus run artifacts to inspect; that flow was not reachable from the browser surface."
+    },
+    {
+      "id": "VAL-CROSS-011",
+      "blockedBy": "The frontend-to-ArtifactStore boundary is not directly observable from the browser surface without code or network-contract inspection."
+    },
+    {
+      "id": "VAL-CROSS-016",
+      "blockedBy": "Subsequent-study effects require admin settings changes, but the browser surface never exposed an admin-capable settings session."
+    },
+    {
+      "id": "VAL-CROSS-018",
+      "blockedBy": "Concurrent-study isolation requires two live completed studies with separate variants, runs, and analysis outputs; browser-only hardening validation never reached live completions."
+    },
+    {
+      "id": "VAL-CROSS-019",
+      "blockedBy": "Error-recovery integrity requires inducing an analysis failure and then inspecting preserved run/milestone state, which is not directly observable from the browser surface."
+    },
+    {
+      "id": "VAL-CROSS-020",
+      "blockedBy": "The real browser surface provides no visible way to obtain reviewer/admin JWT role claims; self-service password signups named reviewer/admin still landed with researcher-level UI, so role-specific behavior could not be exercised from user testing."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Recorded hardening browser-validation findings: self-service signups never surfaced admin/reviewer roles, demo report exports fail because demo-study is not a real study id, shared report auth still works via /studies/demo-study/report?shared=1, clipboard copy is blocked under agent-browser, and forbidden-action launch errors surface in the study UI.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null
+}

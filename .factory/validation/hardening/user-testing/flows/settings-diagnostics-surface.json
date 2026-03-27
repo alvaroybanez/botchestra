@@ -1,0 +1,88 @@
+{
+  "groupId": "settings-diagnostics-surface",
+  "testedAt": "2026-03-27T01:14:08.639607+00:00",
+  "surface": "browser",
+  "isolation": {
+    "accountEmail": "hardening-admin-console@example.com",
+    "appUrl": "http://localhost:5180",
+    "browserSession": "d98e0bfc9185"
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-HARDEN-006",
+      "status": "blocked",
+      "reason": "Admin-only hardening surfaces could not be exercised because the real browser surface exposes no way to obtain admin claims; self-service signups remained limited to researcher-level UI. As a result, the full Settings category layout could not be opened in the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-007",
+      "status": "blocked",
+      "reason": "Admin-only hardening surfaces could not be exercised because the real browser surface exposes no way to obtain admin claims; self-service signups remained limited to researcher-level UI. Domain allowlist add/remove persistence could not be exercised without an admin session.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/researcher-settings-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-014",
+      "status": "blocked",
+      "reason": "Admin-only hardening surfaces could not be exercised because the real browser surface exposes no way to obtain admin claims; self-service signups remained limited to researcher-level UI. The admin diagnostics surface never rendered; direct navigation showed access denied.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-015",
+      "status": "blocked",
+      "reason": "Audit-event recording is not directly user-visible without the admin diagnostics surface, which remained inaccessible from the browser.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-016",
+      "status": "blocked",
+      "reason": "Audit-trail filter controls live on the admin diagnostics surface, which could not be reached from any browser-visible admin session.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-017",
+      "status": "blocked",
+      "reason": "Standardized infra error codes are presented on the admin diagnostics page, but that surface was unreachable without an admin role.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    },
+    {
+      "id": "VAL-HARDEN-018",
+      "status": "blocked",
+      "reason": "Lifecycle metrics are presented on the admin diagnostics page, but the browser surface provided no admin session to load that page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/daabb037-1f21-4b0b-a861-b5c11315ecce/evidence/hardening/admin-attempt-diagnostics-denied.png"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "Admin-only hardening surfaces could not be exercised because the real browser surface exposes no way to obtain admin claims; self-service signups remained limited to researcher-level UI.",
+      "affectedAssertions": [
+        "VAL-HARDEN-006",
+        "VAL-HARDEN-007",
+        "VAL-HARDEN-014",
+        "VAL-HARDEN-015",
+        "VAL-HARDEN-016",
+        "VAL-HARDEN-017",
+        "VAL-HARDEN-018"
+      ],
+      "quickFixAttempted": "Tried direct /admin/diagnostics navigation after self-service signup, but the account still saw Only admins can access workspace diagnostics."
+    }
+  ],
+  "summary": "All settings/diagnostics assertions were blocked because the browser surface never provided an admin-capable session."
+}
