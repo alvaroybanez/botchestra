@@ -1,55 +1,25 @@
 {
   "milestone": "axis-library",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "assertionsSummary": {
-    "total": 20,
-    "passed": 18,
-    "failed": 2,
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
     "blocked": 0
   },
   "passedAssertions": [
-    "VAL-AXLIB-001",
-    "VAL-AXLIB-002",
-    "VAL-AXLIB-003",
-    "VAL-AXLIB-004",
-    "VAL-AXLIB-005",
-    "VAL-AXLIB-006",
-    "VAL-AXLIB-007",
-    "VAL-AXLIB-008",
-    "VAL-AXLIB-009",
-    "VAL-AXLIB-010",
-    "VAL-AXLIB-012",
-    "VAL-AXLIB-013",
-    "VAL-AXLIB-014",
-    "VAL-AXLIB-015",
-    "VAL-AXLIB-016",
-    "VAL-AXLIB-017",
-    "VAL-AXLIB-018",
-    "VAL-AXLIB-020"
+    "VAL-AXLIB-011",
+    "VAL-AXLIB-019"
   ],
-  "failedAssertions": [
-    {
-      "id": "VAL-AXLIB-011",
-      "reason": "Tag filtering reduced the list, but the live surface did not clearly demonstrate the required tag-filter + text-search AND behavior."
-    },
-    {
-      "id": "VAL-AXLIB-019",
-      "reason": "No JavaScript console errors were observed on load, but the loading skeleton was not observable on reload before settled content rendered."
-    }
-  ],
+  "failedAssertions": [],
   "blockedAssertions": [],
   "appliedUpdates": [
     {
       "target": "user-testing.md",
-      "description": "Added axis-library setup notes for role promotion, auth-token-backed Convex API probes, and web flow isolation guidance for dedicated accounts and session boundaries.",
-      "source": "setup"
-    },
-    {
-      "target": "user-testing.md",
-      "description": "Documented the observed cross-session identity/scoping quirk so future validators avoid assuming re-login preserves visibility for previously created test data.",
+      "description": "Recorded the axis-library rerun detail that reloads briefly show the app-level Loading... fallback before the route-level Loading axis library... skeleton, and that the filter summary text explicitly reflects combined tag + search criteria.",
       "source": "flow-report"
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/axis-library/user-testing/synthesis.round1.json"
 }

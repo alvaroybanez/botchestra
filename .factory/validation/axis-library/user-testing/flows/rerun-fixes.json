@@ -1,0 +1,33 @@
+{
+  "groupId": "rerun-fixes",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "summary": "Retested 2 Axis Library assertions after the frontend fixes and both passed. Tag filtering now combines with text search using clear AND behavior, and reload now exposes a perceptible route-level loading skeleton with no JavaScript console errors.",
+  "assertions": [
+    {
+      "id": "VAL-AXLIB-011",
+      "status": "pass",
+      "reason": "With three seeded axes visible, selecting the support tag reduced the grid to 2 rows and then adding the search text insight narrowed the result to the single support-insight row. The page summary explicitly reported matching both the tag and search criteria.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rerun-fixes/full-list.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rerun-fixes/tag-support.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rerun-fixes/tag-support-plus-search-insight.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-019",
+      "status": "pass",
+      "reason": "Reloading the page and waiting for the route-level loading text produced a visible Loading axis library... skeleton before the settled axis grid rendered. Browser error output was empty after reload, and console output only contained Vite debug messages plus the React DevTools informational notice.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rerun-fixes/loading-skeleton.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rerun-fixes/reload-settled.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "A raw immediate reload screenshot often captured the app-level Loading... fallback first, so waiting for the route text Loading axis library... was the reliable way to capture the intended skeleton state."
+  ],
+  "blockers": []
+}

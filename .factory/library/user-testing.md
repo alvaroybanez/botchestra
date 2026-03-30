@@ -24,6 +24,8 @@ Testing surface, required tools, and resource cost classification.
 - LLM-powered features (axis generation, transcript extraction) require OPENAI_API_KEY set in Convex env. init.sh handles this.
 - For transcript extraction testing, use small test transcripts (< 1000 chars each) to minimize LLM cost during validation.
 - Cross-area flows (VAL-CROSS-*) test the full pipeline and should be validated last, after all individual area flows pass.
+- Axis Library reloads can briefly show the app-level `Loading...` fallback before the route-level `Loading axis library...` skeleton. Wait for the latter text if you need direct evidence for VAL-AXLIB-019.
+- Axis Library's filter summary now spells out both active criteria (for example `matching tag "support" and search "insight"`), which is useful evidence for VAL-AXLIB-011's AND behavior.
 
 ## Setup Tips
 
