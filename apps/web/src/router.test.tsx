@@ -2500,6 +2500,36 @@ describe("@botchestra/web routing", () => {
     expect(getButton(container, "Suggest axes")?.disabled).toBe(false);
   });
 
+  it("passes the forced axis-generation error query flag through to the action", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-axis-force-error" as Id<"personaPacks">,
+      name: "Checkout recovery pack",
+      context: "US fintech support",
+      description: "Password reset and recovery flows",
+    });
+    suggestAxesMock.mockRejectedValueOnce(
+      new Error("Forced axis suggestion failure for testing."),
+    );
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-axis-force-error?forceSuggestAxesError=1"],
+    });
+
+    await clickButton(container, "Suggest axes");
+
+    expect(suggestAxesMock).toHaveBeenCalledWith({
+      name: "Checkout recovery pack",
+      context: "US fintech support",
+      description: "Password reset and recovery flows",
+      existingAxisKeys: ["digital_confidence"],
+      forceError: true,
+    });
+    expect(container.textContent).toContain(
+      "We couldn't generate axis suggestions right now. Please try again.",
+    );
+  });
+
   it("imports library axes and surfaces duplicate-key conflicts as a toast", async () => {
     mockedPackDetail = makePack({
       _id: "pack-axis-library" as Id<"personaPacks">,
@@ -2560,6 +2590,59 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain(
       "Skipped duplicate axis key: digital_confidence.",
     );
+  });
+
+  it("includes imported library axis keys in the next suggestion request", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-axis-library-dedup" as Id<"personaPacks">,
+      status: "draft",
+      name: "Support pack",
+      context: "B2B onboarding",
+      description: "Admin setup and troubleshooting flows.",
+      sharedAxes: [
+        {
+          key: "digital_confidence",
+          label: "Digital confidence",
+          description: "Comfort level with unfamiliar digital tasks.",
+          lowAnchor: "Needs help often",
+          midAnchor: "Can complete familiar flows",
+          highAnchor: "Self-directed explorer",
+          weight: 1,
+        },
+      ],
+    });
+    mockedAxisDefinitions = [
+      makeAxisDefinition({
+        _id: "axis-library-import" as Id<"axisDefinitions">,
+        key: "support_channel_preference",
+        label: "Support channel preference",
+        description: "Whether the person prefers chat, email, or phone support.",
+        lowAnchor: "Prefers self-serve articles",
+        midAnchor: "Uses chat for quick help",
+        highAnchor: "Wants a human conversation",
+      }),
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-axis-library-dedup"],
+    });
+
+    await clickButton(container, "Browse library");
+    await act(async () => {
+      document.body
+        .querySelector<HTMLInputElement>("#axis-library-axis-library-import")
+        ?.click();
+    });
+    await clickButton(document.body, "Import selected");
+    await clickButton(container, "Suggest axes");
+
+    expect(suggestAxesMock).toHaveBeenLastCalledWith({
+      name: "Support pack",
+      context: "B2B onboarding",
+      description: "Admin setup and troubleshooting flows.",
+      existingAxisKeys: ["digital_confidence", "support_channel_preference"],
+    });
   });
 
   it("renders pack detail transcript attachments, filters the picker, and supports attach-detach actions", async () => {

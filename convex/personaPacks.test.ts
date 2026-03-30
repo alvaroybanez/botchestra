@@ -678,6 +678,79 @@ describe("personaPacks", () => {
       ),
     ).toBe(true);
   });
+
+  it("publishes packs with transcript-derived personas, preserves source refs, and upserts discovered axes", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
+      pack: makeCreateDraftInput(),
+    });
+
+    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedProtoPersonas, {
+      packId,
+      input: {
+        sharedAxes: [
+          makeAxis({
+            key: "confidence_level",
+            label: "Confidence Level",
+            description: "Comfort completing the task without live help.",
+          }),
+        ],
+        archetypes: [
+          {
+            name: "Deliberate verifier",
+            summary: "Double-checks totals and wants reassurance before continuing.",
+            axisValues: [{ key: "confidence_level", value: -0.35 }],
+            evidenceSnippets: [
+              {
+                transcriptId: "transcript-auto-1",
+                quote: "I wanted to double-check the price before continuing.",
+              },
+            ],
+            contributingTranscriptIds: ["transcript-auto-1"],
+          },
+        ],
+      },
+    });
+    await insertProtoPersona(t, packId, {
+      name: "Manual proto persona",
+      axes: [
+        makeAxis({
+          key: "confidence_level",
+          label: "Confidence Level",
+          description: "Comfort completing the task without live help.",
+        }),
+      ],
+    });
+
+    await asResearcher.mutation(api.personaPacks.publish, { packId });
+
+    const protoPersonas = await asResearcher.query(api.personaPacks.listProtoPersonas, {
+      packId,
+    });
+    const transcriptDerivedPersona = protoPersonas.find(
+      (protoPersona) => protoPersona.sourceType === "transcript_derived",
+    );
+    const axisDefinitions = await getAxisDefinitionsForOrg(
+      t,
+      researchIdentity.tokenIdentifier,
+    );
+
+    expect(transcriptDerivedPersona).toMatchObject({
+      sourceType: "transcript_derived",
+      sourceRefs: ["transcript-auto-1"],
+      evidenceSnippets: ["I wanted to double-check the price before continuing."],
+    });
+    expect(axisDefinitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "confidence_level",
+          creationSource: "pack_publish",
+          usageCount: 1,
+        }),
+      ]),
+    );
+  });
 });
 
 type AxisInput = {

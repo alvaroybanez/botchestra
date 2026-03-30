@@ -20,6 +20,7 @@ const suggestAxesArgsSchema = z.object({
   context: requiredString("Pack context"),
   description: requiredString("Pack description"),
   existingAxisKeys: z.array(requiredString("Existing axis key")).optional(),
+  forceError: z.boolean().optional(),
 });
 
 const suggestedAxesSchema = z
@@ -58,10 +59,16 @@ export const suggestAxes = action({
     context: v.string(),
     description: v.string(),
     existingAxisKeys: v.optional(v.array(v.string())),
+    forceError: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const parsedArgs = suggestAxesArgsSchema.parse(args);
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
+
+    if (parsedArgs.forceError === true) {
+      throw new ConvexError("Forced axis suggestion failure for testing.");
+    }
+
     const settings = await ctx.runQuery(internal.settings.getEffectiveSettingsForOrg, {
       orgId: identity.tokenIdentifier,
     });

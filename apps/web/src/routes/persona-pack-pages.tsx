@@ -350,7 +350,13 @@ export function PersonaPacksPage() {
   );
 }
 
-export function PersonaPackDetailPage({ packId }: { packId: string }) {
+export function PersonaPackDetailPage({
+  packId,
+  forceSuggestAxesError = false,
+}: {
+  packId: string;
+  forceSuggestAxesError?: boolean;
+}) {
   const typedPackId = packId as PersonaPackId;
   const pack = useQuery(api.personaPacks.get, { packId: typedPackId });
   const protoPersonas = useQuery(api.personaPacks.listProtoPersonas, {
@@ -781,6 +787,7 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
         context: draftForm.context.trim(),
         description: trimmedDescription,
         existingAxisKeys: getAxisKeys(draftForm.sharedAxes),
+        ...(forceSuggestAxesError ? { forceError: true } : {}),
       })) as PersonaPackDoc["sharedAxes"];
 
       setSuggestedAxes(

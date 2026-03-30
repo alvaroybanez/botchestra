@@ -99,6 +99,7 @@ export declare const api: {
         context: string;
         description: string;
         existingAxisKeys?: Array<string>;
+        forceError?: boolean;
         name: string;
       },
       any

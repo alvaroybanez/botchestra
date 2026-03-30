@@ -297,6 +297,77 @@ describe("generateVariantsForStudy", () => {
     }
   });
 
+  it("generates accepted variants for both manual and transcript-derived proto-personas", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createDraftPack(t, { protoPersonaCount: 1 });
+
+    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedProtoPersonas, {
+      packId,
+      input: {
+        sharedAxes: [
+          makeAxis(0),
+          makeAxis(1),
+        ],
+        archetypes: [
+          {
+            name: "Transcript-derived persona",
+            summary: "Grounded in transcript evidence and support-heavy behavior.",
+            axisValues: [
+              { key: "axis_1", value: 0.25 },
+              { key: "axis_2", value: -0.4 },
+            ],
+            evidenceSnippets: [
+              {
+                transcriptId: "transcript-derived-1",
+                quote: "I wanted a human to confirm the next step.",
+              },
+            ],
+            contributingTranscriptIds: ["transcript-derived-1"],
+          },
+        ],
+      },
+    });
+    await asResearcher.mutation(api.personaPacks.publish, { packId });
+    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+
+    mockedGenerateWithModel.mockImplementation(async () =>
+      createAiResult(makeCandidate()),
+    );
+
+    const summary = await asResearcher.action(
+      variantGenerationApi.generateVariantsForStudy,
+      { studyId },
+    );
+    const protoPersonas = await t.run(async (ctx) =>
+      ctx.db
+        .query("protoPersonas")
+        .withIndex("by_packId", (q) => q.eq("packId", packId))
+        .collect(),
+    );
+    const variants = await t.run(async (ctx) =>
+      ctx.db
+        .query("personaVariants")
+        .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
+        .collect(),
+    );
+    const generatedProtoPersonaIds = new Set(
+      variants
+        .filter((variant) => variant.accepted)
+        .map((variant) => variant.protoPersonaId),
+    );
+
+    expect(summary.acceptedCount).toBe(50);
+    expect(protoPersonas).toHaveLength(2);
+    expect(
+      protoPersonas.map((protoPersona) => protoPersona.sourceType).sort(),
+    ).toEqual(["manual", "transcript_derived"]);
+    expect(generatedProtoPersonaIds).toEqual(
+      new Set(protoPersonas.map((protoPersona) => protoPersona._id)),
+    );
+    expect(summary.coverage.perProtoPersona).toHaveLength(2);
+  });
+
   it("passes org-level expansion model overrides into generateWithModel", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);

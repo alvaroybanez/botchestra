@@ -111,6 +111,15 @@ function validateTranscriptDetailSearch(search: Record<string, unknown>) {
     : {};
 }
 
+function validatePersonaPackDetailSearch(search: Record<string, unknown>) {
+  const forceSuggestAxesError =
+    search.forceSuggestAxesError === true ||
+    search.forceSuggestAxesError === "true" ||
+    search.forceSuggestAxesError === "1";
+
+  return forceSuggestAxesError ? { forceSuggestAxesError } : {};
+}
+
 function isSharedReportLocation(location: {
   href?: string;
   pathname: string;
@@ -280,6 +289,7 @@ const transcriptsRoute = createRoute({
 const personaPackDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "persona-packs/$packId",
+  validateSearch: validatePersonaPackDetailSearch,
   component: PersonaPackDetailPage,
 });
 
@@ -524,7 +534,13 @@ function TranscriptsPage() {
 
 function PersonaPackDetailPage() {
   const { packId } = personaPackDetailRoute.useParams();
-  return <PersonaPackDetailRoutePage packId={packId} />;
+  const { forceSuggestAxesError } = personaPackDetailRoute.useSearch();
+  return (
+    <PersonaPackDetailRoutePage
+      forceSuggestAxesError={forceSuggestAxesError}
+      packId={packId}
+    />
+  );
 }
 
 function TranscriptDetailPage() {

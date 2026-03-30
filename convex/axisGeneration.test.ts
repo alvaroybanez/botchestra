@@ -192,6 +192,22 @@ describe("axisGeneration.suggestAxes", () => {
     ).rejects.toThrow("Failed to parse suggested axes JSON.");
   });
 
+  it("supports an explicit forced error path for browser validation", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researcherIdentity);
+
+    await expect(
+      asResearcher.action(axisGenerationApi.suggestAxes, {
+        name: "Checkout Pack",
+        context: "E-commerce checkout",
+        description: "Shoppers comparing retailers and payment options.",
+        forceError: true,
+      }),
+    ).rejects.toThrow("Forced axis suggestion failure for testing.");
+
+    expect(mockedGenerateWithModel).not.toHaveBeenCalled();
+  });
+
   it("throws a descriptive ConvexError when required fields are missing", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
