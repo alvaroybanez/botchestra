@@ -8,6 +8,7 @@ import schema from "./schema";
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./schema.ts": () => import("./schema"),
+  "./axisLibrary.ts": () => import("./axisLibrary"),
   "./personaPacks.ts": () => import("./personaPacks"),
   "./userManagement.ts": () => import("./userManagement"),
 };
@@ -319,6 +320,220 @@ describe("personaPacks", () => {
     expect(afterPublish!.updatedAt).toBeGreaterThanOrEqual(beforePublish!.updatedAt);
   });
 
+  it("publish creates axis library entries for each shared axis", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
+      pack: makeCreateDraftInput({
+        sharedAxes: [
+          makeAxis({ key: "digital_confidence" }),
+          makeAxis({
+            key: "patience",
+            label: "Patience",
+            description: "Tolerance for friction",
+            lowAnchor: "Abandons quickly",
+            midAnchor: "Will try a couple times",
+            highAnchor: "Pushes through blockers",
+            weight: 2,
+          }),
+        ],
+      }),
+    });
+    await insertProtoPersona(t, packId);
+
+    await asResearcher.mutation(api.personaPacks.publish, { packId });
+
+    const axisDefinitions = await getAxisDefinitionsForOrg(
+      t,
+      researchIdentity.tokenIdentifier,
+    );
+
+    expect(axisDefinitions).toHaveLength(2);
+    expect(axisDefinitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "digital_confidence",
+          label: "Digital Confidence",
+          description: "Comfort using digital products",
+          lowAnchor: "Very hesitant",
+          midAnchor: "Comfortable enough",
+          highAnchor: "Power user",
+          weight: 1,
+          tags: [],
+          usageCount: 1,
+          creationSource: "pack_publish",
+          orgId: researchIdentity.tokenIdentifier,
+        }),
+        expect.objectContaining({
+          key: "patience",
+          label: "Patience",
+          description: "Tolerance for friction",
+          lowAnchor: "Abandons quickly",
+          midAnchor: "Will try a couple times",
+          highAnchor: "Pushes through blockers",
+          weight: 2,
+          tags: [],
+          usageCount: 1,
+          creationSource: "pack_publish",
+          orgId: researchIdentity.tokenIdentifier,
+        }),
+      ]),
+    );
+  });
+
+  it("publish increments usageCount for an existing axis definition without overwriting fields", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const existingAxisId = await t.run(async (ctx) =>
+      ctx.db.insert("axisDefinitions", {
+        key: "digital_confidence",
+        label: "Original Label",
+        description: "Original description",
+        lowAnchor: "Original low",
+        midAnchor: "Original mid",
+        highAnchor: "Original high",
+        weight: 3,
+        tags: ["manual"],
+        usageCount: 4,
+        creationSource: "manual",
+        orgId: researchIdentity.tokenIdentifier,
+        createdBy: researchIdentity.tokenIdentifier,
+        updatedBy: researchIdentity.tokenIdentifier,
+        createdAt: Date.now() - 1000,
+        updatedAt: Date.now() - 1000,
+      }),
+    );
+    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
+      pack: makeCreateDraftInput({
+        sharedAxes: [
+          makeAxis({
+            key: "digital_confidence",
+            label: "New Label",
+            description: "New description",
+            lowAnchor: "New low",
+            midAnchor: "New mid",
+            highAnchor: "New high",
+            weight: 1,
+          }),
+        ],
+      }),
+    });
+    await insertProtoPersona(t, packId);
+
+    await asResearcher.mutation(api.personaPacks.publish, { packId });
+
+    const storedAxis = await getAxisDefinitionDoc(t, existingAxisId);
+
+    expect(storedAxis).toMatchObject({
+      _id: existingAxisId,
+      key: "digital_confidence",
+      label: "Original Label",
+      description: "Original description",
+      lowAnchor: "Original low",
+      midAnchor: "Original mid",
+      highAnchor: "Original high",
+      weight: 3,
+      tags: ["manual"],
+      usageCount: 5,
+      creationSource: "manual",
+      orgId: researchIdentity.tokenIdentifier,
+    });
+  });
+
+  it("publish deduplicates overlapping axis keys across multiple packs in the same org", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const firstPackId = await asResearcher.mutation(api.personaPacks.createDraft, {
+      pack: makeCreateDraftInput({
+        name: "Pack One",
+        sharedAxes: [
+          makeAxis({ key: "digital_confidence" }),
+          makeAxis({
+            key: "patience",
+            label: "Patience",
+            description: "Tolerance for friction",
+          }),
+        ],
+      }),
+    });
+    const secondPackId = await asResearcher.mutation(api.personaPacks.createDraft, {
+      pack: makeCreateDraftInput({
+        name: "Pack Two",
+        sharedAxes: [
+          makeAxis({ key: "digital_confidence" }),
+          makeAxis({
+            key: "risk_tolerance",
+            label: "Risk Tolerance",
+            description: "Comfort with uncertain outcomes",
+          }),
+        ],
+      }),
+    });
+    await insertProtoPersona(t, firstPackId);
+    await insertProtoPersona(t, secondPackId);
+
+    await asResearcher.mutation(api.personaPacks.publish, { packId: firstPackId });
+    await asResearcher.mutation(api.personaPacks.publish, { packId: secondPackId });
+
+    const axisDefinitions = await getAxisDefinitionsForOrg(
+      t,
+      researchIdentity.tokenIdentifier,
+    );
+    const digitalConfidenceEntries = axisDefinitions.filter(
+      (axisDefinition) => axisDefinition.key === "digital_confidence",
+    );
+
+    expect(axisDefinitions).toHaveLength(3);
+    expect(digitalConfidenceEntries).toHaveLength(1);
+    expect(digitalConfidenceEntries[0]?.usageCount).toBe(2);
+  });
+
+  it("publish keeps axis library usage isolated by org", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const asCollaborator = t.withIdentity(collaboratorIdentity);
+    const researcherPackId = await asResearcher.mutation(api.personaPacks.createDraft, {
+      pack: makeCreateDraftInput({ name: "Researcher pack" }),
+    });
+    const collaboratorPackId = await asCollaborator.mutation(
+      api.personaPacks.createDraft,
+      {
+        pack: makeCreateDraftInput({ name: "Collaborator pack" }),
+      },
+    );
+    await insertProtoPersona(t, researcherPackId);
+    await insertProtoPersona(t, collaboratorPackId);
+
+    await asResearcher.mutation(api.personaPacks.publish, {
+      packId: researcherPackId,
+    });
+    await asCollaborator.mutation(api.personaPacks.publish, {
+      packId: collaboratorPackId,
+    });
+
+    const researcherAxisDefinitions = await getAxisDefinitionsForOrg(
+      t,
+      researchIdentity.tokenIdentifier,
+    );
+    const collaboratorAxisDefinitions = await getAxisDefinitionsForOrg(
+      t,
+      collaboratorIdentity.tokenIdentifier,
+    );
+
+    expect(researcherAxisDefinitions).toHaveLength(1);
+    expect(collaboratorAxisDefinitions).toHaveLength(1);
+    expect(researcherAxisDefinitions[0]).toMatchObject({
+      key: "digital_confidence",
+      usageCount: 1,
+      orgId: researchIdentity.tokenIdentifier,
+    });
+    expect(collaboratorAxisDefinitions[0]).toMatchObject({
+      key: "digital_confidence",
+      usageCount: 1,
+      orgId: collaboratorIdentity.tokenIdentifier,
+    });
+  });
+
   it("publish rejects packs without proto-personas", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
@@ -499,6 +714,24 @@ async function getPackDoc(
   packId: Id<"personaPacks">,
 ): Promise<Doc<"personaPacks"> | null> {
   return await t.run(async (ctx) => (await ctx.db.get(packId)) as Doc<"personaPacks"> | null);
+}
+
+async function getAxisDefinitionDoc(
+  t: TestInstance,
+  axisDefinitionId: Id<"axisDefinitions">,
+): Promise<Doc<"axisDefinitions"> | null> {
+  return await t.run(
+    async (ctx) =>
+      (await ctx.db.get(axisDefinitionId)) as Doc<"axisDefinitions"> | null,
+  );
+}
+
+async function getAxisDefinitionsForOrg(t: TestInstance, orgId: string) {
+  return await t.run(async (ctx) =>
+    (await ctx.db.query("axisDefinitions").collect()).filter(
+      (axisDefinition) => axisDefinition.orgId === orgId,
+    ),
+  );
 }
 
 async function createArchivedPack(t: TestInstance) {

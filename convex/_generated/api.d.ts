@@ -756,6 +756,26 @@ export declare const internal: {
       any
     >;
   };
+  axisLibrary: {
+    upsertSharedAxesFromPackPublish: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        actorId: string;
+        orgId: string;
+        sharedAxes: Array<{
+          description: string;
+          highAnchor: string;
+          key: string;
+          label: string;
+          lowAnchor: string;
+          midAnchor: string;
+          weight: number;
+        }>;
+      },
+      any
+    >;
+  };
   costControls: {
     evaluateStudyCostControls: FunctionReference<
       "mutation",

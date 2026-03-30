@@ -305,6 +305,12 @@ export const publish = mutation({
       assertProtoPersonaAxisKeys(pack.sharedAxes, protoPersona.axes);
     }
 
+    await ctx.runMutation(internal.axisLibrary.upsertSharedAxesFromPackPublish, {
+      orgId: identity.tokenIdentifier,
+      actorId: identity.tokenIdentifier,
+      sharedAxes: pack.sharedAxes,
+    });
+
     await ctx.db.patch(args.packId, {
       status: "published",
       version: pack.version + 1,

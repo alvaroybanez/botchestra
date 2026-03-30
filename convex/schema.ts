@@ -123,7 +123,9 @@ export default defineSchema({
     updatedBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_orgId", ["orgId"]),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_orgId_and_key", ["orgId", "key"]),
 
   // 3. protoPersonas
   protoPersonas: defineTable({

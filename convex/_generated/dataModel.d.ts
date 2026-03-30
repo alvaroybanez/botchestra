@@ -265,6 +265,7 @@ export type DataModel = {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
       by_orgId: ["orgId", "_creationTime"];
+      by_orgId_and_key: ["orgId", "key", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};

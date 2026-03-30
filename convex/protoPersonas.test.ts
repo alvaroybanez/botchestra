@@ -7,6 +7,7 @@ import schema from "./schema";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
+  "./axisLibrary.ts": () => import("./axisLibrary"),
   "./schema.ts": () => import("./schema"),
   "./personaPacks.ts": () => import("./personaPacks"),
   "./userManagement.ts": () => import("./userManagement"),

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 
 const MAX_AXIS_DEFINITION_QUERY_SIZE = 100;
@@ -37,6 +37,16 @@ const axisDefinitionInputValidator = v.object({
   highAnchor: v.string(),
   weight: v.number(),
   tags: v.array(v.string()),
+});
+
+const sharedAxisValidator = v.object({
+  key: v.string(),
+  label: v.string(),
+  description: v.string(),
+  lowAnchor: v.string(),
+  midAnchor: v.string(),
+  highAnchor: v.string(),
+  weight: v.number(),
 });
 
 const axisDefinitionPatchSchema = z
@@ -204,22 +214,53 @@ export const getAxisDefinition = query({
   },
 });
 
+export const upsertSharedAxesFromPackPublish = internalMutation({
+  args: {
+    orgId: v.string(),
+    actorId: v.string(),
+    sharedAxes: v.array(sharedAxisValidator),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    for (const axis of args.sharedAxes) {
+      const existing = await getAxisDefinitionByKey(ctx, args.orgId, axis.key);
+
+      if (existing !== null) {
+        await ctx.db.patch(existing._id, {
+          usageCount: existing.usageCount + 1,
+          updatedBy: args.actorId,
+          updatedAt: now,
+        });
+        continue;
+      }
+
+      await ctx.db.insert("axisDefinitions", {
+        ...axis,
+        tags: [],
+        usageCount: 1,
+        creationSource: "pack_publish",
+        orgId: args.orgId,
+        createdBy: args.actorId,
+        updatedBy: args.actorId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return null;
+  },
+});
+
 async function getAxisDefinitionByKey(
   ctx: QueryCtx | MutationCtx,
   orgId: string,
   key: string,
 ) {
-  const query = ctx.db
+  return await ctx.db
     .query("axisDefinitions")
-    .withIndex("by_orgId", (q) => q.eq("orgId", orgId));
-
-  for await (const axisDefinition of query) {
-    if (axisDefinition.key === key) {
-      return axisDefinition;
-    }
-  }
-
-  return null;
+    .withIndex("by_orgId_and_key", (q) => q.eq("orgId", orgId).eq("key", key))
+    .unique();
 }
 
 async function loadAxisDefinitionForOrg(

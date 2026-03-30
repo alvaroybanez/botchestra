@@ -9,6 +9,7 @@ import { ADMIN_ROLES, requireRole } from "./rbac";
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./analysisNotes.ts": () => import("./analysisNotes"),
+  "./axisLibrary.ts": () => import("./axisLibrary"),
   "./personaPacks.ts": () => import("./personaPacks"),
   "./personaVariantGeneration.ts": () => import("./personaVariantGeneration"),
   "./rbac.ts": () => import("./rbac"),
