@@ -47,6 +47,9 @@ let mockedViewerAccess: ViewerAccess | null | undefined = null;
 let mockedPackList:
   | Doc<"personaPacks">[]
   | undefined = [];
+let mockedAxisDefinitions:
+  | Doc<"axisDefinitions">[]
+  | undefined = [];
 let mockedPackDetail:
   | Doc<"personaPacks">
   | null
@@ -591,6 +594,10 @@ vi.mock("convex/react", () => ({
       return mockedPackList;
     }
 
+    if (queryName === "axisLibrary:listAxisDefinitions") {
+      return mockedAxisDefinitions;
+    }
+
     if (queryName === "personaPacks:get") {
       return mockedPackDetail;
     }
@@ -627,6 +634,7 @@ afterEach(() => {
 
 beforeEach(() => {
   mockedPackList = [];
+  mockedAxisDefinitions = [];
   mockedPackDetail = null;
   mockedProtoPersonas = [];
   mockedViewerAccess = null;
@@ -1941,6 +1949,31 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Create your first pack");
   });
 
+  it("renders the axis library route and places its sidebar link after Persona Packs", async () => {
+    mockedAxisDefinitions = [
+      makeAxisDefinition({
+        _id: "axis-library-1" as Id<"axisDefinitions">,
+      }),
+    ];
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/axis-library"],
+    });
+
+    const linkLabels = [...container.querySelectorAll("a")].map((link) =>
+      link.textContent?.trim(),
+    );
+
+    expect(linkLabels.indexOf("Axis Library")).toBe(
+      linkLabels.indexOf("Persona Packs") + 1,
+    );
+    expect(getRouterLocationHref(router)).toBe("/axis-library");
+    expect(container.textContent).toContain("Axis Library");
+    expect(container.textContent).toContain("Browse axes");
+    expect(container.textContent).toContain("digital_confidence");
+  });
+
   it("renders active persona packs separately from archived packs", async () => {
     mockedPackList = [
       makePack({
@@ -2820,6 +2853,31 @@ function makePack(overrides: Partial<Doc<"personaPacks">> = {}): Doc<"personaPac
     ],
     version: 1,
     status: "draft",
+    orgId: "researcher|org-a",
+    createdBy: "researcher|org-a",
+    updatedBy: "researcher|org-a",
+    createdAt: 1,
+    updatedAt: 2,
+    ...overrides,
+  };
+}
+
+function makeAxisDefinition(
+  overrides: Partial<Doc<"axisDefinitions">> = {},
+): Doc<"axisDefinitions"> {
+  return {
+    _creationTime: 1,
+    _id: (overrides._id ?? "axis-1") as Id<"axisDefinitions">,
+    key: "digital_confidence",
+    label: "Digital confidence",
+    description: "Comfort level with unfamiliar digital tasks.",
+    lowAnchor: "Needs help often",
+    midAnchor: "Can complete familiar flows",
+    highAnchor: "Self-directed explorer",
+    weight: 1,
+    tags: ["checkout", "fintech"],
+    usageCount: 2,
+    creationSource: "manual",
     orgId: "researcher|org-a",
     createdBy: "researcher|org-a",
     updatedBy: "researcher|org-a",

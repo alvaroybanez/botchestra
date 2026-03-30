@@ -13,6 +13,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AdminDiagnosticsPage as AdminDiagnosticsRoutePage } from "@/routes/admin-diagnostics-page";
+import { AxisLibraryPage as AxisLibraryRoutePage } from "@/routes/axis-library-page";
 import { LoginPage } from "@/routes/login";
 import { NotFoundPlaceholder } from "@/routes/placeholders";
 import {
@@ -252,6 +253,12 @@ const personaPacksRoute = createRoute({
   component: PersonaPacksPage,
 });
 
+const axisLibraryRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "axis-library",
+  component: AxisLibraryPage,
+});
+
 const personaPackDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "persona-packs/$packId",
@@ -289,6 +296,7 @@ const routeTree = rootRoute.addChildren([
     studyFindingsRoute,
     studyReportRoute,
     personaPacksRoute,
+    axisLibraryRoute,
     personaPackDetailRoute,
     settingsRoute,
     adminDiagnosticsRoute,
@@ -477,6 +485,10 @@ function StudyReportPage() {
 
 function PersonaPacksPage() {
   return <PersonaPacksRoutePage />;
+}
+
+function AxisLibraryPage() {
+  return <AxisLibraryRoutePage />;
 }
 
 function PersonaPackDetailPage() {

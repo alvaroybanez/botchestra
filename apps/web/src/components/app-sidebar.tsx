@@ -18,6 +18,12 @@ const baseNavigationItems = [
     permission: null,
   },
   {
+    label: "Axis Library",
+    to: "/axis-library",
+    exact: false,
+    permission: null,
+  },
+  {
     label: "Settings",
     to: "/settings",
     exact: true,
