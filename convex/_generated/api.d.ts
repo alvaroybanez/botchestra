@@ -91,6 +91,56 @@ export declare const api: {
     >;
     signOut: FunctionReference<"action", "public", {}, any>;
   };
+  axisLibrary: {
+    createAxisDefinition: FunctionReference<
+      "mutation",
+      "public",
+      {
+        axis: {
+          description: string;
+          highAnchor: string;
+          key: string;
+          label: string;
+          lowAnchor: string;
+          midAnchor: string;
+          tags: Array<string>;
+          weight: number;
+        };
+      },
+      any
+    >;
+    deleteAxisDefinition: FunctionReference<
+      "mutation",
+      "public",
+      { axisDefinitionId: Id<"axisDefinitions"> },
+      any
+    >;
+    getAxisDefinition: FunctionReference<
+      "query",
+      "public",
+      { axisDefinitionId: Id<"axisDefinitions"> },
+      any
+    >;
+    listAxisDefinitions: FunctionReference<"query", "public", {}, any>;
+    updateAxisDefinition: FunctionReference<
+      "mutation",
+      "public",
+      {
+        axisDefinitionId: Id<"axisDefinitions">;
+        patch: {
+          description?: string;
+          highAnchor?: string;
+          key?: string;
+          label?: string;
+          lowAnchor?: string;
+          midAnchor?: string;
+          tags?: Array<string>;
+          weight?: number;
+        };
+      },
+      any
+    >;
+  };
   credentials: {
     createCredential: FunctionReference<
       "mutation",

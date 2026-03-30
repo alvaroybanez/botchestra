@@ -106,7 +106,26 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_orgId", ["orgId"]),
 
-  // 2. protoPersonas
+  // 2. axisDefinitions
+  axisDefinitions: defineTable({
+    key: v.string(),
+    label: v.string(),
+    description: v.string(),
+    lowAnchor: v.string(),
+    midAnchor: v.string(),
+    highAnchor: v.string(),
+    weight: v.number(),
+    tags: v.array(v.string()),
+    usageCount: v.number(),
+    creationSource: v.union(v.literal("manual"), v.literal("pack_publish")),
+    orgId: v.string(),
+    createdBy: v.string(),
+    updatedBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_orgId", ["orgId"]),
+
+  // 3. protoPersonas
   protoPersonas: defineTable({
     packId: v.id("personaPacks"),
     name: v.string(),
@@ -122,7 +141,7 @@ export default defineSchema({
     notes: v.optional(v.string()),
   }).index("by_packId", ["packId"]),
 
-  // 3. personaVariants
+  // 4. personaVariants
   personaVariants: defineTable({
     studyId: v.id("studies"),
     personaPackId: v.id("personaPacks"),
@@ -137,7 +156,7 @@ export default defineSchema({
     accepted: v.boolean(),
   }).index("by_studyId", ["studyId"]),
 
-  // 4. studies
+  // 5. studies
   studies: defineTable({
     orgId: v.string(),
     personaPackId: v.id("personaPacks"),
@@ -171,7 +190,7 @@ export default defineSchema({
     .index("by_personaPackId", ["personaPackId"])
     .index("by_orgId_and_updatedAt", ["orgId", "updatedAt"]),
 
-  // 5. runs
+  // 6. runs
   runs: defineTable({
     studyId: v.id("studies"),
     personaVariantId: v.id("personaVariants"),
@@ -227,7 +246,7 @@ export default defineSchema({
     .index("by_studyId_and_protoPersonaId", ["studyId", "protoPersonaId"])
     .index("by_status", ["status"]),
 
-  // 6. runMilestones
+  // 7. runMilestones
   runMilestones: defineTable({
     runId: v.id("runs"),
     studyId: v.id("studies"),
@@ -243,7 +262,7 @@ export default defineSchema({
     .index("by_runId", ["runId"])
     .index("by_runId_and_stepIndex", ["runId", "stepIndex"]),
 
-  // 7. issueClusters
+  // 8. issueClusters
   issueClusters: defineTable({
     studyId: v.id("studies"),
     title: v.string(),

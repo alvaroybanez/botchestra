@@ -223,6 +223,52 @@ export type DataModel = {
     searchIndexes: {};
     vectorIndexes: {};
   };
+  axisDefinitions: {
+    document: {
+      createdAt: number;
+      createdBy: string;
+      creationSource: "manual" | "pack_publish";
+      description: string;
+      highAnchor: string;
+      key: string;
+      label: string;
+      lowAnchor: string;
+      midAnchor: string;
+      orgId: string;
+      tags: Array<string>;
+      updatedAt: number;
+      updatedBy: string;
+      usageCount: number;
+      weight: number;
+      _id: Id<"axisDefinitions">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "createdAt"
+      | "createdBy"
+      | "creationSource"
+      | "description"
+      | "highAnchor"
+      | "key"
+      | "label"
+      | "lowAnchor"
+      | "midAnchor"
+      | "orgId"
+      | "tags"
+      | "updatedAt"
+      | "updatedBy"
+      | "usageCount"
+      | "weight";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_orgId: ["orgId", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
   credentials: {
     document: {
       allowedStudyIds?: Array<Id<"studies">>;
