@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
@@ -69,6 +69,9 @@ type AxisDialogState =
   | null;
 
 const AXIS_KEY_PATTERN = /^[a-z0-9_]+$/;
+const DUPLICATE_AXIS_DEFINITION_PATTERN =
+  /axis definition with key ["“”']?.+["“”']? already exists/i;
+const MIN_LOADING_SKELETON_MS = 350;
 
 const emptyAxisForm = (): AxisFormState => ({
   key: "",
@@ -102,12 +105,38 @@ export function AxisLibraryPage() {
   const [deleteCandidate, setDeleteCandidate] = useState<AxisDefinition | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isQueryLoading =
+    axisDefinitionsQuery === undefined || viewerAccess === undefined;
+  const loadingStartedAtRef = useRef(Date.now());
+  const [showLoadingState, setShowLoadingState] = useState(isQueryLoading);
 
   useEffect(() => {
     if (axisDefinitionsQuery !== undefined) {
       setAxisDefinitions(axisDefinitionsQuery);
     }
   }, [axisDefinitionsQuery]);
+
+  useEffect(() => {
+    if (isQueryLoading) {
+      loadingStartedAtRef.current = Date.now();
+      setShowLoadingState(true);
+      return;
+    }
+
+    const remainingMs =
+      MIN_LOADING_SKELETON_MS - (Date.now() - loadingStartedAtRef.current);
+
+    if (remainingMs <= 0) {
+      setShowLoadingState(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setShowLoadingState(false);
+    }, remainingMs);
+
+    return () => window.clearTimeout(timeout);
+  }, [isQueryLoading]);
 
   useEffect(() => {
     if (dialogState === null) {
@@ -153,6 +182,17 @@ export function AxisLibraryPage() {
       return matchesSearch && matchesTag;
     });
   }, [axisDefinitions, searchText, selectedTag]);
+
+  const filterSummary = useMemo(
+    () =>
+      formatAxisFilterSummary({
+        filteredCount: filteredAxisDefinitions.length,
+        searchText,
+        selectedTag,
+        totalCount: axisDefinitions.length,
+      }),
+    [axisDefinitions.length, filteredAxisDefinitions.length, searchText, selectedTag],
+  );
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -237,7 +277,7 @@ export function AxisLibraryPage() {
     }
   }
 
-  if (axisDefinitionsQuery === undefined || viewerAccess === undefined) {
+  if (showLoadingState) {
     return <AxisLibraryLoadingState />;
   }
 
@@ -293,6 +333,10 @@ export function AxisLibraryPage() {
               ))}
             </select>
           </div>
+
+          <p className="md:col-span-2 text-sm text-muted-foreground">
+            {filterSummary}
+          </p>
         </CardContent>
       </Card>
 
@@ -688,8 +732,11 @@ function AxisField({
 
 function AxisLibraryLoadingState() {
   return (
-    <section className="space-y-6">
+    <section aria-live="polite" className="space-y-6">
       <div className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground" role="status">
+          Loading axis library...
+        </p>
         <div className="h-4 w-28 animate-pulse rounded bg-muted" />
         <div className="h-10 w-56 animate-pulse rounded bg-muted" />
         <div className="h-4 w-full max-w-3xl animate-pulse rounded bg-muted" />
@@ -848,8 +895,31 @@ function truncateText(value: string) {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
+  const rawMessage = extractErrorMessage(error);
+
+  if (rawMessage === null) {
+    return fallback;
+  }
+
+  if (DUPLICATE_AXIS_DEFINITION_PATTERN.test(rawMessage)) {
+    return "An axis with this key already exists.";
+  }
+
+  const convexErrorMessage = rawMessage.match(/ConvexError:\s*([^\n]+)/i)?.[1];
+
+  if (convexErrorMessage) {
+    return convexErrorMessage.trim();
+  }
+
+  return rawMessage
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.length > 0) ?? fallback;
+}
+
+function extractErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
+    return error.message.trim();
   }
 
   if (
@@ -857,11 +927,43 @@ function getErrorMessage(error: unknown, fallback: string) {
     && error !== null
     && "data" in error
     && typeof error.data === "string"
+    && error.data.trim().length > 0
   ) {
-    return error.data;
+    return error.data.trim();
   }
 
-  return fallback;
+  return null;
+}
+
+function formatAxisFilterSummary({
+  filteredCount,
+  searchText,
+  selectedTag,
+  totalCount,
+}: {
+  filteredCount: number;
+  searchText: string;
+  selectedTag: string;
+  totalCount: number;
+}) {
+  const filters: string[] = [];
+  const normalizedSearchText = searchText.trim();
+
+  if (selectedTag.length > 0) {
+    filters.push(`tag “${selectedTag}”`);
+  }
+
+  if (normalizedSearchText.length > 0) {
+    filters.push(`search “${normalizedSearchText}”`);
+  }
+
+  if (filters.length === 0) {
+    return `Showing all ${totalCount} axis definition${totalCount === 1 ? "" : "s"}.`;
+  }
+
+  return `Showing ${filteredCount} of ${totalCount} axis definition${
+    totalCount === 1 ? "" : "s"
+  } matching ${filters.join(" and ")}.`;
 }
 
 const selectClassName =

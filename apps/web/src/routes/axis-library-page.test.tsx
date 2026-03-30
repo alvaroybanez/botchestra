@@ -126,21 +126,28 @@ beforeEach(() => {
 });
 
 describe("AxisLibraryPage", () => {
-  it("renders metadata columns and filters by search and tag", async () => {
+  it("renders metadata columns and applies tag and text filters together", async () => {
     mockedAxisDefinitions = [
       makeAxisDefinition({
-        _id: "axis-checkout" as Id<"axisDefinitions">,
-        key: "digital_confidence",
-        label: "Digital confidence",
-        description: "Comfort level with unfamiliar checkout tasks.",
-        tags: ["checkout", "fintech"],
+        _id: "axis-support-sentiment" as Id<"axisDefinitions">,
+        key: "support_sentiment",
+        label: "Support sentiment",
+        description: "Confidence when working through a support request.",
+        tags: ["support", "fintech"],
       }),
       makeAxisDefinition({
-        _id: "axis-support" as Id<"axisDefinitions">,
-        key: "support_reliance",
-        label: "Support reliance",
-        description: "Likelihood of asking customer support for help.",
+        _id: "axis-support-queue" as Id<"axisDefinitions">,
+        key: "support_queue_tolerance",
+        label: "Support queue tolerance",
+        description: "Patience while waiting for a support response.",
         tags: ["support"],
+      }),
+      makeAxisDefinition({
+        _id: "axis-checkout" as Id<"axisDefinitions">,
+        key: "checkout_confidence",
+        label: "Checkout confidence",
+        description: "Comfort level with unfamiliar checkout tasks.",
+        tags: ["checkout"],
       }),
     ];
 
@@ -157,14 +164,41 @@ describe("AxisLibraryPage", () => {
     expect(container.textContent).toContain("Usage Count");
     expect(container.textContent).toContain("Creation Source");
 
-    await updateInput("#axis-library-search", "SUPPORT");
-    expect(document.body.textContent).toContain("Support reliance");
-    expect(document.body.textContent).not.toContain("Digital confidence");
+    await updateSelect("#axis-library-tag-filter", "support");
+    expect(document.body.textContent).toContain("Support sentiment");
+    expect(document.body.textContent).toContain("Support queue tolerance");
+    expect(document.body.textContent).not.toContain("Checkout confidence");
 
-    await updateInput("#axis-library-search", "");
-    await updateSelect("#axis-library-tag-filter", "fintech");
-    expect(document.body.textContent).toContain("Digital confidence");
-    expect(document.body.textContent).not.toContain("Support reliance");
+    await updateInput("#axis-library-search", "sentiment");
+    expect(document.body.textContent).toContain("Support sentiment");
+    expect(document.body.textContent).not.toContain("Support queue tolerance");
+    expect(document.body.textContent).toContain(
+      "Showing 1 of 3 axis definitions matching tag “support” and search “sentiment”.",
+    );
+  });
+
+  it("shows a visible loading skeleton before settled content renders", async () => {
+    vi.useFakeTimers();
+    mockedAxisDefinitions = undefined;
+    mockedViewerAccess = undefined;
+
+    const { rerender } = await renderPage();
+
+    expect(document.body.textContent).toContain("Loading axis library...");
+
+    mockedAxisDefinitions = [makeAxisDefinition()];
+    mockedViewerAccess = makeViewerAccess("researcher");
+
+    await rerender();
+    expect(document.body.textContent).toContain("Loading axis library...");
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    expect(document.body.textContent).toContain("Axis Library");
+    expect(document.body.textContent).not.toContain("Loading axis library...");
+    vi.useRealTimers();
   });
 
   it("shows inline validation errors and prevents empty create submissions", async () => {
@@ -253,6 +287,32 @@ describe("AxisLibraryPage", () => {
     expect(document.body.textContent).not.toContain("Updated support label");
   });
 
+  it("maps duplicate key failures to a concise user-facing message", async () => {
+    createAxisDefinitionMock.mockRejectedValueOnce(
+      new Error(`Server Error
+Uncaught ConvexError: Axis definition with key "digital_confidence" already exists.
+    at handler (../convex/axisLibrary.ts:94:13)`),
+    );
+
+    await renderPage();
+
+    await clickButton("Create axis");
+    await updateInput("#axis-form-key", "digital_confidence");
+    await updateInput("#axis-form-label", "Digital confidence");
+    await updateTextarea(
+      "#axis-form-description",
+      "Comfort level with unfamiliar digital tasks.",
+    );
+    await updateInput("#axis-form-low-anchor", "Needs help often");
+    await updateInput("#axis-form-mid-anchor", "Can complete familiar flows");
+    await updateInput("#axis-form-high-anchor", "Self-directed explorer");
+    await updateInput("#axis-form-weight", "1");
+    await submitCurrentForm();
+
+    expect(document.body.textContent).toContain("An axis with this key already exists.");
+    expect(document.body.textContent).not.toContain("ConvexError");
+  });
+
   it("hides mutation controls for reviewers", async () => {
     mockedViewerAccess = makeViewerAccess("reviewer");
 
@@ -274,7 +334,14 @@ async function renderPage() {
     root.render(<AxisLibraryPage />);
   });
 
-  return { container };
+  return {
+    container,
+    rerender: async () => {
+      await act(async () => {
+        root.render(<AxisLibraryPage />);
+      });
+    },
+  };
 }
 
 async function clickButton(text: string, occurrence = 0) {
