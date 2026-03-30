@@ -26,6 +26,10 @@ Testing surface, required tools, and resource cost classification.
 - Cross-area flows (VAL-CROSS-*) test the full pipeline and should be validated last, after all individual area flows pass.
 - Axis Library reloads can briefly show the app-level `Loading...` fallback before the route-level `Loading axis library...` skeleton. Wait for the latter text if you need direct evidence for VAL-AXLIB-019.
 - Axis Library's filter summary now spells out both active criteria (for example `matching tag "support" and search "insight"`), which is useful evidence for VAL-AXLIB-011's AND behavior.
+- Transcript extraction progress does not stay visibly mounted after same-tab navigation away and back; future validators should expect VAL-TEXTR-006 to fail unless that UI is fixed.
+- Auto-discover extraction currently surfaces proposed axis keys in camelCase (for example `automationReliance`), which makes `Apply to pack` fail after researchers edit the shared-axis keys to snake_case because the archetype axis-value keys are not updated to match.
+- Guided extraction currently provides a reliable path for validating transcript-derived persona creation, evidence deep links, and publish-time transcript reference persistence.
+- The current `Re-run extraction` affordance does not start a fresh extraction flow after results exist; it reopens an empty/previous results shell instead.
 
 ## Setup Tips
 
