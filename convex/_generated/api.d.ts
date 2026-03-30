@@ -656,6 +656,56 @@ export declare const api: {
       any
     >;
   };
+  transcriptExtraction: {
+    clusterArchetypes: FunctionReference<
+      "action",
+      "public",
+      {
+        guidedAxes?: Array<{
+          description: string;
+          highAnchor: string;
+          key: string;
+          label: string;
+          lowAnchor: string;
+          midAnchor: string;
+          weight: number;
+        }>;
+        mode: "auto_discover" | "guided";
+        packId: Id<"personaPacks">;
+      },
+      any
+    >;
+    estimateExtractionCost: FunctionReference<
+      "query",
+      "public",
+      { transcriptIds: Array<Id<"transcripts">> },
+      any
+    >;
+    getExtractionStatus: FunctionReference<
+      "query",
+      "public",
+      { packId: Id<"personaPacks"> },
+      any
+    >;
+    startExtraction: FunctionReference<
+      "action",
+      "public",
+      {
+        guidedAxes?: Array<{
+          description: string;
+          highAnchor: string;
+          key: string;
+          label: string;
+          lowAnchor: string;
+          midAnchor: string;
+          weight: number;
+        }>;
+        mode: "auto_discover" | "guided";
+        packId: Id<"personaPacks">;
+      },
+      any
+    >;
+  };
   transcripts: {
     deleteTranscript: FunctionReference<
       "mutation",
@@ -1262,6 +1312,200 @@ export declare const internal: {
       "mutation",
       "internal",
       { launchRequestedBy?: string; studyId: Id<"studies"> },
+      any
+    >;
+  };
+  transcriptExtraction: {
+    beginExtractionRun: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        runState: {
+          archetypes: Array<{
+            axisValues: Array<{ key: string; value: number }>;
+            contributingTranscriptIds: Array<Id<"transcripts">>;
+            evidenceSnippets: Array<{
+              endChar: number;
+              quote: string;
+              startChar: number;
+              transcriptId: Id<"transcripts">;
+            }>;
+            name: string;
+            summary: string;
+          }>;
+          completedAt?: number;
+          currentTranscriptId?: Id<"transcripts">;
+          errorMessage?: string;
+          failedTranscripts: Array<{
+            error: string;
+            transcriptId: Id<"transcripts">;
+          }>;
+          guidedAxes: Array<{
+            description: string;
+            highAnchor: string;
+            key: string;
+            label: string;
+            lowAnchor: string;
+            midAnchor: string;
+            weight: number;
+          }>;
+          mode: "auto_discover" | "guided";
+          orgId: string;
+          packId: Id<"personaPacks">;
+          processedTranscriptCount: number;
+          proposedAxes: Array<{
+            description: string;
+            highAnchor: string;
+            key: string;
+            label: string;
+            lowAnchor: string;
+            midAnchor: string;
+            weight: number;
+          }>;
+          startedAt: number;
+          startedBy: string;
+          status:
+            | "processing"
+            | "completed"
+            | "completed_with_failures"
+            | "failed";
+          succeededTranscriptIds: Array<Id<"transcripts">>;
+          totalTranscripts: number;
+          updatedAt: number;
+        };
+      },
+      any
+    >;
+    extractTranscriptSignals: FunctionReference<
+      "action",
+      "internal",
+      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    getClusteringContext: FunctionReference<
+      "query",
+      "internal",
+      { orgId: string; packId: Id<"personaPacks"> },
+      any
+    >;
+    getPackExtractionContext: FunctionReference<
+      "query",
+      "internal",
+      { orgId: string; packId: Id<"personaPacks"> },
+      any
+    >;
+    getSignalExtractionContext: FunctionReference<
+      "query",
+      "internal",
+      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    getSignalsForPack: FunctionReference<
+      "query",
+      "internal",
+      { packId: Id<"personaPacks"> },
+      any
+    >;
+    markTranscriptSignalFailed: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        orgId: string;
+        packId: Id<"personaPacks">;
+        processingError: string;
+        transcriptId: Id<"transcripts">;
+      },
+      any
+    >;
+    markTranscriptSignalProcessing: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        orgId: string;
+        packId: Id<"personaPacks">;
+        transcriptId: Id<"transcripts">;
+      },
+      any
+    >;
+    persistExtractionRunState: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        runState: {
+          archetypes: Array<{
+            axisValues: Array<{ key: string; value: number }>;
+            contributingTranscriptIds: Array<Id<"transcripts">>;
+            evidenceSnippets: Array<{
+              endChar: number;
+              quote: string;
+              startChar: number;
+              transcriptId: Id<"transcripts">;
+            }>;
+            name: string;
+            summary: string;
+          }>;
+          completedAt?: number;
+          currentTranscriptId?: Id<"transcripts">;
+          errorMessage?: string;
+          failedTranscripts: Array<{
+            error: string;
+            transcriptId: Id<"transcripts">;
+          }>;
+          guidedAxes: Array<{
+            description: string;
+            highAnchor: string;
+            key: string;
+            label: string;
+            lowAnchor: string;
+            midAnchor: string;
+            weight: number;
+          }>;
+          mode: "auto_discover" | "guided";
+          orgId: string;
+          packId: Id<"personaPacks">;
+          processedTranscriptCount: number;
+          proposedAxes: Array<{
+            description: string;
+            highAnchor: string;
+            key: string;
+            label: string;
+            lowAnchor: string;
+            midAnchor: string;
+            weight: number;
+          }>;
+          startedAt: number;
+          startedBy: string;
+          status:
+            | "processing"
+            | "completed"
+            | "completed_with_failures"
+            | "failed";
+          succeededTranscriptIds: Array<Id<"transcripts">>;
+          totalTranscripts: number;
+          updatedAt: number;
+        };
+      },
+      any
+    >;
+    storeTranscriptSignals: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        orgId: string;
+        packId: Id<"personaPacks">;
+        signals: {
+          attitudes: Array<string>;
+          decisionPatterns: Array<string>;
+          evidenceSnippets: Array<{
+            endChar: number;
+            quote: string;
+            startChar: number;
+          }>;
+          painPoints: Array<string>;
+          themes: Array<string>;
+        };
+        transcriptId: Id<"transcripts">;
+      },
       any
     >;
   };

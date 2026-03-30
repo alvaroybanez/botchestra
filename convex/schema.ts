@@ -27,6 +27,59 @@ const axisRangeValidator = v.object({
   max: v.number(),
 });
 
+const transcriptEvidenceSnippetValidator = v.object({
+  quote: v.string(),
+  startChar: v.number(),
+  endChar: v.number(),
+});
+
+const transcriptSignalPayloadValidator = v.object({
+  themes: v.array(v.string()),
+  attitudes: v.array(v.string()),
+  painPoints: v.array(v.string()),
+  decisionPatterns: v.array(v.string()),
+  evidenceSnippets: v.array(transcriptEvidenceSnippetValidator),
+});
+
+const archetypeAxisValueValidator = v.object({
+  key: v.string(),
+  value: v.number(),
+});
+
+const archetypeEvidenceSnippetValidator = v.object({
+  transcriptId: v.id("transcripts"),
+  quote: v.string(),
+  startChar: v.number(),
+  endChar: v.number(),
+});
+
+const extractionModeValidator = v.union(
+  v.literal("auto_discover"),
+  v.literal("guided"),
+);
+
+const extractionRunStatusValidator = v.union(
+  v.literal("processing"),
+  v.literal("completed"),
+  v.literal("completed_with_failures"),
+  v.literal("failed"),
+);
+
+const transcriptSignalStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("processing"),
+  v.literal("completed"),
+  v.literal("failed"),
+);
+
+const transcriptArchetypeValidator = v.object({
+  name: v.string(),
+  summary: v.string(),
+  axisValues: v.array(archetypeAxisValueValidator),
+  evidenceSnippets: v.array(archetypeEvidenceSnippetValidator),
+  contributingTranscriptIds: v.array(v.id("transcripts")),
+});
+
 const allowedActionValidator = v.union(
   v.literal("goto"),
   v.literal("click"),
@@ -160,6 +213,49 @@ export default defineSchema({
   })
     .index("by_packId", ["packId"])
     .index("by_transcriptId", ["transcriptId"]),
+
+  // 2d. transcriptSignals
+  transcriptSignals: defineTable({
+    transcriptId: v.id("transcripts"),
+    packId: v.id("personaPacks"),
+    orgId: v.string(),
+    status: transcriptSignalStatusValidator,
+    signals: v.optional(transcriptSignalPayloadValidator),
+    processingError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_packId", ["packId"])
+    .index("by_transcriptId", ["transcriptId"])
+    .index("by_packId_and_transcriptId", ["packId", "transcriptId"]),
+
+  // 2e. transcriptExtractionRuns
+  transcriptExtractionRuns: defineTable({
+    packId: v.id("personaPacks"),
+    orgId: v.string(),
+    mode: extractionModeValidator,
+    status: extractionRunStatusValidator,
+    guidedAxes: v.array(axisValidator),
+    proposedAxes: v.array(axisValidator),
+    archetypes: v.array(transcriptArchetypeValidator),
+    totalTranscripts: v.number(),
+    processedTranscriptCount: v.number(),
+    currentTranscriptId: v.optional(v.id("transcripts")),
+    succeededTranscriptIds: v.array(v.id("transcripts")),
+    failedTranscripts: v.array(
+      v.object({
+        transcriptId: v.id("transcripts"),
+        error: v.string(),
+      }),
+    ),
+    errorMessage: v.optional(v.string()),
+    startedBy: v.string(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_packId", ["packId"])
+    .index("by_orgId", ["orgId"]),
 
   // 3. protoPersonas
   protoPersonas: defineTable({

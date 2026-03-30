@@ -929,6 +929,87 @@ export type DataModel = {
     searchIndexes: {};
     vectorIndexes: {};
   };
+  transcriptExtractionRuns: {
+    document: {
+      archetypes: Array<{
+        axisValues: Array<{ key: string; value: number }>;
+        contributingTranscriptIds: Array<Id<"transcripts">>;
+        evidenceSnippets: Array<{
+          endChar: number;
+          quote: string;
+          startChar: number;
+          transcriptId: Id<"transcripts">;
+        }>;
+        name: string;
+        summary: string;
+      }>;
+      completedAt?: number;
+      currentTranscriptId?: Id<"transcripts">;
+      errorMessage?: string;
+      failedTranscripts: Array<{
+        error: string;
+        transcriptId: Id<"transcripts">;
+      }>;
+      guidedAxes: Array<{
+        description: string;
+        highAnchor: string;
+        key: string;
+        label: string;
+        lowAnchor: string;
+        midAnchor: string;
+        weight: number;
+      }>;
+      mode: "auto_discover" | "guided";
+      orgId: string;
+      packId: Id<"personaPacks">;
+      processedTranscriptCount: number;
+      proposedAxes: Array<{
+        description: string;
+        highAnchor: string;
+        key: string;
+        label: string;
+        lowAnchor: string;
+        midAnchor: string;
+        weight: number;
+      }>;
+      startedAt: number;
+      startedBy: string;
+      status: "processing" | "completed" | "completed_with_failures" | "failed";
+      succeededTranscriptIds: Array<Id<"transcripts">>;
+      totalTranscripts: number;
+      updatedAt: number;
+      _id: Id<"transcriptExtractionRuns">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "archetypes"
+      | "completedAt"
+      | "currentTranscriptId"
+      | "errorMessage"
+      | "failedTranscripts"
+      | "guidedAxes"
+      | "mode"
+      | "orgId"
+      | "packId"
+      | "processedTranscriptCount"
+      | "proposedAxes"
+      | "startedAt"
+      | "startedBy"
+      | "status"
+      | "succeededTranscriptIds"
+      | "totalTranscripts"
+      | "updatedAt";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_orgId: ["orgId", "_creationTime"];
+      by_packId: ["packId", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
   transcripts: {
     document: {
       characterCount: number;
@@ -972,6 +1053,55 @@ export type DataModel = {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
       by_orgId: ["orgId", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
+  transcriptSignals: {
+    document: {
+      createdAt: number;
+      orgId: string;
+      packId: Id<"personaPacks">;
+      processingError?: string;
+      signals?: {
+        attitudes: Array<string>;
+        decisionPatterns: Array<string>;
+        evidenceSnippets: Array<{
+          endChar: number;
+          quote: string;
+          startChar: number;
+        }>;
+        painPoints: Array<string>;
+        themes: Array<string>;
+      };
+      status: "pending" | "processing" | "completed" | "failed";
+      transcriptId: Id<"transcripts">;
+      updatedAt: number;
+      _id: Id<"transcriptSignals">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "createdAt"
+      | "orgId"
+      | "packId"
+      | "processingError"
+      | "signals"
+      | "signals.attitudes"
+      | "signals.decisionPatterns"
+      | "signals.evidenceSnippets"
+      | "signals.painPoints"
+      | "signals.themes"
+      | "status"
+      | "transcriptId"
+      | "updatedAt";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_packId: ["packId", "_creationTime"];
+      by_packId_and_transcriptId: ["packId", "transcriptId", "_creationTime"];
+      by_transcriptId: ["transcriptId", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};
