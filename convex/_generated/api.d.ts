@@ -91,6 +91,19 @@ export declare const api: {
     >;
     signOut: FunctionReference<"action", "public", {}, any>;
   };
+  axisGeneration: {
+    suggestAxes: FunctionReference<
+      "action",
+      "public",
+      {
+        context: string;
+        description: string;
+        existingAxisKeys?: Array<string>;
+        name: string;
+      },
+      any
+    >;
+  };
   axisLibrary: {
     createAxisDefinition: FunctionReference<
       "mutation",

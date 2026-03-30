@@ -18,7 +18,7 @@ const draftStatusSchema = z.enum(["draft", "published", "archived"]);
 const requiredString = (label: string) =>
   z.string().trim().min(1, `${label} is required.`);
 
-const axisSchema = z.object({
+export const axisSchema = z.object({
   key: requiredString("Axis key"),
   label: requiredString("Axis label"),
   description: requiredString("Axis description"),
@@ -131,7 +131,7 @@ const draftStatusValidator = v.union(
   v.literal("archived"),
 );
 
-const axisValidator = v.object({
+export const axisValidator = v.object({
   key: v.string(),
   label: v.string(),
   description: v.string(),
