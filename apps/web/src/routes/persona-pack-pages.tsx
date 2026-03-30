@@ -18,6 +18,15 @@ type PersonaPackDoc = Doc<"personaPacks">;
 type ProtoPersonaDoc = Doc<"protoPersonas">;
 type AxisDefinition = Doc<"axisDefinitions">;
 type PersonaPackId = Id<"personaPacks">;
+type TranscriptDoc = Doc<"transcripts">;
+type TranscriptId = Id<"transcripts">;
+
+type ViewerAccess = {
+  role: "researcher" | "reviewer" | "admin";
+  permissions: {
+    canManagePersonaPacks: boolean;
+  };
+} | null;
 
 type AxisFormValue = {
   key: string;
@@ -286,6 +295,23 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
   const axisDefinitions = useQuery((api as any).axisLibrary.listAxisDefinitions, {}) as
     | AxisDefinition[]
     | undefined;
+  const transcriptLibrary = useQuery((api as any).transcripts.listTranscripts, {}) as
+    | TranscriptDoc[]
+    | undefined;
+  const packTranscripts = useQuery((api as any).packTranscripts.listPackTranscripts, {
+    packId: typedPackId,
+  }) as
+    | Array<{
+        _id: Id<"packTranscripts">;
+        packId: PersonaPackId;
+        transcriptId: TranscriptId;
+        createdAt: number;
+        transcript: TranscriptDoc;
+      }>
+    | undefined;
+  const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {}) as
+    | ViewerAccess
+    | undefined;
   const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
   const packVariantReview = useQuery(
     api.personaVariantReview.getPackVariantReview,
@@ -298,6 +324,8 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
   const publishPack = useMutation(api.personaPacks.publish);
   const archivePack = useMutation(api.personaPacks.archive);
   const suggestAxes = useAction((api as any).axisGeneration.suggestAxes);
+  const attachTranscript = useMutation((api as any).packTranscripts.attachTranscript);
+  const detachTranscript = useMutation((api as any).packTranscripts.detachTranscript);
   const [draftForm, setDraftForm] = useState<PackFormValue>(emptyPackForm);
   const [protoPersonaForm, setProtoPersonaForm] =
     useState<ProtoPersonaFormValue>(emptyProtoPersonaForm);
@@ -321,6 +349,15 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     [],
   );
   const [inlineToast, setInlineToast] = useState<InlineToastState | null>(null);
+  const [isTranscriptPickerOpen, setIsTranscriptPickerOpen] = useState(false);
+  const [transcriptSearchText, setTranscriptSearchText] = useState("");
+  const [selectedTranscriptIds, setSelectedTranscriptIds] = useState<string[]>(
+    [],
+  );
+  const [isAttachingTranscripts, setIsAttachingTranscripts] = useState(false);
+  const [detachingTranscriptId, setDetachingTranscriptId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (!pack) {
@@ -338,6 +375,10 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     setIsAxisLibraryOpen(false);
     setSelectedLibraryAxisIds([]);
     setInlineToast(null);
+    setIsTranscriptPickerOpen(false);
+    setTranscriptSearchText("");
+    setSelectedTranscriptIds([]);
+    setDetachingTranscriptId(null);
   }, [pack?._id]);
 
   useEffect(() => {
@@ -377,6 +418,8 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     (suggestion) => suggestion.isSelected,
   ).length;
   const axisLibraryList = axisDefinitions ?? [];
+  const canManagePackTranscripts =
+    viewerAccess?.permissions.canManagePersonaPacks === true;
   const resolvedAxes: PersonaPackDoc["sharedAxes"] = useMemo(() => {
     if (!pack) {
       return draftForm.sharedAxes.map(axisFormToPayload);
@@ -390,6 +433,31 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
       : null;
   const selectedStudySummary =
     packVariantReview?.selectedStudy ?? packVariantReview?.study ?? null;
+  const attachedTranscriptIds = new Set(
+    (packTranscripts ?? []).map((packTranscript) => String(packTranscript.transcriptId)),
+  );
+  const attachableTranscripts = (transcriptLibrary ?? []).filter(
+    (transcript) => !attachedTranscriptIds.has(String(transcript._id)),
+  );
+  const filteredAttachableTranscripts = useMemo(() => {
+    const normalizedSearch = transcriptSearchText.trim().toLowerCase();
+
+    if (normalizedSearch.length === 0) {
+      return attachableTranscripts;
+    }
+
+    return attachableTranscripts.filter((transcript) =>
+      [
+        transcript.originalFilename,
+        transcript.metadata.participantId ?? "",
+        transcript.metadata.tags.join(" "),
+        transcript.metadata.notes ?? "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [attachableTranscripts, transcriptSearchText]);
 
   async function handleSaveDraft(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -617,6 +685,20 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     );
   }
 
+  function handleTranscriptSelectionToggle(transcriptId: string) {
+    setSelectedTranscriptIds((current) =>
+      current.includes(transcriptId)
+        ? current.filter((id) => id !== transcriptId)
+        : [...current, transcriptId],
+    );
+  }
+
+  function handleCloseTranscriptPicker() {
+    setIsTranscriptPickerOpen(false);
+    setTranscriptSearchText("");
+    setSelectedTranscriptIds([]);
+  }
+
   function handleImportAxisDefinitions() {
     const selectedAxisDefinitions = axisLibraryList
       .filter((axisDefinition) =>
@@ -651,7 +733,67 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     }
   }
 
-  if (pack === undefined || protoPersonas === undefined) {
+  async function handleAttachSelectedTranscripts() {
+    if (!pack || selectedTranscriptIds.length === 0) {
+      return;
+    }
+
+    const selectedCount = selectedTranscriptIds.length;
+    setActionError(null);
+    setSaveMessage(null);
+    setIsAttachingTranscripts(true);
+
+    try {
+      for (const transcriptId of selectedTranscriptIds) {
+        await attachTranscript({
+          packId: pack._id,
+          transcriptId: transcriptId as TranscriptId,
+        });
+      }
+
+      handleCloseTranscriptPicker();
+      setSaveMessage(
+        selectedCount === 1
+          ? "1 transcript attached to this pack."
+          : `${selectedCount} transcripts attached to this pack.`,
+      );
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Could not attach transcripts."));
+    } finally {
+      setIsAttachingTranscripts(false);
+    }
+  }
+
+  async function handleDetachTranscript(transcriptId: TranscriptId) {
+    if (!pack) {
+      return;
+    }
+
+    setActionError(null);
+    setSaveMessage(null);
+    setDetachingTranscriptId(String(transcriptId));
+
+    try {
+      await detachTranscript({
+        packId: pack._id,
+        transcriptId,
+      });
+      setSaveMessage("Transcript detached from this pack.");
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Could not detach transcript."));
+    } finally {
+      setDetachingTranscriptId(null);
+    }
+  }
+
+  if (
+    pack === undefined
+    || protoPersonas === undefined
+    || axisDefinitions === undefined
+    || transcriptLibrary === undefined
+    || packTranscripts === undefined
+    || viewerAccess === undefined
+  ) {
     return (
       <LoadingCard
         title="Persona Pack"
@@ -1047,6 +1189,118 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
             </Card>
 
             <Card>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <CardTitle>Attached Transcripts</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Review transcript research linked to this pack and open each
+                    transcript in the library.
+                  </p>
+                </div>
+                {isDraft && canManagePackTranscripts ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsTranscriptPickerOpen(true)}
+                  >
+                    Attach transcripts
+                  </Button>
+                ) : null}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!isDraft ? (
+                  <p className="text-sm text-muted-foreground">
+                    Transcript attachments become read-only once the pack is no
+                    longer a draft.
+                  </p>
+                ) : null}
+                {!canManagePackTranscripts ? (
+                  <p className="text-sm text-muted-foreground">
+                    Reviewers can inspect attached transcripts but cannot attach
+                    or detach them.
+                  </p>
+                ) : null}
+
+                {packTranscripts.length === 0 ? (
+                  <div className="rounded-xl border border-dashed bg-background p-6">
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      No transcripts are attached to this pack yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {packTranscripts.map((packTranscript) => (
+                      <div
+                        key={packTranscript._id}
+                        className="rounded-xl border bg-background p-4"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                className="font-medium text-primary underline-offset-4 hover:underline"
+                                params={{
+                                  transcriptId: packTranscript.transcript._id,
+                                }}
+                                to="/transcripts/$transcriptId"
+                              >
+                                {packTranscript.transcript.originalFilename}
+                              </Link>
+                              <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                {packTranscript.transcript.format}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {packTranscript.transcript.metadata.participantId
+                                ? `Participant ${packTranscript.transcript.metadata.participantId}`
+                                : "No participant ID"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Attached {formatTimestamp(packTranscript.createdAt)}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button asChild type="button" variant="outline">
+                              <Link
+                                params={{
+                                  transcriptId: packTranscript.transcript._id,
+                                }}
+                                to="/transcripts/$transcriptId"
+                              >
+                                Open transcript
+                              </Link>
+                            </Button>
+                            {isDraft && canManagePackTranscripts ? (
+                              <Button
+                                disabled={
+                                  detachingTranscriptId
+                                  === String(packTranscript.transcriptId)
+                                }
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  void handleDetachTranscript(
+                                    packTranscript.transcriptId,
+                                  )
+                                }
+                              >
+                                {detachingTranscriptId
+                                === String(packTranscript.transcriptId)
+                                  ? "Detaching..."
+                                  : "Detach"}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
               <CardHeader>
                 <CardTitle>Audit Trail</CardTitle>
               </CardHeader>
@@ -1211,6 +1465,19 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
         }}
         onConfirm={handleImportAxisDefinitions}
         onToggleSelected={handleLibrarySelectionToggle}
+      />
+      <TranscriptAttachmentDialog
+        isLoading={transcriptLibrary === undefined}
+        isOpen={isTranscriptPickerOpen}
+        isSubmitting={isAttachingTranscripts}
+        searchText={transcriptSearchText}
+        selectedTranscriptIds={selectedTranscriptIds}
+        totalTranscriptCount={attachableTranscripts.length}
+        transcripts={filteredAttachableTranscripts}
+        onCancel={handleCloseTranscriptPicker}
+        onConfirm={() => void handleAttachSelectedTranscripts()}
+        onSearchChange={setTranscriptSearchText}
+        onToggleSelected={handleTranscriptSelectionToggle}
       />
     </>
   );
@@ -1889,6 +2156,152 @@ function AxisLibraryImportDialog({
             onClick={onConfirm}
           >
             Import selected
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TranscriptAttachmentDialog({
+  transcripts,
+  totalTranscriptCount,
+  searchText,
+  selectedTranscriptIds,
+  isLoading,
+  isOpen,
+  isSubmitting,
+  onCancel,
+  onConfirm,
+  onSearchChange,
+  onToggleSelected,
+}: {
+  transcripts: TranscriptDoc[];
+  totalTranscriptCount: number;
+  searchText: string;
+  selectedTranscriptIds: string[];
+  isLoading: boolean;
+  isOpen: boolean;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  onSearchChange: (value: string) => void;
+  onToggleSelected: (transcriptId: string) => void;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div
+        aria-modal="true"
+        className="w-full max-w-4xl space-y-4 rounded-xl border bg-background p-6 shadow-xl"
+        role="dialog"
+      >
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold">Attach transcripts</h3>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Select one or more transcripts from your organization&apos;s
+            transcript library to link them to this draft pack.
+          </p>
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="pack-attach-transcripts-search">
+            Search transcripts
+          </Label>
+          <Input
+            id="pack-attach-transcripts-search"
+            placeholder="Search by filename, participant, tag, or notes"
+            value={searchText}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            Loading transcript library...
+          </p>
+        ) : totalTranscriptCount === 0 ? (
+          <div className="rounded-xl border border-dashed bg-card p-6">
+            <p className="text-sm leading-6 text-muted-foreground">
+              Every transcript in this organization is already attached to this
+              pack.
+            </p>
+          </div>
+        ) : transcripts.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-card p-6">
+            <p className="text-sm leading-6 text-muted-foreground">
+              No transcripts match the current search.
+            </p>
+          </div>
+        ) : (
+          <div className="max-h-[26rem] overflow-y-auto rounded-xl border">
+            <div className="grid grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_auto] gap-4 border-b bg-muted/40 px-4 py-3 text-sm font-medium">
+              <span>Select</span>
+              <span>Transcript</span>
+              <span>Metadata</span>
+              <span>Format</span>
+            </div>
+
+            <div className="divide-y">
+              {transcripts.map((transcript) => {
+                const isSelected = selectedTranscriptIds.includes(
+                  String(transcript._id),
+                );
+
+                return (
+                  <label
+                    key={transcript._id}
+                    className="grid cursor-pointer grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_auto] gap-4 px-4 py-3 text-sm"
+                    htmlFor={`pack-attach-transcript-${transcript._id}`}
+                  >
+                    <input
+                      checked={isSelected}
+                      className="mt-1 h-4 w-4 rounded border-input"
+                      id={`pack-attach-transcript-${transcript._id}`}
+                      onChange={() => onToggleSelected(String(transcript._id))}
+                      type="checkbox"
+                    />
+                    <div className="space-y-1">
+                      <p className="font-medium">{transcript.originalFilename}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {transcript.characterCount} characters
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-muted-foreground">
+                      <p>
+                        {transcript.metadata.participantId
+                          ? `Participant ${transcript.metadata.participantId}`
+                          : "No participant ID"}
+                      </p>
+                      <p>
+                        {transcript.metadata.tags.length > 0
+                          ? transcript.metadata.tags.join(", ")
+                          : "No tags"}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {transcript.format}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            disabled={selectedTranscriptIds.length === 0 || isLoading}
+            type="button"
+            onClick={onConfirm}
+          >
+            {isSubmitting ? "Attaching..." : "Attach selected transcripts"}
           </Button>
         </div>
       </div>

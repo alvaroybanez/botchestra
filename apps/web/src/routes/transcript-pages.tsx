@@ -533,6 +533,7 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
   const updateTranscriptMetadata = useMutation((api as any).transcripts.updateTranscriptMetadata);
   const deleteTranscript = useMutation((api as any).transcripts.deleteTranscript);
   const attachTranscript = useMutation((api as any).packTranscripts.attachTranscript);
+  const detachTranscript = useMutation((api as any).packTranscripts.detachTranscript);
 
   const [transcript, setTranscript] = useState<TranscriptDoc | null>(null);
   const [content, setContent] = useState<TranscriptContent>(null);
@@ -541,9 +542,12 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
   const [metadataForm, setMetadataForm] = useState<TranscriptMetadataFormState>(
     emptyTranscriptMetadataForm(),
   );
-  const [selectedPackId, setSelectedPackId] = useState("");
+  const [isAttachDialogOpen, setIsAttachDialogOpen] = useState(false);
+  const [packSearchText, setPackSearchText] = useState("");
+  const [selectedPackIds, setSelectedPackIds] = useState<string[]>([]);
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const [isAttaching, setIsAttaching] = useState(false);
+  const [detachingPackId, setDetachingPackId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -631,6 +635,20 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
     (pack) =>
       pack.status === "draft" && !attachedPackIds.has(String(pack._id)),
   );
+  const filteredAttachablePacks = useMemo(() => {
+    const normalizedSearch = packSearchText.trim().toLowerCase();
+
+    if (normalizedSearch.length === 0) {
+      return attachablePacks;
+    }
+
+    return attachablePacks.filter((pack) =>
+      [pack.name, pack.description, pack.context]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [attachablePacks, packSearchText]);
 
   async function handleSaveMetadata(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -689,26 +707,70 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
     }
   }
 
-  async function handleAttachToPack() {
-    if (transcript === null || selectedPackId.length === 0) {
+  function resetAttachDialog() {
+    setIsAttachDialogOpen(false);
+    setPackSearchText("");
+    setSelectedPackIds([]);
+  }
+
+  function handlePackSelectionToggle(packId: string) {
+    setSelectedPackIds((current) =>
+      current.includes(packId)
+        ? current.filter((id) => id !== packId)
+        : [...current, packId],
+    );
+  }
+
+  async function handleAttachToPacks() {
+    if (transcript === null || selectedPackIds.length === 0) {
       return;
     }
 
+    const selectedCount = selectedPackIds.length;
     setIsAttaching(true);
     setPageError(null);
     setPageNotice(null);
 
     try {
-      await attachTranscript({
-        packId: selectedPackId as Id<"personaPacks">,
-        transcriptId: transcript._id,
-      });
-      setSelectedPackId("");
-      setPageNotice("Transcript attached to draft pack.");
+      for (const packId of selectedPackIds) {
+        await attachTranscript({
+          packId: packId as Id<"personaPacks">,
+          transcriptId: transcript._id,
+        });
+      }
+
+      resetAttachDialog();
+      setPageNotice(
+        selectedCount === 1
+          ? "Transcript attached to 1 draft pack."
+          : `Transcript attached to ${selectedCount} draft packs.`,
+      );
     } catch (error) {
       setPageError(getErrorMessage(error, "Could not attach transcript to pack."));
     } finally {
       setIsAttaching(false);
+    }
+  }
+
+  async function handleDetachFromPack(packId: Id<"personaPacks">) {
+    if (transcript === null) {
+      return;
+    }
+
+    setDetachingPackId(String(packId));
+    setPageError(null);
+    setPageNotice(null);
+
+    try {
+      await detachTranscript({
+        packId,
+        transcriptId: transcript._id,
+      });
+      setPageNotice("Transcript detached from pack.");
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Could not detach transcript from pack."));
+    } finally {
+      setDetachingPackId(null);
     }
   }
 
@@ -912,50 +974,103 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>
-                  {canManageTranscripts ? "Attach to pack" : "Pack attachments"}
-                </CardTitle>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <CardTitle>Linked Packs</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Review every persona pack this transcript is attached to and
+                    open each pack detail view.
+                  </p>
+                </div>
+                {canManageTranscripts ? (
+                  <Button
+                    disabled={attachablePacks.length === 0}
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsAttachDialogOpen(true)}
+                  >
+                    Attach to pack
+                  </Button>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-4">
                 {canManageTranscripts ? (
                   attachablePacks.length === 0 ? (
                     <p className="text-sm leading-6 text-muted-foreground">
-                      No draft packs are available to attach right now.
+                      No additional draft packs are available to attach right now.
                     </p>
-                  ) : (
-                    <>
-                      <div className="grid gap-2">
-                        <Label htmlFor="transcript-attach-pack">Draft pack</Label>
-                        <select
-                          id="transcript-attach-pack"
-                          className={transcriptSelectClassName}
-                          value={selectedPackId}
-                          onChange={(event) => setSelectedPackId(event.target.value)}
-                        >
-                          <option value="">Select a draft pack</option>
-                          {attachablePacks.map((pack) => (
-                            <option key={pack._id} value={pack._id}>
-                              {pack.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <Button
-                        disabled={selectedPackId.length === 0 || isAttaching}
-                        type="button"
-                        onClick={() => void handleAttachToPack()}
-                      >
-                        {isAttaching ? "Attaching..." : "Attach to pack"}
-                      </Button>
-                    </>
-                  )
+                  ) : null
                 ) : (
                   <p className="text-sm leading-6 text-muted-foreground">
-                    Reviewers can view transcript metadata but cannot attach
-                    transcripts to packs.
+                    Reviewers can view linked packs but cannot attach or detach
+                    transcript relationships.
                   </p>
+                )}
+
+                {transcriptPacks?.length === 0 ? (
+                  <div className="rounded-xl border border-dashed bg-background p-6">
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      This transcript is not linked to any packs yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {(transcriptPacks ?? []).map((packTranscript) => (
+                      <div
+                        key={`${packTranscript.packId}`}
+                        className="rounded-xl border bg-background p-4"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                className="font-medium text-primary underline-offset-4 hover:underline"
+                                params={{ packId: packTranscript.pack._id }}
+                                to="/persona-packs/$packId"
+                              >
+                                {packTranscript.pack.name}
+                              </Link>
+                              <PackStatusBadge status={packTranscript.pack.status} />
+                            </div>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              {packTranscript.pack.context}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button asChild type="button" variant="outline">
+                              <Link
+                                params={{ packId: packTranscript.pack._id }}
+                                to="/persona-packs/$packId"
+                              >
+                                Open pack
+                              </Link>
+                            </Button>
+                            {canManageTranscripts
+                            && packTranscript.pack.status === "draft" ? (
+                              <Button
+                                disabled={
+                                  detachingPackId
+                                  === String(packTranscript.packId)
+                                }
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  void handleDetachFromPack(
+                                    packTranscript.packId,
+                                  )
+                                }
+                              >
+                                {detachingPackId === String(packTranscript.packId)
+                                  ? "Detaching..."
+                                  : "Detach"}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -979,6 +1094,108 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
           </div>
         </div>
       </section>
+
+      <Dialog
+        open={isAttachDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetAttachDialog();
+            return;
+          }
+
+          setIsAttachDialogOpen(true);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Attach to pack</DialogTitle>
+            <DialogDescription>
+              Select one or more draft packs from your organization to link with
+              this transcript.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="transcript-attach-pack-search">
+                Search draft packs
+              </Label>
+              <Input
+                id="transcript-attach-pack-search"
+                placeholder="Search by pack name, description, or context"
+                value={packSearchText}
+                onChange={(event) => setPackSearchText(event.target.value)}
+              />
+            </div>
+
+            {attachablePacks.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-muted/20 p-4">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  No draft packs are currently available to attach.
+                </p>
+              </div>
+            ) : filteredAttachablePacks.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-muted/20 p-4">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  No draft packs match the current search.
+                </p>
+              </div>
+            ) : (
+              <div className="max-h-[24rem] overflow-y-auto rounded-xl border">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-4 border-b bg-muted/40 px-4 py-3 text-sm font-medium">
+                  <span>Select</span>
+                  <span>Pack</span>
+                  <span>Status</span>
+                </div>
+
+                <div className="divide-y">
+                  {filteredAttachablePacks.map((pack) => {
+                    const isSelected = selectedPackIds.includes(String(pack._id));
+
+                    return (
+                      <label
+                        key={pack._id}
+                        className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] gap-4 px-4 py-3 text-sm"
+                        htmlFor={`transcript-attach-pack-${pack._id}`}
+                      >
+                        <input
+                          checked={isSelected}
+                          className="mt-1 h-4 w-4 rounded border-input"
+                          id={`transcript-attach-pack-${pack._id}`}
+                          onChange={() => handlePackSelectionToggle(String(pack._id))}
+                          type="checkbox"
+                        />
+                        <div className="space-y-1">
+                          <p className="font-medium">{pack.name}</p>
+                          <p className="text-muted-foreground">
+                            {pack.context}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <PackStatusBadge status={pack.status} />
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={resetAttachDialog}>
+              Cancel
+            </Button>
+            <Button
+              disabled={selectedPackIds.length === 0 || isAttaching}
+              type="button"
+              onClick={() => void handleAttachToPacks()}
+            >
+              {isAttaching ? "Attaching..." : "Attach selected packs"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
@@ -1030,6 +1247,23 @@ function LoadingCard({ body, title }: { body: string; title: string }) {
         <p className="text-sm text-muted-foreground">{body}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function PackStatusBadge({ status }: { status: PersonaPackDoc["status"] }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
+        status === "draft"
+          ? "bg-amber-100 text-amber-800"
+          : status === "published"
+            ? "bg-emerald-100 text-emerald-800"
+            : "bg-slate-200 text-slate-700",
+      )}
+    >
+      {status}
+    </span>
   );
 }
 

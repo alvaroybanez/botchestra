@@ -358,6 +358,13 @@ let mockedAuditEvents: AuditEventView[] | undefined = [];
 let mockedSettingsView: SettingsView | undefined = undefined;
 let mockedTranscriptContentById: Record<string, TranscriptContent | undefined> =
   {};
+let mockedPackTranscriptsByPackId: Record<string, Array<{
+  _id: string;
+  packId: string;
+  transcriptId: string;
+  createdAt: number;
+  transcript: Doc<"transcripts">;
+}> | undefined> = {};
 let mockedTranscriptPacksByTranscriptId: Record<string, Array<{
   _id: string;
   transcriptId: string;
@@ -381,6 +388,7 @@ const uploadTranscriptMock = vi.fn();
 const updateTranscriptMetadataMock = vi.fn();
 const deleteTranscriptMock = vi.fn();
 const attachTranscriptMock = vi.fn();
+const detachTranscriptMock = vi.fn();
 const getTranscriptContentMock = vi.fn();
 const generateVariantsMock = vi.fn();
 const exportJsonReportMock = vi.fn();
@@ -486,6 +494,10 @@ vi.mock("convex/react", () => ({
 
     if (mutationName === "packTranscripts:attachTranscript") {
       return attachTranscriptMock;
+    }
+
+    if (mutationName === "packTranscripts:detachTranscript") {
+      return detachTranscriptMock;
     }
 
     return vi.fn();
@@ -692,6 +704,10 @@ vi.mock("convex/react", () => ({
       return mockedPackVariantReview;
     }
 
+    if (queryName === "packTranscripts:listPackTranscripts") {
+      return mockedPackTranscriptsByPackId[String(args?.packId)] ?? [];
+    }
+
     if (queryName === "packTranscripts:listTranscriptPacks") {
       return mockedTranscriptPacksByTranscriptId[String(args?.transcriptId)] ?? [];
     }
@@ -735,6 +751,7 @@ beforeEach(() => {
   mockedAuditEvents = [];
   mockedSettingsView = makeSettingsView();
   mockedTranscriptContentById = {};
+  mockedPackTranscriptsByPackId = {};
   mockedTranscriptPacksByTranscriptId = {};
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
@@ -834,6 +851,8 @@ beforeEach(() => {
   deleteTranscriptMock.mockResolvedValue(undefined);
   attachTranscriptMock.mockReset();
   attachTranscriptMock.mockResolvedValue(undefined);
+  detachTranscriptMock.mockReset();
+  detachTranscriptMock.mockResolvedValue(undefined);
   getTranscriptContentMock.mockReset();
   getTranscriptContentMock.mockImplementation(
     async ({ transcriptId }: { transcriptId: string }) =>
@@ -2506,6 +2525,122 @@ describe("@botchestra/web routing", () => {
     );
   });
 
+  it("renders pack detail transcript attachments, filters the picker, and supports attach-detach actions", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-with-transcripts" as Id<"personaPacks">,
+      name: "Transcript-linked pack",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "attached-transcript" as Id<"transcripts">,
+        originalFilename: "attached-call.txt",
+        metadata: {
+          participantId: "vip-1",
+          tags: ["existing"],
+          notes: "Already linked.",
+        },
+      }),
+      makeTranscript({
+        _id: "searchable-transcript" as Id<"transcripts">,
+        originalFilename: "checkout-vip.txt",
+        metadata: {
+          participantId: "vip-2",
+          tags: ["vip", "checkout"],
+          notes: "Search target.",
+        },
+      }),
+      makeTranscript({
+        _id: "other-transcript" as Id<"transcripts">,
+        originalFilename: "support.json",
+        format: "json",
+        metadata: {
+          participantId: "support-1",
+          tags: ["support"],
+          notes: "Other transcript.",
+        },
+      }),
+    ];
+    mockedPackTranscriptsByPackId["pack-with-transcripts"] = [
+      {
+        _id: "pack-transcript-1",
+        packId: "pack-with-transcripts",
+        transcriptId: "attached-transcript",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-with-transcripts"],
+    });
+
+    expect(container.textContent).toContain("Attached Transcripts");
+    expect(container.textContent).toContain("attached-call.txt");
+    expect(container.textContent).toContain("Attach transcripts");
+
+    await clickButton(container, "Attach transcripts");
+    expect(document.body.textContent).toContain("Attach selected transcripts");
+    const packAttachmentDialog = document.body.querySelector(
+      'div[role="dialog"]',
+    ) as HTMLDivElement;
+    await updateInput(packAttachmentDialog, "#pack-attach-transcripts-search", "vip-2");
+    await act(async () => {
+      document.body
+        .querySelector<HTMLInputElement>(
+          "#pack-attach-transcript-searchable-transcript",
+        )
+        ?.click();
+    });
+    await clickButton(document.body, "Attach selected transcripts");
+
+    expect(attachTranscriptMock).toHaveBeenCalledWith({
+      packId: "pack-with-transcripts",
+      transcriptId: "searchable-transcript",
+    });
+
+    await clickButton(container, "Detach");
+    expect(detachTranscriptMock).toHaveBeenCalledWith({
+      packId: "pack-with-transcripts",
+      transcriptId: "attached-transcript",
+    });
+  });
+
+  it("shows attached transcripts on pack detail for reviewers without attachment controls", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-reviewer-transcripts" as Id<"personaPacks">,
+      name: "Reviewer pack",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "reviewer-transcript" as Id<"transcripts">,
+        originalFilename: "reviewer-visible.txt",
+      }),
+    ];
+    mockedPackTranscriptsByPackId["pack-reviewer-transcripts"] = [
+      {
+        _id: "pack-transcript-reviewer",
+        packId: "pack-reviewer-transcripts",
+        transcriptId: "reviewer-transcript",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-reviewer-transcripts"],
+      viewerRole: "reviewer",
+    });
+
+    expect(container.textContent).toContain("Attached Transcripts");
+    expect(container.textContent).toContain("reviewer-visible.txt");
+    expect(container.textContent).not.toContain("Attach transcripts");
+    expect(container.textContent).not.toContain("Detach");
+  });
+
   it("imports a pack JSON from the list page and redirects to the imported pack", async () => {
     mockedPackList = [];
 
@@ -2827,6 +2962,11 @@ describe("@botchestra/web routing", () => {
     };
     mockedPackList = [
       makePack({
+        _id: "linked-draft-pack" as Id<"personaPacks">,
+        name: "Linked draft pack",
+        status: "draft",
+      }),
+      makePack({
         _id: "draft-pack" as Id<"personaPacks">,
         name: "Draft support pack",
         status: "draft",
@@ -2836,6 +2976,19 @@ describe("@botchestra/web routing", () => {
         name: "Published pack",
         status: "published",
       }),
+    ];
+    mockedTranscriptPacksByTranscriptId["transcript-detail"] = [
+      {
+        _id: "pack-link-1",
+        transcriptId: "transcript-detail",
+        packId: "linked-draft-pack",
+        createdAt: Date.now(),
+        pack: makePack({
+          _id: "linked-draft-pack" as Id<"personaPacks">,
+          name: "Linked draft pack",
+          status: "draft",
+        }),
+      },
     ];
 
     const { container, router } = await renderRoute({
@@ -2847,6 +3000,8 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain(
       "Customer could not reset their password without support.",
     );
+    expect(container.textContent).toContain("Linked Packs");
+    expect(container.textContent).toContain("Linked draft pack");
     expect(container.textContent).toContain("Attach to pack");
 
     await updateInput(container, "#transcript-participant-id", "after");
@@ -2863,11 +3018,30 @@ describe("@botchestra/web routing", () => {
       },
     });
 
-    await updateSelect(container, "#transcript-attach-pack", "draft-pack");
     await clickButton(container, "Attach to pack");
+    expect(document.body.textContent).toContain("Attach selected packs");
+    const transcriptAttachDialog = document.body.querySelector(
+      'div[role="dialog"]',
+    ) as HTMLDivElement;
+    await updateInput(
+      transcriptAttachDialog,
+      "#transcript-attach-pack-search",
+      "support",
+    );
+    await act(async () => {
+      document.body
+        .querySelector<HTMLInputElement>("#transcript-attach-pack-draft-pack")
+        ?.click();
+    });
+    await clickButton(document.body, "Attach selected packs");
 
     expect(attachTranscriptMock).toHaveBeenCalledWith({
       packId: "draft-pack",
+      transcriptId: "transcript-detail",
+    });
+    await clickButton(container, "Detach");
+    expect(detachTranscriptMock).toHaveBeenCalledWith({
+      packId: "linked-draft-pack",
       transcriptId: "transcript-detail",
     });
 
@@ -2925,8 +3099,9 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("I hesitated at the payment step.");
     expect(container.textContent).not.toContain("Save metadata");
     expect(container.textContent).not.toContain("Delete transcript");
-    expect(container.querySelector("#transcript-attach-pack")).toBeNull();
-    expect(container.textContent).not.toContain("Attach to draft pack");
+    expect(container.textContent).toContain("Linked Packs");
+    expect(container.textContent).not.toContain("Attach to pack");
+    expect(container.querySelector("#transcript-attach-pack-search")).toBeNull();
   });
 
   it("shows not-found content for invalid transcript detail links", async () => {
