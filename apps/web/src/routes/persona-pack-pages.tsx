@@ -16,6 +16,7 @@ import { emptyStudyDetailSearch } from "@/routes/study-shared";
 
 type PersonaPackDoc = Doc<"personaPacks">;
 type ProtoPersonaDoc = Doc<"protoPersonas">;
+type AxisDefinition = Doc<"axisDefinitions">;
 type PersonaPackId = Id<"personaPacks">;
 
 type AxisFormValue = {
@@ -34,6 +35,20 @@ type PackFormValue = {
   context: string;
   sharedAxes: AxisFormValue[];
 };
+
+type SuggestedAxisState = {
+  id: string;
+  axis: AxisFormValue;
+  isEditing: boolean;
+  isSelected: boolean;
+};
+
+type InlineToastState = {
+  message: string;
+  tone: "error" | "success";
+};
+
+const axisKeyPattern = /^[a-z0-9_]+$/;
 
 type ProtoPersonaFormValue = {
   name: string;
@@ -268,6 +283,9 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
   const protoPersonas = useQuery(api.personaPacks.listProtoPersonas, {
     packId: typedPackId,
   });
+  const axisDefinitions = useQuery((api as any).axisLibrary.listAxisDefinitions, {}) as
+    | AxisDefinition[]
+    | undefined;
   const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
   const packVariantReview = useQuery(
     api.personaVariantReview.getPackVariantReview,
@@ -279,6 +297,7 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
   const createProtoPersona = useMutation(api.personaPacks.createProtoPersona);
   const publishPack = useMutation(api.personaPacks.publish);
   const archivePack = useMutation(api.personaPacks.archive);
+  const suggestAxes = useAction((api as any).axisGeneration.suggestAxes);
   const [draftForm, setDraftForm] = useState<PackFormValue>(emptyPackForm);
   const [protoPersonaForm, setProtoPersonaForm] =
     useState<ProtoPersonaFormValue>(emptyProtoPersonaForm);
@@ -293,6 +312,15 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
   const [optimisticStatus, setOptimisticStatus] = useState<
     PersonaPackDoc["status"] | null
   >(null);
+  const [suggestedAxes, setSuggestedAxes] = useState<SuggestedAxisState[]>([]);
+  const [isSuggestionPanelOpen, setIsSuggestionPanelOpen] = useState(false);
+  const [isSuggestingAxes, setIsSuggestingAxes] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const [isAxisLibraryOpen, setIsAxisLibraryOpen] = useState(false);
+  const [selectedLibraryAxisIds, setSelectedLibraryAxisIds] = useState<string[]>(
+    [],
+  );
+  const [inlineToast, setInlineToast] = useState<InlineToastState | null>(null);
 
   useEffect(() => {
     if (!pack) {
@@ -302,6 +330,15 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     setDraftForm(packToFormValue(pack));
     setOptimisticStatus(pack.status);
   }, [pack?._id, pack?.updatedAt, pack?.status]);
+
+  useEffect(() => {
+    setSuggestedAxes([]);
+    setIsSuggestionPanelOpen(false);
+    setSuggestionError(null);
+    setIsAxisLibraryOpen(false);
+    setSelectedLibraryAxisIds([]);
+    setInlineToast(null);
+  }, [pack?._id]);
 
   useEffect(() => {
     if (!packVariantReview) {
@@ -319,9 +356,27 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     );
   }, [packVariantReview]);
 
+  useEffect(() => {
+    if (inlineToast === null) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setInlineToast(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timeout);
+  }, [inlineToast]);
+
   const resolvedStatus = optimisticStatus ?? pack?.status;
   const isDraft = resolvedStatus === "draft";
   const protoPersonaList: ProtoPersonaDoc[] = protoPersonas ?? [];
+  const canSuggestAxes =
+    draftForm.name.trim().length > 0 && draftForm.context.trim().length > 0;
+  const selectedSuggestionCount = suggestedAxes.filter(
+    (suggestion) => suggestion.isSelected,
+  ).length;
+  const axisLibraryList = axisDefinitions ?? [];
   const resolvedAxes: PersonaPackDoc["sharedAxes"] = useMemo(() => {
     if (!pack) {
       return draftForm.sharedAxes.map(axisFormToPayload);
@@ -433,6 +488,169 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
     }
   }
 
+  async function handleSuggestAxes() {
+    if (!canSuggestAxes || isSuggestingAxes) {
+      return;
+    }
+
+    const trimmedDescription = draftForm.description.trim();
+
+    if (trimmedDescription.length === 0) {
+      setSuggestionError("Add a short description before requesting suggestions.");
+      return;
+    }
+
+    setSuggestionError(null);
+    setInlineToast(null);
+    setIsSuggestionPanelOpen(false);
+    setSuggestedAxes([]);
+    setIsSuggestingAxes(true);
+
+    try {
+      const suggestions = (await suggestAxes({
+        name: draftForm.name.trim(),
+        context: draftForm.context.trim(),
+        description: trimmedDescription,
+        existingAxisKeys: getAxisKeys(draftForm.sharedAxes),
+      })) as PersonaPackDoc["sharedAxes"];
+
+      setSuggestedAxes(
+        suggestions.map((axis, index) => ({
+          id: `${axis.key}-${index}-${Date.now()}`,
+          axis: axisToFormValue(axis),
+          isEditing: false,
+          isSelected: true,
+        })),
+      );
+      setIsSuggestionPanelOpen(true);
+    } catch (error) {
+      setSuggestionError(getSuggestAxesErrorMessage(error));
+    } finally {
+      setIsSuggestingAxes(false);
+    }
+  }
+
+  function handleSuggestionSelectionToggle(suggestionId: string) {
+    setSuggestedAxes((current) =>
+      current.map((suggestion) =>
+        suggestion.id === suggestionId
+          ? { ...suggestion, isSelected: !suggestion.isSelected }
+          : suggestion,
+      ),
+    );
+  }
+
+  function handleSuggestionEditToggle(suggestionId: string) {
+    setSuggestedAxes((current) =>
+      current.map((suggestion) =>
+        suggestion.id === suggestionId
+          ? { ...suggestion, isEditing: !suggestion.isEditing }
+          : suggestion,
+      ),
+    );
+  }
+
+  function handleSuggestionAxisChange(
+    suggestionId: string,
+    nextAxis: AxisFormValue,
+  ) {
+    setSuggestedAxes((current) =>
+      current.map((suggestion) =>
+        suggestion.id === suggestionId
+          ? { ...suggestion, axis: nextAxis }
+          : suggestion,
+      ),
+    );
+  }
+
+  function handleDismissSuggestions() {
+    setIsSuggestionPanelOpen(false);
+    setSuggestedAxes([]);
+    setSuggestionError(null);
+  }
+
+  function handleApplySuggestedAxes() {
+    const selectedSuggestions = suggestedAxes
+      .filter((suggestion) => suggestion.isSelected)
+      .map((suggestion) => suggestion.axis);
+    const validationError = validateSelectedAxes(selectedSuggestions);
+
+    if (validationError !== null) {
+      setSuggestionError(validationError);
+      return;
+    }
+
+    const mergeResult = mergeAxesIntoFormValue(
+      draftForm.sharedAxes,
+      selectedSuggestions,
+    );
+
+    if (mergeResult.addedCount === 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+      return;
+    }
+
+    setDraftForm((current) => ({
+      ...current,
+      sharedAxes: mergeResult.nextAxes,
+    }));
+    setIsSuggestionPanelOpen(false);
+    setSuggestedAxes([]);
+    setSuggestionError(null);
+
+    if (mergeResult.duplicateKeys.length > 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+    }
+  }
+
+  function handleLibrarySelectionToggle(axisDefinitionId: string) {
+    setSelectedLibraryAxisIds((current) =>
+      current.includes(axisDefinitionId)
+        ? current.filter((id) => id !== axisDefinitionId)
+        : [...current, axisDefinitionId],
+    );
+  }
+
+  function handleImportAxisDefinitions() {
+    const selectedAxisDefinitions = axisLibraryList
+      .filter((axisDefinition) =>
+        selectedLibraryAxisIds.includes(String(axisDefinition._id)),
+      )
+      .map(axisToFormValue);
+    const mergeResult = mergeAxesIntoFormValue(
+      draftForm.sharedAxes,
+      selectedAxisDefinitions,
+    );
+
+    if (mergeResult.addedCount === 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+      return;
+    }
+
+    setDraftForm((current) => ({
+      ...current,
+      sharedAxes: mergeResult.nextAxes,
+    }));
+    setIsAxisLibraryOpen(false);
+    setSelectedLibraryAxisIds([]);
+
+    if (mergeResult.duplicateKeys.length > 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+    }
+  }
+
   if (pack === undefined || protoPersonas === undefined) {
     return (
       <LoadingCard
@@ -462,6 +680,7 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
 
   return (
     <>
+      {inlineToast ? <InlineToast toast={inlineToast} /> : null}
       <section className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
@@ -560,6 +779,111 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
                 <CardTitle>Shared Axes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {isDraft ? (
+                  <div className="space-y-4 rounded-xl border bg-background p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Axis generation</p>
+                        <p className="text-sm text-muted-foreground">
+                          Generate new axes from pack metadata or import reusable
+                          ones from the shared library.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          disabled={!canSuggestAxes || isSuggestingAxes}
+                          onClick={() => void handleSuggestAxes()}
+                          type="button"
+                        >
+                          {isSuggestingAxes ? (
+                            <span className="inline-flex items-center gap-2">
+                              <LoadingSpinner />
+                              Suggesting...
+                            </span>
+                          ) : (
+                            "Suggest axes"
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedLibraryAxisIds([]);
+                            setIsAxisLibraryOpen(true);
+                          }}
+                        >
+                          Browse library
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div aria-live="polite" className="space-y-2">
+                      {isSuggestingAxes ? (
+                        <p className="text-sm text-muted-foreground" role="status">
+                          Generating axis suggestions from the current pack
+                          metadata...
+                        </p>
+                      ) : null}
+                      {suggestionError ? (
+                        <p className="text-sm text-destructive" role="alert">
+                          {suggestionError}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {isSuggestionPanelOpen ? (
+                      <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
+                        <div className="space-y-1">
+                          <h4 className="text-lg font-semibold">
+                            Review suggested axes
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Select the axes you want to add, edit any field inline,
+                            then apply the selected suggestions.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-4">
+                          {suggestedAxes.map((suggestion, index) => (
+                            <SuggestedAxisCard
+                              key={suggestion.id}
+                              index={index}
+                              suggestion={suggestion}
+                              onChange={(nextAxis) =>
+                                handleSuggestionAxisChange(suggestion.id, nextAxis)
+                              }
+                              onToggleEdit={() =>
+                                handleSuggestionEditToggle(suggestion.id)
+                              }
+                              onToggleSelected={() =>
+                                handleSuggestionSelectionToggle(suggestion.id)
+                              }
+                            />
+                          ))}
+                        </div>
+
+                        <div className="flex flex-wrap justify-end gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleDismissSuggestions}
+                          >
+                            Dismiss
+                          </Button>
+                          <Button
+                            disabled={selectedSuggestionCount === 0}
+                            type="button"
+                            onClick={handleApplySuggestedAxes}
+                          >
+                            Apply selected
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {resolvedAxes.map((axis, index) => (
                   <div
                     key={`${axis.key}-${index}`}
@@ -875,7 +1199,169 @@ export function PersonaPackDetailPage({ packId }: { packId: string }) {
         onCancel={() => setConfirmationState(null)}
         onConfirm={() => void handleConfirmAction()}
       />
+      <AxisLibraryImportDialog
+        axisDefinitions={axisLibraryList}
+        existingAxisKeys={new Set(getAxisKeys(draftForm.sharedAxes))}
+        isOpen={isAxisLibraryOpen}
+        isLoading={axisDefinitions === undefined}
+        selectedAxisIds={selectedLibraryAxisIds}
+        onCancel={() => {
+          setIsAxisLibraryOpen(false);
+          setSelectedLibraryAxisIds([]);
+        }}
+        onConfirm={handleImportAxisDefinitions}
+        onToggleSelected={handleLibrarySelectionToggle}
+      />
     </>
+  );
+}
+
+function SuggestedAxisCard({
+  suggestion,
+  index,
+  onChange,
+  onToggleEdit,
+  onToggleSelected,
+}: {
+  suggestion: SuggestedAxisState;
+  index: number;
+  onChange: (value: AxisFormValue) => void;
+  onToggleEdit: () => void;
+  onToggleSelected: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-background p-4 transition-colors",
+        suggestion.isSelected
+          ? "border-primary/60 ring-1 ring-primary/30"
+          : "border-border",
+      )}
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <label
+            className="inline-flex cursor-pointer items-start gap-3"
+            htmlFor={`suggested-axis-toggle-${suggestion.id}`}
+          >
+            <input
+              checked={suggestion.isSelected}
+              className="mt-1 h-4 w-4 rounded border-input"
+              id={`suggested-axis-toggle-${suggestion.id}`}
+              onChange={onToggleSelected}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  onToggleSelected();
+                }
+              }}
+              type="checkbox"
+            />
+            <div>
+              <p className="font-medium">
+                {suggestion.axis.label || `Suggestion ${index + 1}`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {suggestion.axis.key || "missing_key"} · weight{" "}
+                {suggestion.axis.weight || "—"}
+              </p>
+            </div>
+          </label>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {suggestion.axis.description}
+          </p>
+        </div>
+
+        <Button type="button" variant="outline" onClick={onToggleEdit}>
+          {suggestion.isEditing ? "Hide editor" : "Edit axis"}
+        </Button>
+      </div>
+
+      <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+        <SummaryValue label="Low anchor" value={suggestion.axis.lowAnchor || "—"} />
+        <SummaryValue label="Mid anchor" value={suggestion.axis.midAnchor || "—"} />
+        <SummaryValue
+          label="High anchor"
+          value={suggestion.axis.highAnchor || "—"}
+        />
+      </dl>
+
+      {suggestion.isEditing ? (
+        <div
+          className="mt-4 rounded-xl border bg-card p-4"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <AxisInput
+              id={`suggested-axis-${suggestion.id}-key`}
+              label="Key"
+              value={suggestion.axis.key}
+              onChange={(value) => onChange({ ...suggestion.axis, key: value })}
+            />
+            <AxisInput
+              id={`suggested-axis-${suggestion.id}-label`}
+              label="Label"
+              value={suggestion.axis.label}
+              onChange={(value) => onChange({ ...suggestion.axis, label: value })}
+            />
+            <AxisInput
+              id={`suggested-axis-${suggestion.id}-low`}
+              label="Low anchor"
+              value={suggestion.axis.lowAnchor}
+              onChange={(value) =>
+                onChange({ ...suggestion.axis, lowAnchor: value })
+              }
+            />
+            <AxisInput
+              id={`suggested-axis-${suggestion.id}-mid`}
+              label="Mid anchor"
+              value={suggestion.axis.midAnchor}
+              onChange={(value) =>
+                onChange({ ...suggestion.axis, midAnchor: value })
+              }
+            />
+            <AxisInput
+              id={`suggested-axis-${suggestion.id}-high`}
+              label="High anchor"
+              value={suggestion.axis.highAnchor}
+              onChange={(value) =>
+                onChange({ ...suggestion.axis, highAnchor: value })
+              }
+            />
+            <div className="grid gap-2">
+              <Label htmlFor={`suggested-axis-${suggestion.id}-weight`}>
+                Weight
+              </Label>
+              <Input
+                id={`suggested-axis-${suggestion.id}-weight`}
+                min="0.01"
+                step="0.01"
+                type="number"
+                value={suggestion.axis.weight}
+                onChange={(event) =>
+                  onChange({ ...suggestion.axis, weight: event.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2">
+            <Label htmlFor={`suggested-axis-${suggestion.id}-description`}>
+              Description
+            </Label>
+            <textarea
+              id={`suggested-axis-${suggestion.id}-description`}
+              className={textareaClassName}
+              value={suggestion.axis.description}
+              onChange={(event) =>
+                onChange({ ...suggestion.axis, description: event.target.value })
+              }
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -1295,6 +1781,148 @@ function ConfirmationDialog({
   );
 }
 
+function AxisLibraryImportDialog({
+  axisDefinitions,
+  existingAxisKeys,
+  isLoading,
+  isOpen,
+  selectedAxisIds,
+  onCancel,
+  onConfirm,
+  onToggleSelected,
+}: {
+  axisDefinitions: AxisDefinition[];
+  existingAxisKeys: Set<string>;
+  isLoading: boolean;
+  isOpen: boolean;
+  selectedAxisIds: string[];
+  onCancel: () => void;
+  onConfirm: () => void;
+  onToggleSelected: (axisDefinitionId: string) => void;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div
+        aria-modal="true"
+        className="w-full max-w-4xl space-y-4 rounded-xl border bg-background p-6 shadow-xl"
+        role="dialog"
+      >
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold">Browse axis library</h3>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Import one or more reusable axes from your organization&apos;s shared
+            library.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            Loading axis library...
+          </p>
+        ) : axisDefinitions.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-card p-6">
+            <p className="text-sm leading-6 text-muted-foreground">
+              No axis definitions are available in the library yet.
+            </p>
+          </div>
+        ) : (
+          <div className="max-h-[26rem] overflow-y-auto rounded-xl border">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 border-b bg-muted/40 px-4 py-3 text-sm font-medium">
+              <span>Select</span>
+              <span>Key</span>
+              <span>Label &amp; description</span>
+              <span>Status</span>
+            </div>
+
+            <div className="divide-y">
+              {axisDefinitions.map((axisDefinition) => {
+                const isSelected = selectedAxisIds.includes(
+                  String(axisDefinition._id),
+                );
+                const isDuplicate = existingAxisKeys.has(axisDefinition.key);
+
+                return (
+                  <label
+                    key={axisDefinition._id}
+                    className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 px-4 py-3 text-sm"
+                    htmlFor={`axis-library-${axisDefinition._id}`}
+                  >
+                    <input
+                      checked={isSelected}
+                      className="mt-1 h-4 w-4 rounded border-input"
+                      id={`axis-library-${axisDefinition._id}`}
+                      onChange={() =>
+                        onToggleSelected(String(axisDefinition._id))
+                      }
+                      type="checkbox"
+                    />
+                    <div className="space-y-1">
+                      <p className="font-medium">{axisDefinition.key}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium">{axisDefinition.label}</p>
+                      <p className="text-muted-foreground">
+                        {axisDefinition.description}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-muted-foreground">
+                      {isDuplicate ? "Already in pack" : "Ready to import"}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            disabled={selectedAxisIds.length === 0 || isLoading}
+            type="button"
+            onClick={onConfirm}
+          >
+            Import selected
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InlineToast({ toast }: { toast: InlineToastState }) {
+  return (
+    <div className="fixed right-4 top-4 z-[60] max-w-sm">
+      <div
+        className={cn(
+          "rounded-lg border px-4 py-3 text-sm shadow-lg",
+          toast.tone === "error"
+            ? "border-destructive/30 bg-destructive text-destructive-foreground"
+            : "border-emerald-300 bg-emerald-600 text-white",
+        )}
+        role="alert"
+      >
+        {toast.message}
+      </div>
+    </div>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+    />
+  );
+}
+
 function LoadingCard({ title, body }: { title: string; body: string }) {
   return (
     <Card>
@@ -1373,15 +2001,32 @@ function packToFormValue(pack: PersonaPackDoc): PackFormValue {
     name: pack.name,
     description: pack.description,
     context: pack.context,
-    sharedAxes: pack.sharedAxes.map((axis) => ({
-      key: axis.key,
-      label: axis.label,
-      description: axis.description,
-      lowAnchor: axis.lowAnchor,
-      midAnchor: axis.midAnchor,
-      highAnchor: axis.highAnchor,
-      weight: String(axis.weight),
-    })),
+    sharedAxes: pack.sharedAxes.map(axisToFormValue),
+  };
+}
+
+function axisToFormValue(
+  axis:
+    | PersonaPackDoc["sharedAxes"][number]
+    | Pick<
+        AxisDefinition,
+        | "key"
+        | "label"
+        | "description"
+        | "lowAnchor"
+        | "midAnchor"
+        | "highAnchor"
+        | "weight"
+      >,
+): AxisFormValue {
+  return {
+    key: axis.key,
+    label: axis.label,
+    description: axis.description,
+    lowAnchor: axis.lowAnchor,
+    midAnchor: axis.midAnchor,
+    highAnchor: axis.highAnchor,
+    weight: String(axis.weight),
   };
 }
 
@@ -1426,6 +2071,105 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function getSuggestAxesErrorMessage(error: unknown) {
+  const errorMessage = getErrorMessage(error, "");
+
+  if (/pack description is required/i.test(errorMessage)) {
+    return "Add a short description before requesting suggestions.";
+  }
+
+  return "We couldn't generate axis suggestions right now. Please try again.";
+}
+
+function getAxisKeys(axes: AxisFormValue[]) {
+  return axes
+    .map((axis) => axis.key.trim())
+    .filter((axisKey) => axisKey.length > 0);
+}
+
+function normalizeAxisFormValue(axis: AxisFormValue): AxisFormValue {
+  return {
+    key: axis.key.trim(),
+    label: axis.label.trim(),
+    description: axis.description.trim(),
+    lowAnchor: axis.lowAnchor.trim(),
+    midAnchor: axis.midAnchor.trim(),
+    highAnchor: axis.highAnchor.trim(),
+    weight: axis.weight.trim(),
+  };
+}
+
+function validateSelectedAxes(axes: AxisFormValue[]) {
+  if (axes.length === 0) {
+    return "Select at least one suggested axis before applying it.";
+  }
+
+  const invalidAxis = axes
+    .map(normalizeAxisFormValue)
+    .find((axis) => {
+      if (
+        [
+          axis.key,
+          axis.label,
+          axis.description,
+          axis.lowAnchor,
+          axis.midAnchor,
+          axis.highAnchor,
+        ].some((value) => value.length === 0)
+      ) {
+        return true;
+      }
+
+      const weight = Number(axis.weight);
+      return (
+        !axisKeyPattern.test(axis.key) ||
+        !Number.isFinite(weight) ||
+        weight <= 0
+      );
+    });
+
+  if (invalidAxis) {
+    return "Each selected axis needs a snake_case key, label, description, anchors, and a positive weight before it can be applied.";
+  }
+
+  return null;
+}
+
+function mergeAxesIntoFormValue(
+  existingAxes: AxisFormValue[],
+  nextAxes: AxisFormValue[],
+) {
+  const mergedAxes = [...existingAxes];
+  const seenKeys = new Set(getAxisKeys(existingAxes));
+  const duplicateKeys = new Set<string>();
+
+  for (const axis of nextAxes.map(normalizeAxisFormValue)) {
+    if (seenKeys.has(axis.key)) {
+      duplicateKeys.add(axis.key);
+      continue;
+    }
+
+    seenKeys.add(axis.key);
+    mergedAxes.push(axis);
+  }
+
+  return {
+    addedCount: mergedAxes.length - existingAxes.length,
+    duplicateKeys: [...duplicateKeys],
+    nextAxes: mergedAxes,
+  };
+}
+
+function formatDuplicateAxisToast(duplicateKeys: string[]) {
+  if (duplicateKeys.length === 0) {
+    return "One or more selected axes could not be added.";
+  }
+
+  return `Skipped duplicate axis key${
+    duplicateKeys.length === 1 ? "" : "s"
+  }: ${duplicateKeys.join(", ")}.`;
 }
 
 const textareaClassName =

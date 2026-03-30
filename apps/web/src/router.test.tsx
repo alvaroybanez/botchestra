@@ -345,6 +345,7 @@ const updateDraftMock = vi.fn();
 const createProtoPersonaMock = vi.fn();
 const publishMock = vi.fn();
 const archiveMock = vi.fn();
+const suggestAxesMock = vi.fn();
 const generateVariantsMock = vi.fn();
 const exportJsonReportMock = vi.fn();
 const exportHtmlReportMock = vi.fn();
@@ -443,6 +444,10 @@ vi.mock("convex/react", () => ({
 
     if (actionName === "personaVariantGeneration:generateVariantsForStudy") {
       return generateVariantsMock;
+    }
+
+    if (actionName === "axisGeneration:suggestAxes") {
+      return suggestAxesMock;
     }
 
     if (actionName === "reportExports:exportJson") {
@@ -672,6 +677,36 @@ beforeEach(() => {
   publishMock.mockResolvedValue(undefined);
   archiveMock.mockReset();
   archiveMock.mockResolvedValue(undefined);
+  suggestAxesMock.mockReset();
+  suggestAxesMock.mockResolvedValue([
+    {
+      key: "escalation_preference",
+      label: "Escalation preference",
+      description: "How quickly the person wants a human to step in.",
+      lowAnchor: "Prefers self-service",
+      midAnchor: "Escalates when blocked",
+      highAnchor: "Requests human help immediately",
+      weight: 1,
+    },
+    {
+      key: "task_confidence",
+      label: "Task confidence",
+      description: "Confidence in completing unfamiliar account tasks.",
+      lowAnchor: "Needs reassurance",
+      midAnchor: "Can continue with light guidance",
+      highAnchor: "Comfortably self-directed",
+      weight: 1,
+    },
+    {
+      key: "issue_urgency",
+      label: "Issue urgency",
+      description: "How urgent the account problem feels to the person.",
+      lowAnchor: "Can wait for a response",
+      midAnchor: "Wants updates soon",
+      highAnchor: "Needs immediate resolution",
+      weight: 1,
+    },
+  ]);
   generateVariantsMock.mockReset();
   generateVariantsMock.mockResolvedValue({
     acceptedCount: 64,
@@ -2086,6 +2121,249 @@ describe("@botchestra/web routing", () => {
     expect(getVariantRows(container)).toHaveLength(3);
   });
 
+  it("shows axis generation controls only on draft packs", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-axis-draft" as Id<"personaPacks">,
+      status: "draft",
+    });
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-axis-draft"],
+    });
+
+    expect(container.textContent).toContain("Suggest axes");
+    expect(container.textContent).toContain("Browse library");
+  });
+
+  it("hides axis generation controls on published packs", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-axis-published" as Id<"personaPacks">,
+      status: "published",
+    });
+    mockedProtoPersonas = [
+      makeProtoPersona({ _id: "proto-axis-published" as Id<"protoPersonas"> }),
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-axis-published"],
+    });
+
+    expect(container.textContent).not.toContain("Suggest axes");
+    expect(container.textContent).not.toContain("Browse library");
+  });
+
+  it("suggests axes with a loading state, supports keyboard selection, and applies edited cards additively", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-axis-suggest" as Id<"personaPacks">,
+      name: "  ",
+      context: "",
+      description: "Support escalation and recovery flows",
+      sharedAxes: [
+        {
+          key: "digital_confidence",
+          label: "Digital confidence",
+          description: "Comfort level with unfamiliar digital tasks.",
+          lowAnchor: "Needs help often",
+          midAnchor: "Can complete familiar flows",
+          highAnchor: "Self-directed explorer",
+          weight: 1,
+        },
+      ],
+    });
+
+    const deferred = createDeferred<
+      Array<{
+        key: string;
+        label: string;
+        description: string;
+        lowAnchor: string;
+        midAnchor: string;
+        highAnchor: string;
+        weight: number;
+      }>
+    >();
+    suggestAxesMock.mockReturnValueOnce(deferred.promise);
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-axis-suggest"],
+    });
+
+    const suggestButton = getButton(container, "Suggest axes");
+    expect(suggestButton?.disabled).toBe(true);
+
+    await updateInput(container, "#edit-pack-name", "Account recovery pack");
+    await updateInput(container, "#edit-pack-context", "US fintech support");
+
+    expect(getButton(container, "Suggest axes")?.disabled).toBe(false);
+
+    await clickButton(container, "Suggest axes");
+
+    expect(suggestAxesMock).toHaveBeenCalledWith({
+      name: "Account recovery pack",
+      context: "US fintech support",
+      description: "Support escalation and recovery flows",
+      existingAxisKeys: ["digital_confidence"],
+    });
+    expect(container.textContent).toContain(
+      "Generating axis suggestions from the current pack metadata...",
+    );
+    expect(getButton(container, "Suggesting...")?.disabled).toBe(true);
+
+    deferred.resolve([
+      {
+        key: "escalation_preference",
+        label: "Escalation preference",
+        description: "How quickly the person wants a human to step in.",
+        lowAnchor: "Prefers self-service",
+        midAnchor: "Escalates when blocked",
+        highAnchor: "Requests human help immediately",
+        weight: 1,
+      },
+      {
+        key: "trust_building",
+        label: "Trust building",
+        description: "How much proof or reassurance the person needs.",
+        lowAnchor: "Trusts the first answer",
+        midAnchor: "Looks for a little validation",
+        highAnchor: "Needs repeated reassurance",
+        weight: 1,
+      },
+      {
+        key: "issue_urgency",
+        label: "Issue urgency",
+        description: "How urgent the account problem feels to the person.",
+        lowAnchor: "Can wait for a response",
+        midAnchor: "Wants updates soon",
+        highAnchor: "Needs immediate resolution",
+        weight: 1,
+      },
+    ]);
+
+    await act(async () => {
+      await deferred.promise;
+    });
+
+    expect(container.textContent).toContain("Review suggested axes");
+    expect(container.textContent).toContain("Escalation preference");
+    expect(container.textContent).toContain("Trust building");
+    expect(container.textContent).toContain("Issue urgency");
+
+    const suggestionCheckboxes = [
+      ...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    ];
+    expect(suggestionCheckboxes).toHaveLength(3);
+
+    await act(async () => {
+      suggestionCheckboxes[1]!.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }),
+      );
+    });
+    expect(suggestionCheckboxes[1]!.checked).toBe(false);
+
+    await clickButton(container, "Edit axis");
+    await updateInput(
+      container,
+      'input[id^="suggested-axis-"][id$="-label"]',
+      "Human escalation preference",
+    );
+
+    await clickButton(container, "Apply selected");
+
+    expect(container.textContent).toContain("Human escalation preference");
+    expect(container.textContent).toContain("Issue urgency");
+    expect(container.textContent).not.toContain("Trust building");
+    expect(container.textContent).not.toContain("Review suggested axes");
+  });
+
+  it("shows a retryable friendly error when axis suggestion fails", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-axis-error" as Id<"personaPacks">,
+      name: "Checkout recovery pack",
+      context: "US fintech support",
+      description: "Password reset and recovery flows",
+    });
+    suggestAxesMock.mockRejectedValueOnce(
+      new Error("Failed to parse suggested axes JSON."),
+    );
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-axis-error"],
+    });
+
+    await clickButton(container, "Suggest axes");
+
+    expect(container.textContent).toContain(
+      "We couldn't generate axis suggestions right now. Please try again.",
+    );
+    expect(getButton(container, "Suggest axes")?.disabled).toBe(false);
+  });
+
+  it("imports library axes and surfaces duplicate-key conflicts as a toast", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-axis-library" as Id<"personaPacks">,
+      status: "draft",
+      sharedAxes: [
+        {
+          key: "digital_confidence",
+          label: "Digital confidence",
+          description: "Comfort level with unfamiliar digital tasks.",
+          lowAnchor: "Needs help often",
+          midAnchor: "Can complete familiar flows",
+          highAnchor: "Self-directed explorer",
+          weight: 1,
+        },
+      ],
+    });
+    mockedAxisDefinitions = [
+      makeAxisDefinition({
+        _id: "axis-library-duplicate" as Id<"axisDefinitions">,
+        key: "digital_confidence",
+        label: "Digital confidence",
+      }),
+      makeAxisDefinition({
+        _id: "axis-library-new" as Id<"axisDefinitions">,
+        key: "support_channel_preference",
+        label: "Support channel preference",
+        description: "Whether the person prefers chat, email, or phone support.",
+        lowAnchor: "Prefers self-serve articles",
+        midAnchor: "Uses chat for quick help",
+        highAnchor: "Wants a human conversation",
+      }),
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-axis-library"],
+    });
+
+    await clickButton(container, "Browse library");
+    expect(container.textContent).toContain("Browse axis library");
+    expect(container.textContent).toContain("Support channel preference");
+
+    const libraryCheckboxes = [
+      ...container.querySelectorAll<HTMLInputElement>(
+        'input[id^="axis-library-"]',
+      ),
+    ];
+    expect(libraryCheckboxes).toHaveLength(2);
+
+    await act(async () => {
+      libraryCheckboxes[0]!.click();
+      libraryCheckboxes[1]!.click();
+    });
+
+    await clickButton(container, "Import selected");
+
+    expect(container.textContent).toContain("Support channel preference");
+    expect(container.textContent).toContain(
+      "Skipped duplicate axis key: digital_confidence.",
+    );
+  });
+
   it("imports a pack JSON from the list page and redirects to the imported pack", async () => {
     mockedPackList = [];
 
@@ -2266,15 +2544,19 @@ async function renderRoute({
 }
 
 async function clickButton(container: HTMLDivElement, text: string) {
-  const button = [...container.querySelectorAll("button")].find(
-    (candidate) => candidate.textContent?.trim() === text,
-  );
+  const button = getButton(container, text);
 
   expect(button).toBeDefined();
 
   await act(async () => {
     button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+}
+
+function getButton(container: HTMLDivElement, text: string) {
+  return [...container.querySelectorAll("button")].find(
+    (candidate) => candidate.textContent?.trim() === text,
+  );
 }
 
 async function updateInput(
@@ -2315,6 +2597,17 @@ async function updateSelect(
     select!.dispatchEvent(new Event("input", { bubbles: true }));
     select!.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, reject, resolve };
 }
 
 function getVariantRows(container: HTMLDivElement) {
