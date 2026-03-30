@@ -729,7 +729,7 @@ describe("personaPacks", () => {
       packId,
     });
     const transcriptDerivedPersona = protoPersonas.find(
-      (protoPersona) => protoPersona.sourceType === "transcript_derived",
+      (protoPersona: { sourceType: string }) => protoPersona.sourceType === "transcript_derived",
     );
     const axisDefinitions = await getAxisDefinitionsForOrg(
       t,

@@ -1,0 +1,94 @@
+{
+  "groupId": "guided-flow",
+  "surface": "web",
+  "toolsUsed": [
+    "playwright"
+  ],
+  "summary": "Validated guided extraction end-to-end on a live draft pack: generated axes were accepted into the pack, guided-axis validation blocked bad input, extraction results referenced only the chosen axes, applying created transcript-derived personas, and published links stayed navigable.",
+  "assertions": [
+    {
+      "id": "VAL-TEXTR-001",
+      "status": "pass",
+      "reason": "Once transcripts were attached, the draft pack exposed the Extract from Transcripts entry point.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/04-guided-transcripts-attached.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-003",
+      "status": "pass",
+      "reason": "Guided mode pre-populated the pack axes and blocked progress when one guided axis key was cleared, showing the axis-definition validation error before allowing extraction.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/05-guided-prepopulated.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/06-guided-validation-error.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-019",
+      "status": "pass",
+      "reason": "Guided extraction results only referenced the accepted pack axes (Account access & automation comfortaccount_access_and_automation, Clarity of extraction validation goalsvalidation_goal_clarity).",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/03-guided-axes-on-pack.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/07-guided-results.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "status": "pass",
+      "reason": "Accepted generated axes fed directly into guided extraction, and the resulting personas referenced only that accepted subset.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/01-guided-suggestions.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/02-guided-selected-subset.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/07-guided-results.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-010",
+      "status": "pass",
+      "reason": "Guided extraction used the pack sharedAxes exactly; no extra axis keys appeared in the guided results.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/03-guided-axes-on-pack.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/07-guided-results.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-013",
+      "status": "pass",
+      "reason": "Applying the guided extraction created transcript-derived proto-personas on the pack.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/08-guided-after-apply.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-014",
+      "status": "pass",
+      "reason": "The transcript-derived evidence snippet navigated to transcript detail with a highlightSnippet deep link.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/09-guided-transcript-highlight.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-008",
+      "status": "pass",
+      "reason": "The guided transcript-derived persona linked to transcript detail, and the transcript detail linked back to the same pack.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/08-guided-after-apply.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/09-guided-transcript-highlight.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/10-guided-back-to-pack.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "status": "pass",
+      "reason": "After publishing the guided-extraction pack, transcript-derived persona evidence still linked to transcript detail.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/11-guided-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-guided-flow/12-guided-published-link.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "Generated suggestion labels vary by run, so the evidence anchors on the observed live labels rather than fixed expected copy."
+  ],
+  "blockers": []
+}

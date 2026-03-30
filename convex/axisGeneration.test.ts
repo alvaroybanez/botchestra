@@ -275,6 +275,28 @@ describe("axisGeneration.suggestAxes", () => {
     ).rejects.toThrow(/snake_case/i);
   });
 
+  it("defaults weight to 1 when the LLM omits it", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researcherIdentity);
+    const axesWithoutWeight = [
+      { key: "price_sensitivity", label: "Price Sensitivity", description: "Sensitivity to checkout costs.", lowAnchor: "Price barely matters", midAnchor: "Balances cost and convenience", highAnchor: "Always shops for deals" },
+      { key: "digital_confidence", label: "Digital Confidence", description: "Comfort with digital interfaces.", lowAnchor: "Avoids technology", midAnchor: "Comfortable with basics", highAnchor: "Power user" },
+      { key: "decision_speed", label: "Decision Speed", description: "How quickly decisions are made.", lowAnchor: "Very deliberate", midAnchor: "Moderate pace", highAnchor: "Impulsive" },
+    ];
+    mockedGenerateWithModel.mockResolvedValue(createAiResult(axesWithoutWeight));
+
+    const result = await asResearcher.action(axisGenerationApi.suggestAxes, {
+      name: "Checkout Pack",
+      context: "E-commerce checkout",
+      description: "Shoppers comparing retailers and payment options.",
+    });
+
+    for (const axis of result) {
+      expect(axis.weight).toBe(1);
+    }
+    expect(result).toHaveLength(3);
+  });
+
   it("blocks reviewers from invoking the action", async () => {
     const t = createTest();
     const asReviewer = t.withIdentity(reviewerIdentity);

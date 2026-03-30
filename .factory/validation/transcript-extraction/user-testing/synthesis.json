@@ -1,0 +1,79 @@
+{
+  "milestone": "transcript-extraction",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 33,
+    "passed": 27,
+    "failed": 6,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-AXGEN-009",
+    "VAL-CROSS-002",
+    "VAL-CROSS-003",
+    "VAL-CROSS-004",
+    "VAL-CROSS-005",
+    "VAL-CROSS-006",
+    "VAL-CROSS-007",
+    "VAL-CROSS-008",
+    "VAL-CROSS-009",
+    "VAL-CROSS-010",
+    "VAL-CROSS-012",
+    "VAL-TEXTR-001",
+    "VAL-TEXTR-002",
+    "VAL-TEXTR-003",
+    "VAL-TEXTR-004",
+    "VAL-TEXTR-005",
+    "VAL-TEXTR-007",
+    "VAL-TEXTR-008",
+    "VAL-TEXTR-009",
+    "VAL-TEXTR-010",
+    "VAL-TEXTR-011",
+    "VAL-TEXTR-012",
+    "VAL-TEXTR-013",
+    "VAL-TEXTR-014",
+    "VAL-TEXTR-018",
+    "VAL-TEXTR-019",
+    "VAL-TEXTR-020"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "reason": "The auto-discover pipeline could not be completed because applying transcript-derived personas failed before the pack could be published with discovered axes."
+    },
+    {
+      "id": "VAL-CROSS-011",
+      "reason": "The proposed auto-discovered axes were not schema-valid before manual edits: feeSurpriseSensitivity, automationReliance, liveHelpPreference, needsChargeExplanationClarity, checkoutFrictionTolerance."
+    },
+    {
+      "id": "VAL-TEXTR-006",
+      "reason": "Navigating away and back during extraction did not preserve the visible in-progress state."
+    },
+    {
+      "id": "VAL-TEXTR-015",
+      "reason": "When extraction fully failed, the UI showed an error state and Start over but did not provide the contract's retry action; no transcript-derived persona was created."
+    },
+    {
+      "id": "VAL-TEXTR-016",
+      "reason": "Partial failure surfaced per-transcript success/failure status, but the UI did not offer the contract's retry-failed/proceed controls."
+    },
+    {
+      "id": "VAL-TEXTR-017",
+      "reason": "Re-run extraction could not be validated after auto-discover because the apply step failed before any successful reviewed result set could be preserved for replacement."
+    }
+  ],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Recorded transcript-extraction validation knowledge: auto-discover apply mismatch, missing visible progress persistence, and the current re-run extraction limitation.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null,
+  "executionNotes": [
+    "Task-based user-testing-flow-validator subagents could not be launched because the inherited model identifier custom:GPT-5.4-(xHigh)-16 was rejected as invalid, so the validator executed the planned browser flows directly with temporary Playwright automation against the live app.",
+    "For the main transcript-extraction validation account, keeping a persistent browser profile was necessary because data created in one signed-in session was more reliable than re-logging into the same account later."
+  ]
+}

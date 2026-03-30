@@ -1,0 +1,24 @@
+{
+  "groupId": "mixed-source-study",
+  "surface": "web",
+  "toolsUsed": [
+    "playwright"
+  ],
+  "summary": "Created a pack with both transcript-derived and manual proto-personas, published it, created a study from that pack, and generated live study variants from the mixed-source persona set.",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-012",
+      "status": "pass",
+      "reason": "A study using a pack with manual and transcript-derived proto-personas generated accepted variants visible on the Persona Variant Review page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-study-mixed-source/01-guided-apply.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-study-mixed-source/02-manual-proto-added.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-study-mixed-source/03-pack-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-study-mixed-source/04-study-overview.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-study-mixed-source/05-generated-variants.png"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": []
+}

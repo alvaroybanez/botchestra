@@ -113,13 +113,27 @@ function buildSuggestAxesPrompt(args: z.infer<typeof suggestAxesArgsSchema>) {
   ].join("\n");
 }
 
+function stripMarkdownFences(text: string): string {
+  const trimmed = text.trim();
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  return fenceMatch ? fenceMatch[1].trim() : trimmed;
+}
+
 function parseSuggestedAxes(responseText: string) {
   let parsedJson: unknown;
+  const cleaned = stripMarkdownFences(responseText);
 
   try {
-    parsedJson = JSON.parse(responseText);
+    parsedJson = JSON.parse(cleaned);
   } catch {
     throw new ConvexError("Failed to parse suggested axes JSON.");
+  }
+
+  if (Array.isArray(parsedJson)) {
+    parsedJson = parsedJson.map((axis: Record<string, unknown>) => ({
+      weight: 1,
+      ...axis,
+    }));
   }
 
   const parsedAxes = suggestedAxesSchema.safeParse(parsedJson);

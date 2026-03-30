@@ -1,0 +1,51 @@
+{
+  "groupId": "generation-auxiliary",
+  "surface": "web",
+  "toolsUsed": [
+    "playwright"
+  ],
+  "summary": "Validated the force-error suggestAxes path, sidebar navigation reachability, library-import dedup behavior, and context-sensitive suggestion differences across two live draft packs.",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-005",
+      "status": "pass",
+      "reason": "The sidebar navigation reached Axis Library, Transcripts, and Persona Packs, and pack detail pages exposed extraction entry points from Persona Packs.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/01-sidebar-axis-library.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/02-sidebar-transcripts.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/03-sidebar-persona-packs.png"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-009",
+      "status": "pass",
+      "reason": "Using the forceSuggestAxesError route parameter produced the friendly retryable error message and re-enabled the Suggest axes button without any page-level exceptions.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/05-force-suggest-error.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "status": "pass",
+      "reason": "After importing existing_support_style from the Axis Library, the next generation run did not re-suggest that already-selected key.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/04-manual-axis-library.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/06-imported-library-axis.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/07-dedup-suggestions.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-009",
+      "status": "pass",
+      "reason": "The two different pack contexts produced meaningfully different suggestions with overlap 0/5 (none).",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/08-context-a-suggestions.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-generation-aux/09-context-b-suggestions.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "Suggestion content varies across runs, so the context-sensitivity check compared key overlap instead of expecting specific labels."
+  ],
+  "blockers": []
+}

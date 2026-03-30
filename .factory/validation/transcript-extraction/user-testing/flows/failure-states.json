@@ -1,0 +1,30 @@
+{
+  "groupId": "failure-states",
+  "surface": "web",
+  "toolsUsed": [
+    "playwright"
+  ],
+  "summary": "Validated full-failure and partial-failure transcript-extraction states with malformed transcript inputs to observe the current user-visible recovery affordances.",
+  "assertions": [
+    {
+      "id": "VAL-TEXTR-015",
+      "status": "fail",
+      "reason": "When extraction fully failed, the UI showed an error state and Start over but did not provide the contract's retry action; no transcript-derived persona was created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-failure-flows/01-full-failure.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-016",
+      "status": "fail",
+      "reason": "Partial failure surfaced per-transcript success/failure status, but the UI did not offer the contract's retry-failed/proceed controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-failure-flows/02-partial-failure.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "The product exposes Start over for full failure and status banners for partial failure, but it does not currently surface the retry controls called for by the contract."
+  ],
+  "blockers": []
+}

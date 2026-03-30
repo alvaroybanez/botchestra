@@ -1,0 +1,22 @@
+{
+  "groupId": "axis-library-dedup",
+  "surface": "web",
+  "toolsUsed": [
+    "playwright"
+  ],
+  "summary": "Used a fresh account to publish two packs with one overlapping shared axis and verified the Axis Library kept a single entry for the shared key while adding each unique key once.",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-007",
+      "status": "pass",
+      "reason": "Publishing two packs with overlapping existing_support_style resulted in one shared library entry for that key plus the two unique keys billing_patience and recovery_urgency.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-library-dedup/01-pack-one-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-library-dedup/02-pack-two-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-library-dedup/03-axis-library-dedup.png"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": []
+}

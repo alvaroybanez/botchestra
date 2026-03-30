@@ -1,0 +1,25 @@
+{
+  "groupId": "bootstrap-empty-states",
+  "surface": "web",
+  "toolsUsed": [
+    "playwright"
+  ],
+  "summary": "Signed up a fresh account, confirmed the first-visit empty states on Axis Library and Transcripts, created a draft pack to verify transcript extraction stayed unavailable without attachments, and cleared pack context to confirm axis-generation gating.",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-006",
+      "status": "pass",
+      "reason": "A fresh organization showed helpful empty states on Axis Library and Transcripts, the draft pack without attachments showed the no-transcripts state, and clearing pack context disabled axis generation on the pack detail surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/bootstrap/01-axis-library-empty.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/bootstrap/02-transcripts-empty.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/bootstrap/03-pack-no-transcripts.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/bootstrap/04-axis-generation-disabled-empty-context.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "Data created in one browser session was most reliable when the same persistent browser profile was reused for later validation steps."
+  ],
+  "blockers": []
+}

@@ -181,6 +181,10 @@ export function PersonaPacksPage() {
   const packs = useQuery(api.personaPacks.list, {});
   const createDraft = useMutation(api.personaPacks.createDraft);
   const importJson = useAction(api.personaPacks.importJson);
+  const suggestAxes = useAction((api as any).axisGeneration.suggestAxes);
+  const axisDefinitions = useQuery((api as any).axisLibrary.listAxisDefinitions, {}) as
+    | AxisDefinition[]
+    | undefined;
   const navigate = useNavigate({ from: "/persona-packs" });
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -190,10 +194,198 @@ export function PersonaPacksPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importJsonText, setImportJsonText] = useState("");
   const [form, setForm] = useState<PackFormValue>(emptyPackForm);
+  const [suggestedAxes, setSuggestedAxes] = useState<SuggestedAxisState[]>([]);
+  const [isSuggestionPanelOpen, setIsSuggestionPanelOpen] = useState(false);
+  const [isSuggestingAxes, setIsSuggestingAxes] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const [isAxisLibraryOpen, setIsAxisLibraryOpen] = useState(false);
+  const [selectedLibraryAxisIds, setSelectedLibraryAxisIds] = useState<string[]>([]);
+  const [inlineToast, setInlineToast] = useState<InlineToastState | null>(null);
 
   const packList: PersonaPackDoc[] = packs ?? [];
   const activePackList = packList.filter((pack) => pack.status !== "archived");
   const archivedPackList = packList.filter((pack) => pack.status === "archived");
+  const canSuggestCreateAxes =
+    form.name.trim().length > 0 && form.context.trim().length > 0;
+  const selectedCreateSuggestionCount = suggestedAxes.filter(
+    (suggestion) => suggestion.isSelected,
+  ).length;
+  const axisLibraryList = axisDefinitions ?? [];
+
+  useEffect(() => {
+    if (inlineToast === null) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setInlineToast(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timeout);
+  }, [inlineToast]);
+
+  async function handleSuggestCreateAxes() {
+    if (!canSuggestCreateAxes || isSuggestingAxes) {
+      return;
+    }
+
+    const trimmedDescription = form.description.trim();
+
+    if (trimmedDescription.length === 0) {
+      setSuggestionError("Add a short description before requesting suggestions.");
+      return;
+    }
+
+    setSuggestionError(null);
+    setInlineToast(null);
+    setIsSuggestionPanelOpen(false);
+    setSuggestedAxes([]);
+    setIsSuggestingAxes(true);
+
+    try {
+      const suggestions = (await suggestAxes({
+        name: form.name.trim(),
+        context: form.context.trim(),
+        description: trimmedDescription,
+        existingAxisKeys: getAxisKeys(form.sharedAxes),
+      })) as PersonaPackDoc["sharedAxes"];
+
+      setSuggestedAxes(
+        suggestions.map((axis, index) => ({
+          id: `${axis.key}-${index}-${Date.now()}`,
+          axis: axisToFormValue(axis),
+          isEditing: false,
+          isSelected: true,
+        })),
+      );
+      setIsSuggestionPanelOpen(true);
+    } catch (error) {
+      setSuggestionError(getSuggestAxesErrorMessage(error));
+    } finally {
+      setIsSuggestingAxes(false);
+    }
+  }
+
+  function handleCreateSuggestionSelectionToggle(suggestionId: string) {
+    setSuggestedAxes((current) =>
+      current.map((suggestion) =>
+        suggestion.id === suggestionId
+          ? { ...suggestion, isSelected: !suggestion.isSelected }
+          : suggestion,
+      ),
+    );
+  }
+
+  function handleCreateSuggestionEditToggle(suggestionId: string) {
+    setSuggestedAxes((current) =>
+      current.map((suggestion) =>
+        suggestion.id === suggestionId
+          ? { ...suggestion, isEditing: !suggestion.isEditing }
+          : suggestion,
+      ),
+    );
+  }
+
+  function handleCreateSuggestionAxisChange(
+    suggestionId: string,
+    nextAxis: AxisFormValue,
+  ) {
+    setSuggestedAxes((current) =>
+      current.map((suggestion) =>
+        suggestion.id === suggestionId
+          ? { ...suggestion, axis: nextAxis }
+          : suggestion,
+      ),
+    );
+  }
+
+  function handleDismissCreateSuggestions() {
+    setIsSuggestionPanelOpen(false);
+    setSuggestedAxes([]);
+    setSuggestionError(null);
+  }
+
+  function handleApplyCreateSuggestedAxes() {
+    const selectedSuggestions = suggestedAxes
+      .filter((suggestion) => suggestion.isSelected)
+      .map((suggestion) => suggestion.axis);
+    const validationError = validateSelectedAxes(selectedSuggestions);
+
+    if (validationError !== null) {
+      setSuggestionError(validationError);
+      return;
+    }
+
+    const mergeResult = mergeAxesIntoFormValue(
+      form.sharedAxes,
+      selectedSuggestions,
+    );
+
+    if (mergeResult.addedCount === 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      sharedAxes: mergeResult.nextAxes,
+    }));
+    setIsSuggestionPanelOpen(false);
+    setSuggestedAxes([]);
+    setSuggestionError(null);
+
+    if (mergeResult.duplicateKeys.length > 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+    }
+  }
+
+  function handleCreateLibrarySelectionToggle(axisDefinitionId: string) {
+    setSelectedLibraryAxisIds((current) =>
+      current.includes(axisDefinitionId)
+        ? current.filter((id) => id !== axisDefinitionId)
+        : [...current, axisDefinitionId],
+    );
+  }
+
+  function handleImportCreateAxisDefinitions() {
+    const selectedAxisDefinitions = axisLibraryList
+      .filter((axisDefinition) =>
+        selectedLibraryAxisIds.includes(String(axisDefinition._id)),
+      )
+      .map(axisToFormValue);
+    const mergeResult = mergeAxesIntoFormValue(
+      form.sharedAxes,
+      selectedAxisDefinitions,
+    );
+
+    if (mergeResult.addedCount === 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      sharedAxes: mergeResult.nextAxes,
+    }));
+    setIsAxisLibraryOpen(false);
+    setSelectedLibraryAxisIds([]);
+
+    if (mergeResult.duplicateKeys.length > 0) {
+      setInlineToast({
+        message: formatDuplicateAxisToast(mergeResult.duplicateKeys),
+        tone: "error",
+      });
+    }
+  }
 
   async function handleCreatePack(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -288,6 +480,110 @@ export function PersonaPacksPage() {
           disabled={isCreating}
           onSubmit={handleCreatePack}
           onChange={setForm}
+          axisGenerationSlot={
+            <div className="space-y-4 rounded-xl border bg-background p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Axis generation</p>
+                  <p className="text-sm text-muted-foreground">
+                    Generate new axes from pack metadata or import reusable
+                    ones from the shared library.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    disabled={!canSuggestCreateAxes || isSuggestingAxes}
+                    onClick={() => void handleSuggestCreateAxes()}
+                    type="button"
+                  >
+                    {isSuggestingAxes ? (
+                      <span className="inline-flex items-center gap-2">
+                        <LoadingSpinner />
+                        Suggesting...
+                      </span>
+                    ) : (
+                      "Suggest axes"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedLibraryAxisIds([]);
+                      setIsAxisLibraryOpen(true);
+                    }}
+                  >
+                    Browse library
+                  </Button>
+                </div>
+              </div>
+
+              <div aria-live="polite" className="space-y-2">
+                {isSuggestingAxes ? (
+                  <p className="text-sm text-muted-foreground" role="status">
+                    Generating axis suggestions from the current pack
+                    metadata...
+                  </p>
+                ) : null}
+                {suggestionError ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {suggestionError}
+                  </p>
+                ) : null}
+              </div>
+
+              {isSuggestionPanelOpen ? (
+                <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-semibold">
+                      Review suggested axes
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Select the axes you want to add, edit any field inline,
+                      then apply the selected suggestions.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4">
+                    {suggestedAxes.map((suggestion, index) => (
+                      <SuggestedAxisCard
+                        key={suggestion.id}
+                        index={index}
+                        suggestion={suggestion}
+                        onChange={(nextAxis) =>
+                          handleCreateSuggestionAxisChange(suggestion.id, nextAxis)
+                        }
+                        onToggleEdit={() =>
+                          handleCreateSuggestionEditToggle(suggestion.id)
+                        }
+                        onToggleSelected={() =>
+                          handleCreateSuggestionSelectionToggle(suggestion.id)
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDismissCreateSuggestions}
+                    >
+                      Dismiss
+                    </Button>
+                    <Button
+                      disabled={selectedCreateSuggestionCount === 0}
+                      type="button"
+                      onClick={handleApplyCreateSuggestedAxes}
+                    >
+                      Apply selected
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          }
         />
       ) : null}
 
@@ -346,6 +642,20 @@ export function PersonaPacksPage() {
         onChange={setImportJsonText}
         onSubmit={handleImportPack}
       />
+      <AxisLibraryImportDialog
+        axisDefinitions={axisLibraryList}
+        existingAxisKeys={new Set(getAxisKeys(form.sharedAxes))}
+        isOpen={isAxisLibraryOpen}
+        isLoading={axisDefinitions === undefined}
+        selectedAxisIds={selectedLibraryAxisIds}
+        onCancel={() => {
+          setIsAxisLibraryOpen(false);
+          setSelectedLibraryAxisIds([]);
+        }}
+        onConfirm={handleImportCreateAxisDefinitions}
+        onToggleSelected={handleCreateLibrarySelectionToggle}
+      />
+      {inlineToast ? <InlineToast toast={inlineToast} /> : null}
     </section>
   );
 }
@@ -2197,6 +2507,7 @@ function PackFormCard({
   disabled,
   onSubmit,
   onChange,
+  axisGenerationSlot,
 }: {
   form: PackFormValue;
   formPrefix: string;
@@ -2207,6 +2518,7 @@ function PackFormCard({
   disabled: boolean;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
   onChange: (value: PackFormValue) => void;
+  axisGenerationSlot?: React.ReactNode;
 }) {
   return (
     <form className="space-y-6" onSubmit={onSubmit}>
@@ -2292,6 +2604,8 @@ function PackFormCard({
             Add axis
           </Button>
         </div>
+
+        {axisGenerationSlot ?? null}
 
         <div className="grid gap-4">
           {form.sharedAxes.map((axis, index) => (

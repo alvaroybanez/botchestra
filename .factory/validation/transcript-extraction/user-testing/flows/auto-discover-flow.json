@@ -1,0 +1,156 @@
+{
+  "groupId": "auto-discover-flow",
+  "surface": "web",
+  "toolsUsed": [
+    "playwright"
+  ],
+  "summary": "Validated the live auto-discover transcript-extraction wizard, including mode selection, cost confirmation gating, concurrency guard, per-transcript signal review, archetype review controls, and the current auto-discover apply failure.",
+  "assertions": [
+    {
+      "id": "VAL-TEXTR-002",
+      "status": "pass",
+      "reason": "The extraction wizard presented clear Auto-discover and Guided mode choices before processing started.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/03-mode-selection.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-004",
+      "status": "pass",
+      "reason": "The cost step displayed estimated tokens and estimated cost before extraction started.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/04-cost-estimate.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-005",
+      "status": "pass",
+      "reason": "Closing the wizard at the cost step left the pack idle; extraction did not start before explicit confirmation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/04-cost-estimate.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/05-close-before-confirm.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-020",
+      "status": "pass",
+      "reason": "A second view of the same pack during extraction showed a disabled Extraction in progress button, blocking a duplicate run from the user surface.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/06-concurrent-guard.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-006",
+      "status": "fail",
+      "reason": "Navigating away and back during extraction did not preserve the visible in-progress state.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/07-progress-after-navigation.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-007",
+      "status": "pass",
+      "reason": "Completed extraction displayed themes, attitudes, pain points, and decision patterns in the per-transcript review.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/08-results.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-008",
+      "status": "pass",
+      "reason": "The auto-discover run produced 3 archetype cards from the attached transcripts.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/08-results.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-018",
+      "status": "pass",
+      "reason": "Auto-discover results included the proposed-axes review section.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/08-results.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-011",
+      "status": "fail",
+      "reason": "The proposed auto-discovered axes were not schema-valid before manual edits: feeSurpriseSensitivity, automationReliance, liveHelpPreference, needsChargeExplanationClarity, checkoutFrictionTolerance.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/08-results.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-010",
+      "status": "pass",
+      "reason": "The first archetype supported inline edits and kept the edited name visible after closing the editor.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/09-archetype-edit.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/10-archetype-edit-persisted.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-009",
+      "status": "pass",
+      "reason": "After deselecting every archetype, the selected count dropped to 0 and Apply to pack became disabled.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/11-zero-selected.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-011",
+      "status": "pass",
+      "reason": "Selecting two archetypes enabled Merge selected and produced a combined archetype card.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/12-merge-ready.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/13-after-merge.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-012",
+      "status": "pass",
+      "reason": "Discarding an archetype required confirmation and removed it from the review list.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/14-discard-dialog.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/15-after-discard.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-013",
+      "status": "fail",
+      "reason": "Applying the reviewed auto-discover results failed in the live UI because the reviewed archetype axis keys no longer matched the edited proposed axes, so no transcript-derived proto-persona was created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/16-proposed-axes-edited.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/17-apply-failed.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-014",
+      "status": "blocked",
+      "reason": "Evidence-snippet traceability could not be exercised in auto-discover mode because applying transcript-derived personas failed before any transcript-derived persona card was created.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/17-apply-failed.png"
+      ]
+    },
+    {
+      "id": "VAL-TEXTR-017",
+      "status": "fail",
+      "reason": "Re-run extraction could not be validated after auto-discover because the apply step failed before any successful reviewed result set could be preserved for replacement.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/17-apply-failed.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-001",
+      "status": "fail",
+      "reason": "The auto-discover pipeline could not be completed because applying transcript-derived personas failed before the pack could be published with discovered axes.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/transcript-extraction/ui-auto-flow/17-apply-failed.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "Navigating away and back during extraction removed the visible in-progress state on the original tab.",
+    "Auto-discover suggested axis keys arrived in camelCase, and editing the shared-axis keys to snake_case caused apply validation to fail because archetype axis-value keys were not updated to match."
+  ],
+  "blockers": []
+}
