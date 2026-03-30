@@ -1,0 +1,39 @@
+{
+  "featureId": "rename-persona-pack-to-persona-config",
+  "reviewedAt": "2026-03-30T23:00:58.991555Z",
+  "commitId": "d313cb462b1ddd22fd7d40d5a9a8248ce0a90f00",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The structural rename is broadly complete: schema/table names, routes, sidebar navigation, and stale-identifier greps all line up with the new persona configuration terminology, and the full validator set passed. However, the bulk rename left duplicated `configurationuration` strings in backend copy, including user-facing validation messages, so the feature does not fully satisfy the rename-quality requirement.",
+    "issues": [
+      {
+        "file": "convex/personaConfigs.ts",
+        "line": 52,
+        "severity": "blocking",
+        "description": "Several Zod validation labels still read `Persona configurationuration ...` (`createDraftSchema` at lines 52-54, `updateDraftSchema` at 60-62, and `importedPackJsonSchema` at 166-168). Because `requiredString()` appends `is required.`, create/edit/import failures will surface malformed user-facing copy like `Persona configurationuration name is required.`, which violates the milestone requirement to fully rename UI text to `Persona Configuration` / `persona configuration`."
+      },
+      {
+        "file": "convex/transcriptExtraction.ts",
+        "line": 814,
+        "severity": "non_blocking",
+        "description": "Transcript extraction prompt strings still contain the accidental replacement artifact `Persona configurationuration ...` at lines 814-815 and 860-861. This is not directly user-facing, but it leaves backend prompt copy in an obviously garbled state and is a sign the rename pass was not fully cleaned up."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The rename-worker skill's verification step checks only for absence of the old identifier and passing validators, but it does not require a final audit for accidental replacement artifacts in user-visible copy.",
+      "evidence": "`.factory/skills/rename-worker/SKILL.md:43-44` only requires `rg \"oldIdentifier\" --type ts` plus tests/typecheck. This feature satisfies those checks, yet `convex/personaConfigs.ts:52-54,60-62,166-168` and `convex/transcriptExtraction.ts:814-815,860-861` still contain `Persona configurationuration`."
+    },
+    {
+      "area": "skills",
+      "observation": "The rename-worker skill's migration guidance is too rigid for dev-only table renames that are explicitly allowed to clear incompatible development data instead of adding an in-repo migration implementation.",
+      "evidence": "`.factory/skills/rename-worker/SKILL.md:48-50` prescribes widen/migrate/narrow, while the completed handoff records `followedProcedure: false` and explains that clearing the dev deployment with an empty Convex import was the mission-approved way to land this rename (`handoffs/2026-03-30T22-51-49-628Z__rename-persona-pack-to-persona-config__32b701a6-4a83-42a6-9904-aea787d5d67e.json:68-76`)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail: the rename is structurally complete and validators pass, but backend validation/prompt copy still contains `Persona configurationuration`, leaving one blocking user-facing regression and one related non-blocking prompt-copy defect."
+}
