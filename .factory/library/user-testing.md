@@ -49,3 +49,10 @@ Testing surface, required tools, and resource cost classification.
 - For org isolation checks, compare two separate accounts in separate browser sessions; do not reuse seeded data across accounts.
 - If you need to switch accounts inside one session, sign out completely before logging into the next account.
 - Capture evidence for every assertion directly from the live web UI; if an assertion also requires backend rejection evidence (for example reviewer FORBIDDEN on mutation), use the smallest direct API/CLI call needed after confirming the UI state.
+
+## Flow Validator Guidance: test-cli
+
+- Run targeted validation commands from the repo root at `/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra`.
+- Prefer the narrowest Vitest command that covers the assigned assertions. For axis-generation contract assertions `VAL-AXGEN-013` through `VAL-AXGEN-015`, use `bun run test -- convex/axisGeneration.test.ts`.
+- Treat CLI validation as read-only with respect to app data; do not seed or mutate shared browser state from this surface.
+- Save the exact command, exit code, and the relevant passing test names in the flow report so the synthesis can map the output back to the contract assertions.

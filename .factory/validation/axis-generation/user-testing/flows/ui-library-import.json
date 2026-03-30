@@ -1,0 +1,33 @@
+{
+  "groupId": "ui-library-import",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "summary": "Validated library browsing and import on a live draft pack. The picker listed available library axes with key/label/description text, allowed multi-select import, added the chosen library axes alongside the pack's existing axes, and subsequently marked imported items as already present.",
+  "assertions": [
+    {
+      "id": "VAL-AXGEN-011",
+      "status": "pass",
+      "reason": "Browse library opened a picker modal listing available axes with their key, label, description, and checkbox-based multi-select controls.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-library-import/library-picker-open.png"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-012",
+      "status": "pass",
+      "reason": "Importing two library axes added them to sharedAxes while the pack's three existing axes remained intact, and reopening the picker showed imported entries labeled Already in pack for graceful duplicate handling.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-library-import/library-picker-open.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-library-import/after-import.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-library-import/after-import-body.txt",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-library-import/duplicate-import-toast.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "The library picker renders as a modal list rather than a table, so the screenshot plus body-text capture were both needed to show the merged post-import state clearly."
+  ],
+  "blockers": []
+}

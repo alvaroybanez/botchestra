@@ -1,0 +1,47 @@
+{
+  "milestone": "axis-generation",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 17,
+    "passed": 16,
+    "failed": 0,
+    "blocked": 1
+  },
+  "passedAssertions": [
+    "VAL-AXGEN-001",
+    "VAL-AXGEN-002",
+    "VAL-AXGEN-003",
+    "VAL-AXGEN-004",
+    "VAL-AXGEN-005",
+    "VAL-AXGEN-006",
+    "VAL-AXGEN-007",
+    "VAL-AXGEN-008",
+    "VAL-AXGEN-010",
+    "VAL-AXGEN-011",
+    "VAL-AXGEN-012",
+    "VAL-AXGEN-013",
+    "VAL-AXGEN-014",
+    "VAL-AXGEN-015",
+    "VAL-AXGEN-016",
+    "VAL-AXGEN-017"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [
+    {
+      "id": "VAL-AXGEN-009",
+      "blockedBy": "Could not deterministically induce a real suggestAxes action failure through the live UI. Taking the browser offline left the Convex request pending until connectivity returned, so the retryable friendly-error branch could not be exercised without mocking or altering backend behavior."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added Flow Validator Guidance: test-cli so future user-testing rounds can map targeted Vitest output to contract assertions like VAL-AXGEN-013 through VAL-AXGEN-015.",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null,
+  "executionNotes": [
+    "Task-based user-testing-flow-validator subagents could not be launched because the inherited model identifier custom:GPT-5.4-(xHigh)-16 was rejected as invalid, so the primary validator executed the planned web flows and test-cli checks manually and wrote the flow reports itself."
+  ]
+}

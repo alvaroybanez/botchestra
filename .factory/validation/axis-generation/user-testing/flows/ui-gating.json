@@ -1,0 +1,58 @@
+{
+  "groupId": "ui-gating",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "summary": "Validated draft/published button gating and loading behavior for axis generation. Draft packs showed Suggest axes, whitespace metadata disabled the button, loading state appeared during suggestion generation, and published packs hid both axis-generation controls. The retryable error assertion could not be exercised through a safe real-surface failure because taking the browser offline left the Convex request pending until connectivity returned.",
+  "assertions": [
+    {
+      "id": "VAL-AXGEN-001",
+      "status": "pass",
+      "reason": "A draft pack displayed the Suggest axes control, and after publishing the same pack the axis-generation controls were no longer shown.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-gating/draft-pack-buttons.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-gating/published-pack-no-axis-actions.png"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-002",
+      "status": "pass",
+      "reason": "Replacing the Context field with whitespace disabled Suggest axes, and restoring a non-empty context re-enabled it immediately.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-gating/suggest-disabled-whitespace-context.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-gating/suggest-enabled-filled-metadata.png"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-003",
+      "status": "pass",
+      "reason": "Clicking Suggest axes changed the button to Suggesting... and opened the suggestion review panel once generation completed. agent-browser could not expose the underlying Convex websocket payload, but the live UI showed the expected loading lock and successful completion for the current draft metadata.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-gating/suggest-loading-state.png"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-009",
+      "status": "blocked",
+      "reason": "A deterministic real-surface action failure could not be induced safely. Temporarily taking the browser session offline left the Convex action pending instead of surfacing the retryable UI error, so the friendly-error path could not be conclusively validated without mocking or altering app/backend behavior.",
+      "evidence": []
+    },
+    {
+      "id": "VAL-AXGEN-016",
+      "status": "pass",
+      "reason": "Once the pack was published, neither Suggest axes nor Browse library remained visible on the pack detail page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-gating/published-pack-no-axis-actions.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "agent-browser network request capture did not surface the Convex action payload because the app uses Convex transport rather than a simple form POST.",
+    "Trying to induce a safe failure by toggling browser offline kept the action pending until the session reconnected, so the retryable error branch was not reachable via that technique.",
+    "Publishing still required creating at least one proto-persona before the Publish button became enabled."
+  ],
+  "blockers": [
+    "Could not deterministically force the suggestAxes action into a real user-visible failure state without crossing the no-mocking/no-backend-modification boundary."
+  ]
+}

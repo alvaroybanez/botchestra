@@ -1,0 +1,38 @@
+{
+  "groupId": "test-axis-generation",
+  "surface": "test-cli",
+  "toolsUsed": [
+    "bun run test -- convex/axisGeneration.test.ts --reporter verbose"
+  ],
+  "summary": "Ran the targeted axisGeneration Vitest file and mapped the passing test cases back to the contract assertions for schema validity, prompt contents, and malformed-output handling.",
+  "assertions": [
+    {
+      "id": "VAL-AXGEN-013",
+      "status": "pass",
+      "reason": "The verbose test run passed the case returns 3-5 valid axis suggestions for study managers, covering valid axis schema generation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/test-axis-generation/axisGeneration.test.verbose.out"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-014",
+      "status": "pass",
+      "reason": "The verbose test run passed the case includes pack metadata and existing axis keys in the prompt, proving prompt composition includes the expected pack inputs.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/test-axis-generation/axisGeneration.test.verbose.out"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-015",
+      "status": "pass",
+      "reason": "The verbose test run passed the case throws a descriptive ConvexError when the model returns malformed JSON, confirming graceful malformed-output handling.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/test-axis-generation/axisGeneration.test.verbose.out"
+      ]
+    }
+  ],
+  "frictions": [
+    "Vitest still prints the existing test.workspace deprecation warning before the targeted tests run."
+  ],
+  "blockers": []
+}

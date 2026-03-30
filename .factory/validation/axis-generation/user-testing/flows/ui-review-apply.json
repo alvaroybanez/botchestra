@@ -1,0 +1,76 @@
+{
+  "groupId": "ui-review-apply",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "summary": "Validated suggestion review, selection, edit-before-apply, dismiss, additive merge, and keyboard interaction on a live draft pack. The flow produced five suggestion cards, allowed keyboard toggling, preserved edited values on apply, and kept the existing shared axis intact while adding only the selected suggestions.",
+  "assertions": [
+    {
+      "id": "VAL-AXGEN-004",
+      "status": "pass",
+      "reason": "A successful suggestion run rendered five suggestion cards, each with the axis title/key plus the description and low/mid/high anchors visible in the live page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/suggestion-cards.png"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-005",
+      "status": "pass",
+      "reason": "The cards were independently selectable: all started checked, and keyboard Space toggled the first suggestion off while the remaining suggestions stayed selected.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/suggestion-cards.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/keyboard-toggle-deselected.png"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-006",
+      "status": "pass",
+      "reason": "Inline edit mode exposed editable fields for a suggestion, and the edited label/description were preserved when the selected suggestion was applied into the pack.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/edit-mode-selected-subset.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/after-apply-body.txt"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-007",
+      "status": "pass",
+      "reason": "Applying the selected suggestions merged them into sharedAxes without overwriting the pre-existing existing_support_style axis; the pack moved from one existing axis to three total axes after apply.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/after-apply.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/after-apply-body.txt"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-008",
+      "status": "pass",
+      "reason": "Dismissing the suggestion panel left the pack unchanged: after dismiss the body text still showed only the original existing_support_style axis and no added suggestions.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/after-dismiss-unchanged.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/after-dismiss-body.txt"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-010",
+      "status": "pass",
+      "reason": "Suggestion generation worked on a pack that already had an existing shared axis, and applying selected suggestions added new axes instead of replacing the original one.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/suggestion-cards.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/after-apply-body.txt"
+      ]
+    },
+    {
+      "id": "VAL-AXGEN-017",
+      "status": "pass",
+      "reason": "Keyboard navigation reached the suggestion checkbox from the action buttons, and pressing Space toggled selection without requiring the mouse.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-generation/ui-review-apply/keyboard-toggle-deselected.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "The suggestion labels vary between LLM runs, so evidence had to be anchored to the observed live labels rather than fixed expected keys.",
+    "The page is long enough that body-text captures were more reliable than a single screenshot for confirming the full post-apply axis list."
+  ],
+  "blockers": []
+}
