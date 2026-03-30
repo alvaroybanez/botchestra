@@ -262,6 +262,33 @@ export declare const api: {
     >;
   };
   personaPacks: {
+    applyTranscriptDerivedProtoPersonas: FunctionReference<
+      "mutation",
+      "public",
+      {
+        input: {
+          archetypes: Array<{
+            axisValues: Array<{ key: string; value: number }>;
+            contributingTranscriptIds: Array<string>;
+            evidenceSnippets: Array<{ quote: string; transcriptId: string }>;
+            name: string;
+            notes?: string;
+            summary: string;
+          }>;
+          sharedAxes: Array<{
+            description: string;
+            highAnchor: string;
+            key: string;
+            label: string;
+            lowAnchor: string;
+            midAnchor: string;
+            weight: number;
+          }>;
+        };
+        packId: Id<"personaPacks">;
+      },
+      any
+    >;
     archive: FunctionReference<
       "mutation",
       "public",

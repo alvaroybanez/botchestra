@@ -110,6 +110,58 @@ const updateProtoPersonaSchema = z
     "At least one proto-persona field must be provided.",
   );
 
+const archetypeAxisValueSchema = z
+  .array(
+    z.object({
+      key: requiredString("Archetype axis key"),
+      value: z
+        .number()
+        .min(-1, "Archetype axis values must be between -1 and 1.")
+        .max(1, "Archetype axis values must be between -1 and 1."),
+    }),
+  )
+  .superRefine((axisValues, ctx) => {
+    const seen = new Set<string>();
+
+    axisValues.forEach((axisValue, index) => {
+      if (seen.has(axisValue.key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "key"],
+          message: "Archetype axis keys must be unique.",
+        });
+        return;
+      }
+
+      seen.add(axisValue.key);
+    });
+  });
+
+const transcriptDerivedEvidenceSchema = z.object({
+  transcriptId: requiredString("Evidence transcript ID"),
+  quote: requiredString("Evidence quote"),
+});
+
+const transcriptDerivedArchetypeSchema = z.object({
+  name: requiredString("Archetype name"),
+  summary: requiredString("Archetype summary"),
+  axisValues: archetypeAxisValueSchema,
+  evidenceSnippets: z
+    .array(transcriptDerivedEvidenceSchema)
+    .min(1, "At least one evidence snippet is required."),
+  contributingTranscriptIds: z
+    .array(requiredString("Contributing transcript ID"))
+    .min(1, "At least one contributing transcript is required."),
+  notes: requiredString("Archetype notes").optional(),
+});
+
+const applyTranscriptDerivedProtoPersonasSchema = z.object({
+  sharedAxes: sharedAxesSchema,
+  archetypes: z
+    .array(transcriptDerivedArchetypeSchema)
+    .min(1, "Select at least one archetype to apply."),
+});
+
 const importedPackJsonSchema = z.object({
   name: requiredString("Pack name"),
   description: requiredString("Pack description"),
@@ -170,6 +222,29 @@ const updateProtoPersonaValidator = v.object({
   summary: v.optional(v.string()),
   axes: v.optional(v.array(axisValidator)),
   evidenceSnippets: v.optional(v.array(v.string())),
+  notes: v.optional(v.string()),
+});
+
+const archetypeAxisValueValidator = v.array(
+  v.object({
+    key: v.string(),
+    value: v.number(),
+  }),
+);
+
+const transcriptDerivedEvidenceValidator = v.array(
+  v.object({
+    transcriptId: v.string(),
+    quote: v.string(),
+  }),
+);
+
+const transcriptDerivedArchetypeValidator = v.object({
+  name: v.string(),
+  summary: v.string(),
+  axisValues: archetypeAxisValueValidator,
+  evidenceSnippets: transcriptDerivedEvidenceValidator,
+  contributingTranscriptIds: v.array(v.string()),
   notes: v.optional(v.string()),
 });
 
@@ -443,6 +518,67 @@ export const deleteProtoPersona = mutation({
   },
 });
 
+export const applyTranscriptDerivedProtoPersonas = mutation({
+  args: {
+    packId: v.id("personaPacks"),
+    input: v.object({
+      sharedAxes: sharedAxesValidator,
+      archetypes: v.array(transcriptDerivedArchetypeValidator),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const parsedArgs = z
+      .object({
+        packId: z.string(),
+        input: applyTranscriptDerivedProtoPersonasSchema,
+      })
+      .parse(args);
+    const packId = parsedArgs.packId as Id<"personaPacks">;
+    const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
+    const pack = await getPackForIdentity(ctx, packId, identity.tokenIdentifier);
+
+    assertPackIsDraft(pack);
+    await assertProtoPersonaCapacityForBatch(
+      ctx,
+      packId,
+      parsedArgs.input.archetypes.length,
+    );
+    assertTranscriptDerivedArchetypesMatchAxes(
+      parsedArgs.input.sharedAxes,
+      parsedArgs.input.archetypes,
+    );
+
+    await ctx.db.patch(packId, {
+      sharedAxes: parsedArgs.input.sharedAxes,
+      updatedAt: Date.now(),
+      updatedBy: identity.tokenIdentifier,
+    });
+
+    const createdProtoPersonaIds: Id<"protoPersonas">[] = [];
+
+    for (const archetype of parsedArgs.input.archetypes) {
+      const protoPersonaId = await ctx.db.insert("protoPersonas", {
+        packId,
+        name: archetype.name,
+        summary: archetype.summary,
+        axes: parsedArgs.input.sharedAxes,
+        sourceType: "transcript_derived",
+        sourceRefs: archetype.evidenceSnippets.map((snippet) => snippet.transcriptId),
+        evidenceSnippets: archetype.evidenceSnippets.map((snippet) => snippet.quote),
+        ...(archetype.notes !== undefined
+          ? { notes: archetype.notes }
+          : {}),
+      });
+
+      createdProtoPersonaIds.push(protoPersonaId);
+    }
+
+    await touchPack(ctx, packId, identity.tokenIdentifier);
+
+    return createdProtoPersonaIds;
+  },
+});
+
 export const get = query({
   args: {
     packId: v.id("personaPacks"),
@@ -694,6 +830,43 @@ async function assertProtoPersonaCapacity(
       `A pack may contain a maximum of ${MAX_PROTO_PERSONAS_PER_PACK} proto-personas.`,
     );
   }
+}
+
+async function assertProtoPersonaCapacityForBatch(
+  ctx: MutationCtx,
+  packId: Id<"personaPacks">,
+  requestedCount: number,
+) {
+  const protoPersonas = await listProtoPersonasForPack(
+    ctx,
+    packId,
+    MAX_PROTO_PERSONAS_PER_PACK,
+  );
+
+  if (protoPersonas.length + requestedCount > MAX_PROTO_PERSONAS_PER_PACK) {
+    throw new ConvexError(
+      `A pack may contain a maximum of ${MAX_PROTO_PERSONAS_PER_PACK} proto-personas.`,
+    );
+  }
+}
+
+function assertTranscriptDerivedArchetypesMatchAxes(
+  sharedAxes: readonly { key: string }[],
+  archetypes: readonly z.infer<typeof transcriptDerivedArchetypeSchema>[],
+) {
+  const sharedAxisKeys = new Set(sharedAxes.map((axis) => axis.key));
+
+  archetypes.forEach((archetype) => {
+    const axisValueKeys = new Set(archetype.axisValues.map((axisValue) => axisValue.key));
+    const missingKeys = [...sharedAxisKeys].filter((axisKey) => !axisValueKeys.has(axisKey));
+    const unexpectedKeys = [...axisValueKeys].filter((axisKey) => !sharedAxisKeys.has(axisKey));
+
+    if (missingKeys.length > 0 || unexpectedKeys.length > 0) {
+      throw new ConvexError(
+        "Transcript-derived archetypes must provide axis values for the selected pack axes only.",
+      );
+    }
+  });
 }
 
 function parseImportedPackJson(json: string): ImportedPackJson {

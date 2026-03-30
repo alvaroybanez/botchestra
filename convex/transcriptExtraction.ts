@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { z } from "zod";
+import { resolveModel } from "../packages/ai/src/index";
 
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -249,7 +250,6 @@ export const estimateExtractionCost = query({
     );
     const estimatedTokens = Math.ceil(totalCharacters / 4);
     const settings = await loadEffectiveSettingsForOrg(ctx, identity.tokenIdentifier);
-    const { resolveModel } = await import("../packages/ai/src/index");
     const modelOverride = settings.modelConfig.find(
       (entry) => entry.taskCategory === "summarization",
     )?.modelId;

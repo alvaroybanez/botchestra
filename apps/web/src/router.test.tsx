@@ -372,6 +372,12 @@ let mockedTranscriptPacksByTranscriptId: Record<string, Array<{
   createdAt: number;
   pack: Doc<"personaPacks">;
 }> | undefined> = {};
+let mockedExtractionStatusByPackId: Record<string, any> = {};
+let mockedExtractionCostByPackId: Record<string, {
+  totalCharacters: number;
+  estimatedTokens: number;
+  estimatedCostUsd: number;
+} | undefined> = {};
 const MOCK_ARTIFACT_BASE_URL = "http://localhost:8787";
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
@@ -383,7 +389,9 @@ const updateDraftMock = vi.fn();
 const createProtoPersonaMock = vi.fn();
 const publishMock = vi.fn();
 const archiveMock = vi.fn();
+const applyTranscriptDerivedProtoPersonasMock = vi.fn();
 const suggestAxesMock = vi.fn();
+const startTranscriptExtractionMock = vi.fn();
 const uploadTranscriptMock = vi.fn();
 const updateTranscriptMetadataMock = vi.fn();
 const deleteTranscriptMock = vi.fn();
@@ -472,6 +480,10 @@ vi.mock("convex/react", () => ({
       return createProtoPersonaMock;
     }
 
+    if (mutationName === "personaPacks:applyTranscriptDerivedProtoPersonas") {
+      return applyTranscriptDerivedProtoPersonasMock;
+    }
+
     if (mutationName === "personaPacks:publish") {
       return publishMock;
     }
@@ -515,6 +527,10 @@ vi.mock("convex/react", () => ({
 
     if (actionName === "axisGeneration:suggestAxes") {
       return suggestAxesMock;
+    }
+
+    if (actionName === "transcriptExtraction:startExtraction") {
+      return startTranscriptExtractionMock;
     }
 
     if (actionName === "transcripts:getTranscriptContent") {
@@ -712,6 +728,21 @@ vi.mock("convex/react", () => ({
       return mockedTranscriptPacksByTranscriptId[String(args?.transcriptId)] ?? [];
     }
 
+    if (queryName === "transcriptExtraction:getExtractionStatus") {
+      return mockedExtractionStatusByPackId[String(args?.packId)] ?? null;
+    }
+
+    if (queryName === "transcriptExtraction:estimateExtractionCost") {
+      const transcriptIds = (args?.transcriptIds as string[] | undefined) ?? [];
+      const packId = Object.entries(mockedPackTranscriptsByPackId).find(([, attachments]) =>
+        transcriptIds.every((transcriptId) =>
+          (attachments ?? []).some((attachment) => attachment.transcriptId === transcriptId),
+        ),
+      )?.[0];
+
+      return packId ? mockedExtractionCostByPackId[packId] : undefined;
+    }
+
     return undefined;
   },
 }));
@@ -753,6 +784,8 @@ beforeEach(() => {
   mockedTranscriptContentById = {};
   mockedPackTranscriptsByPackId = {};
   mockedTranscriptPacksByTranscriptId = {};
+  mockedExtractionStatusByPackId = {};
+  mockedExtractionCostByPackId = {};
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
   createStudyMock.mockReset();
@@ -775,6 +808,8 @@ beforeEach(() => {
   publishMock.mockResolvedValue(undefined);
   archiveMock.mockReset();
   archiveMock.mockResolvedValue(undefined);
+  applyTranscriptDerivedProtoPersonasMock.mockReset();
+  applyTranscriptDerivedProtoPersonasMock.mockResolvedValue(undefined);
   suggestAxesMock.mockReset();
   suggestAxesMock.mockResolvedValue([
     {
@@ -858,6 +893,8 @@ beforeEach(() => {
     async ({ transcriptId }: { transcriptId: string }) =>
       mockedTranscriptContentById[transcriptId] ?? null,
   );
+  startTranscriptExtractionMock.mockReset();
+  startTranscriptExtractionMock.mockResolvedValue(undefined);
   generateVariantsMock.mockReset();
   generateVariantsMock.mockResolvedValue({
     acceptedCount: 64,
@@ -2641,6 +2678,283 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).not.toContain("Detach");
   });
 
+  it("runs auto-discover transcript extraction, shows results, applies personas, and links evidence snippets", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-transcript-extraction" as Id<"personaPacks">,
+      name: "Transcript extraction pack",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-auto-1" as Id<"transcripts">,
+        originalFilename: "checkout-interview.txt",
+      }),
+    ];
+    mockedPackTranscriptsByPackId["pack-transcript-extraction"] = [
+      {
+        _id: "pack-transcript-auto-1",
+        packId: "pack-transcript-extraction",
+        transcriptId: "transcript-auto-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+    ];
+    mockedExtractionCostByPackId["pack-transcript-extraction"] = {
+      totalCharacters: 480,
+      estimatedTokens: 120,
+      estimatedCostUsd: 0.0012,
+    };
+    startTranscriptExtractionMock.mockImplementation(async ({ packId, mode }) => {
+      mockedExtractionStatusByPackId[packId] = {
+        packId,
+        mode,
+        status: "completed",
+        guidedAxes: [],
+        proposedAxes: [
+          {
+            key: "confidence_level",
+            label: "Confidence level",
+            description: "Comfort finishing the task without live assistance.",
+            lowAnchor: "Needs live support",
+            midAnchor: "Can finish with a quick check",
+            highAnchor: "Self-directed",
+            weight: 1,
+          },
+        ],
+        archetypes: [
+          {
+            name: "Deliberate verifier",
+            summary: "Moves slowly, double-checks prices, and wants reassurance.",
+            axisValues: [{ key: "confidence_level", value: -0.35 }],
+            evidenceSnippets: [
+              {
+                transcriptId: "transcript-auto-1",
+                quote: "I wanted to double-check the price before continuing.",
+                startChar: 0,
+                endChar: 54,
+              },
+            ],
+            contributingTranscriptIds: ["transcript-auto-1"],
+          },
+        ],
+        totalTranscripts: 1,
+        processedTranscriptCount: 1,
+        currentTranscriptId: null,
+        succeededTranscriptIds: ["transcript-auto-1"],
+        failedTranscripts: [],
+        errorMessage: null,
+        startedBy: "researcher-1",
+        startedAt: Date.now(),
+        updatedAt: Date.now(),
+        completedAt: Date.now(),
+        transcriptSignals: [
+          {
+            _creationTime: Date.now(),
+            _id: "signal-auto-1",
+            packId: "pack-transcript-extraction",
+            transcriptId: "transcript-auto-1",
+            orgId: "researcher-1",
+            status: "completed",
+            signals: {
+              themes: ["price sensitivity"],
+              attitudes: ["cautious"],
+              painPoints: ["surprise fees"],
+              decisionPatterns: ["pauses to verify totals"],
+              evidenceSnippets: [
+                {
+                  quote: "I wanted to double-check the price before continuing.",
+                  startChar: 0,
+                  endChar: 54,
+                },
+              ],
+            },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        ],
+      };
+    });
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-transcript-extraction"],
+    });
+
+    expect(container.textContent).toContain("Extract from Transcripts");
+
+    await clickButton(container, "Extract from Transcripts");
+    expect(startTranscriptExtractionMock).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Auto-discover");
+    expect(container.textContent).toContain("Guided");
+
+    await clickButtonContaining(container, "Auto-discover");
+    expect(container.textContent).toContain("Estimated tokens");
+    expect(container.textContent).toContain("120");
+    expect(startTranscriptExtractionMock).not.toHaveBeenCalled();
+
+    await clickButton(container, "Confirm & Extract");
+
+    expect(startTranscriptExtractionMock).toHaveBeenCalledWith({
+      packId: "pack-transcript-extraction",
+      mode: "auto_discover",
+    });
+    expect(container.textContent).toContain("Per-transcript signal review");
+    expect(container.textContent).toContain("Proposed axes");
+    expect(container.textContent).toContain("Deliberate verifier");
+    expect(container.textContent).toContain("price sensitivity");
+
+    await clickButton(container, "Apply to pack");
+    expect(applyTranscriptDerivedProtoPersonasMock).toHaveBeenCalledWith({
+      packId: "pack-transcript-extraction",
+      input: {
+        sharedAxes: [
+          {
+            key: "confidence_level",
+            label: "Confidence level",
+            description: "Comfort finishing the task without live assistance.",
+            lowAnchor: "Needs live support",
+            midAnchor: "Can finish with a quick check",
+            highAnchor: "Self-directed",
+            weight: 1,
+          },
+        ],
+        archetypes: [
+          expect.objectContaining({
+            name: "Deliberate verifier",
+            evidenceSnippets: [
+              {
+                transcriptId: "transcript-auto-1",
+                quote: "I wanted to double-check the price before continuing.",
+              },
+            ],
+          }),
+        ],
+      },
+    });
+
+    const evidenceLink = [...container.querySelectorAll("a")].find((link) =>
+      link.textContent?.includes("I wanted to double-check the price before continuing."),
+    );
+    expect(evidenceLink).not.toBeUndefined();
+
+    await act(async () => {
+      evidenceLink?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    });
+    expect(getRouterLocationHref(router)).toContain(
+      "/transcripts/transcript-auto-1?highlightSnippet=",
+    );
+  });
+
+  it("requires guided axes before extraction and submits edited guided axes", async () => {
+    mockedPackDetail = makePack({
+      _id: "pack-guided-extraction" as Id<"personaPacks">,
+      name: "Guided extraction pack",
+      status: "draft",
+      sharedAxes: [],
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-guided-1" as Id<"transcripts">,
+        originalFilename: "guided-source.txt",
+      }),
+    ];
+    mockedPackTranscriptsByPackId["pack-guided-extraction"] = [
+      {
+        _id: "pack-transcript-guided-1",
+        packId: "pack-guided-extraction",
+        transcriptId: "transcript-guided-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+    ];
+    mockedExtractionCostByPackId["pack-guided-extraction"] = {
+      totalCharacters: 300,
+      estimatedTokens: 75,
+      estimatedCostUsd: 0.0008,
+    };
+    startTranscriptExtractionMock.mockImplementation(async ({ packId, mode, guidedAxes }) => {
+      mockedExtractionStatusByPackId[packId] = {
+        packId,
+        mode,
+        status: "completed",
+        guidedAxes,
+        proposedAxes: [],
+        archetypes: [
+          {
+            name: "Support seeker",
+            summary: "Needs a person to verify complex account steps.",
+            axisValues: [{ key: "support_need", value: 0.8 }],
+            evidenceSnippets: [
+              {
+                transcriptId: "transcript-guided-1",
+                quote: "I just wanted a human to confirm I was doing it right.",
+                startChar: 0,
+                endChar: 57,
+              },
+            ],
+            contributingTranscriptIds: ["transcript-guided-1"],
+          },
+        ],
+        totalTranscripts: 1,
+        processedTranscriptCount: 1,
+        currentTranscriptId: null,
+        succeededTranscriptIds: ["transcript-guided-1"],
+        failedTranscripts: [],
+        errorMessage: null,
+        startedBy: "researcher-1",
+        startedAt: Date.now(),
+        updatedAt: Date.now(),
+        completedAt: Date.now(),
+        transcriptSignals: [],
+      };
+    });
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-packs/pack-guided-extraction"],
+    });
+
+    await clickButton(container, "Extract from Transcripts");
+    await clickButtonContaining(container, "Guided");
+    await clickButton(container, "Continue to cost estimate");
+
+    expect(container.textContent).toContain("Each axis needs a snake_case key");
+
+    await updateInput(container, "#guided-extraction-axis-0-key", "support_need");
+    await updateInput(container, "#guided-extraction-axis-0-label", "Support need");
+    await updateInput(container, "#guided-extraction-axis-0-low", "Self-serve");
+    await updateInput(container, "#guided-extraction-axis-0-mid", "Needs a quick check");
+    await updateInput(container, "#guided-extraction-axis-0-high", "Needs live help");
+    await updateInput(container, "#guided-extraction-axis-0-weight", "1");
+    await updateTextarea(
+      container,
+      "#guided-extraction-axis-0-description",
+      "How much human confirmation the person wants.",
+    );
+
+    await clickButton(container, "Continue to cost estimate");
+    await clickButton(container, "Confirm & Extract");
+
+    expect(startTranscriptExtractionMock).toHaveBeenCalledWith({
+      packId: "pack-guided-extraction",
+      mode: "guided",
+      guidedAxes: [
+        {
+          key: "support_need",
+          label: "Support need",
+          description: "How much human confirmation the person wants.",
+          lowAnchor: "Self-serve",
+          midAnchor: "Needs a quick check",
+          highAnchor: "Needs live help",
+          weight: 1,
+        },
+      ],
+    });
+    expect(container.textContent).toContain("Support seeker");
+  });
+
   it("imports a pack JSON from the list page and redirects to the imported pack", async () => {
     mockedPackList = [];
 
@@ -3060,6 +3374,28 @@ describe("@botchestra/web routing", () => {
     expect(getRouterLocationHref(router)).toBe("/transcripts");
   });
 
+  it("highlights transcript passages when opened from an evidence snippet link", async () => {
+    mockedTranscriptDetail = makeTranscript({
+      _id: "transcript-highlight" as Id<"transcripts">,
+      originalFilename: "highlight-target.txt",
+    });
+    mockedTranscriptContentById["transcript-highlight"] = {
+      format: "txt",
+      text: "The customer said they wanted to double-check the price before moving on.",
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: [
+        "/transcripts/transcript-highlight?highlightSnippet=double-check%20the%20price",
+      ],
+    });
+
+    const highlightedText = container.querySelector("mark[data-highlighted-snippet='true']");
+    expect(highlightedText).not.toBeNull();
+    expect(highlightedText?.textContent).toContain("double-check the price");
+  });
+
   it("renders JSON transcript detail for reviewers and hides mutation controls", async () => {
     mockedTranscriptDetail = makeTranscript({
       _id: "transcript-json" as Id<"transcripts">,
@@ -3161,6 +3497,18 @@ async function renderRoute({
 
 async function clickButton(root: ParentNode, text: string) {
   const button = getButton(root, text);
+
+  expect(button).toBeDefined();
+
+  await act(async () => {
+    button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+async function clickButtonContaining(root: ParentNode, text: string) {
+  const button = [...root.querySelectorAll("button")].find((candidate) =>
+    candidate.textContent?.includes(text),
+  );
 
   expect(button).toBeDefined();
 

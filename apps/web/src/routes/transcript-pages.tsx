@@ -507,7 +507,13 @@ export function TranscriptsPage() {
   );
 }
 
-export function TranscriptDetailPage({ transcriptId }: { transcriptId: string }) {
+export function TranscriptDetailPage({
+  transcriptId,
+  highlightSnippet = "",
+}: {
+  transcriptId: string;
+  highlightSnippet?: string;
+}) {
   const navigate = useNavigate();
   const normalizedTranscriptId = useQuery((api as any).transcripts.normalizeTranscriptId, {
     transcriptId,
@@ -619,6 +625,20 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
       cancelled = true;
     };
   }, [getTranscriptContent, transcript?._id]);
+
+  useEffect(() => {
+    if (highlightSnippet.trim().length === 0 || isContentLoading) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      document
+        .querySelector<HTMLElement>("[data-highlighted-snippet='true']")
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 50);
+
+    return () => window.clearTimeout(timeout);
+  }, [content, highlightSnippet, isContentLoading]);
 
   const canManageTranscripts =
     viewerAccess?.permissions.canManagePersonaPacks === true;
@@ -863,7 +883,10 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
                   <p className="text-sm text-destructive">{contentError}</p>
                 ) : content?.format === "txt" ? (
                   <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border bg-muted/20 p-4 text-sm leading-6">
-                    {content.text}
+                    <HighlightedTranscriptText
+                      highlightSnippet={highlightSnippet}
+                      text={content.text}
+                    />
                   </pre>
                 ) : content?.format === "json" ? (
                   <div className="grid gap-3">
@@ -878,9 +901,12 @@ export function TranscriptDetailPage({ transcriptId }: { transcriptId: string })
                             <Badge variant="outline">{turn.timestamp}s</Badge>
                           ) : null}
                         </div>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                          {turn.text}
-                        </p>
+                        <div className="mt-2 text-sm leading-6 text-muted-foreground">
+                          <HighlightedTranscriptText
+                            highlightSnippet={highlightSnippet}
+                            text={turn.text}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1250,6 +1276,40 @@ function LoadingCard({ body, title }: { body: string; title: string }) {
   );
 }
 
+function HighlightedTranscriptText({
+  highlightSnippet,
+  text,
+}: {
+  highlightSnippet: string;
+  text: string;
+}) {
+  const normalizedSnippet = highlightSnippet.trim();
+
+  if (normalizedSnippet.length === 0) {
+    return <>{text}</>;
+  }
+
+  const segments = highlightText(text, normalizedSnippet);
+
+  return (
+    <>
+      {segments.map((segment, index) =>
+        segment.isMatch ? (
+          <mark
+            key={`${segment.text}-${index}`}
+            className="rounded bg-amber-200 px-0.5 text-foreground"
+            data-highlighted-snippet="true"
+          >
+            {segment.text}
+          </mark>
+        ) : (
+          <span key={`${segment.text}-${index}`}>{segment.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 function PackStatusBadge({ status }: { status: PersonaPackDoc["status"] }) {
   return (
     <span
@@ -1425,4 +1485,47 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function highlightText(text: string, highlightSnippet: string) {
+  const escapedSnippet = highlightSnippet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const highlightPattern = new RegExp(escapedSnippet, "gi");
+  const matches = [...text.matchAll(highlightPattern)];
+
+  if (matches.length === 0) {
+    return [{ text, isMatch: false }];
+  }
+
+  const segments: Array<{ text: string; isMatch: boolean }> = [];
+  let currentIndex = 0;
+
+  for (const match of matches) {
+    const matchIndex = match.index ?? -1;
+
+    if (matchIndex < currentIndex) {
+      continue;
+    }
+
+    if (matchIndex > currentIndex) {
+      segments.push({
+        text: text.slice(currentIndex, matchIndex),
+        isMatch: false,
+      });
+    }
+
+    segments.push({
+      text: match[0],
+      isMatch: true,
+    });
+    currentIndex = matchIndex + match[0].length;
+  }
+
+  if (currentIndex < text.length) {
+    segments.push({
+      text: text.slice(currentIndex),
+      isMatch: false,
+    });
+  }
+
+  return segments;
 }

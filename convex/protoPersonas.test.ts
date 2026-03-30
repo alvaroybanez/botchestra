@@ -289,6 +289,69 @@ describe("proto persona CRUD", () => {
       }),
     ).rejects.toThrow("maximum of 10 proto-personas");
   });
+
+  it("applies transcript-derived archetypes to a draft pack with source refs and updated shared axes", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const packId = await createDraftPack(t);
+    const sharedAxes = [
+      makeAxis({
+        key: "support_needs",
+        label: "Support Needs",
+        description: "How much human guidance the person expects.",
+      }),
+    ];
+
+    const createdProtoPersonaIds = await asResearcher.mutation(
+      api.personaPacks.applyTranscriptDerivedProtoPersonas,
+      {
+        packId,
+        input: {
+          sharedAxes,
+          archetypes: [
+            {
+              name: "Escalation-ready buyer",
+              summary: "Requests live help as soon as uncertainty appears.",
+              axisValues: [{ key: "support_needs", value: 0.9 }],
+              evidenceSnippets: [
+                {
+                  transcriptId: "transcript-1",
+                  quote: "I wanted to talk to a person right away.",
+                },
+                {
+                  transcriptId: "transcript-2",
+                  quote: "The chatbot was not enough for me.",
+                },
+              ],
+              contributingTranscriptIds: ["transcript-1", "transcript-2"],
+            },
+          ],
+        },
+      },
+    );
+
+    const pack = await asResearcher.query(api.personaPacks.get, { packId });
+    const protoPersonas = await asResearcher.query(api.personaPacks.listProtoPersonas, {
+      packId,
+    });
+
+    expect(createdProtoPersonaIds).toHaveLength(1);
+    expect(pack?.sharedAxes).toMatchObject(sharedAxes);
+    expect(protoPersonas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          _id: createdProtoPersonaIds[0],
+          sourceType: "transcript_derived",
+          sourceRefs: ["transcript-1", "transcript-2"],
+          evidenceSnippets: [
+            "I wanted to talk to a person right away.",
+            "The chatbot was not enough for me.",
+          ],
+          axes: sharedAxes,
+        }),
+      ]),
+    );
+  });
 });
 
 type AxisInput = {

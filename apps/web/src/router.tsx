@@ -103,6 +103,14 @@ function validateAuthSearch(search: Record<string, unknown>) {
   };
 }
 
+function validateTranscriptDetailSearch(search: Record<string, unknown>) {
+  return typeof search.highlightSnippet === "string"
+    ? {
+        highlightSnippet: search.highlightSnippet,
+      }
+    : {};
+}
+
 function isSharedReportLocation(location: {
   href?: string;
   pathname: string;
@@ -278,6 +286,7 @@ const personaPackDetailRoute = createRoute({
 const transcriptDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "transcripts/$transcriptId",
+  validateSearch: validateTranscriptDetailSearch,
   component: TranscriptDetailPage,
 });
 
@@ -520,7 +529,13 @@ function PersonaPackDetailPage() {
 
 function TranscriptDetailPage() {
   const { transcriptId } = transcriptDetailRoute.useParams();
-  return <TranscriptDetailRoutePage transcriptId={transcriptId} />;
+  const { highlightSnippet } = transcriptDetailRoute.useSearch();
+  return (
+    <TranscriptDetailRoutePage
+      highlightSnippet={highlightSnippet}
+      transcriptId={transcriptId}
+    />
+  );
 }
 
 function SettingsPage() {
