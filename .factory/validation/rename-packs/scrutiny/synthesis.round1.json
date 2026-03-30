@@ -1,7 +1,7 @@
 {
   "milestone": "rename-packs",
-  "round": 2,
-  "status": "pass",
+  "round": 1,
+  "status": "fail",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -21,26 +21,34 @@
   },
   "reviewsSummary": {
     "total": 1,
-    "passed": 1,
-    "failed": 0,
-    "failedFeatures": []
+    "passed": 0,
+    "failed": 1,
+    "failedFeatures": [
+      "rename-persona-pack-to-persona-config"
+    ]
   },
-  "blockingIssues": [],
+  "blockingIssues": [
+    {
+      "featureId": "rename-persona-pack-to-persona-config",
+      "severity": "blocking",
+      "description": "User-facing validation labels in `convex/personaConfigs.ts:52-54,60-62,166-168` still say `Persona configurationuration ...`, so create/edit/import errors surface malformed copy instead of the requested `Persona Configuration` / `persona configuration` terminology."
+    }
+  ],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "Skill: rename-worker",
       "suggestion": "After a bulk rename, require a final audit for accidental replacement artifacts in user-visible copy (for example duplicated substrings like `configurationuration`), not just a grep for the old identifier plus tests/typecheck.",
-      "evidence": "Round 1 scrutiny found malformed copy in `convex/personaConfigs.ts:52-54,60-62,166-168` and `convex/transcriptExtraction.ts:814-815,860-861` even though the old-identifier grep and validators passed. The follow-up feature `fix-configurationuration-typo` had to clean up those accidental replacement artifacts separately.",
+      "evidence": "`.factory/skills/rename-worker/SKILL.md:43-44` only requires old-identifier grep verification. This feature passed those checks, but `convex/personaConfigs.ts:52-54,60-62,166-168` and `convex/transcriptExtraction.ts:814-815,860-861` still contain `Persona configurationuration`.",
       "isSystemic": true
     },
     {
       "target": "Skill: rename-worker",
       "suggestion": "Clarify that dev-only table renames may use a documented clear-and-redeploy path when the mission explicitly allows dropping incompatible development data, instead of always implying an in-repo widen/migrate/narrow implementation.",
-      "evidence": "The original rename feature succeeded by clearing the dev deployment and rerunning `bunx convex dev --once`, which matched the mission plan but deviated from the rename-worker skill’s stricter migration wording. The feature handoff documents the approved deviation in `handoffs/2026-03-30T22-51-49-628Z__rename-persona-pack-to-persona-config__32b701a6-4a83-42a6-9904-aea787d5d67e.json`.",
+      "evidence": "`.factory/skills/rename-worker/SKILL.md:48-50` prescribes widen/migrate/narrow, but the completed feature handoff documents a justified deviation: clearing the dev deployment with an empty Convex import before rerunning `bunx convex dev --once` (`handoffs/2026-03-30T22-51-49-628Z__rename-persona-pack-to-persona-config__32b701a6-4a83-42a6-9904-aea787d5d67e.json:68-76`).",
       "isSystemic": true
     }
   ],
   "rejectedObservations": [],
-  "previousRound": ".factory/validation/rename-packs/scrutiny/synthesis.round1.json"
+  "previousRound": null
 }
