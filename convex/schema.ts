@@ -127,6 +127,40 @@ export default defineSchema({
     .index("by_orgId", ["orgId"])
     .index("by_orgId_and_key", ["orgId", "key"]),
 
+  // 2b. transcripts
+  transcripts: defineTable({
+    storageId: v.id("_storage"),
+    originalFilename: v.string(),
+    format: v.union(v.literal("txt"), v.literal("json")),
+    metadata: v.object({
+      participantId: v.optional(v.string()),
+      date: v.optional(v.number()),
+      tags: v.array(v.string()),
+      notes: v.optional(v.string()),
+    }),
+    processingStatus: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("processed"),
+      v.literal("error"),
+    ),
+    processingError: v.optional(v.string()),
+    characterCount: v.number(),
+    orgId: v.string(),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_orgId", ["orgId"]),
+
+  // 2c. packTranscripts
+  packTranscripts: defineTable({
+    packId: v.id("personaPacks"),
+    transcriptId: v.id("transcripts"),
+    createdAt: v.number(),
+  })
+    .index("by_packId", ["packId"])
+    .index("by_transcriptId", ["transcriptId"]),
+
   // 3. protoPersonas
   protoPersonas: defineTable({
     packId: v.id("personaPacks"),

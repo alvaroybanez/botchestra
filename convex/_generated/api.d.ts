@@ -235,6 +235,32 @@ export declare const api: {
       any
     >;
   };
+  packTranscripts: {
+    attachTranscript: FunctionReference<
+      "mutation",
+      "public",
+      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    detachTranscript: FunctionReference<
+      "mutation",
+      "public",
+      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    listPackTranscripts: FunctionReference<
+      "query",
+      "public",
+      { packId: Id<"personaPacks"> },
+      any
+    >;
+    listTranscriptPacks: FunctionReference<
+      "query",
+      "public",
+      { transcriptId: Id<"transcripts"> },
+      any
+    >;
+  };
   personaPacks: {
     archive: FunctionReference<
       "mutation",
@@ -627,6 +653,61 @@ export declare const api: {
       "query",
       "public",
       { studyId: Id<"studies"> },
+      any
+    >;
+  };
+  transcripts: {
+    deleteTranscript: FunctionReference<
+      "mutation",
+      "public",
+      { transcriptId: Id<"transcripts"> },
+      any
+    >;
+    getTranscript: FunctionReference<
+      "query",
+      "public",
+      { transcriptId: Id<"transcripts"> },
+      any
+    >;
+    getTranscriptContent: FunctionReference<
+      "action",
+      "public",
+      { transcriptId: Id<"transcripts"> },
+      any
+    >;
+    listTranscripts: FunctionReference<
+      "query",
+      "public",
+      { format?: "txt" | "json"; search?: string; tags?: Array<string> },
+      any
+    >;
+    updateTranscriptMetadata: FunctionReference<
+      "mutation",
+      "public",
+      {
+        metadata: {
+          date?: number;
+          notes?: string;
+          participantId?: string;
+          tags?: Array<string>;
+        };
+        transcriptId: Id<"transcripts">;
+      },
+      any
+    >;
+    uploadTranscript: FunctionReference<
+      "mutation",
+      "public",
+      {
+        metadata?: {
+          date?: number;
+          notes?: string;
+          participantId?: string;
+          tags: Array<string>;
+        };
+        originalFilename: string;
+        storageId?: Id<"_storage">;
+      },
       any
     >;
   };
@@ -1175,6 +1256,38 @@ export declare const internal: {
       "mutation",
       "internal",
       { launchRequestedBy?: string; studyId: Id<"studies"> },
+      any
+    >;
+  };
+  transcripts: {
+    getTranscriptForProcessing: FunctionReference<
+      "query",
+      "internal",
+      { transcriptId: Id<"transcripts"> },
+      any
+    >;
+    markTranscriptErrored: FunctionReference<
+      "mutation",
+      "internal",
+      { processingError: string; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    markTranscriptProcessed: FunctionReference<
+      "mutation",
+      "internal",
+      { characterCount: number; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    markTranscriptProcessingStarted: FunctionReference<
+      "mutation",
+      "internal",
+      { transcriptId: Id<"transcripts"> },
+      any
+    >;
+    processTranscript: FunctionReference<
+      "action",
+      "internal",
+      { transcriptId: Id<"transcripts"> },
       any
     >;
   };

@@ -443,6 +443,29 @@ export type DataModel = {
     searchIndexes: {};
     vectorIndexes: {};
   };
+  packTranscripts: {
+    document: {
+      createdAt: number;
+      packId: Id<"personaPacks">;
+      transcriptId: Id<"transcripts">;
+      _id: Id<"packTranscripts">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "createdAt"
+      | "packId"
+      | "transcriptId";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_packId: ["packId", "_creationTime"];
+      by_transcriptId: ["transcriptId", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
   personaPacks: {
     document: {
       context: string;
@@ -902,6 +925,53 @@ export type DataModel = {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
       by_studyId: ["studyId", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
+  transcripts: {
+    document: {
+      characterCount: number;
+      createdAt: number;
+      createdBy: string;
+      format: "txt" | "json";
+      metadata: {
+        date?: number;
+        notes?: string;
+        participantId?: string;
+        tags: Array<string>;
+      };
+      orgId: string;
+      originalFilename: string;
+      processingError?: string;
+      processingStatus: "pending" | "processing" | "processed" | "error";
+      storageId: Id<"_storage">;
+      updatedAt: number;
+      _id: Id<"transcripts">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "characterCount"
+      | "createdAt"
+      | "createdBy"
+      | "format"
+      | "metadata"
+      | "metadata.date"
+      | "metadata.notes"
+      | "metadata.participantId"
+      | "metadata.tags"
+      | "orgId"
+      | "originalFilename"
+      | "processingError"
+      | "processingStatus"
+      | "storageId"
+      | "updatedAt";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_orgId: ["orgId", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};

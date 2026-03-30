@@ -10,11 +10,13 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./analysisNotes.ts": () => import("./analysisNotes"),
   "./axisLibrary.ts": () => import("./axisLibrary"),
+  "./packTranscripts.ts": () => import("./packTranscripts"),
   "./personaPacks.ts": () => import("./personaPacks"),
   "./personaVariantGeneration.ts": () => import("./personaVariantGeneration"),
   "./rbac.ts": () => import("./rbac"),
   "./schema.ts": () => import("./schema"),
   "./studies.ts": () => import("./studies"),
+  "./transcripts.ts": () => import("./transcripts"),
   "./userManagement.ts": () => import("./userManagement"),
 };
 
@@ -197,6 +199,7 @@ describe("rbac", () => {
       packId: publishedPackId,
       status: "persona_review",
     });
+    const transcriptId = await insertTranscript(t);
     const issueId = await insertIssueCluster(t, publishedPackId);
 
     await expect(
@@ -273,6 +276,43 @@ describe("rbac", () => {
     await expect(
       asReviewer.action(api.personaVariantGeneration.generateVariantsForStudy, {
         studyId: draftStudyId,
+      }),
+    ).rejects.toThrowError("FORBIDDEN");
+    await expect(
+      asReviewer.mutation((api as any).transcripts.uploadTranscript, {
+        storageId: await storeTranscriptBlob(t),
+        originalFilename: "blocked.txt",
+        metadata: { tags: ["blocked"] },
+      }),
+    ).rejects.toThrowError("FORBIDDEN");
+    await expect(
+      asReviewer.mutation((api as any).transcripts.updateTranscriptMetadata, {
+        transcriptId,
+        metadata: { notes: "Reviewer should not edit transcript metadata." },
+      }),
+    ).rejects.toThrowError("FORBIDDEN");
+    await expect(
+      asReviewer.mutation((api as any).transcripts.deleteTranscript, {
+        transcriptId,
+      }),
+    ).rejects.toThrowError("FORBIDDEN");
+    await expect(
+      asReviewer.mutation((api as any).packTranscripts.attachTranscript, {
+        packId: draftPackId,
+        transcriptId,
+      }),
+    ).rejects.toThrowError("FORBIDDEN");
+    await t.run(async (ctx) =>
+      ctx.db.insert("packTranscripts", {
+        packId: draftPackId,
+        transcriptId,
+        createdAt: Date.now(),
+      }),
+    );
+    await expect(
+      asReviewer.mutation((api as any).packTranscripts.detachTranscript, {
+        packId: draftPackId,
+        transcriptId,
       }),
     ).rejects.toThrowError("FORBIDDEN");
 
@@ -406,6 +446,33 @@ async function insertIssueCluster(
       confidenceNote: "Confirmed with replay evidence.",
       score: 0.42,
     }),
+  );
+}
+
+async function insertTranscript(t: ReturnType<typeof createTest>) {
+  const storageId = await storeTranscriptBlob(t);
+
+  return await t.run(async (ctx) =>
+    ctx.db.insert("transcripts", {
+      storageId,
+      originalFilename: "seed.txt",
+      format: "txt",
+      metadata: {
+        tags: ["seed"],
+      },
+      processingStatus: "processed",
+      characterCount: "seed transcript".length,
+      orgId: reviewerIdentity.tokenIdentifier,
+      createdBy: reviewerIdentity.tokenIdentifier,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }),
+  );
+}
+
+async function storeTranscriptBlob(t: ReturnType<typeof createTest>) {
+  return await t.action(async (ctx) =>
+    ctx.storage.store(new Blob(["seed transcript"], { type: "text/plain" })),
   );
 }
 
