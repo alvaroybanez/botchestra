@@ -50,8 +50,15 @@ let mockedPackList:
 let mockedAxisDefinitions:
   | Doc<"axisDefinitions">[]
   | undefined = [];
+let mockedTranscriptList:
+  | Doc<"transcripts">[]
+  | undefined = [];
 let mockedPackDetail:
   | Doc<"personaPacks">
+  | null
+  | undefined = null;
+let mockedTranscriptDetail:
+  | Doc<"transcripts">
   | null
   | undefined = null;
 let mockedProtoPersonas:
@@ -321,6 +328,21 @@ type SettingsView = {
   credentials: CredentialSummary[];
 };
 
+type TranscriptContent =
+  | {
+      format: "txt";
+      text: string;
+    }
+  | {
+      format: "json";
+      turns: Array<{
+        speaker: string;
+        text: string;
+        timestamp?: number;
+      }>;
+    }
+  | null;
+
 let mockedVariantReview: ReviewData | null | undefined = undefined;
 let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
 let mockedStudyList: Doc<"studies">[] | undefined = [];
@@ -334,6 +356,15 @@ let mockedReportsByStudyId: Record<string, StudyReportView | null | undefined> =
 let mockedAdminDiagnosticsOverview: DiagnosticsOverview | undefined = undefined;
 let mockedAuditEvents: AuditEventView[] | undefined = [];
 let mockedSettingsView: SettingsView | undefined = undefined;
+let mockedTranscriptContentById: Record<string, TranscriptContent | undefined> =
+  {};
+let mockedTranscriptPacksByTranscriptId: Record<string, Array<{
+  _id: string;
+  transcriptId: string;
+  packId: string;
+  createdAt: number;
+  pack: Doc<"personaPacks">;
+}> | undefined> = {};
 const MOCK_ARTIFACT_BASE_URL = "http://localhost:8787";
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
@@ -346,6 +377,11 @@ const createProtoPersonaMock = vi.fn();
 const publishMock = vi.fn();
 const archiveMock = vi.fn();
 const suggestAxesMock = vi.fn();
+const uploadTranscriptMock = vi.fn();
+const updateTranscriptMetadataMock = vi.fn();
+const deleteTranscriptMock = vi.fn();
+const attachTranscriptMock = vi.fn();
+const getTranscriptContentMock = vi.fn();
 const generateVariantsMock = vi.fn();
 const exportJsonReportMock = vi.fn();
 const exportHtmlReportMock = vi.fn();
@@ -354,6 +390,7 @@ const createObjectURLMock = vi.fn();
 const revokeObjectURLMock = vi.fn();
 const clickedDownloads: Array<{ download: string; href: string }> = [];
 const downloadedBlobs = new Map<string, Blob>();
+const fetchMock = vi.fn();
 
 Object.defineProperty(navigator, "clipboard", {
   configurable: true,
@@ -373,6 +410,8 @@ Object.defineProperty(URL, "revokeObjectURL", {
   writable: true,
   value: revokeObjectURLMock,
 });
+
+vi.stubGlobal("fetch", fetchMock);
 
 Object.defineProperty(HTMLAnchorElement.prototype, "click", {
   configurable: true,
@@ -433,6 +472,22 @@ vi.mock("convex/react", () => ({
       return archiveMock;
     }
 
+    if (mutationName === "transcripts:uploadTranscript") {
+      return uploadTranscriptMock;
+    }
+
+    if (mutationName === "transcripts:updateTranscriptMetadata") {
+      return updateTranscriptMetadataMock;
+    }
+
+    if (mutationName === "transcripts:deleteTranscript") {
+      return deleteTranscriptMock;
+    }
+
+    if (mutationName === "packTranscripts:attachTranscript") {
+      return attachTranscriptMock;
+    }
+
     return vi.fn();
   },
   useAction: (action: unknown) => {
@@ -448,6 +503,10 @@ vi.mock("convex/react", () => ({
 
     if (actionName === "axisGeneration:suggestAxes") {
       return suggestAxesMock;
+    }
+
+    if (actionName === "transcripts:getTranscriptContent") {
+      return getTranscriptContentMock;
     }
 
     if (actionName === "reportExports:exportJson") {
@@ -603,8 +662,22 @@ vi.mock("convex/react", () => ({
       return mockedAxisDefinitions;
     }
 
+    if (queryName === "transcripts:listTranscripts") {
+      return mockedTranscriptList;
+    }
+
+    if (queryName === "transcripts:normalizeTranscriptId") {
+      return mockedTranscriptDetail === null
+        ? null
+        : (args?.transcriptId as Id<"transcripts">);
+    }
+
     if (queryName === "personaPacks:get") {
       return mockedPackDetail;
+    }
+
+    if (queryName === "transcripts:getTranscript") {
+      return mockedTranscriptDetail;
     }
 
     if (queryName === "personaPacks:listProtoPersonas") {
@@ -617,6 +690,10 @@ vi.mock("convex/react", () => ({
 
     if (queryName === "personaVariantReview:getPackVariantReview") {
       return mockedPackVariantReview;
+    }
+
+    if (queryName === "packTranscripts:listTranscriptPacks") {
+      return mockedTranscriptPacksByTranscriptId[String(args?.transcriptId)] ?? [];
     }
 
     return undefined;
@@ -640,7 +717,9 @@ afterEach(() => {
 beforeEach(() => {
   mockedPackList = [];
   mockedAxisDefinitions = [];
+  mockedTranscriptList = [];
   mockedPackDetail = null;
+  mockedTranscriptDetail = null;
   mockedProtoPersonas = [];
   mockedViewerAccess = null;
   mockedVariantReview = undefined;
@@ -655,6 +734,8 @@ beforeEach(() => {
   mockedAdminDiagnosticsOverview = undefined;
   mockedAuditEvents = [];
   mockedSettingsView = makeSettingsView();
+  mockedTranscriptContentById = {};
+  mockedTranscriptPacksByTranscriptId = {};
   createDraftMock.mockReset();
   createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
   createStudyMock.mockReset();
@@ -707,6 +788,57 @@ beforeEach(() => {
       weight: 1,
     },
   ]);
+  uploadTranscriptMock.mockReset();
+  uploadTranscriptMock
+    .mockImplementationOnce(async ({ originalFilename }: { originalFilename: string }) => ({
+      uploadUrl: `https://upload.factory.dev/${encodeURIComponent(originalFilename)}`,
+      transcriptId: null,
+    }))
+    .mockImplementation(async ({
+      storageId,
+      originalFilename,
+    }: {
+      storageId?: string;
+      originalFilename: string;
+    }) => {
+      if (storageId === undefined) {
+        return {
+          uploadUrl: `https://upload.factory.dev/${encodeURIComponent(originalFilename)}`,
+          transcriptId: null,
+        };
+      }
+
+      const transcriptId = `${originalFilename}-id` as Id<"transcripts">;
+      mockedTranscriptList = [
+        makeTranscript({
+          _id: transcriptId,
+          originalFilename,
+          format: originalFilename.endsWith(".json") ? "json" : "txt",
+          processingStatus: "pending",
+          characterCount: 0,
+          metadata: {
+            tags: [],
+          },
+        }),
+        ...(mockedTranscriptList ?? []),
+      ];
+
+      return {
+        uploadUrl: null,
+        transcriptId,
+      };
+    });
+  updateTranscriptMetadataMock.mockReset();
+  updateTranscriptMetadataMock.mockResolvedValue(undefined);
+  deleteTranscriptMock.mockReset();
+  deleteTranscriptMock.mockResolvedValue(undefined);
+  attachTranscriptMock.mockReset();
+  attachTranscriptMock.mockResolvedValue(undefined);
+  getTranscriptContentMock.mockReset();
+  getTranscriptContentMock.mockImplementation(
+    async ({ transcriptId }: { transcriptId: string }) =>
+      mockedTranscriptContentById[transcriptId] ?? null,
+  );
   generateVariantsMock.mockReset();
   generateVariantsMock.mockResolvedValue({
     acceptedCount: 64,
@@ -728,6 +860,16 @@ beforeEach(() => {
   revokeObjectURLMock.mockReset();
   downloadedBlobs.clear();
   clickedDownloads.length = 0;
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(
+    async () =>
+      new Response(JSON.stringify({ storageId: "storage-upload-1" }), {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        status: 200,
+      }),
+  );
 });
 
 describe("@botchestra/web routing", () => {
@@ -2500,6 +2642,305 @@ describe("@botchestra/web routing", () => {
     expect(archiveMock).toHaveBeenCalledWith({ packId: "pack-archive" });
   });
 
+  it("renders the transcripts route and places its sidebar link after Axis Library", async () => {
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-sidebar" as Id<"transcripts">,
+        originalFilename: "checkout-study.txt",
+        metadata: {
+          participantId: "p-100",
+          tags: ["checkout"],
+          notes: "Customer support follow-up.",
+        },
+      }),
+    ];
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/transcripts"],
+    });
+
+    const linkLabels = [...container.querySelectorAll("a")].map((link) =>
+      link.textContent?.trim(),
+    );
+
+    expect(linkLabels.indexOf("Transcripts")).toBe(
+      linkLabels.indexOf("Axis Library") + 1,
+    );
+    expect(getRouterLocationHref(router)).toBe("/transcripts");
+    expect(container.textContent).toContain("Transcripts");
+    expect(container.textContent).toContain("checkout-study.txt");
+  });
+
+  it("shows an empty-state upload CTA, highlights the drop zone, uploads valid files, and rejects unsupported formats", async () => {
+    mockedTranscriptList = [];
+
+    let uploadCount = 0;
+    uploadTranscriptMock.mockImplementation(
+      async ({
+        storageId,
+        originalFilename,
+      }: {
+        storageId?: string;
+        originalFilename: string;
+      }) => {
+        if (storageId === undefined) {
+          return {
+            uploadUrl: `https://upload.factory.dev/${encodeURIComponent(originalFilename)}`,
+            transcriptId: null,
+          };
+        }
+
+        uploadCount += 1;
+        const transcriptId = `transcript-upload-${uploadCount}` as Id<"transcripts">;
+
+        return {
+          uploadUrl: null,
+          transcriptId,
+        };
+      },
+    );
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ storageId: "storage-upload-2" }), {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          status: 200,
+        }),
+    );
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/transcripts"],
+    });
+
+    expect(container.textContent).toContain("No transcripts yet");
+    expect(container.textContent).toContain("Upload transcripts");
+
+    const uploadZone = container.querySelector<HTMLElement>("#transcript-upload-zone");
+    expect(uploadZone?.getAttribute("data-drag-active")).toBe("false");
+
+    await act(async () => {
+      uploadZone?.dispatchEvent(new Event("dragover", { bubbles: true }));
+    });
+    expect(uploadZone?.getAttribute("data-drag-active")).toBe("true");
+
+    await act(async () => {
+      uploadZone?.dispatchEvent(new Event("dragleave", { bubbles: true }));
+    });
+    expect(uploadZone?.getAttribute("data-drag-active")).toBe("false");
+
+    await updateFiles(
+      container,
+      "#transcript-upload-input",
+      [
+        new File(["Plain text transcript"], "customer-interview.txt", {
+          type: "text/plain",
+        }),
+        new File(
+          [JSON.stringify([{ speaker: "Interviewer", text: "How was it?" }])],
+          "customer-interview.json",
+          { type: "application/json" },
+        ),
+        new File(["not supported"], "customer-interview.pdf", {
+          type: "application/pdf",
+        }),
+      ],
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(uploadTranscriptMock).toHaveBeenCalledTimes(4);
+    expect(container.textContent).toContain("customer-interview.txt");
+    expect(container.textContent).toContain("customer-interview.json");
+    expect(container.textContent).toContain(
+      "Unsupported files were skipped: customer-interview.pdf.",
+    );
+  });
+
+  it("filters transcripts by search text, tag, and format using AND logic", async () => {
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-filter-1" as Id<"transcripts">,
+        originalFilename: "checkout-call.txt",
+        metadata: {
+          participantId: "vip-1",
+          tags: ["checkout", "vip"],
+          notes: "Discussed pricing hesitation.",
+        },
+      }),
+      makeTranscript({
+        _id: "transcript-filter-2" as Id<"transcripts">,
+        originalFilename: "checkout-json.json",
+        format: "json",
+        metadata: {
+          participantId: "vip-2",
+          tags: ["checkout"],
+          notes: "Structured interview.",
+        },
+      }),
+      makeTranscript({
+        _id: "transcript-filter-3" as Id<"transcripts">,
+        originalFilename: "support-call.txt",
+        metadata: {
+          participantId: "support-1",
+          tags: ["support"],
+          notes: "Escalation request.",
+        },
+      }),
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/transcripts"],
+    });
+
+    expect(container.textContent).toContain("checkout-call.txt");
+    expect(container.textContent).toContain("checkout-json.json");
+    expect(container.textContent).toContain("support-call.txt");
+
+    await updateSelect(container, "#transcript-tag-filter", "checkout");
+    await updateSelect(container, "#transcript-format-filter", "json");
+    await updateInput(container, "#transcript-search", "vip-2");
+
+    expect(container.textContent).toContain("checkout-json.json");
+    expect(container.textContent).not.toContain("checkout-call.txt");
+    expect(container.textContent).not.toContain("support-call.txt");
+    expect(container.textContent).toContain(
+      "Showing 1 of 3 transcripts matching tag “checkout”, format “json”, and search “vip-2”.",
+    );
+  });
+
+  it("renders transcript detail, saves metadata, attaches to a draft pack, and deletes after confirmation", async () => {
+    mockedTranscriptDetail = makeTranscript({
+      _id: "transcript-detail" as Id<"transcripts">,
+      originalFilename: "account-recovery.txt",
+      metadata: {
+        participantId: "before",
+        tags: ["draft"],
+        notes: "Before update.",
+      },
+    });
+    mockedTranscriptContentById["transcript-detail"] = {
+      format: "txt",
+      text: "Customer could not reset their password without support.",
+    };
+    mockedPackList = [
+      makePack({
+        _id: "draft-pack" as Id<"personaPacks">,
+        name: "Draft support pack",
+        status: "draft",
+      }),
+      makePack({
+        _id: "published-pack" as Id<"personaPacks">,
+        name: "Published pack",
+        status: "published",
+      }),
+    ];
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/transcripts/transcript-detail"],
+    });
+
+    expect(container.textContent).toContain("account-recovery.txt");
+    expect(container.textContent).toContain(
+      "Customer could not reset their password without support.",
+    );
+    expect(container.textContent).toContain("Attach to pack");
+
+    await updateInput(container, "#transcript-participant-id", "after");
+    await updateInput(container, "#transcript-tags", "checkout, returning");
+    await updateTextarea(container, "#transcript-notes", "After update.");
+    await clickButton(container, "Save metadata");
+
+    expect(updateTranscriptMetadataMock).toHaveBeenCalledWith({
+      transcriptId: "transcript-detail",
+      metadata: {
+        participantId: "after",
+        tags: ["checkout", "returning"],
+        notes: "After update.",
+      },
+    });
+
+    await updateSelect(container, "#transcript-attach-pack", "draft-pack");
+    await clickButton(container, "Attach to pack");
+
+    expect(attachTranscriptMock).toHaveBeenCalledWith({
+      packId: "draft-pack",
+      transcriptId: "transcript-detail",
+    });
+
+    await clickButton(container, "Delete transcript");
+    expect(document.body.textContent).toContain("Delete transcript?");
+
+    await clickButton(document.body, "Cancel");
+    expect(deleteTranscriptMock).not.toHaveBeenCalled();
+
+    await clickButton(container, "Delete transcript");
+    await clickButton(document.body, "Confirm delete");
+
+    expect(deleteTranscriptMock).toHaveBeenCalledWith({
+      transcriptId: "transcript-detail",
+    });
+    expect(getRouterLocationHref(router)).toBe("/transcripts");
+  });
+
+  it("renders JSON transcript detail for reviewers and hides mutation controls", async () => {
+    mockedTranscriptDetail = makeTranscript({
+      _id: "transcript-json" as Id<"transcripts">,
+      originalFilename: "structured-interview.json",
+      format: "json",
+      metadata: {
+        participantId: "json-participant",
+        tags: ["research"],
+        notes: "Structured content.",
+      },
+    });
+    mockedTranscriptContentById["transcript-json"] = {
+      format: "json",
+      turns: [
+        {
+          speaker: "Interviewer",
+          text: "How did checkout feel?",
+          timestamp: 1,
+        },
+        {
+          speaker: "Participant",
+          text: "I hesitated at the payment step.",
+          timestamp: 2,
+        },
+      ],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/transcripts/transcript-json"],
+      viewerRole: "reviewer",
+    });
+
+    expect(container.textContent).toContain("structured-interview.json");
+    expect(container.textContent).toContain("Interviewer");
+    expect(container.textContent).toContain("Participant");
+    expect(container.textContent).toContain("I hesitated at the payment step.");
+    expect(container.textContent).not.toContain("Save metadata");
+    expect(container.textContent).not.toContain("Delete transcript");
+    expect(container.querySelector("#transcript-attach-pack")).toBeNull();
+    expect(container.textContent).not.toContain("Attach to draft pack");
+  });
+
+  it("shows not-found content for invalid transcript detail links", async () => {
+    mockedTranscriptDetail = null;
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/transcripts/missing-transcript"],
+    });
+
+    expect(getRouterLocationHref(router)).toBe("/transcripts/missing-transcript");
+    expect(container.textContent).toContain("Page not found");
+  });
+
   it("shows the authenticated fallback route for unknown URLs", async () => {
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
@@ -2543,8 +2984,8 @@ async function renderRoute({
   return { container, router };
 }
 
-async function clickButton(container: HTMLDivElement, text: string) {
-  const button = getButton(container, text);
+async function clickButton(root: ParentNode, text: string) {
+  const button = getButton(root, text);
 
   expect(button).toBeDefined();
 
@@ -2553,8 +2994,8 @@ async function clickButton(container: HTMLDivElement, text: string) {
   });
 }
 
-function getButton(container: HTMLDivElement, text: string) {
-  return [...container.querySelectorAll("button")].find(
+function getButton(root: ParentNode, text: string) {
+  return [...root.querySelectorAll("button")].find(
     (candidate) => candidate.textContent?.trim() === text,
   );
 }
@@ -2596,6 +3037,24 @@ async function updateSelect(
     valueSetter?.call(select, value);
     select!.dispatchEvent(new Event("input", { bubbles: true }));
     select!.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+async function updateFiles(
+  container: HTMLDivElement,
+  selector: string,
+  files: File[],
+) {
+  const input = container.querySelector<HTMLInputElement>(selector);
+
+  expect(input).not.toBeNull();
+
+  await act(async () => {
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: makeFileList(files),
+    });
+    input!.dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
 
@@ -3155,6 +3614,32 @@ function makePack(overrides: Partial<Doc<"personaPacks">> = {}): Doc<"personaPac
   };
 }
 
+function makeTranscript(
+  overrides: Partial<Doc<"transcripts">> = {},
+): Doc<"transcripts"> {
+  return {
+    _creationTime: 1,
+    _id: (overrides._id ?? "transcript-1") as Id<"transcripts">,
+    storageId: "storage-1" as Id<"_storage">,
+    originalFilename: "checkout-transcript.txt",
+    format: "txt",
+    metadata: {
+      participantId: "participant-1",
+      tags: ["checkout"],
+      notes: "Transcript notes.",
+      ...overrides.metadata,
+    },
+    processingStatus: "processed",
+    processingError: undefined,
+    characterCount: 128,
+    orgId: "researcher|org-a",
+    createdBy: "researcher|org-a",
+    createdAt: 1,
+    updatedAt: 2,
+    ...overrides,
+  };
+}
+
 function makeAxisDefinition(
   overrides: Partial<Doc<"axisDefinitions">> = {},
 ): Doc<"axisDefinitions"> {
@@ -3314,4 +3799,26 @@ function makePackVariantReview() {
       },
     ],
   };
+}
+
+function makeFileList(files: File[]): FileList {
+  const fileList = {
+    length: files.length,
+    item: (index: number) => files[index] ?? null,
+    [Symbol.iterator]: function* iterator() {
+      for (const file of files) {
+        yield file;
+      }
+    },
+  };
+
+  for (const [index, file] of files.entries()) {
+    Object.defineProperty(fileList, index, {
+      configurable: true,
+      enumerable: true,
+      value: file,
+    });
+  }
+
+  return fileList as FileList;
 }

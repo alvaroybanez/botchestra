@@ -35,6 +35,10 @@ import {
   validateStudyReportSearch,
 } from "@/routes/study-shared";
 import { SignupPage } from "@/routes/signup";
+import {
+  TranscriptDetailPage as TranscriptDetailRoutePage,
+  TranscriptsPage as TranscriptsRoutePage,
+} from "@/routes/transcript-pages";
 
 export type AppAuthState = {
   isAuthenticated: boolean;
@@ -259,10 +263,22 @@ const axisLibraryRoute = createRoute({
   component: AxisLibraryPage,
 });
 
+const transcriptsRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "transcripts",
+  component: TranscriptsPage,
+});
+
 const personaPackDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "persona-packs/$packId",
   component: PersonaPackDetailPage,
+});
+
+const transcriptDetailRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "transcripts/$transcriptId",
+  component: TranscriptDetailPage,
 });
 
 const settingsRoute = createRoute({
@@ -297,7 +313,9 @@ const routeTree = rootRoute.addChildren([
     studyReportRoute,
     personaPacksRoute,
     axisLibraryRoute,
+    transcriptsRoute,
     personaPackDetailRoute,
+    transcriptDetailRoute,
     settingsRoute,
     adminDiagnosticsRoute,
     authenticatedNotFoundRoute,
@@ -491,9 +509,18 @@ function AxisLibraryPage() {
   return <AxisLibraryRoutePage />;
 }
 
+function TranscriptsPage() {
+  return <TranscriptsRoutePage />;
+}
+
 function PersonaPackDetailPage() {
   const { packId } = personaPackDetailRoute.useParams();
   return <PersonaPackDetailRoutePage packId={packId} />;
+}
+
+function TranscriptDetailPage() {
+  const { transcriptId } = transcriptDetailRoute.useParams();
+  return <TranscriptDetailRoutePage transcriptId={transcriptId} />;
 }
 
 function SettingsPage() {

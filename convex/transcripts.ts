@@ -298,6 +298,31 @@ export const getTranscript = query({
   },
 });
 
+export const normalizeTranscriptId = query({
+  args: {
+    transcriptId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    const normalizedTranscriptId = ctx.db.normalizeId(
+      "transcripts",
+      args.transcriptId,
+    );
+
+    if (normalizedTranscriptId === null) {
+      return null;
+    }
+
+    const transcript = await ctx.db.get(normalizedTranscriptId);
+
+    if (transcript === null || transcript.orgId !== identity.tokenIdentifier) {
+      return null;
+    }
+
+    return normalizedTranscriptId;
+  },
+});
+
 export const getTranscriptContent = action({
   args: {
     transcriptId: v.id("transcripts"),

@@ -276,6 +276,36 @@ describe("transcripts", () => {
     expect(foreignTranscript).toBeNull();
   });
 
+  it("normalizes valid transcript ids and returns null for invalid or foreign ids", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researcherIdentity);
+    const asOtherResearcher = t.withIdentity(otherResearcherIdentity);
+    const transcriptId = await insertTranscript(t);
+
+    const normalized = await asResearcher.query(
+      (api as any).transcripts.normalizeTranscriptId,
+      {
+        transcriptId,
+      },
+    );
+    const invalid = await asResearcher.query(
+      (api as any).transcripts.normalizeTranscriptId,
+      {
+        transcriptId: "not-a-real-transcript-id",
+      },
+    );
+    const foreign = await asOtherResearcher.query(
+      (api as any).transcripts.normalizeTranscriptId,
+      {
+        transcriptId,
+      },
+    );
+
+    expect(normalized).toBe(transcriptId);
+    expect(invalid).toBeNull();
+    expect(foreign).toBeNull();
+  });
+
   it("returns raw text content for txt transcripts", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);

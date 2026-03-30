@@ -681,6 +681,12 @@ export declare const api: {
       { format?: "txt" | "json"; search?: string; tags?: Array<string> },
       any
     >;
+    normalizeTranscriptId: FunctionReference<
+      "query",
+      "public",
+      { transcriptId: string },
+      any
+    >;
     updateTranscriptMetadata: FunctionReference<
       "mutation",
       "public",

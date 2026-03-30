@@ -24,6 +24,12 @@ const baseNavigationItems = [
     permission: null,
   },
   {
+    label: "Transcripts",
+    to: "/transcripts",
+    exact: false,
+    permission: null,
+  },
+  {
     label: "Settings",
     to: "/settings",
     exact: true,
