@@ -23,9 +23,9 @@ const demoReviewData: VariantReviewData = {
     runBudget: 64,
     updatedAt: new Date("2026-03-25T09:00:00Z").getTime(),
   },
-  pack: {
-    _id: "demo-pack",
-    name: "Customer Journey Stress Test Pack",
+  config: {
+    _id: "demo-config",
+    name: "Customer Journey Stress Test Config",
     status: "published",
     sharedAxes: [
       {
@@ -286,7 +286,7 @@ function VariantReviewContent({
               <div className="space-y-1">
                 <CardTitle>{reviewData.study?.name ?? "Persona review"}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Pack: {reviewData.pack.name} · {reviewData.variants.length} accepted
+                  Config: {reviewData.config.name} · {reviewData.variants.length} accepted
                   variants visible
                 </p>
               </div>

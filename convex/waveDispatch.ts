@@ -151,7 +151,7 @@ export const getRunDispatchPayload = internalQuery({
       taskSpec: study.taskSpec,
       personaVariant: {
         id: personaVariant._id,
-        personaPackId: personaVariant.personaPackId,
+        personaConfigId: personaVariant.personaConfigId,
         syntheticUserId: personaVariant.syntheticUserId,
         axisValues: Object.fromEntries(
           personaVariant.axisValues.map((axisValue) => [

@@ -54,12 +54,12 @@ describe("studies.createStudy", () => {
   it("creates a draft study with defaults, caps active concurrency, and records the creator", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await insertPack(t, { status: "published" });
+    const configId = await insertPack(t, { status: "published" });
     const before = Date.now();
 
     const createdStudy = await asResearcher.mutation(api.studies.createStudy, {
       study: {
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Checkout launch readiness",
         description: "Validate the primary checkout funnel.",
         taskSpec: makeTaskSpec(),
@@ -71,7 +71,7 @@ describe("studies.createStudy", () => {
 
     expect(createdStudy).toMatchObject({
       _id: createdStudy._id,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout launch readiness",
       description: "Validate the primary checkout funnel.",
       status: "draft",
@@ -91,7 +91,7 @@ describe("studies.createStudy", () => {
   it("preserves custom post-task questions exactly", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const customQuestions = [
       "Did you complete the task?",
       "What felt risky?",
@@ -100,7 +100,7 @@ describe("studies.createStudy", () => {
 
     const createdStudy = await asResearcher.mutation(api.studies.createStudy, {
       study: {
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Custom question study",
         taskSpec: makeTaskSpec({ postTaskQuestions: customQuestions }),
         runBudget: 12,
@@ -111,15 +111,15 @@ describe("studies.createStudy", () => {
     expect(createdStudy.taskSpec.postTaskQuestions).toEqual(customQuestions);
   });
 
-  it("rejects invalid inputs and missing persona packs", async () => {
+  it("rejects invalid inputs and missing persona configurations", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
 
     await expect(
       asResearcher.mutation(api.studies.createStudy, {
         study: {
-          personaPackId: packId,
+          personaConfigId: configId,
           name: "Missing environment label",
           taskSpec: makeTaskSpec({ environmentLabel: "" }),
           runBudget: 5,
@@ -131,7 +131,7 @@ describe("studies.createStudy", () => {
     await expect(
       asResearcher.mutation(api.studies.createStudy, {
         study: {
-          personaPackId: packId,
+          personaConfigId: configId,
           name: "Zero budget",
           taskSpec: makeTaskSpec(),
           runBudget: 0,
@@ -143,14 +143,14 @@ describe("studies.createStudy", () => {
     await expect(
       asResearcher.mutation(api.studies.createStudy, {
         study: {
-          personaPackId: "fake_pack_id" as Id<"personaPacks">,
-          name: "Missing pack",
+          personaConfigId: "fake_pack_id" as Id<"personaConfigs">,
+          name: "Missing config",
           taskSpec: makeTaskSpec(),
           runBudget: 5,
           activeConcurrency: 2,
         },
       }),
-    ).rejects.toThrow(/pack/i);
+    ).rejects.toThrow(/config/i);
 
     const studies = await t.run(async (ctx) => ctx.db.query("studies").collect());
     expect(studies).toHaveLength(0);
@@ -247,17 +247,17 @@ describe("studies.launchStudy", () => {
     expect(launchedStudy.launchedAt).toBeUndefined();
   });
 
-  it("rejects studies whose persona pack is not published", async () => {
+  it("rejects studies whose persona configuration is not published", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
 
     const draftPackStudyId = await insertStudy(t, {
       status: "ready",
-      personaPackStatus: "draft",
+      personaConfigStatus: "draft",
     });
     const archivedPackStudyId = await insertStudy(t, {
       status: "ready",
-      personaPackStatus: "archived",
+      personaConfigStatus: "archived",
     });
 
     await expect(
@@ -494,13 +494,13 @@ type TestInstance = ReturnType<typeof createTest>;
 
 async function insertPack(
   t: TestInstance,
-  overrides: Partial<Doc<"personaPacks">> = {},
+  overrides: Partial<Doc<"personaConfigs">> = {},
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+    ctx.db.insert("personaConfigs", {
       orgId: researchIdentity.tokenIdentifier,
-      name: "Checkout persona pack",
-      description: "Published pack for checkout studies",
+      name: "Checkout persona configuration",
+      description: "Published config for checkout studies",
       context: "US e-commerce checkout",
       sharedAxes: [
         {
@@ -531,19 +531,19 @@ async function insertStudy(
     runBudget?: number;
     activeConcurrency?: number;
     taskSpec?: StudyTaskSpecInput & { postTaskQuestions?: string[] };
-    personaPackStatus?: "draft" | "published" | "archived";
+    personaConfigStatus?: "draft" | "published" | "archived";
     launchRequestedBy?: string;
     launchedAt?: number;
   } = {},
 ) {
-  const packId = await insertPack(t, {
-    status: overrides.personaPackStatus ?? "published",
+  const configId = await insertPack(t, {
+    status: overrides.personaConfigStatus ?? "published",
   });
 
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: researchIdentity.tokenIdentifier,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout study",
       description: "Study description",
       taskSpec: {
@@ -583,7 +583,7 @@ async function seedAcceptedVariants(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Confident buyer",
       summary: "Moves quickly through checkout.",
       axes: [
@@ -607,7 +607,7 @@ async function seedAcceptedVariants(
     await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: study.personaPackId,
+        personaConfigId: study.personaConfigId,
         syntheticUserId,
         axisValues: [{ key: "digital_confidence", value: 0.8 }],
         edgeScore: 0.8,

@@ -57,18 +57,18 @@ export const contentRoutePlaceholders = [
       "This placeholder is reserved for the final report page with headline metrics and prioritized findings.",
   },
   {
-    key: "persona-packs",
-    title: "Persona Packs",
-    description: "Manage reusable persona packs from the pack library.",
+    key: "persona-configs",
+    title: "Persona Configurations",
+    description: "Manage reusable persona configurations from the persona configuration library.",
     detail:
-      "This placeholder reserves the persona pack list that will organize draft, published, and archived packs.",
+      "This placeholder reserves the persona configuration list that will organize draft, published, and archived persona configurations.",
   },
   {
-    key: "persona-pack-detail",
-    title: "Persona Pack Detail",
-    description: "Inspect the details for one selected persona pack.",
+    key: "persona-config-detail",
+    title: "Persona Configuration Detail",
+    description: "Inspect the details for one selected persona configuration.",
     detail:
-      "This placeholder stands in for the persona pack detail page that will show pack metadata and variants.",
+      "This placeholder stands in for the persona configuration detail page that will show persona configuration metadata and variants.",
   },
   {
     key: "settings",

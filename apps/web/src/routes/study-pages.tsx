@@ -37,7 +37,7 @@ const TERMINAL_OUTCOME_LABELS = [
   { key: "cancelled", label: "Cancelled" },
 ] as const;
 
-type PersonaPackListItem = Doc<"personaPacks">;
+type PersonaConfigListItem = Doc<"personaConfigs">;
 type ActiveRunListItem = {
   _id: string;
   status: string;
@@ -47,7 +47,7 @@ type ActiveRunListItem = {
 };
 
 type StudyFormValue = {
-  personaPackId: string;
+  personaConfigId: string;
   name: string;
   description: string;
   scenario: string;
@@ -73,7 +73,7 @@ type StudyActionConfirmationState = {
 };
 
 const emptyStudyForm = (): StudyFormValue => ({
-  personaPackId: "",
+  personaConfigId: "",
   name: "",
   description: "",
   scenario: "",
@@ -157,19 +157,19 @@ export function StudiesListPage() {
 }
 
 export function StudyCreationWizardPage() {
-  const personaPacks = useQuery(api.personaPacks.list, {});
+  const personaConfigs = useQuery(api.personaConfigs.list, {});
   const createStudy = useMutation(api.studies.createStudy);
   const navigate = useNavigate({ from: "/studies/new" });
   const [form, setForm] = useState<StudyFormValue>(emptyStudyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const availablePacks = useMemo<PersonaPackListItem[]>(
+  const availablePacks = useMemo<PersonaConfigListItem[]>(
     () =>
-      (personaPacks ?? []).filter(
-        (pack: PersonaPackListItem) => pack.status !== "archived",
+      (personaConfigs ?? []).filter(
+        (config: PersonaConfigListItem) => config.status !== "archived",
       ),
-    [personaPacks],
+    [personaConfigs],
   );
 
   useEffect(() => {
@@ -178,9 +178,9 @@ export function StudyCreationWizardPage() {
     }
 
     setForm((current) =>
-      current.personaPackId
+      current.personaConfigId
         ? current
-        : { ...current, personaPackId: availablePacks[0]!._id },
+        : { ...current, personaConfigId: availablePacks[0]!._id },
     );
   }, [availablePacks]);
 
@@ -193,7 +193,7 @@ export function StudyCreationWizardPage() {
     try {
       const createdStudy = await createStudy({
         study: {
-          personaPackId: form.personaPackId as Id<"personaPacks">,
+          personaConfigId: form.personaConfigId as Id<"personaConfigs">,
           name: form.name,
           ...(form.description.trim()
             ? { description: form.description.trim() }
@@ -216,10 +216,10 @@ export function StudyCreationWizardPage() {
     }
   }
 
-  if (personaPacks === undefined) {
+  if (personaConfigs === undefined) {
     return (
       <StateCard
-        body="Loading persona packs and creation controls..."
+        body="Loading persona configurations and creation controls..."
         title="New study"
       />
     );
@@ -229,15 +229,15 @@ export function StudyCreationWizardPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>No persona packs available</CardTitle>
+          <CardTitle>No persona configurations available</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Create or publish a persona pack before launching a new study. The
-            creation wizard needs a pack to supply persona coverage.
+            Create or publish a persona configuration before launching a new study. The
+            creation wizard needs a persona configuration to supply persona coverage.
           </p>
           <Button asChild variant="outline">
-            <Link to="/persona-packs">Open Persona Packs</Link>
+            <Link to="/persona-configs">Open Persona Configurations</Link>
           </Button>
         </CardContent>
       </Card>
@@ -255,7 +255,7 @@ export function StudyCreationWizardPage() {
             Create a new study
           </h2>
           <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Configure the persona pack, task specification, run budget,
+            Configure the persona configuration, task specification, run budget,
             concurrency, and guardrails for the study launch workflow.
           </p>
         </div>
@@ -269,21 +269,21 @@ export function StudyCreationWizardPage() {
           <CardContent className="grid gap-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Field>
-                <Label htmlFor="study-persona-pack">Persona pack selector</Label>
+                <Label htmlFor="study-persona-config">Persona configuration selector</Label>
                 <select
-                  id="study-persona-pack"
+                  id="study-persona-config"
                   className={selectClassName}
-                  value={form.personaPackId}
+                  value={form.personaConfigId}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
-                      personaPackId: event.target.value,
+                      personaConfigId: event.target.value,
                     }))
                   }
                 >
-                  {availablePacks.map((pack: PersonaPackListItem) => (
-                    <option key={pack._id} value={pack._id}>
-                      {pack.name} ({pack.status})
+                  {availablePacks.map((config: PersonaConfigListItem) => (
+                    <option key={config._id} value={config._id}>
+                      {config.name} ({config.status})
                     </option>
                   ))}
                 </select>
@@ -709,8 +709,8 @@ function DemoStudyOverviewPage({
                 value={demoStudyOverview.taskSpec.postTaskQuestions.join(", ")}
               />
               <SummaryValue
-                label="Persona pack"
-                value={demoStudyOverview.personaPackId}
+                label="Persona configuration"
+                value={demoStudyOverview.personaConfigId}
               />
             </CardContent>
           </Card>
@@ -1223,8 +1223,8 @@ function StudyOverviewResolved({
                 value={study.taskSpec.postTaskQuestions.join(", ")}
               />
               <SummaryValue
-                label="Persona pack"
-                value={study.personaPackId}
+                label="Persona configuration"
+                value={study.personaConfigId}
               />
             </CardContent>
           </Card>
@@ -1976,7 +1976,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function studyToFormValue(study: Doc<"studies">): StudyFormValue {
   return {
-    personaPackId: study.personaPackId,
+    personaConfigId: study.personaConfigId,
     name: study.name,
     description: study.description ?? "",
     scenario: study.taskSpec.scenario,

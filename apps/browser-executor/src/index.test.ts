@@ -71,7 +71,7 @@ async function createValidExecuteRunRequest(overrides: Partial<ExecuteRunRequest
     studyId: "study_xyz789",
     personaVariant: {
       id: "pv_001",
-      personaPackId: "pp_001",
+      personaConfigId: "pp_001",
       syntheticUserId: "proto_001",
       axisValues: { techSavviness: 0.8, patience: -0.3 },
       edgeScore: 0.75,

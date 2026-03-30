@@ -11,7 +11,7 @@ function createExecuteRunRequest(
     studyId: "study_self_report",
     personaVariant: {
       id: "variant_123",
-      personaPackId: "pack_123",
+      personaConfigId: "pack_123",
       syntheticUserId: "proto_123",
       axisValues: { confidence: -0.2 },
       edgeScore: 0.4,

@@ -11,7 +11,7 @@ export type VariantReviewData = {
     runBudget: number;
     updatedAt: number;
   } | null;
-  pack: {
+  config: {
     _id: string;
     name: string;
     status: string;
@@ -54,7 +54,7 @@ export function PersonaVariantReviewGrid({
 }) {
   const [selectedSyntheticUserId, setSelectedSyntheticUserId] = useState("all");
   const [selectedAxisKey, setSelectedAxisKey] = useState(
-    reviewData.pack.sharedAxes[0]?.key ?? "",
+    reviewData.config.sharedAxes[0]?.key ?? "",
   );
   const [minimumAxisValue, setMinimumAxisValue] = useState("");
   const [maximumAxisValue, setMaximumAxisValue] = useState("");
@@ -69,11 +69,11 @@ export function PersonaVariantReviewGrid({
         : "all",
     );
     setSelectedAxisKey((current) =>
-      reviewData.pack.sharedAxes.some((axis) => axis.key === current)
+      reviewData.config.sharedAxes.some((axis) => axis.key === current)
         ? current
-        : (reviewData.pack.sharedAxes[0]?.key ?? ""),
+        : (reviewData.config.sharedAxes[0]?.key ?? ""),
     );
-  }, [reviewData.pack._id, reviewData.pack.sharedAxes, reviewData.syntheticUsers]);
+  }, [reviewData.config._id, reviewData.config.sharedAxes, reviewData.syntheticUsers]);
 
   const filteredVariants = useMemo(() => {
     const minimum = parseNumericFilter(minimumAxisValue);
@@ -160,7 +160,7 @@ export function PersonaVariantReviewGrid({
                 value={selectedAxisKey}
                 onChange={(event) => setSelectedAxisKey(event.target.value)}
               >
-                {reviewData.pack.sharedAxes.map((axis) => (
+                {reviewData.config.sharedAxes.map((axis) => (
                   <option key={axis.key} value={axis.key}>
                     {axis.label}
                   </option>
@@ -217,7 +217,7 @@ export function PersonaVariantReviewGrid({
                   <thead>
                     <tr className="border-b">
                       <HeaderCell>Synthetic user</HeaderCell>
-                      {reviewData.pack.sharedAxes.map((axis) => (
+                      {reviewData.config.sharedAxes.map((axis) => (
                         <HeaderCell key={axis.key}>{axis.label}</HeaderCell>
                       ))}
                       <SortableHeader
@@ -262,7 +262,7 @@ export function PersonaVariantReviewGrid({
                             </p>
                           </div>
                         </BodyCell>
-                        {reviewData.pack.sharedAxes.map((axis) => (
+                        {reviewData.config.sharedAxes.map((axis) => (
                           <BodyCell key={`${variant._id}-${axis.key}`}>
                             {formatAxisValue(
                               getAxisValue(variant.axisValues, axis.key),
@@ -302,7 +302,7 @@ export function PersonaVariantReviewGrid({
             <CardTitle>Selected axis anchors</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {reviewData.pack.sharedAxes
+            {reviewData.config.sharedAxes
               .filter((axis) => axis.key === selectedAxisKey)
               .map((axis) => (
                 <div key={axis.key} className="space-y-2 text-sm">

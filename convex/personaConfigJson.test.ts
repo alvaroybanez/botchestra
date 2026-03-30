@@ -9,7 +9,7 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./axisLibrary.ts": () => import("./axisLibrary"),
   "./schema.ts": () => import("./schema"),
-  "./personaPacks.ts": () => import("./personaPacks"),
+  "./personaConfigs.ts": () => import("./personaConfigs"),
   "./userManagement.ts": () => import("./userManagement"),
 };
 
@@ -60,10 +60,10 @@ const makeSyntheticUser = (
 });
 
 const makeImportPayload = (
-  overrides: Partial<PersonaPackJson> = {},
-): PersonaPackJson => ({
-  name: "Imported Persona Pack",
-  description: "Pack loaded from JSON",
+  overrides: Partial<PersonaConfigJson> = {},
+): PersonaConfigJson => ({
+  name: "Imported Persona Configuration",
+  description: "Config loaded from JSON",
   context: "Checkout usability study",
   status: "published",
   sharedAxes: [
@@ -82,26 +82,26 @@ const makeImportPayload = (
   ...overrides,
 });
 
-describe("persona pack JSON import/export", () => {
-  it("imports valid JSON into a new draft pack regardless of source status", async () => {
+describe("persona configuration JSON import/export", () => {
+  it("imports valid JSON into a new draft config regardless of source status", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
 
-    const importedPackId = await asResearcher.action(api.personaPacks.importJson, {
+    const importedPackId = await asResearcher.action(api.personaConfigs.importJson, {
       json: JSON.stringify(makeImportPayload({ status: "archived" })),
     });
 
-    const importedPack = await asResearcher.query(api.personaPacks.get, {
-      packId: importedPackId,
+    const importedPack = await asResearcher.query(api.personaConfigs.get, {
+      configId: importedPackId,
     });
     const syntheticUsers = await asResearcher.query(
-      api.personaPacks.listSyntheticUsers,
-      { packId: importedPackId },
+      api.personaConfigs.listSyntheticUsers,
+      { configId: importedPackId },
     );
 
     expect(importedPack).toMatchObject({
-      name: "Imported Persona Pack",
-      description: "Pack loaded from JSON",
+      name: "Imported Persona Configuration",
+      description: "Config loaded from JSON",
       context: "Checkout usability study",
       status: "draft",
       version: 1,
@@ -133,7 +133,7 @@ describe("persona pack JSON import/export", () => {
     const asResearcher = t.withIdentity(researchIdentity);
 
     await expect(
-      asResearcher.action(api.personaPacks.importJson, {
+      asResearcher.action(api.personaConfigs.importJson, {
         json: JSON.stringify({
           description: "Missing name",
           context: "Checkout usability study",
@@ -144,7 +144,7 @@ describe("persona pack JSON import/export", () => {
     ).rejects.toThrow("name");
 
     await expect(
-      asResearcher.action(api.personaPacks.importJson, {
+      asResearcher.action(api.personaConfigs.importJson, {
         json: JSON.stringify({
           ...makeImportPayload(),
           sharedAxes: "not-an-array",
@@ -153,7 +153,7 @@ describe("persona pack JSON import/export", () => {
     ).rejects.toThrow("sharedAxes");
 
     await expect(
-      asResearcher.action(api.personaPacks.importJson, {
+      asResearcher.action(api.personaConfigs.importJson, {
         json: JSON.stringify({
           ...makeImportPayload(),
           sharedAxes: [
@@ -167,7 +167,7 @@ describe("persona pack JSON import/export", () => {
     ).rejects.toThrow("lowAnchor");
 
     await expect(
-      asResearcher.action(api.personaPacks.importJson, {
+      asResearcher.action(api.personaConfigs.importJson, {
         json: JSON.stringify({
           ...makeImportPayload(),
           sharedAxes: [
@@ -180,12 +180,12 @@ describe("persona pack JSON import/export", () => {
       }),
     ).rejects.toThrow("description");
 
-    const packs = await t.run(async (ctx) => ctx.db.query("personaPacks").collect());
+    const configs = await t.run(async (ctx) => ctx.db.query("personaConfigs").collect());
     const syntheticUsers = await t.run(async (ctx) =>
       ctx.db.query("syntheticUsers").collect(),
     );
 
-    expect(packs).toHaveLength(0);
+    expect(configs).toHaveLength(0);
     expect(syntheticUsers).toHaveLength(0);
   });
 
@@ -194,7 +194,7 @@ describe("persona pack JSON import/export", () => {
     const asResearcher = t.withIdentity(researchIdentity);
 
     await expect(
-      asResearcher.action(api.personaPacks.importJson, {
+      asResearcher.action(api.personaConfigs.importJson, {
         json: JSON.stringify(
           makeImportPayload({
             syntheticUsers: [
@@ -211,14 +211,14 @@ describe("persona pack JSON import/export", () => {
           }),
         ),
       }),
-    ).rejects.toThrow(/shared pack axis keys/i);
+    ).rejects.toThrow(/shared config axis keys/i);
 
-    const packs = await t.run(async (ctx) => ctx.db.query("personaPacks").collect());
+    const configs = await t.run(async (ctx) => ctx.db.query("personaConfigs").collect());
     const syntheticUsers = await t.run(async (ctx) =>
       ctx.db.query("syntheticUsers").collect(),
     );
 
-    expect(packs).toHaveLength(0);
+    expect(configs).toHaveLength(0);
     expect(syntheticUsers).toHaveLength(0);
   });
 
@@ -227,22 +227,22 @@ describe("persona pack JSON import/export", () => {
     const asResearcher = t.withIdentity(researchIdentity);
 
     await expect(
-      asResearcher.action(api.personaPacks.importJson, {
+      asResearcher.action(api.personaConfigs.importJson, {
         json: "{not json}",
       }),
     ).rejects.toThrow(/json/i);
 
     await expect(
-      asResearcher.action(api.personaPacks.importJson, {
+      asResearcher.action(api.personaConfigs.importJson, {
         json: "",
       }),
     ).rejects.toThrow(/json/i);
 
-    const packs = await t.run(async (ctx) => ctx.db.query("personaPacks").collect());
-    expect(packs).toHaveLength(0);
+    const configs = await t.run(async (ctx) => ctx.db.query("personaConfigs").collect());
+    expect(configs).toHaveLength(0);
   });
 
-  it("imports a large pack with 10 synthetic users and preserves evidence snippets", async () => {
+  it("imports a large config with 10 synthetic users and preserves evidence snippets", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
 
@@ -258,12 +258,12 @@ describe("persona pack JSON import/export", () => {
       ),
     });
 
-    const importedPackId = await asResearcher.action(api.personaPacks.importJson, {
+    const importedPackId = await asResearcher.action(api.personaConfigs.importJson, {
       json: JSON.stringify(largePayload),
     });
     const syntheticUsers = await asResearcher.query(
-      api.personaPacks.listSyntheticUsers,
-      { packId: importedPackId },
+      api.personaConfigs.listSyntheticUsers,
+      { configId: importedPackId },
     );
 
     expect(syntheticUsers).toHaveLength(10);
@@ -273,24 +273,24 @@ describe("persona pack JSON import/export", () => {
     );
   });
 
-  it("exports draft, published, and archived packs including synthetic users but excluding variants", async () => {
+  it("exports draft, published, and archived configs including synthetic users but excluding variants", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
 
-    const draftPackId = await createDraftPack(t, "Draft export pack");
-    const publishedPackId = await createPublishedPack(t, "Published export pack");
-    const archivedPackId = await createArchivedPack(t, "Archived export pack");
+    const draftPackId = await createDraftPack(t, "Draft export config");
+    const publishedPackId = await createPublishedPack(t, "Published export config");
+    const archivedPackId = await createArchivedPack(t, "Archived export config");
 
     await insertVariantForPack(t, draftPackId);
 
-    for (const [packId, expectedStatus] of [
+    for (const [configId, expectedStatus] of [
       [draftPackId, "draft"],
       [publishedPackId, "published"],
       [archivedPackId, "archived"],
     ] as const) {
       const exported = JSON.parse(
-        await asResearcher.action(api.personaPacks.exportJson, { packId }),
-      ) as PersonaPackJson & Record<string, unknown>;
+        await asResearcher.action(api.personaConfigs.exportJson, { configId }),
+      ) as PersonaConfigJson & Record<string, unknown>;
 
       expect(exported.status).toBe(expectedStatus);
       expect(exported.syntheticUsers).toHaveLength(1);
@@ -307,7 +307,7 @@ describe("persona pack JSON import/export", () => {
   it("round-trips export -> import -> export with fidelity", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const originalPackId = await createPublishedPack(t, "Round-trip pack", {
+    const originalPackId = await createPublishedPack(t, "Round-trip config", {
       description: "Round-trip description",
       context: "Round-trip context",
       syntheticUser: {
@@ -319,20 +319,20 @@ describe("persona pack JSON import/export", () => {
     });
 
     const originalExport = JSON.parse(
-      await asResearcher.action(api.personaPacks.exportJson, {
-        packId: originalPackId,
+      await asResearcher.action(api.personaConfigs.exportJson, {
+        configId: originalPackId,
       }),
-    ) as PersonaPackJson;
+    ) as PersonaConfigJson;
 
-    const reimportedPackId = await asResearcher.action(api.personaPacks.importJson, {
+    const reimportedPackId = await asResearcher.action(api.personaConfigs.importJson, {
       json: JSON.stringify(originalExport),
     });
 
     const reimportedExport = JSON.parse(
-      await asResearcher.action(api.personaPacks.exportJson, {
-        packId: reimportedPackId,
+      await asResearcher.action(api.personaConfigs.exportJson, {
+        configId: reimportedPackId,
       }),
-    ) as PersonaPackJson;
+    ) as PersonaConfigJson;
 
     expect(reimportedExport).toEqual({
       ...originalExport,
@@ -359,7 +359,7 @@ type SyntheticUserJson = {
   notes?: string;
 };
 
-type PersonaPackJson = {
+type PersonaConfigJson = {
   name: string;
   description: string;
   context: string;
@@ -380,8 +380,8 @@ async function createDraftPack(
   } = {},
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
-  const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-    pack: {
+  const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+    config: {
       name,
       description: overrides.description ?? `${name} description`,
       context: overrides.context ?? `${name} context`,
@@ -400,8 +400,8 @@ async function createDraftPack(
     },
   });
 
-  await asResearcher.mutation(api.personaPacks.createSyntheticUser, {
-    packId,
+  await asResearcher.mutation(api.personaConfigs.createSyntheticUser, {
+    configId,
     syntheticUser: {
       name: overrides.syntheticUser?.name ?? "draft synthetic user",
       summary:
@@ -426,7 +426,7 @@ async function createDraftPack(
     },
   });
 
-  return packId;
+  return configId;
 }
 
 async function createPublishedPack(
@@ -439,7 +439,7 @@ async function createPublishedPack(
   } = {},
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
-  const packId = await createDraftPack(t, name, {
+  const configId = await createDraftPack(t, name, {
     ...overrides,
     syntheticUser: {
       name: "published synthetic user",
@@ -448,36 +448,36 @@ async function createPublishedPack(
     },
   });
 
-  await asResearcher.mutation(api.personaPacks.publish, { packId });
-  return packId;
+  await asResearcher.mutation(api.personaConfigs.publish, { configId });
+  return configId;
 }
 
 async function createArchivedPack(t: TestInstance, name: string) {
   const asResearcher = t.withIdentity(researchIdentity);
-  const packId = await createPublishedPack(t, name, {
+  const configId = await createPublishedPack(t, name, {
     syntheticUser: {
       name: "archived synthetic user",
       evidenceSnippets: ["archived evidence"],
     },
   });
 
-  await asResearcher.mutation(api.personaPacks.archive, { packId });
-  return packId;
+  await asResearcher.mutation(api.personaConfigs.archive, { configId });
+  return configId;
 }
 
 async function insertVariantForPack(
   t: TestInstance,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
 ) {
   await t.run(async (ctx) => {
     const syntheticUsers = await ctx.db
       .query("syntheticUsers")
-      .withIndex("by_packId", (q) => q.eq("packId", packId))
+      .withIndex("by_configId", (q) => q.eq("configId", configId))
       .take(1);
 
     const studyId = await ctx.db.insert("studies", {
       orgId: researchIdentity.tokenIdentifier,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Variant study",
       taskSpec: {
         scenario: "Scenario",
@@ -505,7 +505,7 @@ async function insertVariantForPack(
 
     await ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: packId,
+      personaConfigId: configId,
       syntheticUserId: syntheticUsers[0]!._id,
       axisValues: [
         { key: "digital_confidence", value: 0.5 },

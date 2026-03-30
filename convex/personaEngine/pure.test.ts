@@ -176,7 +176,7 @@ describe("coverage sampling", () => {
     expect(isInteriorSample(sample)).toBe(false);
   });
 
-  it("sampleEdgeHeavy varies the sign pattern for packs with 16+ axes", () => {
+  it("sampleEdgeHeavy varies the sign pattern for configs with 16+ axes", () => {
     const manyAxisKeys = Array.from(
       { length: 16 },
       (_, index) => `axis_${index + 1}`,

@@ -121,10 +121,10 @@ export const replaceIssueClustersForStudy = internalMutation({
       throw new ConvexError("Study not found.");
     }
 
-    const pack = await ctx.db.get(study.personaPackId);
+    const config = await ctx.db.get(study.personaConfigId);
 
-    if (pack === null) {
-      throw new ConvexError("Persona pack not found.");
+    if (config === null) {
+      throw new ConvexError("Persona config not found.");
     }
 
     const runs = await ctx.db
@@ -186,7 +186,7 @@ export const replaceIssueClustersForStudy = internalMutation({
         axisValues: axisValuesByVariantId.get(run.personaVariantId) ?? [],
         milestones: milestonesByRunId.get(run._id) ?? [],
       })),
-      totalAxisCount: pack.sharedAxes.length > 0 ? pack.sharedAxes.length : fallbackAxisCount,
+      totalAxisCount: config.sharedAxes.length > 0 ? config.sharedAxes.length : fallbackAxisCount,
       totalSyntheticUserCount,
     });
 

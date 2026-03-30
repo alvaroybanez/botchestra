@@ -12,7 +12,7 @@ import {
   internalQuery,
   query,
 } from "./_generated/server";
-import { axisSchema, axisValidator } from "./personaPacks";
+import { axisSchema, axisValidator } from "./personaConfigs";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 import { loadEffectiveSettingsForOrg } from "./settings";
 
@@ -209,7 +209,7 @@ const extractionRunStatusValidator = v.union(
 );
 
 const extractionRunStateValidator = v.object({
-  packId: v.id("personaPacks"),
+  configId: v.id("personaConfigs"),
   orgId: v.string(),
   mode: extractionModeValidator,
   status: extractionRunStatusValidator,
@@ -268,26 +268,26 @@ export const estimateExtractionCost = query({
 
 export const getExtractionStatus = query({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
-    const pack = await loadPackForOrg(ctx, args.packId, identity.tokenIdentifier);
+    const config = await loadConfigForOrg(ctx, args.configId, identity.tokenIdentifier);
     const attachedTranscripts = await loadAttachedTranscripts(
       ctx,
-      pack._id,
+      config._id,
       identity.tokenIdentifier,
     );
     const attachedTranscriptIds = new Set(attachedTranscripts.map((transcript) => transcript._id));
     const transcriptSignals = (
       await ctx.db
         .query("transcriptSignals")
-        .withIndex("by_packId", (query) => query.eq("packId", args.packId))
+        .withIndex("by_configId", (query) => query.eq("configId", args.configId))
         .take(MAX_TRANSCRIPTS_PER_PACK)
     ).filter((signal) => attachedTranscriptIds.has(signal.transcriptId));
     const run = await ctx.db
       .query("transcriptExtractionRuns")
-      .withIndex("by_packId", (query) => query.eq("packId", args.packId))
+      .withIndex("by_configId", (query) => query.eq("configId", args.configId))
       .unique();
 
     if (run === null) {
@@ -300,14 +300,14 @@ export const getExtractionStatus = query({
 
 export const clusterArchetypes = action({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     mode: extractionModeValidator,
     guidedAxes: v.optional(v.array(axisValidator)),
   },
   handler: async (ctx, args) => {
     const parsedArgs = z
       .object({
-        packId: z.string(),
+        configId: z.string(),
         mode: extractionModeSchema,
         guidedAxes: guidedAxesSchema.optional(),
       })
@@ -316,18 +316,18 @@ export const clusterArchetypes = action({
     const context: ClusteringContext = await ctx.runQuery(
       (internal as any).transcriptExtraction.getClusteringContext,
       {
-        packId: parsedArgs.packId as Id<"personaPacks">,
+        configId: parsedArgs.configId as Id<"personaConfigs">,
         orgId: identity.tokenIdentifier,
       },
     );
     const guidedAxes = resolveGuidedAxes(
-      context.pack.sharedAxes,
+      context.config.sharedAxes,
       parsedArgs.guidedAxes,
       parsedArgs.mode,
     );
 
     return await clusterArchetypesForPack(ctx, {
-      pack: context.pack,
+      config: context.config,
       mode: parsedArgs.mode,
       guidedAxes,
       modelOverride: context.modelOverride,
@@ -338,46 +338,46 @@ export const clusterArchetypes = action({
 
 export const startExtraction = action({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     mode: extractionModeValidator,
     guidedAxes: v.optional(v.array(axisValidator)),
   },
   handler: async (ctx, args) => {
     const parsedArgs = z
       .object({
-        packId: z.string(),
+        configId: z.string(),
         mode: extractionModeSchema,
         guidedAxes: guidedAxesSchema.optional(),
       })
       .parse(args);
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const packContext: PackExtractionContext = await ctx.runQuery(
-      (internal as any).transcriptExtraction.getPackExtractionContext,
+    const configContext: ConfigExtractionContext = await ctx.runQuery(
+      (internal as any).transcriptExtraction.getConfigExtractionContext,
       {
-        packId: parsedArgs.packId as Id<"personaPacks">,
+        configId: parsedArgs.configId as Id<"personaConfigs">,
         orgId: identity.tokenIdentifier,
       },
     );
 
-    if (packContext.transcripts.length === 0) {
+    if (configContext.transcripts.length === 0) {
       throw new ConvexError("Attach at least one transcript before starting extraction.");
     }
 
     const guidedAxes = resolveGuidedAxes(
-      packContext.pack.sharedAxes,
+      configContext.config.sharedAxes,
       parsedArgs.guidedAxes,
       parsedArgs.mode,
     );
     const now = Date.now();
     const initialState: ExtractionRunState = {
-      packId: packContext.pack._id,
+      configId: configContext.config._id,
       orgId: identity.tokenIdentifier,
       mode: parsedArgs.mode,
       status: "processing",
       guidedAxes,
       proposedAxes: [],
       archetypes: [],
-      totalTranscripts: packContext.transcripts.length,
+      totalTranscripts: configContext.transcripts.length,
       processedTranscriptCount: 0,
       succeededTranscriptIds: [],
       failedTranscripts: [],
@@ -392,7 +392,7 @@ export const startExtraction = action({
 
     let runState = initialState;
 
-    for (const transcript of packContext.transcripts) {
+    for (const transcript of configContext.transcripts) {
       runState = {
         ...runState,
         currentTranscriptId: transcript._id,
@@ -403,8 +403,8 @@ export const startExtraction = action({
       });
 
       try {
-        await extractTranscriptSignalsForPack(ctx, {
-          packId: packContext.pack._id,
+        await extractTranscriptSignalsForConfig(ctx, {
+          configId: configContext.config._id,
           transcriptId: transcript._id,
         });
         runState = {
@@ -452,13 +452,13 @@ export const startExtraction = action({
 
       return buildExtractionStatusPayload(
         failedState,
-        await fetchSignalsForPack(ctx, args.packId),
+        await fetchSignalsForConfig(ctx, args.configId),
       );
     }
 
     try {
       const clusteringResult = await clusterArchetypesForPack(ctx, {
-        pack: packContext.pack,
+        config: configContext.config,
         mode: parsedArgs.mode,
         guidedAxes,
         modelOverride: await getModelOverrideForOrg(
@@ -466,7 +466,7 @@ export const startExtraction = action({
           identity.tokenIdentifier,
           "clustering",
         ),
-        signalDocs: await getCompletedSignalsForPackFromAction(ctx, args.packId),
+        signalDocs: await getCompletedSignalsForConfigFromAction(ctx, args.configId),
       });
       const completedState: ExtractionRunState = {
         ...runState,
@@ -486,7 +486,7 @@ export const startExtraction = action({
 
       return buildExtractionStatusPayload(
         completedState,
-        await fetchSignalsForPack(ctx, args.packId),
+        await fetchSignalsForConfig(ctx, args.configId),
       );
     } catch (error) {
       const failedState: ExtractionRunState = {
@@ -503,7 +503,7 @@ export const startExtraction = action({
 
       return buildExtractionStatusPayload(
         failedState,
-        await fetchSignalsForPack(ctx, args.packId),
+        await fetchSignalsForConfig(ctx, args.configId),
       );
     }
   },
@@ -511,25 +511,25 @@ export const startExtraction = action({
 
 export const extractTranscriptSignals = internalAction({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
   },
   handler: async (ctx, args) => {
-    return await extractTranscriptSignalsForPack(ctx, args);
+    return await extractTranscriptSignalsForConfig(ctx, args);
   },
 });
 
-export const getPackExtractionContext = internalQuery({
+export const getConfigExtractionContext = internalQuery({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     orgId: v.string(),
   },
-  handler: async (ctx, args): Promise<PackExtractionContext> => {
-    const pack = await loadPackForOrg(ctx, args.packId, args.orgId);
-    const transcripts = await loadAttachedTranscripts(ctx, args.packId, args.orgId);
+  handler: async (ctx, args): Promise<ConfigExtractionContext> => {
+    const config = await loadConfigForOrg(ctx, args.configId, args.orgId);
+    const transcripts = await loadAttachedTranscripts(ctx, args.configId, args.orgId);
 
     return {
-      pack,
+      config,
       transcripts,
     };
   },
@@ -537,19 +537,19 @@ export const getPackExtractionContext = internalQuery({
 
 export const getClusteringContext = internalQuery({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     orgId: v.string(),
   },
   handler: async (ctx, args): Promise<ClusteringContext> => {
-    const pack = await loadPackForOrg(ctx, args.packId, args.orgId);
-    const transcriptSignals = await getCompletedSignalsForPackFromQuery(
+    const config = await loadConfigForOrg(ctx, args.configId, args.orgId);
+    const transcriptSignals = await getCompletedSignalsForConfigFromQuery(
       ctx,
-      args.packId,
+      args.configId,
       args.orgId,
     );
 
     return {
-      pack,
+      config,
       transcriptSignals,
       modelOverride: await getModelOverrideForOrgQuery(
         ctx,
@@ -562,41 +562,41 @@ export const getClusteringContext = internalQuery({
 
 export const getSignalExtractionContext = internalQuery({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
   },
   handler: async (ctx, args): Promise<SignalExtractionContext> => {
-    const pack = await ctx.db.get(args.packId);
+    const config = await ctx.db.get(args.configId);
 
-    if (pack === null) {
-      throw new ConvexError("Persona pack not found.");
+    if (config === null) {
+      throw new ConvexError("Persona configuration not found.");
     }
 
     const transcript = await ctx.db.get(args.transcriptId);
 
-    if (transcript === null || transcript.orgId !== pack.orgId) {
+    if (transcript === null || transcript.orgId !== config.orgId) {
       throw new ConvexError("Transcript not found.");
     }
 
-    const attachmentExists = await hasTranscriptAttachment(ctx, args.packId, args.transcriptId);
+    const attachmentExists = await hasTranscriptAttachment(ctx, args.configId, args.transcriptId);
 
     if (!attachmentExists) {
-      throw new ConvexError("Transcript is not attached to this pack.");
+      throw new ConvexError("Transcript is not attached to this persona configuration.");
     }
 
     return {
-      orgId: pack.orgId,
-      packId: pack._id,
+      orgId: config.orgId,
+      configId: config._id,
       transcriptId: transcript._id,
       storageId: transcript.storageId,
       transcriptFormat: transcript.format,
       originalFilename: transcript.originalFilename,
-      packName: pack.name,
-      packDescription: pack.description,
-      packContext: pack.context,
+      configName: config.name,
+      configDescription: config.description,
+      configContext: config.context,
       modelOverride: await getModelOverrideForOrgQuery(
         ctx,
-        pack.orgId,
+        config.orgId,
         "summarization",
       ),
     };
@@ -605,13 +605,13 @@ export const getSignalExtractionContext = internalQuery({
 
 export const markTranscriptSignalProcessing = internalMutation({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
     orgId: v.string(),
   },
   handler: async (ctx, args) => {
     await upsertTranscriptSignalRecord(ctx, {
-      packId: args.packId,
+      configId: args.configId,
       transcriptId: args.transcriptId,
       orgId: args.orgId,
       status: "processing",
@@ -625,14 +625,14 @@ export const markTranscriptSignalProcessing = internalMutation({
 
 export const storeTranscriptSignals = internalMutation({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
     orgId: v.string(),
     signals: transcriptSignalsValidator,
   },
   handler: async (ctx, args) => {
     await upsertTranscriptSignalRecord(ctx, {
-      packId: args.packId,
+      configId: args.configId,
       transcriptId: args.transcriptId,
       orgId: args.orgId,
       status: "completed",
@@ -646,14 +646,14 @@ export const storeTranscriptSignals = internalMutation({
 
 export const markTranscriptSignalFailed = internalMutation({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
     orgId: v.string(),
     processingError: v.string(),
   },
   handler: async (ctx, args) => {
     await upsertTranscriptSignalRecord(ctx, {
-      packId: args.packId,
+      configId: args.configId,
       transcriptId: args.transcriptId,
       orgId: args.orgId,
       status: "failed",
@@ -672,11 +672,11 @@ export const beginExtractionRun = internalMutation({
   handler: async (ctx, args) => {
     const existingRun = await ctx.db
       .query("transcriptExtractionRuns")
-      .withIndex("by_packId", (query) => query.eq("packId", args.runState.packId))
+      .withIndex("by_configId", (query) => query.eq("configId", args.runState.configId))
       .unique();
 
     if (existingRun !== null && existingRun.status === "processing") {
-      throw new ConvexError("Transcript extraction is already in progress for this pack.");
+      throw new ConvexError("Transcript extraction is already in progress for this persona configuration.");
     }
 
     await upsertExtractionRunStateInDb(ctx, args.runState);
@@ -694,10 +694,10 @@ export const persistExtractionRunState = internalMutation({
   },
 });
 
-async function extractTranscriptSignalsForPack(
+async function extractTranscriptSignalsForConfig(
   ctx: ActionCtx,
   args: {
-    packId: Id<"personaPacks">;
+    configId: Id<"personaConfigs">;
     transcriptId: Id<"transcripts">;
   },
 ) {
@@ -706,7 +706,7 @@ async function extractTranscriptSignalsForPack(
     args,
   );
   await ctx.runMutation((internal as any).transcriptExtraction.markTranscriptSignalProcessing, {
-    packId: args.packId,
+    configId: args.configId,
     transcriptId: args.transcriptId,
     orgId: context.orgId,
   });
@@ -732,7 +732,7 @@ async function extractTranscriptSignalsForPack(
     const parsedSignals = parseTranscriptSignalsResponse(result.text, transcriptText);
 
     await ctx.runMutation((internal as any).transcriptExtraction.storeTranscriptSignals, {
-      packId: args.packId,
+      configId: args.configId,
       transcriptId: args.transcriptId,
       orgId: context.orgId,
       signals: parsedSignals,
@@ -746,7 +746,7 @@ async function extractTranscriptSignalsForPack(
     );
 
     await ctx.runMutation((internal as any).transcriptExtraction.markTranscriptSignalFailed, {
-      packId: args.packId,
+      configId: args.configId,
       transcriptId: args.transcriptId,
       orgId: context.orgId,
       processingError: toErrorMessage(convexError),
@@ -759,13 +759,13 @@ async function extractTranscriptSignalsForPack(
 async function clusterArchetypesForPack(
   ctx: ActionCtx,
   {
-    pack,
+    config,
     mode,
     guidedAxes,
     modelOverride,
     signalDocs,
   }: {
-    pack: Doc<"personaPacks">;
+    config: Doc<"personaConfigs">;
     mode: ExtractionMode;
     guidedAxes: GuidedAxis[];
     modelOverride?: string;
@@ -781,7 +781,7 @@ async function clusterArchetypesForPack(
     modelOverride,
     system: buildClusteringSystemPrompt(mode),
     prompt: buildClusteringPrompt({
-      pack,
+      config,
       mode,
       guidedAxes,
       signalDocs,
@@ -810,9 +810,9 @@ function buildSignalExtractionPrompt(
 ) {
   return [
     "Extract the participant's behavioral signals from this transcript.",
-    `Persona pack: ${context.packName}`,
-    `Pack context: ${context.packContext}`,
-    `Pack description: ${context.packDescription}`,
+    `Persona configuration: ${context.configName}`,
+    `Persona configurationuration context: ${context.configContext}`,
+    `Persona configurationuration description: ${context.configDescription}`,
     `Transcript filename: ${context.originalFilename}`,
     "Return JSON matching this shape exactly:",
     JSON.stringify({
@@ -845,20 +845,20 @@ function buildClusteringSystemPrompt(mode: ExtractionMode) {
 }
 
 function buildClusteringPrompt({
-  pack,
+  config,
   mode,
   guidedAxes,
   signalDocs,
 }: {
-  pack: Doc<"personaPacks">;
+  config: Doc<"personaConfigs">;
   mode: ExtractionMode;
   guidedAxes: GuidedAxis[];
   signalDocs: Doc<"transcriptSignals">[];
 }) {
   return [
     "Cluster these transcript signals into distinct behavioral archetypes.",
-    `Pack name: ${pack.name}`,
-    `Pack context: ${pack.context}`,
+    `Persona configurationuration name: ${config.name}`,
+    `Persona configurationuration context: ${config.context}`,
     `Extraction mode: ${mode}`,
     mode === "guided"
       ? `Use these axes exactly: ${JSON.stringify(guidedAxes)}`
@@ -1093,7 +1093,7 @@ function buildExtractionStatusPayload(
   transcriptSignals: Doc<"transcriptSignals">[],
 ) {
   return {
-    packId: run.packId,
+    configId: run.configId,
     mode: run.mode,
     status: run.status,
     guidedAxes: run.guidedAxes,
@@ -1113,18 +1113,18 @@ function buildExtractionStatusPayload(
   };
 }
 
-async function loadPackForOrg(
+async function loadConfigForOrg(
   ctx: QueryCtx | MutationCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   orgId: string,
 ) {
-  const pack = await ctx.db.get(packId);
+  const config = await ctx.db.get(configId);
 
-  if (pack === null || pack.orgId !== orgId) {
-    throw new ConvexError("Persona pack not found.");
+  if (config === null || config.orgId !== orgId) {
+    throw new ConvexError("Persona configuration not found.");
   }
 
-  return pack;
+  return config;
 }
 
 async function loadTranscriptsForOrg(
@@ -1149,12 +1149,12 @@ async function loadTranscriptsForOrg(
 
 async function loadAttachedTranscripts(
   ctx: QueryCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   orgId: string,
 ) {
   const attachments = await ctx.db
-    .query("packTranscripts")
-    .withIndex("by_packId", (query) => query.eq("packId", packId))
+    .query("configTranscripts")
+    .withIndex("by_configId", (query) => query.eq("configId", configId))
     .take(MAX_TRANSCRIPTS_PER_PACK);
   const transcripts: Doc<"transcripts">[] = [];
 
@@ -1171,31 +1171,31 @@ async function loadAttachedTranscripts(
 
 async function hasTranscriptAttachment(
   ctx: QueryCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   transcriptId: Id<"transcripts">,
 ) {
   const attachments = await ctx.db
-    .query("packTranscripts")
-    .withIndex("by_packId", (query) => query.eq("packId", packId))
+    .query("configTranscripts")
+    .withIndex("by_configId", (query) => query.eq("configId", configId))
     .take(MAX_TRANSCRIPTS_PER_PACK);
 
   return attachments.some((attachment) => attachment.transcriptId === transcriptId);
 }
 
-async function fetchSignalsForPack(ctx: ActionCtx, packId: Id<"personaPacks">) {
+async function fetchSignalsForConfig(ctx: ActionCtx, configId: Id<"personaConfigs">) {
   return await ctx.runQuery((internal as any).transcriptExtraction.getSignalsForPack, {
-    packId,
+    configId,
   });
 }
 
-async function getCompletedSignalsForPackFromAction(
+async function getCompletedSignalsForConfigFromAction(
   ctx: ActionCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
 ) {
   const allSignals = await ctx.runQuery(
     (internal as any).transcriptExtraction.getSignalsForPack,
     {
-      packId,
+      configId,
     },
   );
 
@@ -1204,14 +1204,14 @@ async function getCompletedSignalsForPackFromAction(
   );
 }
 
-async function getCompletedSignalsForPackFromQuery(
+async function getCompletedSignalsForConfigFromQuery(
   ctx: QueryCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   orgId?: string,
 ) {
   const allSignals: Doc<"transcriptSignals">[] = await ctx.db
     .query("transcriptSignals")
-    .withIndex("by_packId", (query) => query.eq("packId", packId))
+    .withIndex("by_configId", (query) => query.eq("configId", configId))
     .take(MAX_TRANSCRIPTS_PER_PACK);
 
   if (orgId === undefined) {
@@ -1225,12 +1225,12 @@ async function getCompletedSignalsForPackFromQuery(
 
 export const getSignalsForPack = internalQuery({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
   },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("transcriptSignals")
-      .withIndex("by_packId", (query) => query.eq("packId", args.packId))
+      .withIndex("by_configId", (query) => query.eq("configId", args.configId))
       .take(MAX_TRANSCRIPTS_PER_PACK);
   },
 });
@@ -1238,14 +1238,14 @@ export const getSignalsForPack = internalQuery({
 async function upsertTranscriptSignalRecord(
   ctx: MutationCtx,
   {
-    packId,
+    configId,
     transcriptId,
     orgId,
     status,
     signals,
     processingError,
   }: {
-    packId: Id<"personaPacks">;
+    configId: Id<"personaConfigs">;
     transcriptId: Id<"transcripts">;
     orgId: string;
     status: "processing" | "completed" | "failed";
@@ -1255,13 +1255,13 @@ async function upsertTranscriptSignalRecord(
 ) {
   const existingRecord = await ctx.db
     .query("transcriptSignals")
-    .withIndex("by_packId_and_transcriptId", (query) =>
-      query.eq("packId", packId).eq("transcriptId", transcriptId),
+    .withIndex("by_configId_and_transcriptId", (query) =>
+      query.eq("configId", configId).eq("transcriptId", transcriptId),
     )
     .unique();
   const nextRecord = {
     transcriptId,
-    packId,
+    configId,
     orgId,
     status,
     signals,
@@ -1284,7 +1284,7 @@ async function upsertExtractionRunStateInDb(
 ) {
   const existingRun = await ctx.db
     .query("transcriptExtractionRuns")
-    .withIndex("by_packId", (query) => query.eq("packId", runState.packId))
+    .withIndex("by_configId", (query) => query.eq("configId", runState.configId))
     .unique();
 
   if (existingRun === null) {
@@ -1296,7 +1296,7 @@ async function upsertExtractionRunStateInDb(
 }
 
 function resolveGuidedAxes(
-  packSharedAxes: GuidedAxis[],
+  configSharedAxes: GuidedAxis[],
   guidedAxes: GuidedAxis[] | undefined,
   mode: ExtractionMode,
 ) {
@@ -1304,7 +1304,7 @@ function resolveGuidedAxes(
     return guidedAxes ?? [];
   }
 
-  const axes = guidedAxes ?? packSharedAxes;
+  const axes = guidedAxes ?? configSharedAxes;
   const parsedAxes = guidedAxesSchema.safeParse(axes);
 
   if (!parsedAxes.success) {
@@ -1445,30 +1445,30 @@ type StoredTranscriptSignals = {
 
 type SignalExtractionContext = {
   orgId: string;
-  packId: Id<"personaPacks">;
+  configId: Id<"personaConfigs">;
   transcriptId: Id<"transcripts">;
   storageId: Id<"_storage">;
   transcriptFormat: Doc<"transcripts">["format"];
   originalFilename: string;
-  packName: string;
-  packDescription: string;
-  packContext: string;
+  configName: string;
+  configDescription: string;
+  configContext: string;
   modelOverride?: string;
 };
 
-type PackExtractionContext = {
-  pack: Doc<"personaPacks">;
+type ConfigExtractionContext = {
+  config: Doc<"personaConfigs">;
   transcripts: Doc<"transcripts">[];
 };
 
 type ClusteringContext = {
-  pack: Doc<"personaPacks">;
+  config: Doc<"personaConfigs">;
   transcriptSignals: Doc<"transcriptSignals">[];
   modelOverride?: string;
 };
 
 type ExtractionRunState = {
-  packId: Id<"personaPacks">;
+  configId: Id<"personaConfigs">;
   orgId: string;
   mode: ExtractionMode;
   status: "processing" | "completed" | "completed_with_failures" | "failed";

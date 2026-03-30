@@ -176,24 +176,24 @@ describe("report exports", () => {
 type TestInstance = ReturnType<typeof createTest>;
 
 async function seedReportFixtures(t: TestInstance, orgId: string) {
-  const packId = await insertPack(t, orgId);
-  const studyId = await insertStudy(t, orgId, packId);
+  const configId = await insertPack(t, orgId);
+  const studyId = await insertStudy(t, orgId, configId);
   const syntheticUserAlphaId = await insertSyntheticUser(
     t,
-    packId,
+    configId,
     "Cautious shopper",
   );
-  const syntheticUserBetaId = await insertSyntheticUser(t, packId, "Busy parent");
+  const syntheticUserBetaId = await insertSyntheticUser(t, configId, "Busy parent");
   const primaryVariantId = await insertPersonaVariant(
     t,
     studyId,
-    packId,
+    configId,
     syntheticUserAlphaId,
   );
   const secondaryVariantId = await insertPersonaVariant(
     t,
     studyId,
-    packId,
+    configId,
     syntheticUserBetaId,
   );
   const primaryRunId = await insertRun(t, {
@@ -259,10 +259,10 @@ async function seedReportFixtures(t: TestInstance, orgId: string) {
 
 async function insertPack(t: TestInstance, orgId: string) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+    ctx.db.insert("personaConfigs", {
       orgId,
-      name: `Pack for ${orgId}`,
-      description: "Pack for report export tests",
+      name: `Config for ${orgId}`,
+      description: "Config for report export tests",
       context: "Checkout",
       sharedAxes: [
         {
@@ -288,12 +288,12 @@ async function insertPack(t: TestInstance, orgId: string) {
 async function insertStudy(
   t: TestInstance,
   orgId: string,
-  personaPackId: Id<"personaPacks">,
+  personaConfigId: Id<"personaConfigs">,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId,
-      personaPackId,
+      personaConfigId,
       name: "Report export fixture study",
       description: "Fixture study for report export tests",
       taskSpec: sampleTaskSpec,
@@ -309,12 +309,12 @@ async function insertStudy(
 
 async function insertSyntheticUser(
   t: TestInstance,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   name: string,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId,
+      configId,
       name,
       summary: `${name} summary`,
       axes: [
@@ -338,13 +338,13 @@ async function insertSyntheticUser(
 async function insertPersonaVariant(
   t: TestInstance,
   studyId: Id<"studies">,
-  personaPackId: Id<"personaPacks">,
+  personaConfigId: Id<"personaConfigs">,
   syntheticUserId: Id<"syntheticUsers">,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId,
+      personaConfigId,
       syntheticUserId,
       axisValues: [{ key: "digital_confidence", value: 0.1 }],
       edgeScore: 0.5,

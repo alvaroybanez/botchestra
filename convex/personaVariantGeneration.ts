@@ -23,13 +23,13 @@ import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 
 export const previewVariants = action({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     budget: v.number(),
   },
   handler: async (ctx, args): Promise<PreviewSummary> => {
     const parsedArgs = z
       .object({
-        packId: z.string(),
+        configId: z.string(),
         budget: z.number().int(),
       })
       .parse(args);
@@ -38,7 +38,7 @@ export const previewVariants = action({
     const previewContext: PreviewContext = await ctx.runQuery(
       internal.personaVariantGenerationModel.getPreviewContext,
       {
-        packId: parsedArgs.packId as Id<"personaPacks">,
+        configId: parsedArgs.configId as Id<"personaConfigs">,
         orgId: identity.tokenIdentifier,
       },
     );
@@ -49,7 +49,7 @@ export const previewVariants = action({
         id: syntheticUser._id,
         axes: syntheticUser.axes,
         evidenceSnippets: syntheticUser.evidenceSnippets,
-        axisKeys: previewContext.pack.sharedAxes.map((axis) => axis.key),
+        axisKeys: previewContext.config.sharedAxes.map((axis) => axis.key),
       }));
 
     const projectedVariants = planVariants(syntheticUsersForAllocation, budget).map(
@@ -161,7 +161,7 @@ async function generateVariantsForStudyForOrg(
       id: syntheticUser._id,
       axes: syntheticUser.axes,
       evidenceSnippets: syntheticUser.evidenceSnippets,
-      axisKeys: generationContext.pack.sharedAxes.map((axis) => axis.key),
+      axisKeys: generationContext.config.sharedAxes.map((axis) => axis.key),
     }));
   const acceptedAxisValues = new Map<string, Record<string, number>>();
 
@@ -209,7 +209,7 @@ async function generateVariantsForStudyForOrg(
         }
 
         const generatedCandidate = await generateCandidate(
-          generationContext.pack,
+          generationContext.config,
           syntheticUser,
           variantPlan.axisValues,
           expansionModelOverride,
@@ -223,7 +223,7 @@ async function generateVariantsForStudyForOrg(
         const accepted = validation.accepted && isDistinctEnough(distinctness);
         const persistedVariant = toPersistedVariant({
           studyId: generationContext.study._id,
-          personaPackId: generationContext.pack._id,
+          personaConfigId: generationContext.config._id,
           syntheticUserId: syntheticUser._id,
           axisValues: variantPlan.axisValues,
           edgeScore: variantPlan.edgeScore,
@@ -299,7 +299,7 @@ async function generateVariantsForStudyForOrg(
 }
 
 async function generateCandidate(
-  pack: Doc<"personaPacks">,
+  config: Doc<"personaConfigs">,
   syntheticUser: Doc<"syntheticUsers">,
   axisValues: Record<string, number>,
   modelOverride?: string,
@@ -309,7 +309,7 @@ async function generateCandidate(
       modelOverride,
       system:
         "Return only valid JSON for a synthetic persona variant. Do not include markdown fences.",
-      prompt: buildExpansionPrompt(pack, syntheticUser, axisValues),
+      prompt: buildExpansionPrompt(config, syntheticUser, axisValues),
     });
 
     const parsedCandidate = generatedVariantCandidateSchema.safeParse(
@@ -333,7 +333,7 @@ async function generateCandidate(
 
 function toPersistedVariant({
   studyId,
-  personaPackId,
+  personaConfigId,
   syntheticUserId,
   axisValues,
   edgeScore,
@@ -343,7 +343,7 @@ function toPersistedVariant({
   accepted,
 }: {
   studyId: Id<"studies">;
-  personaPackId: Id<"personaPacks">;
+  personaConfigId: Id<"personaConfigs">;
   syntheticUserId: Id<"syntheticUsers">;
   axisValues: Record<string, number>;
   edgeScore: number;
@@ -354,7 +354,7 @@ function toPersistedVariant({
 }) {
   return {
     studyId,
-    personaPackId,
+    personaConfigId,
     syntheticUserId,
     axisValues: axisValuesToArray(axisValues),
     edgeScore,
@@ -368,13 +368,13 @@ function toPersistedVariant({
 }
 
 function buildExpansionPrompt(
-  pack: Doc<"personaPacks">,
+  config: Doc<"personaConfigs">,
   syntheticUser: Doc<"syntheticUsers">,
   axisValues: Record<string, number>,
 ) {
   return [
-    `Pack name: ${pack.name}`,
-    `Pack context: ${pack.context}`,
+    `Config name: ${config.name}`,
+    `Config context: ${config.context}`,
     `Synthetic user summary: ${syntheticUser.summary}`,
     `Evidence snippets: ${syntheticUser.evidenceSnippets.join(" | ")}`,
     `Axis values: ${JSON.stringify(axisValues)}`,
@@ -483,7 +483,7 @@ const generatedVariantCandidateSchema = z.object({
 
 type PersistedVariant = {
   studyId: Id<"studies">;
-  personaPackId: Id<"personaPacks">;
+  personaConfigId: Id<"personaConfigs">;
   syntheticUserId: Id<"syntheticUsers">;
   axisValues: { key: string; value: number }[];
   edgeScore: number;
@@ -535,13 +535,13 @@ type PreviewSummary = {
 
 type GenerationContext = {
   study: Doc<"studies">;
-  pack: Doc<"personaPacks">;
+  config: Doc<"personaConfigs">;
   syntheticUsers: Doc<"syntheticUsers">[];
   existingVariants: PersistedVariant[];
   resolvedBudget: number;
 };
 
 type PreviewContext = {
-  pack: Doc<"personaPacks">;
+  config: Doc<"personaConfigs">;
   syntheticUsers: Doc<"syntheticUsers">[];
 };

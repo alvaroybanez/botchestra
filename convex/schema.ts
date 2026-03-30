@@ -140,8 +140,8 @@ export default defineSchema({
     .index("email", ["email"])
     .index("phone", ["phone"]),
 
-  // 1. personaPacks
-  personaPacks: defineTable({
+  // 1. personaConfigs
+  personaConfigs: defineTable({
     name: v.string(),
     description: v.string(),
     context: v.string(),
@@ -205,19 +205,19 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_orgId", ["orgId"]),
 
-  // 2c. packTranscripts
-  packTranscripts: defineTable({
-    packId: v.id("personaPacks"),
+  // 2c. configTranscripts
+  configTranscripts: defineTable({
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
     createdAt: v.number(),
   })
-    .index("by_packId", ["packId"])
+    .index("by_configId", ["configId"])
     .index("by_transcriptId", ["transcriptId"]),
 
   // 2d. transcriptSignals
   transcriptSignals: defineTable({
     transcriptId: v.id("transcripts"),
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     orgId: v.string(),
     status: transcriptSignalStatusValidator,
     signals: v.optional(transcriptSignalPayloadValidator),
@@ -225,13 +225,13 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_packId", ["packId"])
+    .index("by_configId", ["configId"])
     .index("by_transcriptId", ["transcriptId"])
-    .index("by_packId_and_transcriptId", ["packId", "transcriptId"]),
+    .index("by_configId_and_transcriptId", ["configId", "transcriptId"]),
 
   // 2e. transcriptExtractionRuns
   transcriptExtractionRuns: defineTable({
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     orgId: v.string(),
     mode: extractionModeValidator,
     status: extractionRunStatusValidator,
@@ -254,12 +254,12 @@ export default defineSchema({
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
   })
-    .index("by_packId", ["packId"])
+    .index("by_configId", ["configId"])
     .index("by_orgId", ["orgId"]),
 
   // 3. syntheticUsers
   syntheticUsers: defineTable({
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     name: v.string(),
     summary: v.string(),
     axes: v.array(axisValidator),
@@ -271,12 +271,12 @@ export default defineSchema({
     sourceRefs: v.array(v.string()),
     evidenceSnippets: v.array(v.string()),
     notes: v.optional(v.string()),
-  }).index("by_packId", ["packId"]),
+  }).index("by_configId", ["configId"]),
 
   // 4. personaVariants
   personaVariants: defineTable({
     studyId: v.id("studies"),
-    personaPackId: v.id("personaPacks"),
+    personaConfigId: v.id("personaConfigs"),
     syntheticUserId: v.id("syntheticUsers"),
     axisValues: v.array(axisValueValidator),
     edgeScore: v.number(),
@@ -291,7 +291,7 @@ export default defineSchema({
   // 5. studies
   studies: defineTable({
     orgId: v.string(),
-    personaPackId: v.id("personaPacks"),
+    personaConfigId: v.id("personaConfigs"),
     name: v.string(),
     description: v.optional(v.string()),
     taskSpec: taskSpecValidator,
@@ -319,7 +319,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_personaPackId", ["personaPackId"])
+    .index("by_personaConfigId", ["personaConfigId"])
     .index("by_orgId_and_updatedAt", ["orgId", "updatedAt"]),
 
   // 6. runs

@@ -30,7 +30,7 @@ type AxisDefinition = Doc<"axisDefinitions">;
 type ViewerAccess = {
   role: "researcher" | "reviewer" | "admin";
   permissions: {
-    canManagePersonaPacks: boolean;
+    canManagePersonaConfigs: boolean;
   };
 } | null;
 
@@ -158,7 +158,7 @@ export function AxisLibraryPage() {
     setFormError(null);
   }, [dialogState]);
 
-  const canManageAxes = viewerAccess?.permissions.canManagePersonaPacks === true;
+  const canManageAxes = viewerAccess?.permissions.canManagePersonaConfigs === true;
 
   const tagOptions = useMemo(
     () =>
@@ -290,7 +290,7 @@ export function AxisLibraryPage() {
           </p>
           <h2 className="text-3xl font-semibold tracking-tight">Axis Library</h2>
           <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Reuse shared persona axes across packs, search by metadata, and manage
+            Reuse shared persona axes across configs, search by metadata, and manage
             org-specific definitions in one place.
           </p>
         </div>
@@ -347,7 +347,7 @@ export function AxisLibraryPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Save reusable axes here to seed future persona packs and review what
+              Save reusable axes here to seed future persona configurations and review what
               has been published into the shared library.
             </p>
             {canManageAxes ? (
@@ -686,7 +686,7 @@ export function AxisLibraryPage() {
                 <p className="text-sm text-amber-700">
                   Warning: this axis is currently in use {deleteCandidate.usageCount}
                   {" "}
-                  time{deleteCandidate.usageCount === 1 ? "" : "s"} across published packs.
+                  time{deleteCandidate.usageCount === 1 ? "" : "s"} across published configs.
                 </p>
               ) : null}
             </div>
@@ -883,7 +883,7 @@ function parseTags(tags: string) {
 }
 
 function formatCreationSource(creationSource: AxisDefinition["creationSource"]) {
-  return creationSource === "manual" ? "Manual" : "Pack publish";
+  return creationSource === "manual" ? "Manual" : "Persona configuration publish";
 }
 
 function formatWeight(weight: number) {

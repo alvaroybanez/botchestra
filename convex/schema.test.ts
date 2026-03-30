@@ -40,17 +40,17 @@ const sampleTaskSpec = {
   viewport: { width: 1280, height: 800 },
 };
 
-// ─── 1. personaPacks ───────────────────────────────────────────────────────
+// ─── 1. personaConfigs ───────────────────────────────────────────────────────
 
-describe("personaPacks", () => {
-  it("inserts and reads back a minimal personaPack", async () => {
+describe("personaConfigs", () => {
+  it("inserts and reads back a minimal personaConfig", async () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
     const id = await t.run(async (ctx) => {
-      return await ctx.db.insert("personaPacks", {
+      return await ctx.db.insert("personaConfigs", {
         name: "E-commerce Shoppers",
-        description: "Pack for e-commerce checkout studies",
+        description: "Config for e-commerce checkout studies",
         context: "US online retail context",
         sharedAxes: [sampleAxis],
         version: 1,
@@ -79,9 +79,9 @@ describe("syntheticUsers", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) => {
-      return await ctx.db.insert("personaPacks", {
-        name: "Pack A",
+    const configId = await t.run(async (ctx) => {
+      return await ctx.db.insert("personaConfigs", {
+        name: "Config A",
         description: "desc",
         context: "ctx",
         sharedAxes: [],
@@ -96,7 +96,7 @@ describe("syntheticUsers", () => {
 
     const id = await t.run(async (ctx) => {
       return await ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Careful Carol",
         summary: "A cautious, detail-oriented shopper",
         axes: [sampleAxis],
@@ -111,7 +111,7 @@ describe("syntheticUsers", () => {
 
     expect(doc).not.toBeNull();
     expect(doc!.name).toBe("Careful Carol");
-    expect(doc!.packId).toBe(packId);
+    expect(doc!.configId).toBe(configId);
     expect(doc!.sourceType).toBe("manual");
     expect(doc!.notes).toBe("High friction tolerance");
   });
@@ -124,9 +124,9 @@ describe("personaVariants", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack B",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config B",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -142,7 +142,7 @@ describe("personaVariants", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Checkout Study",
         taskSpec: sampleTaskSpec,
         runBudget: 64,
@@ -156,7 +156,7 @@ describe("personaVariants", () => {
 
     const protoId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Quick Quinn",
         summary: "Impatient and efficient",
         axes: [],
@@ -169,7 +169,7 @@ describe("personaVariants", () => {
     const id = await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: packId,
+        personaConfigId: configId,
         syntheticUserId: protoId,
         axisValues: [{ key: "digital_confidence", value: 0.8 }],
         edgeScore: 0.75,
@@ -199,9 +199,9 @@ describe("studies", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack C",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config C",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -217,7 +217,7 @@ describe("studies", () => {
     const id = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Checkout Flow v1",
         description: "Test the main checkout flow",
         taskSpec: {
@@ -253,9 +253,9 @@ describe("runs", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack D",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config D",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -271,7 +271,7 @@ describe("runs", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Run Test Study",
         taskSpec: sampleTaskSpec,
         runBudget: 64,
@@ -285,7 +285,7 @@ describe("runs", () => {
 
     const protoId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Proto E",
         summary: "summary",
         axes: [],
@@ -298,7 +298,7 @@ describe("runs", () => {
     const variantId = await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: packId,
+        personaConfigId: configId,
         syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
@@ -335,9 +335,9 @@ describe("runs", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack E",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config E",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -353,7 +353,7 @@ describe("runs", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Full Run Study",
         taskSpec: sampleTaskSpec,
         runBudget: 64,
@@ -367,7 +367,7 @@ describe("runs", () => {
 
     const protoId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Proto F",
         summary: "summary",
         axes: [],
@@ -380,7 +380,7 @@ describe("runs", () => {
     const variantId = await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: packId,
+        personaConfigId: configId,
         syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
@@ -438,9 +438,9 @@ describe("runMilestones", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack F",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config F",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -456,7 +456,7 @@ describe("runMilestones", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Milestone Study",
         taskSpec: sampleTaskSpec,
         runBudget: 64,
@@ -470,7 +470,7 @@ describe("runMilestones", () => {
 
     const protoId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Proto G",
         summary: "summary",
         axes: [],
@@ -483,7 +483,7 @@ describe("runMilestones", () => {
     const variantId = await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: packId,
+        personaConfigId: configId,
         syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
@@ -539,9 +539,9 @@ describe("issueClusters", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack G",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config G",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -557,7 +557,7 @@ describe("issueClusters", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Issue Study",
         taskSpec: sampleTaskSpec,
         runBudget: 64,
@@ -571,7 +571,7 @@ describe("issueClusters", () => {
 
     const protoId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Proto Issue",
         summary: "summary",
         axes: [],
@@ -584,7 +584,7 @@ describe("issueClusters", () => {
     const variantId = await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: packId,
+        personaConfigId: configId,
         syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
@@ -647,9 +647,9 @@ describe("studyReports", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack H",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config H",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -665,7 +665,7 @@ describe("studyReports", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Report Study",
         taskSpec: sampleTaskSpec,
         runBudget: 64,
@@ -733,9 +733,9 @@ describe("credentials", () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
-        name: "Pack Cred",
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
+        name: "Config Cred",
         description: "d",
         context: "c",
         sharedAxes: [],
@@ -751,7 +751,7 @@ describe("credentials", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: "org_1",
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Cred Study",
         taskSpec: sampleTaskSpec,
         runBudget: 64,

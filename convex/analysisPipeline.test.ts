@@ -911,11 +911,11 @@ type TestInstance = ReturnType<typeof createTest>;
 
 async function insertStudy(t: TestInstance) {
   const now = Date.now();
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId: researchIdentity.tokenIdentifier,
-      name: "Checkout pack",
-      description: "Pack used for analysis pipeline tests",
+      name: "Checkout config",
+      description: "Config used for analysis pipeline tests",
       context: "Checkout flows",
       sharedAxes: [],
       version: 1,
@@ -930,7 +930,7 @@ async function insertStudy(t: TestInstance) {
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: researchIdentity.tokenIdentifier,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout analysis study",
       taskSpec: sampleTaskSpec,
       runBudget: 6,
@@ -965,7 +965,7 @@ async function insertTerminalRun(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: `Proto ${Math.random()}`,
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -978,7 +978,7 @@ async function insertTerminalRun(
   const personaVariantId = await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: study.personaPackId,
+      personaConfigId: study.personaConfigId,
       syntheticUserId,
       axisValues: options.axisValues ?? [],
       edgeScore: 0.5,

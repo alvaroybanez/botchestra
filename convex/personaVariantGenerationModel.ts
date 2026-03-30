@@ -22,7 +22,7 @@ const axisValueValidator = v.object({
 
 const persistedVariantSchema = z.object({
   studyId: z.string(),
-  personaPackId: z.string(),
+  personaConfigId: z.string(),
   syntheticUserId: z.string(),
   axisValues: z.array(axisValueSchema),
   edgeScore: z.number(),
@@ -55,7 +55,7 @@ const generationSummarySchema = z.object({
 
 const persistedVariantValidator = v.object({
   studyId: v.id("studies"),
-  personaPackId: v.id("personaPacks"),
+  personaConfigId: v.id("personaConfigs"),
   syntheticUserId: v.id("syntheticUsers"),
   axisValues: v.array(axisValueValidator),
   edgeScore: v.number(),
@@ -98,19 +98,19 @@ export const getGenerationContext = internalQuery({
       throw new ConvexError("Study not found.");
     }
 
-    const pack = await ctx.db.get(study.personaPackId);
+    const config = await ctx.db.get(study.personaConfigId);
 
-    if (pack === null || pack.orgId !== args.orgId) {
-      throw new ConvexError("Persona pack not found.");
+    if (config === null || config.orgId !== args.orgId) {
+      throw new ConvexError("Persona config not found.");
     }
 
-    if (pack.status !== "published") {
-      throw new ConvexError("Variant generation requires a published persona pack.");
+    if (config.status !== "published") {
+      throw new ConvexError("Variant generation requires a published persona configuration.");
     }
 
     const syntheticUsers = await ctx.db
       .query("syntheticUsers")
-      .withIndex("by_packId", (q) => q.eq("packId", pack._id))
+      .withIndex("by_configId", (q) => q.eq("configId", config._id))
       .take(10);
 
     if (syntheticUsers.length === 0) {
@@ -128,7 +128,7 @@ export const getGenerationContext = internalQuery({
 
     return {
       study,
-      pack,
+      config,
       syntheticUsers,
       existingVariants,
       resolvedBudget,
@@ -155,25 +155,25 @@ export const getStudyGenerationOwner = internalQuery({
 
 export const getPreviewContext = internalQuery({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     orgId: v.string(),
   },
   handler: async (ctx, args) => {
-    const pack = await ctx.db.get(args.packId);
+    const config = await ctx.db.get(args.configId);
 
-    if (pack === null || pack.orgId !== args.orgId) {
-      throw new ConvexError("Persona pack not found.");
+    if (config === null || config.orgId !== args.orgId) {
+      throw new ConvexError("Persona config not found.");
     }
 
-    if (pack.status !== "draft" && pack.status !== "published") {
+    if (config.status !== "draft" && config.status !== "published") {
       throw new ConvexError(
-        "Variant preview requires a draft or published persona pack.",
+        "Variant preview requires a draft or published persona configuration.",
       );
     }
 
     const syntheticUsers = await ctx.db
       .query("syntheticUsers")
-      .withIndex("by_packId", (q) => q.eq("packId", pack._id))
+      .withIndex("by_configId", (q) => q.eq("configId", config._id))
       .take(10);
 
     if (syntheticUsers.length === 0) {
@@ -181,7 +181,7 @@ export const getPreviewContext = internalQuery({
     }
 
     return {
-      pack,
+      config,
       syntheticUsers,
     };
   },
@@ -229,7 +229,7 @@ export const persistVariantsIfAbsent = internalMutation({
       await ctx.db.insert("personaVariants", {
         ...variant,
         studyId: variant.studyId as Id<"studies">,
-        personaPackId: variant.personaPackId as Id<"personaPacks">,
+        personaConfigId: variant.personaConfigId as Id<"personaConfigs">,
         syntheticUserId: variant.syntheticUserId as Id<"syntheticUsers">,
       });
     }

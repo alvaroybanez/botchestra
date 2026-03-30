@@ -99,7 +99,7 @@ const taskSpecInputSchema = z.object({
 const taskSpecPatchSchema = taskSpecInputSchema.partial();
 
 const createStudySchema = z.object({
-  personaPackId: z.string(),
+  personaConfigId: z.string(),
   name: requiredString("Study name"),
   description: requiredString("Study description").optional(),
   taskSpec: taskSpecInputSchema,
@@ -200,7 +200,7 @@ const taskSpecPatchValidator = v.object({
 });
 
 const createStudyValidator = v.object({
-  personaPackId: v.id("personaPacks"),
+  personaConfigId: v.id("personaConfigs"),
   name: v.string(),
   description: v.optional(v.string()),
   taskSpec: taskSpecInputValidator,
@@ -288,9 +288,9 @@ export const createStudy = mutation({
       })
       .parse(args);
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const pack = await getPackForOrg(
+    const config = await getConfigForOrg(
       ctx,
-      parsedArgs.study.personaPackId as Id<"personaPacks">,
+      parsedArgs.study.personaConfigId as Id<"personaConfigs">,
       identity.tokenIdentifier,
     );
     const effectiveSettings = await loadEffectiveSettingsForOrg(
@@ -300,7 +300,7 @@ export const createStudy = mutation({
     const now = Date.now();
     const studyId = await ctx.db.insert("studies", {
       orgId: identity.tokenIdentifier,
-      personaPackId: pack._id,
+      personaConfigId: config._id,
       name: parsedArgs.study.name,
       ...(parsedArgs.study.description !== undefined
         ? { description: parsedArgs.study.description }
@@ -458,14 +458,14 @@ export const launchStudy = mutation({
       });
     }
 
-    const pack = await getPackForOrg(
+    const config = await getConfigForOrg(
       ctx,
-      study.personaPackId,
+      study.personaConfigId,
       identity.tokenIdentifier,
     );
 
-    if (pack.status !== "published") {
-      throw new ConvexError("A published persona pack is required before launch.");
+    if (config.status !== "published") {
+      throw new ConvexError("A published persona configuration is required before launch.");
     }
 
     const guardrailValidation = await validateStudyLaunchWithRecording(ctx, {
@@ -837,18 +837,18 @@ async function getStudyById(ctx: MutationCtx, studyId: Id<"studies">) {
   return study;
 }
 
-async function getPackForOrg(
+async function getConfigForOrg(
   ctx: QueryCtx | MutationCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   orgId: string,
 ) {
-  const pack = await ctx.db.get(packId);
+  const config = await ctx.db.get(configId);
 
-  if (pack === null || pack.orgId !== orgId) {
-    throw new ConvexError("Persona pack not found.");
+  if (config === null || config.orgId !== orgId) {
+    throw new ConvexError("Persona config not found.");
   }
 
-  return pack;
+  return config;
 }
 
 async function listRunsForStudy(

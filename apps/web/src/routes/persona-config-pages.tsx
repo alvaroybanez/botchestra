@@ -14,16 +14,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { emptyStudyDetailSearch } from "@/routes/study-shared";
 
-type PersonaPackDoc = Doc<"personaPacks">;
+type PersonaConfigDoc = Doc<"personaConfigs">;
 type SyntheticUserDoc = Doc<"syntheticUsers">;
 type AxisDefinition = Doc<"axisDefinitions">;
-type PersonaPackId = Id<"personaPacks">;
+type PersonaConfigId = Id<"personaConfigs">;
 type TranscriptDoc = Doc<"transcripts">;
 type TranscriptId = Id<"transcripts">;
 type TranscriptSignalDoc = Doc<"transcriptSignals">;
-type PackTranscriptAttachment = {
-  _id: Id<"packTranscripts">;
-  packId: PersonaPackId;
+type ConfigTranscriptAttachment = {
+  _id: Id<"configTranscripts">;
+  configId: PersonaConfigId;
   transcriptId: TranscriptId;
   createdAt: number;
   transcript: TranscriptDoc;
@@ -32,7 +32,7 @@ type PackTranscriptAttachment = {
 type ViewerAccess = {
   role: "researcher" | "reviewer" | "admin";
   permissions: {
-    canManagePersonaPacks: boolean;
+    canManagePersonaConfigs: boolean;
   };
 } | null;
 
@@ -46,7 +46,7 @@ type AxisFormValue = {
   weight: string;
 };
 
-type PackFormValue = {
+type ConfigFormValue = {
   name: string;
   description: string;
   context: string;
@@ -93,11 +93,11 @@ type ExtractionReviewAxisState = {
 };
 
 type ExtractionStatus = {
-  packId: PersonaPackId;
+  configId: PersonaConfigId;
   mode: ExtractionMode;
   status: "processing" | "completed" | "completed_with_failures" | "failed";
-  guidedAxes: PersonaPackDoc["sharedAxes"];
-  proposedAxes: PersonaPackDoc["sharedAxes"];
+  guidedAxes: PersonaConfigDoc["sharedAxes"];
+  proposedAxes: PersonaConfigDoc["sharedAxes"];
   archetypes: Array<{
     name: string;
     summary: string;
@@ -144,7 +144,7 @@ type ConfirmationState =
       confirmLabel: string;
     };
 
-type PackVariantReviewData = VariantReviewData & {
+type ConfigVariantReviewData = VariantReviewData & {
   selectedStudy: VariantReviewData["study"];
   studies: Array<
     NonNullable<VariantReviewData["study"]> & {
@@ -163,7 +163,7 @@ const emptyAxis = (): AxisFormValue => ({
   weight: "1",
 });
 
-const emptyPackForm = (): PackFormValue => ({
+const emptyConfigForm = (): ConfigFormValue => ({
   name: "",
   description: "",
   context: "",
@@ -177,15 +177,15 @@ const emptySyntheticUserForm = (): SyntheticUserFormValue => ({
   notes: "",
 });
 
-export function PersonaPacksPage() {
-  const packs = useQuery(api.personaPacks.list, {});
-  const createDraft = useMutation(api.personaPacks.createDraft);
-  const importJson = useAction(api.personaPacks.importJson);
+export function PersonaConfigsPage() {
+  const configs = useQuery(api.personaConfigs.list, {});
+  const createDraft = useMutation(api.personaConfigs.createDraft);
+  const importJson = useAction(api.personaConfigs.importJson);
   const suggestAxes = useAction((api as any).axisGeneration.suggestAxes);
   const axisDefinitions = useQuery((api as any).axisLibrary.listAxisDefinitions, {}) as
     | AxisDefinition[]
     | undefined;
-  const navigate = useNavigate({ from: "/persona-packs" });
+  const navigate = useNavigate({ from: "/persona-configs" });
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -193,7 +193,7 @@ export function PersonaPacksPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importJsonText, setImportJsonText] = useState("");
-  const [form, setForm] = useState<PackFormValue>(emptyPackForm);
+  const [form, setForm] = useState<ConfigFormValue>(emptyConfigForm);
   const [suggestedAxes, setSuggestedAxes] = useState<SuggestedAxisState[]>([]);
   const [isSuggestionPanelOpen, setIsSuggestionPanelOpen] = useState(false);
   const [isSuggestingAxes, setIsSuggestingAxes] = useState(false);
@@ -202,9 +202,9 @@ export function PersonaPacksPage() {
   const [selectedLibraryAxisIds, setSelectedLibraryAxisIds] = useState<string[]>([]);
   const [inlineToast, setInlineToast] = useState<InlineToastState | null>(null);
 
-  const packList: PersonaPackDoc[] = packs ?? [];
-  const activePackList = packList.filter((pack) => pack.status !== "archived");
-  const archivedPackList = packList.filter((pack) => pack.status === "archived");
+  const configList: PersonaConfigDoc[] = configs ?? [];
+  const activeConfigList = configList.filter((config) => config.status !== "archived");
+  const archivedConfigList = configList.filter((config) => config.status === "archived");
   const canSuggestCreateAxes =
     form.name.trim().length > 0 && form.context.trim().length > 0;
   const selectedCreateSuggestionCount = suggestedAxes.filter(
@@ -248,7 +248,7 @@ export function PersonaPacksPage() {
         context: form.context.trim(),
         description: trimmedDescription,
         existingAxisKeys: getAxisKeys(form.sharedAxes),
-      })) as PersonaPackDoc["sharedAxes"];
+      })) as PersonaConfigDoc["sharedAxes"];
 
       setSuggestedAxes(
         suggestions.map((axis, index) => ({
@@ -393,8 +393,8 @@ export function PersonaPacksPage() {
     setIsCreating(true);
 
     try {
-      const packId = await createDraft({
-        pack: {
+      const configId = await createDraft({
+        config: {
           name: form.name,
           description: form.description,
           context: form.context,
@@ -402,14 +402,14 @@ export function PersonaPacksPage() {
         },
       });
 
-      setForm(emptyPackForm());
+      setForm(emptyConfigForm());
       setIsCreateFormOpen(false);
       await navigate({
-        params: { packId },
-        to: "/persona-packs/$packId",
+        params: { configId },
+        to: "/persona-configs/$configId",
       });
     } catch (error) {
-      setCreateError(getErrorMessage(error, "Could not create persona pack."));
+      setCreateError(getErrorMessage(error, "Could not create persona configuration."));
     } finally {
       setIsCreating(false);
     }
@@ -421,22 +421,22 @@ export function PersonaPacksPage() {
     setIsImporting(true);
 
     try {
-      const packId = await importJson({ json: importJsonText });
+      const configId = await importJson({ json: importJsonText });
       setImportJsonText("");
       setIsImportDialogOpen(false);
       await navigate({
-        params: { packId },
-        to: "/persona-packs/$packId",
+        params: { configId },
+        to: "/persona-configs/$configId",
       });
     } catch (error) {
-      setImportError(getErrorMessage(error, "Could not import persona pack."));
+      setImportError(getErrorMessage(error, "Could not import persona configuration."));
     } finally {
       setIsImporting(false);
     }
   }
 
-  if (packs === undefined) {
-    return <LoadingCard body="Loading persona packs..." title="Persona Packs" />;
+  if (configs === undefined) {
+    return <LoadingCard body="Loading persona configurations..." title="Persona Configurations" />;
   }
 
   return (
@@ -446,10 +446,10 @@ export function PersonaPacksPage() {
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Persona Library
           </p>
-          <h2 className="text-3xl font-semibold tracking-tight">Persona Packs</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">Persona Configurations</h2>
           <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Create, review, and publish reusable persona packs for study setup.
-            Draft packs stay editable until you publish them.
+            Create, review, and publish reusable persona configurations for study setup.
+            Draft persona configurations stay editable until you publish them.
           </p>
         </div>
 
@@ -461,21 +461,21 @@ export function PersonaPacksPage() {
               setIsImportDialogOpen(true);
             }}
           >
-            Import Pack
+            Import Persona Configuration
           </Button>
           <Button onClick={() => setIsCreateFormOpen((current) => !current)}>
-            {isCreateFormOpen ? "Close form" : "Create Pack"}
+            {isCreateFormOpen ? "Close form" : "Create Persona Configuration"}
           </Button>
         </div>
       </div>
 
       {isCreateFormOpen ? (
-        <PackFormCard
+        <ConfigFormCard
           form={form}
-          formPrefix="create-pack"
-          submitLabel={isCreating ? "Creating..." : "Save and open pack"}
-          title="Create a persona pack"
-          description="Start with pack metadata and at least one shared axis."
+          formPrefix="create-config"
+          submitLabel={isCreating ? "Creating..." : "Save and open persona configuration"}
+          title="Create a persona configuration"
+          description="Start with persona configuration metadata and at least one shared axis."
           error={createError}
           disabled={isCreating}
           onSubmit={handleCreatePack}
@@ -486,7 +486,7 @@ export function PersonaPacksPage() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Axis generation</p>
                   <p className="text-sm text-muted-foreground">
-                    Generate new axes from pack metadata or import reusable
+                    Generate new axes from persona configuration metadata or import reusable
                     ones from the shared library.
                   </p>
                 </div>
@@ -522,7 +522,7 @@ export function PersonaPacksPage() {
               <div aria-live="polite" className="space-y-2">
                 {isSuggestingAxes ? (
                   <p className="text-sm text-muted-foreground" role="status">
-                    Generating axis suggestions from the current pack
+                    Generating axis suggestions from the current persona configuration
                     metadata...
                   </p>
                 ) : null}
@@ -587,48 +587,48 @@ export function PersonaPacksPage() {
         />
       ) : null}
 
-      {packList.length === 0 ? (
+      {configList.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No persona packs yet</CardTitle>
+            <CardTitle>No persona configurations yet</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Your persona library is empty. Create your first pack to define
+              Your persona library is empty. Create your first persona configuration to define
               shared behavioral axes and draft synthetic users for future studies.
             </p>
             <Button onClick={() => setIsCreateFormOpen(true)}>
-              Create your first pack
+              Create your first persona configuration
             </Button>
           </CardContent>
         </Card>
-      ) : activePackList.length === 0 ? (
+      ) : activeConfigList.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No active persona packs</CardTitle>
+            <CardTitle>No active persona configurations</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              All of your persona packs are archived. Expand the archived section
-              below to review them or create a new pack for active work.
+              All of your persona configurations are archived. Expand the archived section
+              below to review them or create a new persona configuration for active work.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <PackGrid packs={activePackList} />
+        <ConfigGrid configs={activeConfigList} />
       )}
 
-      {archivedPackList.length > 0 ? (
+      {archivedConfigList.length > 0 ? (
         <details className="rounded-xl border bg-card p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold">
-            Archived packs ({archivedPackList.length})
+            Archived persona configurations ({archivedConfigList.length})
           </summary>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Archived packs stay out of the main library grid but remain available
+            Archived persona configurations stay out of the main library grid but remain available
             for audit trails, exports, and reference.
           </p>
           <div className="mt-4">
-            <PackGrid packs={archivedPackList} />
+            <ConfigGrid configs={archivedConfigList} />
           </div>
         </details>
       ) : null}
@@ -660,17 +660,17 @@ export function PersonaPacksPage() {
   );
 }
 
-export function PersonaPackDetailPage({
-  packId,
+export function PersonaConfigDetailPage({
+  configId,
   forceSuggestAxesError = false,
 }: {
-  packId: string;
+  configId: string;
   forceSuggestAxesError?: boolean;
 }) {
-  const typedPackId = packId as PersonaPackId;
-  const pack = useQuery(api.personaPacks.get, { packId: typedPackId });
-  const syntheticUsers = useQuery(api.personaPacks.listSyntheticUsers, {
-    packId: typedPackId,
+  const typedConfigId = configId as PersonaConfigId;
+  const config = useQuery(api.personaConfigs.get, { configId: typedConfigId });
+  const syntheticUsers = useQuery(api.personaConfigs.listSyntheticUsers, {
+    configId: typedConfigId,
   });
   const axisDefinitions = useQuery((api as any).axisLibrary.listAxisDefinitions, {}) as
     | AxisDefinition[]
@@ -678,24 +678,24 @@ export function PersonaPackDetailPage({
   const transcriptLibrary = useQuery((api as any).transcripts.listTranscripts, {}) as
     | TranscriptDoc[]
     | undefined;
-  const packTranscripts = useQuery((api as any).packTranscripts.listPackTranscripts, {
-    packId: typedPackId,
-  }) as PackTranscriptAttachment[] | undefined;
+  const configTranscripts = useQuery((api as any).configTranscripts.listConfigTranscripts, {
+    configId: typedConfigId,
+  }) as ConfigTranscriptAttachment[] | undefined;
   const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {}) as
     | ViewerAccess
     | undefined;
   const extractionStatus = useQuery(
     (api as any).transcriptExtraction.getExtractionStatus,
-    viewerAccess?.permissions.canManagePersonaPacks === true
-      ? { packId: typedPackId }
+    viewerAccess?.permissions.canManagePersonaConfigs === true
+      ? { configId: typedConfigId }
       : "skip",
   ) as ExtractionStatus | null | undefined;
   const extractionCostEstimate = useQuery(
     (api as any).transcriptExtraction.estimateExtractionCost,
-    viewerAccess?.permissions.canManagePersonaPacks === true &&
-      (packTranscripts?.length ?? 0) > 0
+    viewerAccess?.permissions.canManagePersonaConfigs === true &&
+      (configTranscripts?.length ?? 0) > 0
       ? {
-          transcriptIds: packTranscripts!.map((packTranscript) => packTranscript.transcriptId),
+          transcriptIds: configTranscripts!.map((configTranscript) => configTranscript.transcriptId),
         }
       : "skip",
   ) as
@@ -706,26 +706,26 @@ export function PersonaPackDetailPage({
       }
     | undefined;
   const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
-  const packVariantReview = useQuery(
+  const configVariantReview = useQuery(
     api.personaVariantReview.getPackVariantReview,
     selectedStudyId === null
-      ? { packId: typedPackId }
-      : { packId: typedPackId, studyId: selectedStudyId as Id<"studies"> },
-  ) as PackVariantReviewData | null | undefined;
-  const updateDraft = useMutation(api.personaPacks.updateDraft);
-  const createSyntheticUser = useMutation(api.personaPacks.createSyntheticUser);
-  const publishPack = useMutation(api.personaPacks.publish);
-  const archivePack = useMutation(api.personaPacks.archive);
+      ? { configId: typedConfigId }
+      : { configId: typedConfigId, studyId: selectedStudyId as Id<"studies"> },
+  ) as ConfigVariantReviewData | null | undefined;
+  const updateDraft = useMutation(api.personaConfigs.updateDraft);
+  const createSyntheticUser = useMutation(api.personaConfigs.createSyntheticUser);
+  const publishConfig = useMutation(api.personaConfigs.publish);
+  const archiveConfig = useMutation(api.personaConfigs.archive);
   const applyTranscriptDerivedSyntheticUsers = useMutation(
-    (api as any).personaPacks.applyTranscriptDerivedSyntheticUsers,
+    (api as any).personaConfigs.applyTranscriptDerivedSyntheticUsers,
   );
   const suggestAxes = useAction((api as any).axisGeneration.suggestAxes);
   const startTranscriptExtraction = useAction(
     (api as any).transcriptExtraction.startExtraction,
   );
-  const attachTranscript = useMutation((api as any).packTranscripts.attachTranscript);
-  const detachTranscript = useMutation((api as any).packTranscripts.detachTranscript);
-  const [draftForm, setDraftForm] = useState<PackFormValue>(emptyPackForm);
+  const attachTranscript = useMutation((api as any).configTranscripts.attachTranscript);
+  const detachTranscript = useMutation((api as any).configTranscripts.detachTranscript);
+  const [draftForm, setDraftForm] = useState<ConfigFormValue>(emptyConfigForm);
   const [syntheticUserForm, setSyntheticUserForm] =
     useState<SyntheticUserFormValue>(emptySyntheticUserForm);
   const [isProtoFormOpen, setIsProtoFormOpen] = useState(false);
@@ -737,7 +737,7 @@ export function PersonaPackDetailPage({
   const [confirmationState, setConfirmationState] =
     useState<ConfirmationState | null>(null);
   const [optimisticStatus, setOptimisticStatus] = useState<
-    PersonaPackDoc["status"] | null
+    PersonaConfigDoc["status"] | null
   >(null);
   const [suggestedAxes, setSuggestedAxes] = useState<SuggestedAxisState[]>([]);
   const [isSuggestionPanelOpen, setIsSuggestionPanelOpen] = useState(false);
@@ -780,14 +780,14 @@ export function PersonaPackDetailPage({
   );
 
   useEffect(() => {
-    if (!pack) {
+    if (!config) {
       return;
     }
 
-    setDraftForm(packToFormValue(pack));
-    setGuidedExtractionAxes(pack.sharedAxes.map(axisToFormValue));
-    setOptimisticStatus(pack.status);
-  }, [pack?._id, pack?.updatedAt, pack?.status]);
+    setDraftForm(configToFormValue(config));
+    setGuidedExtractionAxes(config.sharedAxes.map(axisToFormValue));
+    setOptimisticStatus(config.status);
+  }, [config?._id, config?.updatedAt, config?.status]);
 
   useEffect(() => {
     setSuggestedAxes([]);
@@ -809,23 +809,23 @@ export function PersonaPackDetailPage({
     setExtractionError(null);
     setExtractionNotice(null);
     setDiscardingArchetypeId(null);
-  }, [pack?._id]);
+  }, [config?._id]);
 
   useEffect(() => {
-    if (!packVariantReview) {
+    if (!configVariantReview) {
       return;
     }
 
     const resolvedStudyId =
-      packVariantReview.selectedStudy?._id ?? packVariantReview.study?._id ?? null;
+      configVariantReview.selectedStudy?._id ?? configVariantReview.study?._id ?? null;
 
     setSelectedStudyId((current) =>
       current !== null &&
-      packVariantReview.studies.some((study) => study._id === current)
+      configVariantReview.studies.some((study) => study._id === current)
         ? current
         : resolvedStudyId,
     );
-  }, [packVariantReview]);
+  }, [configVariantReview]);
 
   useEffect(() => {
     if (inlineToast === null) {
@@ -862,7 +862,7 @@ export function PersonaPackDetailPage({
         ? extractionStatus.guidedAxes
         : extractionStatus.proposedAxes.length > 0
           ? extractionStatus.proposedAxes
-          : pack?.sharedAxes ?? []
+          : config?.sharedAxes ?? []
       ).map(axisToFormValue),
     );
     setReviewProposedAxes(
@@ -891,9 +891,9 @@ export function PersonaPackDetailPage({
         ? "Extraction completed with partial results. Review the successful transcripts below."
         : null,
     );
-  }, [extractionStatus?.updatedAt, extractionStatus?.status, pack?.sharedAxes]);
+  }, [extractionStatus?.updatedAt, extractionStatus?.status, config?.sharedAxes]);
 
-  const resolvedStatus = optimisticStatus ?? pack?.status;
+  const resolvedStatus = optimisticStatus ?? config?.status;
   const isDraft = resolvedStatus === "draft";
   const syntheticUserList: SyntheticUserDoc[] = syntheticUsers ?? [];
   const canSuggestAxes =
@@ -902,23 +902,23 @@ export function PersonaPackDetailPage({
     (suggestion) => suggestion.isSelected,
   ).length;
   const axisLibraryList = axisDefinitions ?? [];
-  const canManagePackTranscripts =
-    viewerAccess?.permissions.canManagePersonaPacks === true;
-  const resolvedAxes: PersonaPackDoc["sharedAxes"] = useMemo(() => {
-    if (!pack) {
+  const canManageConfigTranscripts =
+    viewerAccess?.permissions.canManagePersonaConfigs === true;
+  const resolvedAxes: PersonaConfigDoc["sharedAxes"] = useMemo(() => {
+    if (!config) {
       return draftForm.sharedAxes.map(axisFormToPayload);
     }
 
-    return isDraft ? draftForm.sharedAxes.map(axisFormToPayload) : pack.sharedAxes;
-  }, [draftForm.sharedAxes, isDraft, pack]);
+    return isDraft ? draftForm.sharedAxes.map(axisFormToPayload) : config.sharedAxes;
+  }, [draftForm.sharedAxes, isDraft, config]);
   const publishedStatusHelp =
     isDraft && syntheticUsers !== undefined && syntheticUserList.length === 0
-      ? "Add at least one synthetic user before publishing this pack."
+      ? "Add at least one synthetic user before publishing this persona configuration."
       : null;
   const selectedStudySummary =
-    packVariantReview?.selectedStudy ?? packVariantReview?.study ?? null;
+    configVariantReview?.selectedStudy ?? configVariantReview?.study ?? null;
   const attachedTranscriptIds = new Set(
-    (packTranscripts ?? []).map((packTranscript) => String(packTranscript.transcriptId)),
+    (configTranscripts ?? []).map((configTranscript) => String(configTranscript.transcriptId)),
   );
   const attachableTranscripts = (transcriptLibrary ?? []).filter(
     (transcript) => !attachedTranscriptIds.has(String(transcript._id)),
@@ -943,7 +943,7 @@ export function PersonaPackDetailPage({
     );
   }, [attachableTranscripts, transcriptSearchText]);
   const canOpenExtraction =
-    isDraft && canManagePackTranscripts && (packTranscripts?.length ?? 0) > 0;
+    isDraft && canManageConfigTranscripts && (configTranscripts?.length ?? 0) > 0;
   const selectedExtractionArchetypeCount = reviewArchetypes.filter(
     (archetype) => archetype.isSelected,
   ).length;
@@ -970,16 +970,16 @@ export function PersonaPackDetailPage({
         ? "Extraction in progress"
         : "Re-run extraction";
   const transcriptFilenameById = new Map(
-    (packTranscripts ?? []).map((packTranscript) => [
-      String(packTranscript.transcriptId),
-      packTranscript.transcript.originalFilename,
+    (configTranscripts ?? []).map((configTranscript) => [
+      String(configTranscript.transcriptId),
+      configTranscript.transcript.originalFilename,
     ]),
   );
 
   async function handleSaveDraft(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!pack) {
+    if (!config) {
       return;
     }
 
@@ -989,7 +989,7 @@ export function PersonaPackDetailPage({
 
     try {
       await updateDraft({
-        packId: pack._id,
+        configId: config._id,
         patch: {
           name: draftForm.name,
           description: draftForm.description,
@@ -1000,7 +1000,7 @@ export function PersonaPackDetailPage({
 
       setSaveMessage("Draft changes saved.");
     } catch (error) {
-      setActionError(getErrorMessage(error, "Could not update persona pack."));
+      setActionError(getErrorMessage(error, "Could not update persona configuration."));
     } finally {
       setIsSavingDraft(false);
     }
@@ -1011,7 +1011,7 @@ export function PersonaPackDetailPage({
   ) {
     event.preventDefault();
 
-    if (!pack) {
+    if (!config) {
       return;
     }
 
@@ -1021,11 +1021,11 @@ export function PersonaPackDetailPage({
 
     try {
       await createSyntheticUser({
-        packId: pack._id,
+        configId: config._id,
         syntheticUser: {
           name: syntheticUserForm.name,
           summary: syntheticUserForm.summary,
-          axes: pack.sharedAxes,
+          axes: config.sharedAxes,
           evidenceSnippets: parseEvidenceSnippets(syntheticUserForm.evidenceText),
           ...(syntheticUserForm.notes.trim()
             ? { notes: syntheticUserForm.notes.trim() }
@@ -1046,7 +1046,7 @@ export function PersonaPackDetailPage({
   }
 
   async function handleConfirmAction() {
-    if (!pack || !confirmationState) {
+    if (!config || !confirmationState) {
       return;
     }
 
@@ -1056,18 +1056,18 @@ export function PersonaPackDetailPage({
 
     try {
       if (confirmationState.kind === "publish") {
-        await publishPack({ packId: pack._id });
+        await publishConfig({ configId: config._id });
         setOptimisticStatus("published");
-        setSaveMessage("Pack published.");
+        setSaveMessage("Persona configuration published.");
       } else {
-        await archivePack({ packId: pack._id });
+        await archiveConfig({ configId: config._id });
         setOptimisticStatus("archived");
-        setSaveMessage("Pack archived.");
+        setSaveMessage("Persona configuration archived.");
       }
 
       setConfirmationState(null);
     } catch (error) {
-      setActionError(getErrorMessage(error, "Could not update pack status."));
+      setActionError(getErrorMessage(error, "Could not update persona configuration status."));
     } finally {
       setIsConfirmingAction(false);
     }
@@ -1098,7 +1098,7 @@ export function PersonaPackDetailPage({
         description: trimmedDescription,
         existingAxisKeys: getAxisKeys(draftForm.sharedAxes),
         ...(forceSuggestAxesError ? { forceError: true } : {}),
-      })) as PersonaPackDoc["sharedAxes"];
+      })) as PersonaConfigDoc["sharedAxes"];
 
       setSuggestedAxes(
         suggestions.map((axis, index) => ({
@@ -1252,7 +1252,7 @@ export function PersonaPackDetailPage({
   }
 
   async function handleAttachSelectedTranscripts() {
-    if (!pack || selectedTranscriptIds.length === 0) {
+    if (!config || selectedTranscriptIds.length === 0) {
       return;
     }
 
@@ -1264,7 +1264,7 @@ export function PersonaPackDetailPage({
     try {
       for (const transcriptId of selectedTranscriptIds) {
         await attachTranscript({
-          packId: pack._id,
+          configId: config._id,
           transcriptId: transcriptId as TranscriptId,
         });
       }
@@ -1272,8 +1272,8 @@ export function PersonaPackDetailPage({
       handleCloseTranscriptPicker();
       setSaveMessage(
         selectedCount === 1
-          ? "1 transcript attached to this pack."
-          : `${selectedCount} transcripts attached to this pack.`,
+          ? "1 transcript attached to this persona configuration."
+          : `${selectedCount} transcripts attached to this persona configuration.`,
       );
     } catch (error) {
       setActionError(getErrorMessage(error, "Could not attach transcripts."));
@@ -1283,7 +1283,7 @@ export function PersonaPackDetailPage({
   }
 
   async function handleDetachTranscript(transcriptId: TranscriptId) {
-    if (!pack) {
+    if (!config) {
       return;
     }
 
@@ -1293,10 +1293,10 @@ export function PersonaPackDetailPage({
 
     try {
       await detachTranscript({
-        packId: pack._id,
+        configId: config._id,
         transcriptId,
       });
-      setSaveMessage("Transcript detached from this pack.");
+      setSaveMessage("Transcript detached from this persona configuration.");
     } catch (error) {
       setActionError(getErrorMessage(error, "Could not detach transcript."));
     } finally {
@@ -1361,7 +1361,7 @@ export function PersonaPackDetailPage({
   }
 
   async function handleStartExtraction() {
-    if (!pack || extractionMode === null || isStartingExtraction) {
+    if (!config || extractionMode === null || isStartingExtraction) {
       return;
     }
 
@@ -1386,7 +1386,7 @@ export function PersonaPackDetailPage({
     setReviewProposedAxes([]);
 
     void startTranscriptExtraction({
-      packId: pack._id,
+      configId: config._id,
       mode: extractionMode,
       ...(extractionMode === "guided"
         ? { guidedAxes: guidedExtractionAxes.map(axisFormToPayload) }
@@ -1537,7 +1537,7 @@ export function PersonaPackDetailPage({
   }
 
   async function handleApplyTranscriptExtractionResults() {
-    if (!pack || selectedExtractionArchetypeCount === 0) {
+    if (!config || selectedExtractionArchetypeCount === 0) {
       return;
     }
 
@@ -1558,7 +1558,7 @@ export function PersonaPackDetailPage({
 
     try {
       await applyTranscriptDerivedSyntheticUsers({
-        packId: pack._id,
+        configId: config._id,
         input: {
           sharedAxes: extractionSharedAxes.map(axisFormToPayload),
           archetypes: selectedArchetypes.map((archetype) => ({
@@ -1583,8 +1583,8 @@ export function PersonaPackDetailPage({
       }));
       setSaveMessage(
         selectedArchetypes.length === 1
-          ? "Applied 1 transcript-derived synthetic user to this pack."
-          : `Applied ${selectedArchetypes.length} transcript-derived synthetic users to this pack.`,
+          ? "Applied 1 transcript-derived synthetic user to this persona configuration."
+          : `Applied ${selectedArchetypes.length} transcript-derived synthetic users to this persona configuration.`,
       );
     } catch (error) {
       setExtractionError(
@@ -1596,33 +1596,33 @@ export function PersonaPackDetailPage({
   }
 
   if (
-    pack === undefined
+    config === undefined
     || syntheticUsers === undefined
     || axisDefinitions === undefined
     || transcriptLibrary === undefined
-    || packTranscripts === undefined
+    || configTranscripts === undefined
     || viewerAccess === undefined
   ) {
     return (
       <LoadingCard
-        title="Persona Pack"
-        body="Loading pack details and synthetic users..."
+        title="Persona Configuration"
+        body="Loading persona configuration details and synthetic users..."
       />
     );
   }
 
-  if (pack === null) {
+  if (config === null) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Persona pack not found</CardTitle>
+          <CardTitle>Persona configuration not found</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            This pack either does not exist or belongs to another organization.
+            This persona configuration either does not exist or belongs to another organization.
           </p>
           <Button asChild variant="outline">
-            <Link to="/persona-packs">Back to Persona Packs</Link>
+            <Link to="/persona-configs">Back to Persona Configurations</Link>
           </Button>
         </CardContent>
       </Card>
@@ -1636,19 +1636,19 @@ export function PersonaPackDetailPage({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-3xl font-semibold tracking-tight">{pack.name}</h2>
-              <StatusBadge status={resolvedStatus ?? pack.status} />
+              <h2 className="text-3xl font-semibold tracking-tight">{config.name}</h2>
+              <StatusBadge status={resolvedStatus ?? config.status} />
             </div>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review pack metadata, shared axes, and synthetic users before
-              publishing. Published packs are frozen and archived packs remain
+              Review persona configuration metadata, shared axes, and synthetic users before
+              publishing. Published persona configurations are frozen and archived persona configurations remain
               read-only.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Button asChild variant="outline">
-              <Link to="/persona-packs">Back to list</Link>
+              <Link to="/persona-configs">Back to list</Link>
             </Button>
             {isDraft ? (
               <Button
@@ -1656,10 +1656,10 @@ export function PersonaPackDetailPage({
                 onClick={() =>
                   setConfirmationState({
                     kind: "publish",
-                    title: "Publish persona pack?",
+                    title: "Publish persona configuration?",
                     description:
-                      "Publishing freezes this pack and its synthetic users so studies can rely on a stable definition.",
-                    confirmLabel: "Publish pack",
+                      "Publishing freezes this persona configuration and its synthetic users so studies can rely on a stable definition.",
+                    confirmLabel: "Publish persona configuration",
                   })
                 }
               >
@@ -1672,10 +1672,10 @@ export function PersonaPackDetailPage({
                 onClick={() =>
                   setConfirmationState({
                     kind: "archive",
-                    title: "Archive persona pack?",
+                    title: "Archive persona configuration?",
                     description:
-                      "Archiving hides this pack from active work while preserving its history for audit and reference.",
-                    confirmLabel: "Archive pack",
+                      "Archiving hides this persona configuration from active work while preserving its history for audit and reference.",
+                    confirmLabel: "Archive persona configuration",
                   })
                 }
               >
@@ -1703,9 +1703,9 @@ export function PersonaPackDetailPage({
               </CardHeader>
               <CardContent>
                 {isDraft ? (
-                  <PackFormCard
+                  <ConfigFormCard
                     form={draftForm}
-                    formPrefix="edit-pack"
+                    formPrefix="edit-config"
                     submitLabel={isSavingDraft ? "Saving..." : "Save draft changes"}
                     title={null}
                     description={null}
@@ -1716,10 +1716,10 @@ export function PersonaPackDetailPage({
                   />
                 ) : (
                   <dl className="grid gap-4 sm:grid-cols-2">
-                    <SummaryValue label="Name" value={pack.name} />
-                    <SummaryValue label="Version" value={`v${pack.version}`} />
-                    <SummaryValue label="Description" value={pack.description} />
-                    <SummaryValue label="Context" value={pack.context} />
+                    <SummaryValue label="Name" value={config.name} />
+                    <SummaryValue label="Version" value={`v${config.version}`} />
+                    <SummaryValue label="Description" value={config.description} />
+                    <SummaryValue label="Context" value={config.context} />
                   </dl>
                 )}
               </CardContent>
@@ -1736,7 +1736,7 @@ export function PersonaPackDetailPage({
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Axis generation</p>
                         <p className="text-sm text-muted-foreground">
-                          Generate new axes from pack metadata or import reusable
+                          Generate new axes from persona configuration metadata or import reusable
                           ones from the shared library.
                         </p>
                       </div>
@@ -1772,7 +1772,7 @@ export function PersonaPackDetailPage({
                     <div aria-live="polite" className="space-y-2">
                       {isSuggestingAxes ? (
                         <p className="text-sm text-muted-foreground" role="status">
-                          Generating axis suggestions from the current pack
+                          Generating axis suggestions from the current persona configuration
                           metadata...
                         </p>
                       ) : null}
@@ -1866,7 +1866,7 @@ export function PersonaPackDetailPage({
                 <div className="space-y-1">
                   <CardTitle>Synthetic Users</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Review the pack&apos;s source synthetic users and the evidence
+                    Review the persona configuration&apos;s source synthetic users and the evidence
                     used to anchor them.
                   </p>
                 </div>
@@ -1964,7 +1964,7 @@ export function PersonaPackDetailPage({
                   <div className="rounded-xl border border-dashed bg-background p-6">
                     <p className="text-sm leading-6 text-muted-foreground">
                       No synthetic users yet. Add the first synthetic user to make
-                      this draft pack publishable.
+                      this draft persona configuration publishable.
                     </p>
                   </div>
                 ) : (
@@ -1984,12 +1984,12 @@ export function PersonaPackDetailPage({
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Pack Summary</CardTitle>
+                <CardTitle>Persona Configuration Summary</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <SummaryValue label="Pack ID" value={pack._id} />
-                <SummaryValue label="Status" value={resolvedStatus ?? pack.status} />
-                <SummaryValue label="Version" value={`v${pack.version}`} />
+                <SummaryValue label="Persona Configuration ID" value={config._id} />
+                <SummaryValue label="Status" value={resolvedStatus ?? config.status} />
+                <SummaryValue label="Version" value={`v${config.version}`} />
                 <SummaryValue
                   label="Synthetic users"
                   value={String(syntheticUserList.length)}
@@ -2002,7 +2002,7 @@ export function PersonaPackDetailPage({
                 <div className="space-y-1">
                   <CardTitle>Attached Transcripts</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Review transcript research linked to this pack and open each
+                    Review transcript research linked to this persona configuration and open each
                     transcript in the library.
                   </p>
                 </div>
@@ -2017,7 +2017,7 @@ export function PersonaPackDetailPage({
                       {extractionButtonLabel}
                     </Button>
                   ) : null}
-                  {isDraft && canManagePackTranscripts ? (
+                  {isDraft && canManageConfigTranscripts ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -2031,28 +2031,28 @@ export function PersonaPackDetailPage({
               <CardContent className="space-y-4">
                 {!isDraft ? (
                   <p className="text-sm text-muted-foreground">
-                    Transcript attachments become read-only once the pack is no
+                    Transcript attachments become read-only once the persona configuration is no
                     longer a draft.
                   </p>
                 ) : null}
-                {!canManagePackTranscripts ? (
+                {!canManageConfigTranscripts ? (
                   <p className="text-sm text-muted-foreground">
                     Reviewers can inspect attached transcripts but cannot attach
                     or detach them.
                   </p>
                 ) : null}
 
-                {packTranscripts.length === 0 ? (
+                {configTranscripts.length === 0 ? (
                   <div className="rounded-xl border border-dashed bg-background p-6">
                     <p className="text-sm leading-6 text-muted-foreground">
-                      No transcripts are attached to this pack yet.
+                      No transcripts are attached to this persona configuration yet.
                     </p>
                   </div>
                 ) : (
                   <div className="grid gap-3">
-                    {packTranscripts.map((packTranscript) => (
+                    {configTranscripts.map((configTranscript) => (
                       <div
-                        key={packTranscript._id}
+                        key={configTranscript._id}
                         className="rounded-xl border bg-background p-4"
                       >
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -2061,23 +2061,23 @@ export function PersonaPackDetailPage({
                               <Link
                                 className="font-medium text-primary underline-offset-4 hover:underline"
                                 params={{
-                                  transcriptId: packTranscript.transcript._id,
+                                  transcriptId: configTranscript.transcript._id,
                                 }}
                                 to="/transcripts/$transcriptId"
                               >
-                                {packTranscript.transcript.originalFilename}
+                                {configTranscript.transcript.originalFilename}
                               </Link>
                               <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                {packTranscript.transcript.format}
+                                {configTranscript.transcript.format}
                               </span>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              {packTranscript.transcript.metadata.participantId
-                                ? `Participant ${packTranscript.transcript.metadata.participantId}`
+                              {configTranscript.transcript.metadata.participantId
+                                ? `Participant ${configTranscript.transcript.metadata.participantId}`
                                 : "No participant ID"}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Attached {formatTimestamp(packTranscript.createdAt)}
+                              Attached {formatTimestamp(configTranscript.createdAt)}
                             </p>
                           </div>
 
@@ -2085,29 +2085,29 @@ export function PersonaPackDetailPage({
                             <Button asChild type="button" variant="outline">
                               <Link
                                 params={{
-                                  transcriptId: packTranscript.transcript._id,
+                                  transcriptId: configTranscript.transcript._id,
                                 }}
                                 to="/transcripts/$transcriptId"
                               >
                                 Open transcript
                               </Link>
                             </Button>
-                            {isDraft && canManagePackTranscripts ? (
+                            {isDraft && canManageConfigTranscripts ? (
                               <Button
                                 disabled={
                                   detachingTranscriptId
-                                  === String(packTranscript.transcriptId)
+                                  === String(configTranscript.transcriptId)
                                 }
                                 type="button"
                                 variant="outline"
                                 onClick={() =>
                                   void handleDetachTranscript(
-                                    packTranscript.transcriptId,
+                                    configTranscript.transcriptId,
                                   )
                                 }
                               >
                                 {detachingTranscriptId
-                                === String(packTranscript.transcriptId)
+                                === String(configTranscript.transcriptId)
                                   ? "Detaching..."
                                   : "Detach"}
                               </Button>
@@ -2119,11 +2119,11 @@ export function PersonaPackDetailPage({
                   </div>
                 )}
 
-                {isDraft && canManagePackTranscripts ? (
+                {isDraft && canManageConfigTranscripts ? (
                   <TranscriptExtractionPanel
                     activeProposedAxes={activeReviewProposedAxes}
                     archetypes={reviewArchetypes}
-                    attachedTranscripts={packTranscripts}
+                    attachedTranscripts={configTranscripts}
                     costEstimate={extractionCostEstimate}
                     extractionError={extractionError}
                     extractionMode={extractionMode}
@@ -2170,21 +2170,21 @@ export function PersonaPackDetailPage({
                 <CardTitle>Audit Trail</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <SummaryValue label="Created by" value={pack.createdBy} />
+                <SummaryValue label="Created by" value={config.createdBy} />
                 <SummaryValue
                   label="Last modified by"
-                  value={pack.updatedBy ?? pack.createdBy}
+                  value={config.updatedBy ?? config.createdBy}
                 />
                 <SummaryValue
                   label="Created at"
-                  value={formatTimestamp(pack.createdAt)}
+                  value={formatTimestamp(config.createdAt)}
                 />
                 <SummaryValue
                   label="Last updated"
-                  value={formatTimestamp(pack.updatedAt)}
+                  value={formatTimestamp(config.updatedAt)}
                 />
                 <p className="text-xs leading-5 text-muted-foreground">
-                  Pack access is scoped to the current authenticated
+                  Config access is scoped to the current authenticated
                   organization. Reads and mutations outside your org return no
                   data or fail authorization checks.
                 </p>
@@ -2199,36 +2199,36 @@ export function PersonaPackDetailPage({
               Variant Review
             </h3>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review accepted variants generated for studies that use this pack.
-              Use the study selector to inspect the latest published-pack cohorts.
+              Review accepted variants generated for studies that use this persona configuration.
+              Use the study selector to inspect the latest published persona configuration cohorts.
             </p>
           </div>
 
-          {packVariantReview === undefined ? (
+          {configVariantReview === undefined ? (
             <LoadingCard
               title="Variant Review"
               body="Loading linked studies and accepted variants..."
             />
-          ) : packVariantReview === null ? (
+          ) : configVariantReview === null ? (
             <Card>
               <CardHeader>
                 <CardTitle>Variant review unavailable</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  This pack&apos;s variant review data could not be loaded for the
+                  This persona configuration&apos;s variant review data could not be loaded for the
                   current organization.
                 </p>
               </CardContent>
             </Card>
-          ) : packVariantReview.studies.length === 0 ? (
+          ) : configVariantReview.studies.length === 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>No studies linked to this pack</CardTitle>
+                <CardTitle>No studies linked to this persona configuration</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Generate variants from a study that uses this published pack,
+                  Generate variants from a study that uses this published persona configuration,
                   then return here to review the accepted cohort.
                 </p>
               </CardContent>
@@ -2243,25 +2243,25 @@ export function PersonaPackDetailPage({
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
                       {selectedStudySummary
-                        ? `${packVariantReview.variants.length} accepted variants available for review.`
+                        ? `${configVariantReview.variants.length} accepted variants available for review.`
                         : "Choose a linked study to review its accepted variants."}
                     </p>
                   </div>
 
                   <div className="flex flex-col gap-3 sm:min-w-72">
                     <div className="grid gap-2">
-                      <Label htmlFor="pack-variant-study-filter">
+                      <Label htmlFor="config-variant-study-filter">
                         Linked study
                       </Label>
                       <select
                         className={selectClassName}
-                        id="pack-variant-study-filter"
+                        id="config-variant-study-filter"
                         value={selectedStudyId ?? ""}
                         onChange={(event) =>
                           setSelectedStudyId(event.target.value || null)
                         }
                       >
-                        {packVariantReview.studies.map((study) => (
+                        {configVariantReview.studies.map((study) => (
                           <option key={study._id} value={study._id}>
                             {study.name} ({study.acceptedVariantCount} accepted)
                           </option>
@@ -2302,7 +2302,7 @@ export function PersonaPackDetailPage({
 
               <PersonaVariantReviewGrid
                 emptyMessage="No accepted variants are available for the selected study yet. Generate variants from the study personas page first."
-                reviewData={packVariantReview}
+                reviewData={configVariantReview}
               />
             </div>
           )}
@@ -2497,7 +2497,7 @@ function SuggestedAxisCard({
   );
 }
 
-function PackFormCard({
+function ConfigFormCard({
   form,
   formPrefix,
   submitLabel,
@@ -2509,7 +2509,7 @@ function PackFormCard({
   onChange,
   axisGenerationSlot,
 }: {
-  form: PackFormValue;
+  form: ConfigFormValue;
   formPrefix: string;
   submitLabel: string;
   title: string | null;
@@ -2517,7 +2517,7 @@ function PackFormCard({
   error: string | null;
   disabled: boolean;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
-  onChange: (value: PackFormValue) => void;
+  onChange: (value: ConfigFormValue) => void;
   axisGenerationSlot?: React.ReactNode;
 }) {
   return (
@@ -2535,7 +2535,7 @@ function PackFormCard({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor={`${formPrefix}-name`}>Pack name</Label>
+          <Label htmlFor={`${formPrefix}-name`}>Persona configuration name</Label>
           <Input
             id={`${formPrefix}-name`}
             value={form.name}
@@ -2586,7 +2586,7 @@ function PackFormCard({
           <div>
             <h3 className="text-lg font-semibold">Shared axes</h3>
             <p className="text-sm text-muted-foreground">
-              Capture the common dimensions that every persona in this pack
+              Capture the common dimensions that every persona in this persona configuration
               should share.
             </p>
           </div>
@@ -2851,19 +2851,19 @@ function ImportPackDialog({
         onSubmit={onSubmit}
       >
         <div className="space-y-2">
-          <h3 className="text-xl font-semibold">Import persona pack JSON</h3>
+          <h3 className="text-xl font-semibold">Import persona configuration JSON</h3>
           <p className="text-sm leading-6 text-muted-foreground">
-            Paste a valid exported persona pack JSON payload to create a new
-            draft pack and review its imported synthetic users.
+            Paste a valid exported persona configuration JSON payload to create a new
+            draft persona configuration and review its imported synthetic users.
           </p>
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="import-pack-json">Pack JSON</Label>
+          <Label htmlFor="import-config-json">Persona Configuration JSON</Label>
           <textarea
-            id="import-pack-json"
+            id="import-config-json"
             className={`${textareaClassName} min-h-64 font-mono`}
-            placeholder='{"name":"Imported Pack","description":"..."}'
+            placeholder='{"name":"Imported Persona Configuration","description":"..."}'
             required
             value={json}
             onChange={(event) => onChange(event.target.value)}
@@ -2877,7 +2877,7 @@ function ImportPackDialog({
             Cancel
           </Button>
           <Button disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Importing..." : "Import pack"}
+            {isSubmitting ? "Importing..." : "Import persona configuration"}
           </Button>
         </div>
       </form>
@@ -3022,7 +3022,7 @@ function AxisLibraryImportDialog({
                       </p>
                     </div>
                     <div className="text-right text-xs text-muted-foreground">
-                      {isDuplicate ? "Already in pack" : "Ready to import"}
+                      {isDuplicate ? "Already in persona configuration" : "Ready to import"}
                     </div>
                   </label>
                 );
@@ -3089,7 +3089,7 @@ function TranscriptExtractionPanel({
 }: {
   activeProposedAxes: ExtractionReviewAxisState[];
   archetypes: ExtractionArchetypeState[];
-  attachedTranscripts: PackTranscriptAttachment[];
+  attachedTranscripts: ConfigTranscriptAttachment[];
   costEstimate:
     | {
         totalCharacters: number;
@@ -3194,7 +3194,7 @@ function TranscriptExtractionPanel({
             <div className="space-y-1">
               <p className="font-medium">Define guided axes</p>
               <p className="text-sm text-muted-foreground">
-                Review the pack&apos;s current axes, edit them as needed, and keep
+                Review the persona configuration&apos;s current axes, edit them as needed, and keep
                 at least one axis before estimating extraction cost.
               </p>
             </div>
@@ -3550,7 +3550,7 @@ function TranscriptExtractionPanel({
                   type="button"
                   onClick={onApply}
                 >
-                  {isApplying ? "Applying..." : "Apply to pack"}
+                  {isApplying ? "Applying..." : "Apply to persona configuration"}
                 </Button>
               </div>
             </div>
@@ -3717,7 +3717,7 @@ function TranscriptExtractionPanel({
               <p className="font-medium text-destructive">Discard this archetype?</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Discarded archetypes are removed from the review set and will not
-                be included when you apply results to the pack.
+                be included when you apply results to the persona configuration.
               </p>
               <div className="mt-4 flex justify-end gap-3">
                 <Button type="button" variant="outline" onClick={() => onDiscardArchetype(null)}>
@@ -3829,16 +3829,16 @@ function TranscriptAttachmentDialog({
           <h3 className="text-xl font-semibold">Attach transcripts</h3>
           <p className="text-sm leading-6 text-muted-foreground">
             Select one or more transcripts from your organization&apos;s
-            transcript library to link them to this draft pack.
+            transcript library to link them to this draft persona configuration.
           </p>
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="pack-attach-transcripts-search">
+          <Label htmlFor="config-attach-transcripts-search">
             Search transcripts
           </Label>
           <Input
-            id="pack-attach-transcripts-search"
+            id="config-attach-transcripts-search"
             placeholder="Search by filename, participant, tag, or notes"
             value={searchText}
             onChange={(event) => onSearchChange(event.target.value)}
@@ -3853,7 +3853,7 @@ function TranscriptAttachmentDialog({
           <div className="rounded-xl border border-dashed bg-card p-6">
             <p className="text-sm leading-6 text-muted-foreground">
               Every transcript in this organization is already attached to this
-              pack.
+              persona configuration.
             </p>
           </div>
         ) : transcripts.length === 0 ? (
@@ -3881,12 +3881,12 @@ function TranscriptAttachmentDialog({
                   <label
                     key={transcript._id}
                     className="grid cursor-pointer grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_auto] gap-4 px-4 py-3 text-sm"
-                    htmlFor={`pack-attach-transcript-${transcript._id}`}
+                    htmlFor={`config-attach-transcript-${transcript._id}`}
                   >
                     <input
                       checked={isSelected}
                       className="mt-1 h-4 w-4 rounded border-input"
-                      id={`pack-attach-transcript-${transcript._id}`}
+                      id={`config-attach-transcript-${transcript._id}`}
                       onChange={() => onToggleSelected(String(transcript._id))}
                       type="checkbox"
                     />
@@ -3975,32 +3975,32 @@ function LoadingCard({ title, body }: { title: string; body: string }) {
   );
 }
 
-function PackGrid({ packs }: { packs: PersonaPackDoc[] }) {
+function ConfigGrid({ configs }: { configs: PersonaConfigDoc[] }) {
   return (
     <div className="grid gap-4">
-      {packs.map((pack) => (
+      {configs.map((config) => (
         <Link
-          key={pack._id}
+          key={config._id}
           className="block rounded-xl border bg-card p-6 shadow-sm transition-colors hover:border-primary hover:bg-muted/30"
-          params={{ packId: pack._id }}
-          to="/persona-packs/$packId"
+          params={{ configId: config._id }}
+          to="/persona-configs/$configId"
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-xl font-semibold tracking-tight">{pack.name}</h3>
-                <StatusBadge status={pack.status} />
+                <h3 className="text-xl font-semibold tracking-tight">{config.name}</h3>
+                <StatusBadge status={config.status} />
               </div>
               <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                {pack.description}
+                {config.description}
               </p>
             </div>
 
             <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:min-w-72">
-              <SummaryValue label="Version" value={`v${pack.version}`} />
-              <SummaryValue label="Created" value={formatTimestamp(pack.createdAt)} />
-              <SummaryValue label="Updated" value={formatTimestamp(pack.updatedAt)} />
-              <SummaryValue label="Axes" value={String(pack.sharedAxes.length)} />
+              <SummaryValue label="Version" value={`v${config.version}`} />
+              <SummaryValue label="Created" value={formatTimestamp(config.createdAt)} />
+              <SummaryValue label="Updated" value={formatTimestamp(config.updatedAt)} />
+              <SummaryValue label="Axes" value={String(config.sharedAxes.length)} />
             </div>
           </div>
         </Link>
@@ -4009,7 +4009,7 @@ function PackGrid({ packs }: { packs: PersonaPackDoc[] }) {
   );
 }
 
-function StatusBadge({ status }: { status: PersonaPackDoc["status"] }) {
+function StatusBadge({ status }: { status: PersonaConfigDoc["status"] }) {
   return (
     <span
       className={cn(
@@ -4035,18 +4035,18 @@ function SummaryValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function packToFormValue(pack: PersonaPackDoc): PackFormValue {
+function configToFormValue(config: PersonaConfigDoc): ConfigFormValue {
   return {
-    name: pack.name,
-    description: pack.description,
-    context: pack.context,
-    sharedAxes: pack.sharedAxes.map(axisToFormValue),
+    name: config.name,
+    description: config.description,
+    context: config.context,
+    sharedAxes: config.sharedAxes.map(axisToFormValue),
   };
 }
 
 function axisToFormValue(
   axis:
-    | PersonaPackDoc["sharedAxes"][number]
+    | PersonaConfigDoc["sharedAxes"][number]
     | Pick<
         AxisDefinition,
         | "key"
@@ -4115,7 +4115,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 function getSuggestAxesErrorMessage(error: unknown) {
   const errorMessage = getErrorMessage(error, "");
 
-  if (/pack description is required/i.test(errorMessage)) {
+  if (/config description is required/i.test(errorMessage)) {
     return "Add a short description before requesting suggestions.";
   }
 

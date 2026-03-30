@@ -281,11 +281,11 @@ async function insertRun(
   overrides: Partial<Doc<"runs">> = {},
 ) {
   const now = Date.now();
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId: "org_1",
-      name: "Checkout pack",
-      description: "Pack used for run progress tests",
+      name: "Checkout config",
+      description: "Config used for run progress tests",
       context: "Checkout flows",
       sharedAxes: [],
       version: 1,
@@ -300,7 +300,7 @@ async function insertRun(
   const studyId = await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: "org_1",
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout study",
       taskSpec: sampleTaskSpec,
       runBudget: 10,
@@ -314,7 +314,7 @@ async function insertRun(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId,
+      configId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -327,7 +327,7 @@ async function insertRun(
   const personaVariantId = await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: packId,
+      personaConfigId: configId,
       syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,

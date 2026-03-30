@@ -270,6 +270,29 @@ export type DataModel = {
     searchIndexes: {};
     vectorIndexes: {};
   };
+  configTranscripts: {
+    document: {
+      configId: Id<"personaConfigs">;
+      createdAt: number;
+      transcriptId: Id<"transcripts">;
+      _id: Id<"configTranscripts">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "configId"
+      | "createdAt"
+      | "transcriptId";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_configId: ["configId", "_creationTime"];
+      by_transcriptId: ["transcriptId", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
   credentials: {
     document: {
       allowedStudyIds?: Array<Id<"studies">>;
@@ -443,30 +466,7 @@ export type DataModel = {
     searchIndexes: {};
     vectorIndexes: {};
   };
-  packTranscripts: {
-    document: {
-      createdAt: number;
-      packId: Id<"personaPacks">;
-      transcriptId: Id<"transcripts">;
-      _id: Id<"packTranscripts">;
-      _creationTime: number;
-    };
-    fieldPaths:
-      | "_creationTime"
-      | "_id"
-      | "createdAt"
-      | "packId"
-      | "transcriptId";
-    indexes: {
-      by_id: ["_id"];
-      by_creation_time: ["_creationTime"];
-      by_packId: ["packId", "_creationTime"];
-      by_transcriptId: ["transcriptId", "_creationTime"];
-    };
-    searchIndexes: {};
-    vectorIndexes: {};
-  };
-  personaPacks: {
+  personaConfigs: {
     document: {
       context: string;
       createdAt: number;
@@ -487,7 +487,7 @@ export type DataModel = {
       updatedAt: number;
       updatedBy?: string;
       version: number;
-      _id: Id<"personaPacks">;
+      _id: Id<"personaConfigs">;
       _creationTime: number;
     };
     fieldPaths:
@@ -521,7 +521,7 @@ export type DataModel = {
       distinctnessScore: number;
       edgeScore: number;
       firstPersonBio: string;
-      personaPackId: Id<"personaPacks">;
+      personaConfigId: Id<"personaConfigs">;
       studyId: Id<"studies">;
       syntheticUserId: Id<"syntheticUsers">;
       tensionSeed: string;
@@ -538,7 +538,7 @@ export type DataModel = {
       | "distinctnessScore"
       | "edgeScore"
       | "firstPersonBio"
-      | "personaPackId"
+      | "personaConfigId"
       | "studyId"
       | "syntheticUserId"
       | "tensionSeed";
@@ -743,7 +743,7 @@ export type DataModel = {
       launchedAt?: number;
       name: string;
       orgId: string;
-      personaPackId: Id<"personaPacks">;
+      personaConfigId: Id<"personaConfigs">;
       runBudget?: number;
       status:
         | "draft"
@@ -812,7 +812,7 @@ export type DataModel = {
       | "launchRequestedBy"
       | "name"
       | "orgId"
-      | "personaPackId"
+      | "personaConfigId"
       | "runBudget"
       | "status"
       | "taskSpec"
@@ -839,7 +839,7 @@ export type DataModel = {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
       by_orgId_and_updatedAt: ["orgId", "updatedAt", "_creationTime"];
-      by_personaPackId: ["personaPackId", "_creationTime"];
+      by_personaConfigId: ["personaConfigId", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};
@@ -900,10 +900,10 @@ export type DataModel = {
         midAnchor: string;
         weight: number;
       }>;
+      configId: Id<"personaConfigs">;
       evidenceSnippets: Array<string>;
       name: string;
       notes?: string;
-      packId: Id<"personaPacks">;
       sourceRefs: Array<string>;
       sourceType: "manual" | "json_import" | "transcript_derived";
       summary: string;
@@ -914,17 +914,17 @@ export type DataModel = {
       | "_creationTime"
       | "_id"
       | "axes"
+      | "configId"
       | "evidenceSnippets"
       | "name"
       | "notes"
-      | "packId"
       | "sourceRefs"
       | "sourceType"
       | "summary";
     indexes: {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
-      by_packId: ["packId", "_creationTime"];
+      by_configId: ["configId", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};
@@ -944,6 +944,7 @@ export type DataModel = {
         summary: string;
       }>;
       completedAt?: number;
+      configId: Id<"personaConfigs">;
       currentTranscriptId?: Id<"transcripts">;
       errorMessage?: string;
       failedTranscripts: Array<{
@@ -961,7 +962,6 @@ export type DataModel = {
       }>;
       mode: "auto_discover" | "guided";
       orgId: string;
-      packId: Id<"personaPacks">;
       processedTranscriptCount: number;
       proposedAxes: Array<{
         description: string;
@@ -986,13 +986,13 @@ export type DataModel = {
       | "_id"
       | "archetypes"
       | "completedAt"
+      | "configId"
       | "currentTranscriptId"
       | "errorMessage"
       | "failedTranscripts"
       | "guidedAxes"
       | "mode"
       | "orgId"
-      | "packId"
       | "processedTranscriptCount"
       | "proposedAxes"
       | "startedAt"
@@ -1004,8 +1004,8 @@ export type DataModel = {
     indexes: {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
+      by_configId: ["configId", "_creationTime"];
       by_orgId: ["orgId", "_creationTime"];
-      by_packId: ["packId", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};
@@ -1059,9 +1059,9 @@ export type DataModel = {
   };
   transcriptSignals: {
     document: {
+      configId: Id<"personaConfigs">;
       createdAt: number;
       orgId: string;
-      packId: Id<"personaPacks">;
       processingError?: string;
       signals?: {
         attitudes: Array<string>;
@@ -1083,9 +1083,9 @@ export type DataModel = {
     fieldPaths:
       | "_creationTime"
       | "_id"
+      | "configId"
       | "createdAt"
       | "orgId"
-      | "packId"
       | "processingError"
       | "signals"
       | "signals.attitudes"
@@ -1099,8 +1099,12 @@ export type DataModel = {
     indexes: {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
-      by_packId: ["packId", "_creationTime"];
-      by_packId_and_transcriptId: ["packId", "transcriptId", "_creationTime"];
+      by_configId: ["configId", "_creationTime"];
+      by_configId_and_transcriptId: [
+        "configId",
+        "transcriptId",
+        "_creationTime",
+      ];
       by_transcriptId: ["transcriptId", "_creationTime"];
     };
     searchIndexes: {};

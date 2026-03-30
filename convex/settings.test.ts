@@ -241,7 +241,7 @@ describe("settings effects on subsequent studies", () => {
     const t = createTest();
     const asAdmin = t.withIdentity(adminIdentity);
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
 
     await asAdmin.mutation((api as any).settings.updateSettings, {
       patch: {
@@ -253,7 +253,7 @@ describe("settings effects on subsequent studies", () => {
 
     const cappedStudy = await asResearcher.mutation(api.studies.createStudy, {
       study: {
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Capped checkout study",
         taskSpec: makeTaskSpec(["example.com"]),
         runBudget: 25,
@@ -272,7 +272,7 @@ describe("settings effects on subsequent studies", () => {
 
     const updatedDomainStudy = await asResearcher.mutation(api.studies.createStudy, {
       study: {
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Updated allowlist study",
         taskSpec: makeTaskSpec(["new.example"]),
         runBudget: 6,
@@ -303,10 +303,10 @@ describe("settings effects on subsequent studies", () => {
 
 async function insertPack(t: ReturnType<typeof createTest>) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+    ctx.db.insert("personaConfigs", {
       orgId: adminIdentity.tokenIdentifier,
-      name: "Checkout persona pack",
-      description: "Published pack for settings tests",
+      name: "Checkout persona configuration",
+      description: "Published config for settings tests",
       context: "US e-commerce checkout",
       sharedAxes: [
         {

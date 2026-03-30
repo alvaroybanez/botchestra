@@ -94,11 +94,11 @@ describe("artifact resolver", () => {
 type TestInstance = ReturnType<typeof createTest>;
 
 async function seedArtifactFixture(t: TestInstance, orgId: string) {
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId,
-      name: "Artifact store pack",
-      description: "Pack for artifact resolver tests",
+      name: "Artifact store config",
+      description: "Config for artifact resolver tests",
       context: "Checkout",
       sharedAxes: [
         {
@@ -122,7 +122,7 @@ async function seedArtifactFixture(t: TestInstance, orgId: string) {
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId,
+      configId,
       name: "Careful shopper",
       summary: "Moves carefully through checkout.",
       axes: [],
@@ -138,7 +138,7 @@ async function seedArtifactFixture(t: TestInstance, orgId: string) {
       orgId,
       name: "Artifact study",
       description: "Study for signed artifact URLs",
-      personaPackId: packId,
+      personaConfigId: configId,
       status: "running",
       runBudget: 1,
       activeConcurrency: 1,
@@ -167,7 +167,7 @@ async function seedArtifactFixture(t: TestInstance, orgId: string) {
   const personaVariantId = await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: packId,
+      personaConfigId: configId,
       syntheticUserId,
       axisValues: [{ key: "digital_confidence", value: -0.4 }],
       edgeScore: 0.7,

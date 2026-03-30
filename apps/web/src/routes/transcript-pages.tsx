@@ -21,13 +21,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 type TranscriptDoc = Doc<"transcripts">;
-type PersonaPackDoc = Doc<"personaPacks">;
+type PersonaConfigDoc = Doc<"personaConfigs">;
 type TranscriptId = Id<"transcripts">;
 
 type ViewerAccess = {
   role: "researcher" | "reviewer" | "admin";
   permissions: {
-    canManagePersonaPacks: boolean;
+    canManagePersonaConfigs: boolean;
   };
 } | null;
 
@@ -88,7 +88,7 @@ export function TranscriptsPage() {
   }, [transcriptsQuery]);
 
   const canManageTranscripts =
-    viewerAccess?.permissions.canManagePersonaPacks === true;
+    viewerAccess?.permissions.canManagePersonaConfigs === true;
   const isLoading = transcriptsQuery === undefined || viewerAccess === undefined;
 
   const tagOptions = useMemo(
@@ -525,21 +525,21 @@ export function TranscriptDetailPage({
   const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {}) as
     | ViewerAccess
     | undefined;
-  const packs = useQuery(api.personaPacks.list, {}) as PersonaPackDoc[] | undefined;
+  const configs = useQuery(api.personaConfigs.list, {}) as PersonaConfigDoc[] | undefined;
   const transcriptPacks = useQuery(
-    (api as any).packTranscripts.listTranscriptPacks,
+    (api as any).configTranscripts.listTranscriptConfigs,
     normalizedTranscriptId ? { transcriptId: normalizedTranscriptId } : "skip",
   ) as
     | Array<{
-        packId: Id<"personaPacks">;
-        pack: PersonaPackDoc;
+        configId: Id<"personaConfigs">;
+        config: PersonaConfigDoc;
       }>
     | undefined;
   const getTranscriptContent = useAction((api as any).transcripts.getTranscriptContent);
   const updateTranscriptMetadata = useMutation((api as any).transcripts.updateTranscriptMetadata);
   const deleteTranscript = useMutation((api as any).transcripts.deleteTranscript);
-  const attachTranscript = useMutation((api as any).packTranscripts.attachTranscript);
-  const detachTranscript = useMutation((api as any).packTranscripts.detachTranscript);
+  const attachTranscript = useMutation((api as any).configTranscripts.attachTranscript);
+  const detachTranscript = useMutation((api as any).configTranscripts.detachTranscript);
 
   const [transcript, setTranscript] = useState<TranscriptDoc | null>(null);
   const [content, setContent] = useState<TranscriptContent>(null);
@@ -549,7 +549,7 @@ export function TranscriptDetailPage({
     emptyTranscriptMetadataForm(),
   );
   const [isAttachDialogOpen, setIsAttachDialogOpen] = useState(false);
-  const [packSearchText, setPackSearchText] = useState("");
+  const [configSearchText, setPackSearchText] = useState("");
   const [selectedPackIds, setSelectedPackIds] = useState<string[]>([]);
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const [isAttaching, setIsAttaching] = useState(false);
@@ -641,34 +641,34 @@ export function TranscriptDetailPage({
   }, [content, highlightSnippet, isContentLoading]);
 
   const canManageTranscripts =
-    viewerAccess?.permissions.canManagePersonaPacks === true;
+    viewerAccess?.permissions.canManagePersonaConfigs === true;
   const isLoading =
     normalizedTranscriptId === undefined
     || viewerAccess === undefined
-    || packs === undefined
+    || configs === undefined
     || (normalizedTranscriptId !== null && transcriptQuery === undefined)
     || (normalizedTranscriptId !== null && transcriptPacks === undefined);
   const attachedPackIds = new Set(
-    (transcriptPacks ?? []).map((packTranscript) => String(packTranscript.packId)),
+    (transcriptPacks ?? []).map((configTranscript) => String(configTranscript.configId)),
   );
-  const attachablePacks = (packs ?? []).filter(
-    (pack) =>
-      pack.status === "draft" && !attachedPackIds.has(String(pack._id)),
+  const attachablePacks = (configs ?? []).filter(
+    (config) =>
+      config.status === "draft" && !attachedPackIds.has(String(config._id)),
   );
   const filteredAttachablePacks = useMemo(() => {
-    const normalizedSearch = packSearchText.trim().toLowerCase();
+    const normalizedSearch = configSearchText.trim().toLowerCase();
 
     if (normalizedSearch.length === 0) {
       return attachablePacks;
     }
 
-    return attachablePacks.filter((pack) =>
-      [pack.name, pack.description, pack.context]
+    return attachablePacks.filter((config) =>
+      [config.name, config.description, config.context]
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch),
     );
-  }, [attachablePacks, packSearchText]);
+  }, [attachablePacks, configSearchText]);
 
   async function handleSaveMetadata(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -733,11 +733,11 @@ export function TranscriptDetailPage({
     setSelectedPackIds([]);
   }
 
-  function handlePackSelectionToggle(packId: string) {
+  function handlePackSelectionToggle(configId: string) {
     setSelectedPackIds((current) =>
-      current.includes(packId)
-        ? current.filter((id) => id !== packId)
-        : [...current, packId],
+      current.includes(configId)
+        ? current.filter((id) => id !== configId)
+        : [...current, configId],
     );
   }
 
@@ -752,9 +752,9 @@ export function TranscriptDetailPage({
     setPageNotice(null);
 
     try {
-      for (const packId of selectedPackIds) {
+      for (const configId of selectedPackIds) {
         await attachTranscript({
-          packId: packId as Id<"personaPacks">,
+          configId: configId as Id<"personaConfigs">,
           transcriptId: transcript._id,
         });
       }
@@ -762,33 +762,33 @@ export function TranscriptDetailPage({
       resetAttachDialog();
       setPageNotice(
         selectedCount === 1
-          ? "Transcript attached to 1 draft pack."
-          : `Transcript attached to ${selectedCount} draft packs.`,
+          ? "Transcript attached to 1 draft persona configuration."
+          : `Transcript attached to ${selectedCount} draft persona configurations.`,
       );
     } catch (error) {
-      setPageError(getErrorMessage(error, "Could not attach transcript to pack."));
+      setPageError(getErrorMessage(error, "Could not attach transcript to the persona configuration."));
     } finally {
       setIsAttaching(false);
     }
   }
 
-  async function handleDetachFromPack(packId: Id<"personaPacks">) {
+  async function handleDetachFromPack(configId: Id<"personaConfigs">) {
     if (transcript === null) {
       return;
     }
 
-    setDetachingPackId(String(packId));
+    setDetachingPackId(String(configId));
     setPageError(null);
     setPageNotice(null);
 
     try {
       await detachTranscript({
-        packId,
+        configId,
         transcriptId: transcript._id,
       });
-      setPageNotice("Transcript detached from pack.");
+      setPageNotice("Transcript detached from the persona configuration.");
     } catch (error) {
-      setPageError(getErrorMessage(error, "Could not detach transcript from pack."));
+      setPageError(getErrorMessage(error, "Could not detach transcript from the persona configuration."));
     } finally {
       setDetachingPackId(null);
     }
@@ -837,7 +837,7 @@ export function TranscriptDetailPage({
             </div>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
               Review transcript content, update metadata, and connect the
-              transcript to draft persona packs.
+              transcript to draft persona configurations.
             </p>
           </div>
 
@@ -1002,10 +1002,10 @@ export function TranscriptDetailPage({
             <Card>
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
-                  <CardTitle>Linked Packs</CardTitle>
+                  <CardTitle>Linked Persona Configurations</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Review every persona pack this transcript is attached to and
-                    open each pack detail view.
+                    Review every persona configuration this transcript is attached to and
+                    open each persona configuration detail view.
                   </p>
                 </div>
                 {canManageTranscripts ? (
@@ -1015,7 +1015,7 @@ export function TranscriptDetailPage({
                     variant="outline"
                     onClick={() => setIsAttachDialogOpen(true)}
                   >
-                    Attach to pack
+                    Attach to persona configuration
                   </Button>
                 ) : null}
               </CardHeader>
@@ -1023,12 +1023,12 @@ export function TranscriptDetailPage({
                 {canManageTranscripts ? (
                   attachablePacks.length === 0 ? (
                     <p className="text-sm leading-6 text-muted-foreground">
-                      No additional draft packs are available to attach right now.
+                      No additional draft persona configurations are available to attach right now.
                     </p>
                   ) : null
                 ) : (
                   <p className="text-sm leading-6 text-muted-foreground">
-                    Reviewers can view linked packs but cannot attach or detach
+                    Reviewers can view linked persona configurations but cannot attach or detach
                     transcript relationships.
                   </p>
                 )}
@@ -1036,14 +1036,14 @@ export function TranscriptDetailPage({
                 {transcriptPacks?.length === 0 ? (
                   <div className="rounded-xl border border-dashed bg-background p-6">
                     <p className="text-sm leading-6 text-muted-foreground">
-                      This transcript is not linked to any packs yet.
+                      This transcript is not linked to any persona configurations yet.
                     </p>
                   </div>
                 ) : (
                   <div className="grid gap-3">
-                    {(transcriptPacks ?? []).map((packTranscript) => (
+                    {(transcriptPacks ?? []).map((configTranscript) => (
                       <div
-                        key={`${packTranscript.packId}`}
+                        key={`${configTranscript.configId}`}
                         className="rounded-xl border bg-background p-4"
                       >
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1051,43 +1051,43 @@ export function TranscriptDetailPage({
                             <div className="flex flex-wrap items-center gap-2">
                               <Link
                                 className="font-medium text-primary underline-offset-4 hover:underline"
-                                params={{ packId: packTranscript.pack._id }}
-                                to="/persona-packs/$packId"
+                                params={{ configId: configTranscript.config._id }}
+                                to="/persona-configs/$configId"
                               >
-                                {packTranscript.pack.name}
+                                {configTranscript.config.name}
                               </Link>
-                              <PackStatusBadge status={packTranscript.pack.status} />
+                              <ConfigStatusBadge status={configTranscript.config.status} />
                             </div>
                             <p className="text-sm leading-6 text-muted-foreground">
-                              {packTranscript.pack.context}
+                              {configTranscript.config.context}
                             </p>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
                             <Button asChild type="button" variant="outline">
                               <Link
-                                params={{ packId: packTranscript.pack._id }}
-                                to="/persona-packs/$packId"
+                                params={{ configId: configTranscript.config._id }}
+                                to="/persona-configs/$configId"
                               >
-                                Open pack
+                                Open persona configuration
                               </Link>
                             </Button>
                             {canManageTranscripts
-                            && packTranscript.pack.status === "draft" ? (
+                            && configTranscript.config.status === "draft" ? (
                               <Button
                                 disabled={
                                   detachingPackId
-                                  === String(packTranscript.packId)
+                                  === String(configTranscript.configId)
                                 }
                                 type="button"
                                 variant="outline"
                                 onClick={() =>
                                   void handleDetachFromPack(
-                                    packTranscript.packId,
+                                    configTranscript.configId,
                                   )
                                 }
                               >
-                                {detachingPackId === String(packTranscript.packId)
+                                {detachingPackId === String(configTranscript.configId)
                                   ? "Detaching..."
                                   : "Detach"}
                               </Button>
@@ -1134,22 +1134,22 @@ export function TranscriptDetailPage({
       >
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Attach to pack</DialogTitle>
+            <DialogTitle>Attach to persona configuration</DialogTitle>
             <DialogDescription>
-              Select one or more draft packs from your organization to link with
+              Select one or more draft persona configurations from your organization to link with
               this transcript.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="transcript-attach-pack-search">
-                Search draft packs
+              <Label htmlFor="transcript-attach-config-search">
+                Search draft persona configurations
               </Label>
               <Input
-                id="transcript-attach-pack-search"
-                placeholder="Search by pack name, description, or context"
-                value={packSearchText}
+                id="transcript-attach-config-search"
+                placeholder="Search by persona configuration name, description, or context"
+                value={configSearchText}
                 onChange={(event) => setPackSearchText(event.target.value)}
               />
             </div>
@@ -1157,48 +1157,48 @@ export function TranscriptDetailPage({
             {attachablePacks.length === 0 ? (
               <div className="rounded-xl border border-dashed bg-muted/20 p-4">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  No draft packs are currently available to attach.
+                  No draft persona configurations are currently available to attach.
                 </p>
               </div>
             ) : filteredAttachablePacks.length === 0 ? (
               <div className="rounded-xl border border-dashed bg-muted/20 p-4">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  No draft packs match the current search.
+                  No draft persona configurations match the current search.
                 </p>
               </div>
             ) : (
               <div className="max-h-[24rem] overflow-y-auto rounded-xl border">
                 <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-4 border-b bg-muted/40 px-4 py-3 text-sm font-medium">
                   <span>Select</span>
-                  <span>Pack</span>
+                  <span>Config</span>
                   <span>Status</span>
                 </div>
 
                 <div className="divide-y">
-                  {filteredAttachablePacks.map((pack) => {
-                    const isSelected = selectedPackIds.includes(String(pack._id));
+                  {filteredAttachablePacks.map((config) => {
+                    const isSelected = selectedPackIds.includes(String(config._id));
 
                     return (
                       <label
-                        key={pack._id}
+                        key={config._id}
                         className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] gap-4 px-4 py-3 text-sm"
-                        htmlFor={`transcript-attach-pack-${pack._id}`}
+                        htmlFor={`transcript-attach-config-${config._id}`}
                       >
                         <input
                           checked={isSelected}
                           className="mt-1 h-4 w-4 rounded border-input"
-                          id={`transcript-attach-pack-${pack._id}`}
-                          onChange={() => handlePackSelectionToggle(String(pack._id))}
+                          id={`transcript-attach-config-${config._id}`}
+                          onChange={() => handlePackSelectionToggle(String(config._id))}
                           type="checkbox"
                         />
                         <div className="space-y-1">
-                          <p className="font-medium">{pack.name}</p>
+                          <p className="font-medium">{config.name}</p>
                           <p className="text-muted-foreground">
-                            {pack.context}
+                            {config.context}
                           </p>
                         </div>
                         <div className="text-right">
-                          <PackStatusBadge status={pack.status} />
+                          <ConfigStatusBadge status={config.status} />
                         </div>
                       </label>
                     );
@@ -1217,7 +1217,7 @@ export function TranscriptDetailPage({
               type="button"
               onClick={() => void handleAttachToPacks()}
             >
-              {isAttaching ? "Attaching..." : "Attach selected packs"}
+              {isAttaching ? "Attaching..." : "Attach selected persona configurations"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1229,7 +1229,7 @@ export function TranscriptDetailPage({
             <DialogTitle>Delete transcript?</DialogTitle>
             <DialogDescription>
               This permanently removes the transcript record, its uploaded file,
-              and any draft-pack attachments.
+              and any draft persona configuration attachments.
             </DialogDescription>
           </DialogHeader>
 
@@ -1310,7 +1310,7 @@ function HighlightedTranscriptText({
   );
 }
 
-function PackStatusBadge({ status }: { status: PersonaPackDoc["status"] }) {
+function ConfigStatusBadge({ status }: { status: PersonaConfigDoc["status"] }) {
   return (
     <span
       className={cn(

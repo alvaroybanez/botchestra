@@ -26,34 +26,34 @@ export const getStudyVariantReview = query({
       return null;
     }
 
-    const pack = await ctx.db.get(study.personaPackId);
+    const config = await ctx.db.get(study.personaConfigId);
 
-    if (pack === null || pack.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== identity.tokenIdentifier) {
       return null;
     }
 
     return {
-      ...(await buildVariantReviewData(ctx, pack, study)),
+      ...(await buildVariantReviewData(ctx, config, study)),
     };
   },
 });
 
 export const getPackVariantReview = query({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     studyId: v.optional(v.id("studies")),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
-    const pack = await ctx.db.get(args.packId);
+    const config = await ctx.db.get(args.configId);
 
-    if (pack === null || pack.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== identity.tokenIdentifier) {
       return null;
     }
 
     const studies = await ctx.db
       .query("studies")
-      .withIndex("by_personaPackId", (q) => q.eq("personaPackId", pack._id))
+      .withIndex("by_personaConfigId", (q) => q.eq("personaConfigId", config._id))
       .order("desc")
       .take(10);
 
@@ -94,7 +94,7 @@ export const getPackVariantReview = query({
         acceptedVariantCount: acceptedVariantCounts.get(study._id) ?? 0,
       })),
       selectedStudy: selectedStudy ? toStudySummary(selectedStudy) : null,
-      ...(await buildVariantReviewData(ctx, pack, selectedStudy, {
+      ...(await buildVariantReviewData(ctx, config, selectedStudy, {
         acceptedVariants:
           selectedStudy === null
             ? []
@@ -106,7 +106,7 @@ export const getPackVariantReview = query({
 
 async function buildVariantReviewData(
   ctx: QueryCtx,
-  pack: Doc<"personaPacks">,
+  config: Doc<"personaConfigs">,
   study: Doc<"studies"> | null,
   options?: {
     acceptedVariants?: Doc<"personaVariants">[];
@@ -114,7 +114,7 @@ async function buildVariantReviewData(
 ) {
   const syntheticUsers = await ctx.db
     .query("syntheticUsers")
-    .withIndex("by_packId", (q) => q.eq("packId", pack._id))
+    .withIndex("by_configId", (q) => q.eq("configId", config._id))
     .take(10);
   const syntheticUserMap = new Map(
     syntheticUsers.map((syntheticUser) => [syntheticUser._id, syntheticUser]),
@@ -127,11 +127,11 @@ async function buildVariantReviewData(
 
   return {
     study: study ? toStudySummary(study) : null,
-    pack: {
-      _id: pack._id,
-      name: pack.name,
-      status: pack.status,
-      sharedAxes: pack.sharedAxes,
+    config: {
+      _id: config._id,
+      name: config.name,
+      status: config.status,
+      sharedAxes: config.sharedAxes,
     },
     syntheticUsers: syntheticUsers.map((syntheticUser) => ({
       _id: syntheticUser._id,
@@ -143,7 +143,7 @@ async function buildVariantReviewData(
 
       if (!syntheticUser) {
         throw new ConvexError(
-          "Persona variant references a synthetic user outside the study's pack.",
+          "Persona variant references a synthetic user outside the study's config.",
         );
       }
 

@@ -37,7 +37,7 @@ type ViewerAccess = {
     canAccessSettings: boolean;
     canAddNotes: boolean;
     canExportReports: boolean;
-    canManagePersonaPacks: boolean;
+    canManagePersonaConfigs: boolean;
     canManageStudies: boolean;
   };
 };
@@ -45,7 +45,7 @@ type ViewerAccess = {
 let mockedViewerAccess: ViewerAccess | null | undefined = null;
 
 let mockedPackList:
-  | Doc<"personaPacks">[]
+  | Doc<"personaConfigs">[]
   | undefined = [];
 let mockedAxisDefinitions:
   | Doc<"axisDefinitions">[]
@@ -54,7 +54,7 @@ let mockedTranscriptList:
   | Doc<"transcripts">[]
   | undefined = [];
 let mockedPackDetail:
-  | Doc<"personaPacks">
+  | Doc<"personaConfigs">
   | null
   | undefined = null;
 let mockedTranscriptDetail:
@@ -74,7 +74,7 @@ type ReviewStudy = {
 
 type ReviewData = {
   study: ReviewStudy;
-  pack: {
+  config: {
     _id: string;
     name: string;
     status: string;
@@ -105,7 +105,7 @@ type ReviewData = {
   }[];
 };
 
-type PackReviewData = ReviewData & {
+type ConfigReviewData = ReviewData & {
   selectedStudy: ReviewStudy | null;
   studies: Array<
     ReviewStudy & {
@@ -344,7 +344,7 @@ type TranscriptContent =
   | null;
 
 let mockedVariantReview: ReviewData | null | undefined = undefined;
-let mockedPackVariantReview: PackReviewData | null | undefined = undefined;
+let mockedPackVariantReview: ConfigReviewData | null | undefined = undefined;
 let mockedStudyList: Doc<"studies">[] | undefined = [];
 let mockedStudyById: Record<string, Doc<"studies"> | null | undefined> = {};
 let mockedRunSummariesByStudyId: Record<string, RunSummary | undefined> = {};
@@ -358,9 +358,9 @@ let mockedAuditEvents: AuditEventView[] | undefined = [];
 let mockedSettingsView: SettingsView | undefined = undefined;
 let mockedTranscriptContentById: Record<string, TranscriptContent | undefined> =
   {};
-let mockedPackTranscriptsByPackId: Record<string, Array<{
+let mockedConfigTranscriptsByPackId: Record<string, Array<{
   _id: string;
-  packId: string;
+  configId: string;
   transcriptId: string;
   createdAt: number;
   transcript: Doc<"transcripts">;
@@ -368,9 +368,9 @@ let mockedPackTranscriptsByPackId: Record<string, Array<{
 let mockedTranscriptPacksByTranscriptId: Record<string, Array<{
   _id: string;
   transcriptId: string;
-  packId: string;
+  configId: string;
   createdAt: number;
-  pack: Doc<"personaPacks">;
+  config: Doc<"personaConfigs">;
 }> | undefined> = {};
 let mockedExtractionStatusByPackId: Record<string, any> = {};
 let mockedExtractionCostByPackId: Record<string, {
@@ -468,27 +468,27 @@ vi.mock("convex/react", () => ({
       return cancelStudyMock;
     }
 
-    if (mutationName === "personaPacks:createDraft") {
+    if (mutationName === "personaConfigs:createDraft") {
       return createDraftMock;
     }
 
-    if (mutationName === "personaPacks:updateDraft") {
+    if (mutationName === "personaConfigs:updateDraft") {
       return updateDraftMock;
     }
 
-    if (mutationName === "personaPacks:createSyntheticUser") {
+    if (mutationName === "personaConfigs:createSyntheticUser") {
       return createSyntheticUserMock;
     }
 
-    if (mutationName === "personaPacks:applyTranscriptDerivedSyntheticUsers") {
+    if (mutationName === "personaConfigs:applyTranscriptDerivedSyntheticUsers") {
       return applyTranscriptDerivedSyntheticUsersMock;
     }
 
-    if (mutationName === "personaPacks:publish") {
+    if (mutationName === "personaConfigs:publish") {
       return publishMock;
     }
 
-    if (mutationName === "personaPacks:archive") {
+    if (mutationName === "personaConfigs:archive") {
       return archiveMock;
     }
 
@@ -504,11 +504,11 @@ vi.mock("convex/react", () => ({
       return deleteTranscriptMock;
     }
 
-    if (mutationName === "packTranscripts:attachTranscript") {
+    if (mutationName === "configTranscripts:attachTranscript") {
       return attachTranscriptMock;
     }
 
-    if (mutationName === "packTranscripts:detachTranscript") {
+    if (mutationName === "configTranscripts:detachTranscript") {
       return detachTranscriptMock;
     }
 
@@ -517,7 +517,7 @@ vi.mock("convex/react", () => ({
   useAction: (action: unknown) => {
     const actionName = getFunctionName(action as never);
 
-    if (actionName === "personaPacks:importJson") {
+    if (actionName === "personaConfigs:importJson") {
       return importJsonMock;
     }
 
@@ -682,7 +682,7 @@ vi.mock("convex/react", () => ({
       });
     }
 
-    if (queryName === "personaPacks:list") {
+    if (queryName === "personaConfigs:list") {
       return mockedPackList;
     }
 
@@ -700,7 +700,7 @@ vi.mock("convex/react", () => ({
         : (args?.transcriptId as Id<"transcripts">);
     }
 
-    if (queryName === "personaPacks:get") {
+    if (queryName === "personaConfigs:get") {
       return mockedPackDetail;
     }
 
@@ -708,7 +708,7 @@ vi.mock("convex/react", () => ({
       return mockedTranscriptDetail;
     }
 
-    if (queryName === "personaPacks:listSyntheticUsers") {
+    if (queryName === "personaConfigs:listSyntheticUsers") {
       return mockedSyntheticUsers;
     }
 
@@ -720,27 +720,27 @@ vi.mock("convex/react", () => ({
       return mockedPackVariantReview;
     }
 
-    if (queryName === "packTranscripts:listPackTranscripts") {
-      return mockedPackTranscriptsByPackId[String(args?.packId)] ?? [];
+    if (queryName === "configTranscripts:listConfigTranscripts") {
+      return mockedConfigTranscriptsByPackId[String(args?.configId)] ?? [];
     }
 
-    if (queryName === "packTranscripts:listTranscriptPacks") {
+    if (queryName === "configTranscripts:listTranscriptConfigs") {
       return mockedTranscriptPacksByTranscriptId[String(args?.transcriptId)] ?? [];
     }
 
     if (queryName === "transcriptExtraction:getExtractionStatus") {
-      return mockedExtractionStatusByPackId[String(args?.packId)] ?? null;
+      return mockedExtractionStatusByPackId[String(args?.configId)] ?? null;
     }
 
     if (queryName === "transcriptExtraction:estimateExtractionCost") {
       const transcriptIds = (args?.transcriptIds as string[] | undefined) ?? [];
-      const packId = Object.entries(mockedPackTranscriptsByPackId).find(([, attachments]) =>
+      const configId = Object.entries(mockedConfigTranscriptsByPackId).find(([, attachments]) =>
         transcriptIds.every((transcriptId) =>
           (attachments ?? []).some((attachment) => attachment.transcriptId === transcriptId),
         ),
       )?.[0];
 
-      return packId ? mockedExtractionCostByPackId[packId] : undefined;
+      return configId ? mockedExtractionCostByPackId[configId] : undefined;
     }
 
     return undefined;
@@ -782,12 +782,12 @@ beforeEach(() => {
   mockedAuditEvents = [];
   mockedSettingsView = makeSettingsView();
   mockedTranscriptContentById = {};
-  mockedPackTranscriptsByPackId = {};
+  mockedConfigTranscriptsByPackId = {};
   mockedTranscriptPacksByTranscriptId = {};
   mockedExtractionStatusByPackId = {};
   mockedExtractionCostByPackId = {};
   createDraftMock.mockReset();
-  createDraftMock.mockResolvedValue("new-pack-id" as Id<"personaPacks">);
+  createDraftMock.mockResolvedValue("new-config-id" as Id<"personaConfigs">);
   createStudyMock.mockReset();
   createStudyMock.mockResolvedValue(
     makeStudy({ _id: "study-created" as Id<"studies"> }),
@@ -799,7 +799,7 @@ beforeEach(() => {
   cancelStudyMock.mockReset();
   cancelStudyMock.mockResolvedValue(undefined);
   importJsonMock.mockReset();
-  importJsonMock.mockResolvedValue("imported-pack-id" as Id<"personaPacks">);
+  importJsonMock.mockResolvedValue("imported-config-id" as Id<"personaConfigs">);
   updateDraftMock.mockReset();
   updateDraftMock.mockResolvedValue(undefined);
   createSyntheticUserMock.mockReset();
@@ -1162,8 +1162,8 @@ describe("@botchestra/web routing", () => {
   it("renders the study creation wizard and submits a new study", async () => {
     mockedPackList = [
       makePack({
-        _id: "pack-published" as Id<"personaPacks">,
-        name: "Checkout Pack",
+        _id: "config-published" as Id<"personaConfigs">,
+        name: "Checkout Config",
         status: "published",
       }),
     ];
@@ -1174,7 +1174,7 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("Create a new study");
-    expect(container.textContent).toContain("Persona pack selector");
+    expect(container.textContent).toContain("Persona configuration selector");
     expect(container.textContent).toContain("Guardrail review");
 
     await updateInput(container, "#study-name", "New Checkout Study");
@@ -1235,7 +1235,7 @@ describe("@botchestra/web routing", () => {
 
     expect(createStudyMock).toHaveBeenCalledWith({
       study: {
-        personaPackId: "pack-published",
+        personaConfigId: "config-published",
         name: "New Checkout Study",
         description: "Evaluates the purchase flow for first-time shoppers.",
         taskSpec: {
@@ -2170,19 +2170,19 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Task specification");
   });
 
-  it("renders the persona pack empty state when no packs exist", async () => {
+  it("renders the persona configuration empty state when no configs exist", async () => {
     mockedPackList = [];
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs"],
+      initialEntries: ["/persona-configs"],
     });
 
-    expect(container.textContent).toContain("No persona packs yet");
-    expect(container.textContent).toContain("Create your first pack");
+    expect(container.textContent).toContain("No persona configurations yet");
+    expect(container.textContent).toContain("Create your first persona configuration");
   });
 
-  it("renders the axis library route and places its sidebar link after Persona Packs", async () => {
+  it("renders the axis library route and places its sidebar link after Persona Configurations", async () => {
     mockedAxisDefinitions = [
       makeAxisDefinition({
         _id: "axis-library-1" as Id<"axisDefinitions">,
@@ -2199,7 +2199,7 @@ describe("@botchestra/web routing", () => {
     );
 
     expect(linkLabels.indexOf("Axis Library")).toBe(
-      linkLabels.indexOf("Persona Packs") + 1,
+      linkLabels.indexOf("Persona Configurations") + 1,
     );
     expect(getRouterLocationHref(router)).toBe("/axis-library");
     expect(container.textContent).toContain("Axis Library");
@@ -2207,23 +2207,23 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("digital_confidence");
   });
 
-  it("renders active persona packs separately from archived packs", async () => {
+  it("renders active persona configurations separately from archived persona configurations", async () => {
     mockedPackList = [
       makePack({
-        _id: "pack-draft" as Id<"personaPacks">,
-        name: "Checkout Pack",
+        _id: "config-draft" as Id<"personaConfigs">,
+        name: "Checkout Config",
         status: "draft",
         version: 1,
       }),
       makePack({
-        _id: "pack-published" as Id<"personaPacks">,
-        name: "Mobile Banking Pack",
+        _id: "config-published" as Id<"personaConfigs">,
+        name: "Mobile Banking Config",
         status: "published",
         version: 2,
       }),
       makePack({
-        _id: "pack-archived" as Id<"personaPacks">,
-        name: "Legacy Support Pack",
+        _id: "config-archived" as Id<"personaConfigs">,
+        name: "Legacy Support Config",
         status: "archived",
         version: 3,
       }),
@@ -2231,18 +2231,18 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs"],
+      initialEntries: ["/persona-configs"],
     });
 
-    expect(container.textContent).toContain("Checkout Pack");
+    expect(container.textContent).toContain("Checkout Config");
     expect(container.textContent).toContain("draft");
-    expect(container.textContent).toContain("Mobile Banking Pack");
+    expect(container.textContent).toContain("Mobile Banking Config");
     expect(container.textContent).toContain("published");
-    expect(container.textContent).toContain("Archived packs (1)");
+    expect(container.textContent).toContain("Archived persona configurations (1)");
 
     const archivedSection = container.querySelector("details");
     expect(archivedSection).not.toBeNull();
-    expect(archivedSection?.textContent).toContain("Legacy Support Pack");
+    expect(archivedSection?.textContent).toContain("Legacy Support Config");
     expect(archivedSection?.textContent).toContain("archived");
 
     const links = [...container.querySelectorAll("a")].map((link) =>
@@ -2250,18 +2250,18 @@ describe("@botchestra/web routing", () => {
     );
     expect(links).toEqual(
       expect.arrayContaining([
-        "/persona-packs/pack-draft",
-        "/persona-packs/pack-published",
-        "/persona-packs/pack-archived",
+        "/persona-configs/config-draft",
+        "/persona-configs/config-published",
+        "/persona-configs/config-archived",
       ]),
     );
   });
 
-  it("shows an active-pack empty state when only archived packs remain", async () => {
+  it("shows an active-config empty state when only archived persona configurations remain", async () => {
     mockedPackList = [
       makePack({
-        _id: "pack-archived-only" as Id<"personaPacks">,
-        name: "Legacy Support Pack",
+        _id: "config-archived-only" as Id<"personaConfigs">,
+        name: "Legacy Support Config",
         status: "archived",
         version: 3,
       }),
@@ -2269,20 +2269,20 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs"],
+      initialEntries: ["/persona-configs"],
     });
 
-    expect(container.textContent).toContain("No active persona packs");
-    expect(container.textContent).toContain("Archived packs (1)");
+    expect(container.textContent).toContain("No active persona configurations");
+    expect(container.textContent).toContain("Archived persona configurations (1)");
     expect(container.querySelector("details")?.textContent).toContain(
-      "Legacy Support Pack",
+      "Legacy Support Config",
     );
   });
 
-  it("renders pack detail metadata, shared axes, synthetic users, and audit info", async () => {
+  it("renders persona configuration detail metadata, shared axes, synthetic users, and audit info", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-detail" as Id<"personaPacks">,
-      name: "Account Recovery Pack",
+      _id: "config-detail" as Id<"personaConfigs">,
+      name: "Account Recovery Config",
       description: "Focused on account recovery and support escalations",
       context: "US fintech support",
       status: "draft",
@@ -2300,10 +2300,10 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-detail"],
+      initialEntries: ["/persona-configs/config-detail"],
     });
 
-    expect(container.textContent).toContain("Account Recovery Pack");
+    expect(container.textContent).toContain("Account Recovery Config");
     expect(container.textContent).toContain("Shared Axes");
     expect(container.textContent).toContain("Digital confidence");
     expect(container.textContent).toContain("Synthetic Users");
@@ -2319,24 +2319,24 @@ describe("@botchestra/web routing", () => {
     expect(getVariantRows(container)).toHaveLength(3);
   });
 
-  it("shows axis generation controls only on draft packs", async () => {
+  it("shows axis generation controls only on draft configs", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-axis-draft" as Id<"personaPacks">,
+      _id: "config-axis-draft" as Id<"personaConfigs">,
       status: "draft",
     });
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-axis-draft"],
+      initialEntries: ["/persona-configs/config-axis-draft"],
     });
 
     expect(container.textContent).toContain("Suggest axes");
     expect(container.textContent).toContain("Browse library");
   });
 
-  it("hides axis generation controls on published packs", async () => {
+  it("hides axis generation controls on published configs", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-axis-published" as Id<"personaPacks">,
+      _id: "config-axis-published" as Id<"personaConfigs">,
       status: "published",
     });
     mockedSyntheticUsers = [
@@ -2345,7 +2345,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-axis-published"],
+      initialEntries: ["/persona-configs/config-axis-published"],
     });
 
     expect(container.textContent).not.toContain("Suggest axes");
@@ -2354,7 +2354,7 @@ describe("@botchestra/web routing", () => {
 
   it("suggests axes with a loading state, supports keyboard selection, and applies edited cards additively", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-axis-suggest" as Id<"personaPacks">,
+      _id: "config-axis-suggest" as Id<"personaConfigs">,
       name: "  ",
       context: "",
       description: "Support escalation and recovery flows",
@@ -2386,27 +2386,27 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-axis-suggest"],
+      initialEntries: ["/persona-configs/config-axis-suggest"],
     });
 
     const suggestButton = getButton(container, "Suggest axes");
     expect(suggestButton?.disabled).toBe(true);
 
-    await updateInput(container, "#edit-pack-name", "Account recovery pack");
-    await updateInput(container, "#edit-pack-context", "US fintech support");
+    await updateInput(container, "#edit-config-name", "Account recovery config");
+    await updateInput(container, "#edit-config-context", "US fintech support");
 
     expect(getButton(container, "Suggest axes")?.disabled).toBe(false);
 
     await clickButton(container, "Suggest axes");
 
     expect(suggestAxesMock).toHaveBeenCalledWith({
-      name: "Account recovery pack",
+      name: "Account recovery config",
       context: "US fintech support",
       description: "Support escalation and recovery flows",
       existingAxisKeys: ["digital_confidence"],
     });
     expect(container.textContent).toContain(
-      "Generating axis suggestions from the current pack metadata...",
+      "Generating axis suggestions from the current persona configuration metadata...",
     );
     expect(getButton(container, "Suggesting...")?.disabled).toBe(true);
 
@@ -2478,8 +2478,8 @@ describe("@botchestra/web routing", () => {
 
   it("shows a retryable friendly error when axis suggestion fails", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-axis-error" as Id<"personaPacks">,
-      name: "Checkout recovery pack",
+      _id: "config-axis-error" as Id<"personaConfigs">,
+      name: "Checkout recovery config",
       context: "US fintech support",
       description: "Password reset and recovery flows",
     });
@@ -2489,7 +2489,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-axis-error"],
+      initialEntries: ["/persona-configs/config-axis-error"],
     });
 
     await clickButton(container, "Suggest axes");
@@ -2502,8 +2502,8 @@ describe("@botchestra/web routing", () => {
 
   it("passes the forced axis-generation error query flag through to the action", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-axis-force-error" as Id<"personaPacks">,
-      name: "Checkout recovery pack",
+      _id: "config-axis-force-error" as Id<"personaConfigs">,
+      name: "Checkout recovery config",
       context: "US fintech support",
       description: "Password reset and recovery flows",
     });
@@ -2513,13 +2513,13 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-axis-force-error?forceSuggestAxesError=1"],
+      initialEntries: ["/persona-configs/config-axis-force-error?forceSuggestAxesError=1"],
     });
 
     await clickButton(container, "Suggest axes");
 
     expect(suggestAxesMock).toHaveBeenCalledWith({
-      name: "Checkout recovery pack",
+      name: "Checkout recovery config",
       context: "US fintech support",
       description: "Password reset and recovery flows",
       existingAxisKeys: ["digital_confidence"],
@@ -2532,7 +2532,7 @@ describe("@botchestra/web routing", () => {
 
   it("imports library axes and surfaces duplicate-key conflicts as a toast", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-axis-library" as Id<"personaPacks">,
+      _id: "config-axis-library" as Id<"personaConfigs">,
       status: "draft",
       sharedAxes: [
         {
@@ -2565,7 +2565,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-axis-library"],
+      initialEntries: ["/persona-configs/config-axis-library"],
     });
 
     await clickButton(container, "Browse library");
@@ -2594,9 +2594,9 @@ describe("@botchestra/web routing", () => {
 
   it("includes imported library axis keys in the next suggestion request", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-axis-library-dedup" as Id<"personaPacks">,
+      _id: "config-axis-library-dedup" as Id<"personaConfigs">,
       status: "draft",
-      name: "Support pack",
+      name: "Support config",
       context: "B2B onboarding",
       description: "Admin setup and troubleshooting flows.",
       sharedAxes: [
@@ -2625,7 +2625,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-axis-library-dedup"],
+      initialEntries: ["/persona-configs/config-axis-library-dedup"],
     });
 
     await clickButton(container, "Browse library");
@@ -2638,17 +2638,17 @@ describe("@botchestra/web routing", () => {
     await clickButton(container, "Suggest axes");
 
     expect(suggestAxesMock).toHaveBeenLastCalledWith({
-      name: "Support pack",
+      name: "Support config",
       context: "B2B onboarding",
       description: "Admin setup and troubleshooting flows.",
       existingAxisKeys: ["digital_confidence", "support_channel_preference"],
     });
   });
 
-  it("renders pack detail transcript attachments, filters the picker, and supports attach-detach actions", async () => {
+  it("renders persona configuration detail transcript attachments, filters the picker, and supports attach-detach actions", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-with-transcripts" as Id<"personaPacks">,
-      name: "Transcript-linked pack",
+      _id: "config-with-transcripts" as Id<"personaConfigs">,
+      name: "Transcript-linked config",
       status: "draft",
     });
     mockedTranscriptList = [
@@ -2681,10 +2681,10 @@ describe("@botchestra/web routing", () => {
         },
       }),
     ];
-    mockedPackTranscriptsByPackId["pack-with-transcripts"] = [
+    mockedConfigTranscriptsByPackId["config-with-transcripts"] = [
       {
-        _id: "pack-transcript-1",
-        packId: "pack-with-transcripts",
+        _id: "config-transcript-1",
+        configId: "config-with-transcripts",
         transcriptId: "attached-transcript",
         createdAt: Date.now(),
         transcript: mockedTranscriptList[0]!,
@@ -2693,7 +2693,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-with-transcripts"],
+      initialEntries: ["/persona-configs/config-with-transcripts"],
     });
 
     expect(container.textContent).toContain("Attached Transcripts");
@@ -2702,35 +2702,35 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Attach transcripts");
     expect(document.body.textContent).toContain("Attach selected transcripts");
-    const packAttachmentDialog = document.body.querySelector(
+    const configAttachmentDialog = document.body.querySelector(
       'div[role="dialog"]',
     ) as HTMLDivElement;
-    await updateInput(packAttachmentDialog, "#pack-attach-transcripts-search", "vip-2");
+    await updateInput(configAttachmentDialog, "#config-attach-transcripts-search", "vip-2");
     await act(async () => {
       document.body
         .querySelector<HTMLInputElement>(
-          "#pack-attach-transcript-searchable-transcript",
+          "#config-attach-transcript-searchable-transcript",
         )
         ?.click();
     });
     await clickButton(document.body, "Attach selected transcripts");
 
     expect(attachTranscriptMock).toHaveBeenCalledWith({
-      packId: "pack-with-transcripts",
+      configId: "config-with-transcripts",
       transcriptId: "searchable-transcript",
     });
 
     await clickButton(container, "Detach");
     expect(detachTranscriptMock).toHaveBeenCalledWith({
-      packId: "pack-with-transcripts",
+      configId: "config-with-transcripts",
       transcriptId: "attached-transcript",
     });
   });
 
-  it("shows attached transcripts on pack detail for reviewers without attachment controls", async () => {
+  it("shows attached transcripts on persona configuration detail for reviewers without attachment controls", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-reviewer-transcripts" as Id<"personaPacks">,
-      name: "Reviewer pack",
+      _id: "config-reviewer-transcripts" as Id<"personaConfigs">,
+      name: "Reviewer config",
       status: "draft",
     });
     mockedTranscriptList = [
@@ -2739,10 +2739,10 @@ describe("@botchestra/web routing", () => {
         originalFilename: "reviewer-visible.txt",
       }),
     ];
-    mockedPackTranscriptsByPackId["pack-reviewer-transcripts"] = [
+    mockedConfigTranscriptsByPackId["config-reviewer-transcripts"] = [
       {
-        _id: "pack-transcript-reviewer",
-        packId: "pack-reviewer-transcripts",
+        _id: "config-transcript-reviewer",
+        configId: "config-reviewer-transcripts",
         transcriptId: "reviewer-transcript",
         createdAt: Date.now(),
         transcript: mockedTranscriptList[0]!,
@@ -2751,7 +2751,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-reviewer-transcripts"],
+      initialEntries: ["/persona-configs/config-reviewer-transcripts"],
       viewerRole: "reviewer",
     });
 
@@ -2763,8 +2763,8 @@ describe("@botchestra/web routing", () => {
 
   it("runs auto-discover transcript extraction, shows results, applies personas, and links evidence snippets", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-transcript-extraction" as Id<"personaPacks">,
-      name: "Transcript extraction pack",
+      _id: "config-transcript-extraction" as Id<"personaConfigs">,
+      name: "Transcript extraction config",
       status: "draft",
     });
     mockedTranscriptList = [
@@ -2773,23 +2773,23 @@ describe("@botchestra/web routing", () => {
         originalFilename: "checkout-interview.txt",
       }),
     ];
-    mockedPackTranscriptsByPackId["pack-transcript-extraction"] = [
+    mockedConfigTranscriptsByPackId["config-transcript-extraction"] = [
       {
-        _id: "pack-transcript-auto-1",
-        packId: "pack-transcript-extraction",
+        _id: "config-transcript-auto-1",
+        configId: "config-transcript-extraction",
         transcriptId: "transcript-auto-1",
         createdAt: Date.now(),
         transcript: mockedTranscriptList[0]!,
       },
     ];
-    mockedExtractionCostByPackId["pack-transcript-extraction"] = {
+    mockedExtractionCostByPackId["config-transcript-extraction"] = {
       totalCharacters: 480,
       estimatedTokens: 120,
       estimatedCostUsd: 0.0012,
     };
-    startTranscriptExtractionMock.mockImplementation(async ({ packId, mode }) => {
-      mockedExtractionStatusByPackId[packId] = {
-        packId,
+    startTranscriptExtractionMock.mockImplementation(async ({ configId, mode }) => {
+      mockedExtractionStatusByPackId[configId] = {
+        configId,
         mode,
         status: "completed",
         guidedAxes: [],
@@ -2834,7 +2834,7 @@ describe("@botchestra/web routing", () => {
           {
             _creationTime: Date.now(),
             _id: "signal-auto-1",
-            packId: "pack-transcript-extraction",
+            configId: "config-transcript-extraction",
             transcriptId: "transcript-auto-1",
             orgId: "researcher-1",
             status: "completed",
@@ -2860,7 +2860,7 @@ describe("@botchestra/web routing", () => {
 
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-transcript-extraction"],
+      initialEntries: ["/persona-configs/config-transcript-extraction"],
     });
 
     expect(container.textContent).toContain("Extract from Transcripts");
@@ -2878,7 +2878,7 @@ describe("@botchestra/web routing", () => {
     await clickButton(container, "Confirm & Extract");
 
     expect(startTranscriptExtractionMock).toHaveBeenCalledWith({
-      packId: "pack-transcript-extraction",
+      configId: "config-transcript-extraction",
       mode: "auto_discover",
     });
     expect(container.textContent).toContain("Per-transcript signal review");
@@ -2886,9 +2886,9 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Deliberate verifier");
     expect(container.textContent).toContain("price sensitivity");
 
-    await clickButton(container, "Apply to pack");
+    await clickButton(container, "Apply to persona configuration");
     expect(applyTranscriptDerivedSyntheticUsersMock).toHaveBeenCalledWith({
-      packId: "pack-transcript-extraction",
+      configId: "config-transcript-extraction",
       input: {
         sharedAxes: [
           {
@@ -2932,8 +2932,8 @@ describe("@botchestra/web routing", () => {
 
   it("requires guided axes before extraction and submits edited guided axes", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-guided-extraction" as Id<"personaPacks">,
-      name: "Guided extraction pack",
+      _id: "config-guided-extraction" as Id<"personaConfigs">,
+      name: "Guided extraction config",
       status: "draft",
       sharedAxes: [],
     });
@@ -2943,23 +2943,23 @@ describe("@botchestra/web routing", () => {
         originalFilename: "guided-source.txt",
       }),
     ];
-    mockedPackTranscriptsByPackId["pack-guided-extraction"] = [
+    mockedConfigTranscriptsByPackId["config-guided-extraction"] = [
       {
-        _id: "pack-transcript-guided-1",
-        packId: "pack-guided-extraction",
+        _id: "config-transcript-guided-1",
+        configId: "config-guided-extraction",
         transcriptId: "transcript-guided-1",
         createdAt: Date.now(),
         transcript: mockedTranscriptList[0]!,
       },
     ];
-    mockedExtractionCostByPackId["pack-guided-extraction"] = {
+    mockedExtractionCostByPackId["config-guided-extraction"] = {
       totalCharacters: 300,
       estimatedTokens: 75,
       estimatedCostUsd: 0.0008,
     };
-    startTranscriptExtractionMock.mockImplementation(async ({ packId, mode, guidedAxes }) => {
-      mockedExtractionStatusByPackId[packId] = {
-        packId,
+    startTranscriptExtractionMock.mockImplementation(async ({ configId, mode, guidedAxes }) => {
+      mockedExtractionStatusByPackId[configId] = {
+        configId,
         mode,
         status: "completed",
         guidedAxes,
@@ -2996,7 +2996,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-guided-extraction"],
+      initialEntries: ["/persona-configs/config-guided-extraction"],
     });
 
     await clickButton(container, "Extract from Transcripts");
@@ -3021,7 +3021,7 @@ describe("@botchestra/web routing", () => {
     await clickButton(container, "Confirm & Extract");
 
     expect(startTranscriptExtractionMock).toHaveBeenCalledWith({
-      packId: "pack-guided-extraction",
+      configId: "config-guided-extraction",
       mode: "guided",
       guidedAxes: [
         {
@@ -3038,23 +3038,23 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Support seeker");
   });
 
-  it("imports a pack JSON from the list page and redirects to the imported pack", async () => {
+  it("imports a config JSON from the list page and redirects to the imported config", async () => {
     mockedPackList = [];
 
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs"],
+      initialEntries: ["/persona-configs"],
     });
 
-    await clickButton(container, "Import Pack");
+    await clickButton(container, "Import Persona Configuration");
     await updateTextarea(
       container,
-      "#import-pack-json",
-      '{"name":"Imported Pack","description":"Loaded from JSON"}',
+      "#import-config-json",
+      '{"name":"Imported Config","description":"Loaded from JSON"}',
     );
 
     const importForm = [...container.querySelectorAll("form")].find((form) =>
-      form.querySelector("#import-pack-json"),
+      form.querySelector("#import-config-json"),
     );
     expect(importForm).not.toBeNull();
 
@@ -3065,36 +3065,36 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(importJsonMock).toHaveBeenCalledWith({
-      json: '{"name":"Imported Pack","description":"Loaded from JSON"}',
+      json: '{"name":"Imported Config","description":"Loaded from JSON"}',
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-packs/imported-pack-id");
+    expect(getRouterLocationHref(router)).toBe("/persona-configs/imported-config-id");
   });
 
-  it("creates a new pack from the list page and redirects to the detail route", async () => {
+  it("creates a new config from the list page and redirects to the detail route", async () => {
     mockedPackList = [];
 
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs"],
+      initialEntries: ["/persona-configs"],
     });
 
-    await clickButton(container, "Create Pack");
-    await updateInput(container, "#create-pack-name", "Storefront Pack");
+    await clickButton(container, "Create Persona Configuration");
+    await updateInput(container, "#create-config-name", "Storefront Config");
     await updateTextarea(
       container,
-      "#create-pack-description",
-      "Pack for storefront and checkout studies",
+      "#create-config-description",
+      "Config for storefront and checkout studies",
     );
-    await updateInput(container, "#create-pack-context", "US retail");
-    await updateInput(container, "#create-pack-axis-0-key", "confidence");
-    await updateInput(container, "#create-pack-axis-0-label", "Confidence");
-    await updateInput(container, "#create-pack-axis-0-low", "Needs reassurance");
-    await updateInput(container, "#create-pack-axis-0-mid", "Can continue alone");
-    await updateInput(container, "#create-pack-axis-0-high", "Self-directed");
-    await updateInput(container, "#create-pack-axis-0-weight", "1");
+    await updateInput(container, "#create-config-context", "US retail");
+    await updateInput(container, "#create-config-axis-0-key", "confidence");
+    await updateInput(container, "#create-config-axis-0-label", "Confidence");
+    await updateInput(container, "#create-config-axis-0-low", "Needs reassurance");
+    await updateInput(container, "#create-config-axis-0-mid", "Can continue alone");
+    await updateInput(container, "#create-config-axis-0-high", "Self-directed");
+    await updateInput(container, "#create-config-axis-0-weight", "1");
     await updateTextarea(
       container,
-      "#create-pack-axis-0-description",
+      "#create-config-axis-0-description",
       "Comfort with unfamiliar digital tasks.",
     );
 
@@ -3108,9 +3108,9 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(createDraftMock).toHaveBeenCalledWith({
-      pack: {
-        name: "Storefront Pack",
-        description: "Pack for storefront and checkout studies",
+      config: {
+        name: "Storefront Config",
+        description: "Config for storefront and checkout studies",
         context: "US retail",
         sharedAxes: [
           {
@@ -3125,12 +3125,12 @@ describe("@botchestra/web routing", () => {
         ],
       },
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-packs/new-pack-id");
+    expect(getRouterLocationHref(router)).toBe("/persona-configs/new-config-id");
   });
 
   it("shows publish confirmation and only mutates after confirmation", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-publish" as Id<"personaPacks">,
+      _id: "config-publish" as Id<"personaConfigs">,
       status: "draft",
     });
     mockedSyntheticUsers = [
@@ -3139,23 +3139,23 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-publish"],
+      initialEntries: ["/persona-configs/config-publish"],
     });
 
     await clickButton(container, "Publish");
-    expect(container.textContent).toContain("Publish persona pack?");
+    expect(container.textContent).toContain("Publish persona configuration?");
 
     await clickButton(container, "Cancel");
     expect(publishMock).not.toHaveBeenCalled();
 
     await clickButton(container, "Publish");
-    await clickButton(container, "Publish pack");
-    expect(publishMock).toHaveBeenCalledWith({ packId: "pack-publish" });
+    await clickButton(container, "Publish persona configuration");
+    expect(publishMock).toHaveBeenCalledWith({ configId: "config-publish" });
   });
 
-  it("shows archive confirmation before archiving a published pack", async () => {
+  it("shows archive confirmation before archiving a published config", async () => {
     mockedPackDetail = makePack({
-      _id: "pack-archive" as Id<"personaPacks">,
+      _id: "config-archive" as Id<"personaConfigs">,
       status: "published",
     });
     mockedSyntheticUsers = [
@@ -3164,14 +3164,14 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-packs/pack-archive"],
+      initialEntries: ["/persona-configs/config-archive"],
     });
 
     await clickButton(container, "Archive");
-    expect(container.textContent).toContain("Archive persona pack?");
+    expect(container.textContent).toContain("Archive persona configuration?");
 
-    await clickButton(container, "Archive pack");
-    expect(archiveMock).toHaveBeenCalledWith({ packId: "pack-archive" });
+    await clickButton(container, "Archive persona configuration");
+    expect(archiveMock).toHaveBeenCalledWith({ configId: "config-archive" });
   });
 
   it("renders the transcripts route and places its sidebar link after Axis Library", async () => {
@@ -3343,7 +3343,7 @@ describe("@botchestra/web routing", () => {
     );
   });
 
-  it("renders transcript detail, saves metadata, attaches to a draft pack, and deletes after confirmation", async () => {
+  it("renders transcript detail, saves metadata, attaches to a draft config, and deletes after confirmation", async () => {
     mockedTranscriptDetail = makeTranscript({
       _id: "transcript-detail" as Id<"transcripts">,
       originalFilename: "account-recovery.txt",
@@ -3359,30 +3359,30 @@ describe("@botchestra/web routing", () => {
     };
     mockedPackList = [
       makePack({
-        _id: "linked-draft-pack" as Id<"personaPacks">,
-        name: "Linked draft pack",
+        _id: "linked-draft-config" as Id<"personaConfigs">,
+        name: "Linked draft config",
         status: "draft",
       }),
       makePack({
-        _id: "draft-pack" as Id<"personaPacks">,
-        name: "Draft support pack",
+        _id: "draft-config" as Id<"personaConfigs">,
+        name: "Draft support config",
         status: "draft",
       }),
       makePack({
-        _id: "published-pack" as Id<"personaPacks">,
-        name: "Published pack",
+        _id: "published-config" as Id<"personaConfigs">,
+        name: "Published config",
         status: "published",
       }),
     ];
     mockedTranscriptPacksByTranscriptId["transcript-detail"] = [
       {
-        _id: "pack-link-1",
+        _id: "config-link-1",
         transcriptId: "transcript-detail",
-        packId: "linked-draft-pack",
+        configId: "linked-draft-config",
         createdAt: Date.now(),
-        pack: makePack({
-          _id: "linked-draft-pack" as Id<"personaPacks">,
-          name: "Linked draft pack",
+        config: makePack({
+          _id: "linked-draft-config" as Id<"personaConfigs">,
+          name: "Linked draft config",
           status: "draft",
         }),
       },
@@ -3397,9 +3397,9 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain(
       "Customer could not reset their password without support.",
     );
-    expect(container.textContent).toContain("Linked Packs");
-    expect(container.textContent).toContain("Linked draft pack");
-    expect(container.textContent).toContain("Attach to pack");
+    expect(container.textContent).toContain("Linked Persona Configurations");
+    expect(container.textContent).toContain("Linked draft config");
+    expect(container.textContent).toContain("Attach to persona configuration");
 
     await updateInput(container, "#transcript-participant-id", "after");
     await updateInput(container, "#transcript-tags", "checkout, returning");
@@ -3415,30 +3415,30 @@ describe("@botchestra/web routing", () => {
       },
     });
 
-    await clickButton(container, "Attach to pack");
-    expect(document.body.textContent).toContain("Attach selected packs");
+    await clickButton(container, "Attach to persona configuration");
+    expect(document.body.textContent).toContain("Attach selected persona configurations");
     const transcriptAttachDialog = document.body.querySelector(
       'div[role="dialog"]',
     ) as HTMLDivElement;
     await updateInput(
       transcriptAttachDialog,
-      "#transcript-attach-pack-search",
+      "#transcript-attach-config-search",
       "support",
     );
     await act(async () => {
       document.body
-        .querySelector<HTMLInputElement>("#transcript-attach-pack-draft-pack")
+        .querySelector<HTMLInputElement>("#transcript-attach-config-draft-config")
         ?.click();
     });
-    await clickButton(document.body, "Attach selected packs");
+    await clickButton(document.body, "Attach selected persona configurations");
 
     expect(attachTranscriptMock).toHaveBeenCalledWith({
-      packId: "draft-pack",
+      configId: "draft-config",
       transcriptId: "transcript-detail",
     });
     await clickButton(container, "Detach");
     expect(detachTranscriptMock).toHaveBeenCalledWith({
-      packId: "linked-draft-pack",
+      configId: "linked-draft-config",
       transcriptId: "transcript-detail",
     });
 
@@ -3518,9 +3518,9 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("I hesitated at the payment step.");
     expect(container.textContent).not.toContain("Save metadata");
     expect(container.textContent).not.toContain("Delete transcript");
-    expect(container.textContent).toContain("Linked Packs");
-    expect(container.textContent).not.toContain("Attach to pack");
-    expect(container.querySelector("#transcript-attach-pack-search")).toBeNull();
+    expect(container.textContent).toContain("Linked Persona Configurations");
+    expect(container.textContent).not.toContain("Attach to persona configuration");
+    expect(container.querySelector("#transcript-attach-config-search")).toBeNull();
   });
 
   it("shows not-found content for invalid transcript detail links", async () => {
@@ -3696,7 +3696,7 @@ function makeStudy(overrides: Partial<Doc<"studies">> = {}): Doc<"studies"> {
     _creationTime: 1,
     _id: (overrides._id ?? "study-1") as Id<"studies">,
     orgId: "researcher|org-a",
-    personaPackId: "pack-1" as Id<"personaPacks">,
+    personaConfigId: "config-1" as Id<"personaConfigs">,
     name: "Checkout usability benchmark",
     description: "Evaluates friction in the checkout flow.",
     taskSpec: {
@@ -3757,7 +3757,7 @@ function makeViewerAccess(role: ViewerRole): ViewerAccess {
       canAccessSettings: role === "admin",
       canAddNotes: true,
       canExportReports: true,
-      canManagePersonaPacks: role !== "reviewer",
+      canManagePersonaConfigs: role !== "reviewer",
       canManageStudies: role !== "reviewer",
     },
   };
@@ -4191,12 +4191,12 @@ async function updateTextarea(
   });
 }
 
-function makePack(overrides: Partial<Doc<"personaPacks">> = {}): Doc<"personaPacks"> {
+function makePack(overrides: Partial<Doc<"personaConfigs">> = {}): Doc<"personaConfigs"> {
   return {
     _creationTime: 1,
-    _id: (overrides._id ?? "pack-1") as Id<"personaPacks">,
-    name: "Checkout Pack",
-    description: "Pack for digital checkout studies",
+    _id: (overrides._id ?? "config-1") as Id<"personaConfigs">,
+    name: "Checkout Config",
+    description: "Config for digital checkout studies",
     context: "US e-commerce",
     sharedAxes: [
       {
@@ -4277,7 +4277,7 @@ function makeSyntheticUser(
   return {
     _creationTime: 1,
     _id: (overrides._id ?? "proto-1") as Id<"syntheticUsers">,
-    packId: (overrides.packId ?? "pack-1") as Id<"personaPacks">,
+    configId: (overrides.configId ?? "config-1") as Id<"personaConfigs">,
     name: "Budget-focused repeat buyer",
     summary: "Wants to finish quickly and compare final totals.",
     axes: [
@@ -4308,9 +4308,9 @@ function makeVariantReview() {
       runBudget: 64,
       updatedAt: Date.now(),
     },
-    pack: {
-      _id: "pack-live",
-      name: "Customer Journey Stress Test Pack",
+    config: {
+      _id: "config-live",
+      name: "Customer Journey Stress Test Config",
       status: "published",
       sharedAxes: [
         {

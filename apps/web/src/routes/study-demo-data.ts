@@ -22,7 +22,7 @@ export type DemoStudySummary = {
 
 export type DemoStudyOverview = {
   _id: string;
-  personaPackId: string;
+  personaConfigId: string;
   name: string;
   description: string;
   status: DemoStudyStatus;
@@ -188,7 +188,7 @@ export const demoStudySummary: DemoStudySummary = {
 
 export const demoStudyOverview: DemoStudyOverview = {
   _id: DEMO_STUDY_ID,
-  personaPackId: "demo-pack",
+  personaConfigId: "demo-config",
   name: "Checkout usability benchmark",
   description:
     "Synthetic benchmark study showing the completed analysis surfaces for the demo checkout flow.",

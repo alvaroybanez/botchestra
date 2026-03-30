@@ -198,11 +198,11 @@ describe("credentials CRUD", () => {
 
 async function insertStudy(t: ReturnType<typeof createTest>) {
   const now = Date.now();
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId: adminIdentity.tokenIdentifier,
-      name: "Checkout persona pack",
-      description: "Published pack for credentials tests",
+      name: "Checkout persona configuration",
+      description: "Published config for credentials tests",
       context: "US e-commerce checkout",
       sharedAxes: [
         {
@@ -227,7 +227,7 @@ async function insertStudy(t: ReturnType<typeof createTest>) {
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: adminIdentity.tokenIdentifier,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout study",
       taskSpec: makeTaskSpec(),
       runBudget: 64,

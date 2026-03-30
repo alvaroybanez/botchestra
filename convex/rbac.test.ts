@@ -10,8 +10,8 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./analysisNotes.ts": () => import("./analysisNotes"),
   "./axisLibrary.ts": () => import("./axisLibrary"),
-  "./packTranscripts.ts": () => import("./packTranscripts"),
-  "./personaPacks.ts": () => import("./personaPacks"),
+  "./configTranscripts.ts": () => import("./configTranscripts"),
+  "./personaConfigs.ts": () => import("./personaConfigs"),
   "./personaVariantGeneration.ts": () => import("./personaVariantGeneration"),
   "./rbac.ts": () => import("./rbac"),
   "./schema.ts": () => import("./schema"),
@@ -116,7 +116,7 @@ describe("rbac", () => {
         canAccessSettings: false,
         canAddNotes: true,
         canExportReports: true,
-        canManagePersonaPacks: true,
+        canManagePersonaConfigs: true,
         canManageStudies: true,
       },
     });
@@ -188,67 +188,67 @@ describe("rbac", () => {
     const publishedSyntheticUserId = await insertSyntheticUser(t, publishedPackId);
     const draftSyntheticUserId = await insertSyntheticUser(t, draftPackId);
     const draftStudyId = await insertStudy(t, {
-      packId: publishedPackId,
+      configId: publishedPackId,
       status: "draft",
     });
     const readyStudyId = await insertStudy(t, {
-      packId: publishedPackId,
+      configId: publishedPackId,
       status: "ready",
     });
     const personaReviewStudyId = await insertStudy(t, {
-      packId: publishedPackId,
+      configId: publishedPackId,
       status: "persona_review",
     });
     const transcriptId = await insertTranscript(t);
     const issueId = await insertIssueCluster(t, publishedPackId);
 
     await expect(
-      asReviewer.mutation(api.personaPacks.createDraft, {
-        pack: makeCreateDraftInput(),
+      asReviewer.mutation(api.personaConfigs.createDraft, {
+        config: makeCreateDraftInput(),
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.action(api.personaPacks.importJson, {
+      asReviewer.action(api.personaConfigs.importJson, {
         json: JSON.stringify(makeImportedPackJson()),
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.updateDraft, {
-        packId: draftPackId,
-        patch: { description: "Reviewer should not update packs." },
+      asReviewer.mutation(api.personaConfigs.updateDraft, {
+        configId: draftPackId,
+        patch: { description: "Reviewer should not update configs." },
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.publish, {
-        packId: draftPackId,
+      asReviewer.mutation(api.personaConfigs.publish, {
+        configId: draftPackId,
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.archive, {
-        packId: publishedPackId,
+      asReviewer.mutation(api.personaConfigs.archive, {
+        configId: publishedPackId,
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.createSyntheticUser, {
-        packId: draftPackId,
+      asReviewer.mutation(api.personaConfigs.createSyntheticUser, {
+        configId: draftPackId,
         syntheticUser: makeSyntheticUserInput(),
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.updateSyntheticUser, {
+      asReviewer.mutation(api.personaConfigs.updateSyntheticUser, {
         syntheticUserId: draftSyntheticUserId,
         patch: { summary: "Reviewer should not edit synthetic users." },
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.deleteSyntheticUser, {
+      asReviewer.mutation(api.personaConfigs.deleteSyntheticUser, {
         syntheticUserId: draftSyntheticUserId,
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
       asReviewer.mutation(api.studies.createStudy, {
         study: {
-          personaPackId: publishedPackId,
+          personaConfigId: publishedPackId,
           name: "Reviewer draft study",
           description: "Should be blocked before insert.",
           taskSpec: makeTaskSpec(),
@@ -297,21 +297,21 @@ describe("rbac", () => {
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation((api as any).packTranscripts.attachTranscript, {
-        packId: draftPackId,
+      asReviewer.mutation((api as any).configTranscripts.attachTranscript, {
+        configId: draftPackId,
         transcriptId,
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await t.run(async (ctx) =>
-      ctx.db.insert("packTranscripts", {
-        packId: draftPackId,
+      ctx.db.insert("configTranscripts", {
+        configId: draftPackId,
         transcriptId,
         createdAt: Date.now(),
       }),
     );
     await expect(
-      asReviewer.mutation((api as any).packTranscripts.detachTranscript, {
-        packId: draftPackId,
+      asReviewer.mutation((api as any).configTranscripts.detachTranscript, {
+        configId: draftPackId,
         transcriptId,
       }),
     ).rejects.toThrowError("FORBIDDEN");
@@ -329,21 +329,21 @@ describe("rbac", () => {
     expect(publishedSyntheticUserId).toBeDefined();
   });
 
-  it("allows admins to run representative mutations across packs, studies, and notes", async () => {
+  it("allows admins to run representative mutations across configs, studies, and notes", async () => {
     const t = createTest();
     const asAdmin = t.withIdentity(adminIdentity);
     const publishedPackId = await insertPack(t, { status: "published" });
     const issueId = await insertIssueCluster(t, publishedPackId);
 
-    const createdPackId = await asAdmin.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const createdPackId = await asAdmin.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
-    const importedPackId = await asAdmin.action(api.personaPacks.importJson, {
+    const importedPackId = await asAdmin.action(api.personaConfigs.importJson, {
       json: JSON.stringify(makeImportedPackJson()),
     });
     const createdStudy = await asAdmin.mutation(api.studies.createStudy, {
       study: {
-        personaPackId: publishedPackId,
+        personaConfigId: publishedPackId,
         name: "Admin study",
         description: "Created by an admin user.",
         taskSpec: makeTaskSpec(),
@@ -372,7 +372,7 @@ async function insertPack(
   options: { status: "draft" | "published" | "archived" },
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+    ctx.db.insert("personaConfigs", {
       ...makeCreateDraftInput(),
       version: 1,
       status: options.status,
@@ -387,11 +387,11 @@ async function insertPack(
 
 async function insertSyntheticUser(
   t: ReturnType<typeof createTest>,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId,
+      configId,
       ...makeSyntheticUserInput(),
       sourceType: "manual",
       sourceRefs: [],
@@ -402,14 +402,14 @@ async function insertSyntheticUser(
 async function insertStudy(
   t: ReturnType<typeof createTest>,
   options: {
-    packId: Id<"personaPacks">;
+    configId: Id<"personaConfigs">;
     status: "draft" | "ready" | "persona_review";
   },
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: reviewerIdentity.tokenIdentifier,
-      personaPackId: options.packId,
+      personaConfigId: options.configId,
       name: `${options.status} study`,
       description: "Seeded for RBAC tests.",
       taskSpec: makeTaskSpec(),
@@ -425,9 +425,9 @@ async function insertStudy(
 
 async function insertIssueCluster(
   t: ReturnType<typeof createTest>,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
 ) {
-  const studyId = await insertStudy(t, { packId, status: "ready" });
+  const studyId = await insertStudy(t, { configId, status: "ready" });
 
   return await t.run(async (ctx) =>
     ctx.db.insert("issueClusters", {
@@ -478,8 +478,8 @@ async function storeTranscriptBlob(t: ReturnType<typeof createTest>) {
 
 function makeCreateDraftInput() {
   return {
-    name: "Checkout Pack",
-    description: "Persona pack for checkout flow studies.",
+    name: "Checkout Config",
+    description: "Persona config for checkout flow studies.",
     context: "US e-commerce",
     sharedAxes: [makeAxis()],
   };

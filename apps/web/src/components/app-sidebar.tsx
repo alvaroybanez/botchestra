@@ -12,8 +12,8 @@ const baseNavigationItems = [
     permission: null,
   },
   {
-    label: "Persona Packs",
-    to: "/persona-packs",
+    label: "Persona Configurations",
+    to: "/persona-configs",
     exact: false,
     permission: null,
   },

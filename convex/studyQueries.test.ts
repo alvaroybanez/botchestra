@@ -384,10 +384,10 @@ async function insertPack(
   orgId: string,
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+    ctx.db.insert("personaConfigs", {
       orgId,
-      name: `Pack for ${orgId}`,
-      description: "Pack for study query tests",
+      name: `Config for ${orgId}`,
+      description: "Config for study query tests",
       context: "Checkout",
       sharedAxes: [
         {
@@ -414,13 +414,13 @@ async function insertStudy(
   t: TestInstance,
   overrides: Partial<Doc<"studies">> & { orgId: string },
 ) {
-  const { orgId, personaPackId, ...rest } = overrides;
-  const packId = personaPackId ?? (await insertPack(t, orgId));
+  const { orgId, personaConfigId, ...rest } = overrides;
+  const configId = personaConfigId ?? (await insertPack(t, orgId));
 
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Study query fixture",
       description: "Fixture study",
       taskSpec: sampleTaskSpec,
@@ -458,7 +458,7 @@ async function buildRunFixtures(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Careful shopper",
       summary: "Double-checks every step before continuing.",
       axes: [
@@ -481,7 +481,7 @@ async function buildRunFixtures(
   const personaVariantId = await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: study.personaPackId,
+      personaConfigId: study.personaConfigId,
       syntheticUserId,
       axisValues: [{ key: "digital_confidence", value: -0.35 }],
       edgeScore: 0.72,
@@ -520,7 +520,7 @@ async function insertRun(
     overrides.syntheticUserId ??
     (await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId: study.personaPackId,
+        configId: study.personaConfigId,
         name: "Fallback persona",
         summary: "Fallback synthetic user",
         axes: [],
@@ -535,7 +535,7 @@ async function insertRun(
     (await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: study.personaPackId,
+        personaConfigId: study.personaConfigId,
         syntheticUserId,
         axisValues: [],
         edgeScore: 0.4,

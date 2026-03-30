@@ -240,13 +240,13 @@ type TestInstance = ReturnType<typeof createTest>;
 
 async function insertPack(
   t: TestInstance,
-  overrides: Partial<Doc<"personaPacks">> = {},
+  overrides: Partial<Doc<"personaConfigs">> = {},
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+    ctx.db.insert("personaConfigs", {
       orgId: researchIdentity.tokenIdentifier,
-      name: "Checkout persona pack",
-      description: "Published pack for checkout studies",
+      name: "Checkout persona configuration",
+      description: "Published config for checkout studies",
       context: "US e-commerce checkout",
       sharedAxes: [
         {
@@ -277,17 +277,17 @@ async function insertStudy(
     runBudget?: number;
     activeConcurrency?: number;
     taskSpec?: StudyTaskSpecInput;
-    personaPackStatus?: "draft" | "published" | "archived";
+    personaConfigStatus?: "draft" | "published" | "archived";
   } = {},
 ) {
-  const packId = await insertPack(t, {
-    status: overrides.personaPackStatus ?? "published",
+  const configId = await insertPack(t, {
+    status: overrides.personaConfigStatus ?? "published",
   });
 
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: researchIdentity.tokenIdentifier,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout study",
       description: "Study description",
       taskSpec: makeTaskSpec(overrides.taskSpec),
@@ -314,7 +314,7 @@ async function seedAcceptedVariants(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Confident buyer",
       summary: "Moves quickly through checkout.",
       axes: [
@@ -338,7 +338,7 @@ async function seedAcceptedVariants(
     await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: study.personaPackId,
+        personaConfigId: study.personaConfigId,
         syntheticUserId,
         axisValues: [{ key: "digital_confidence", value: 0.8 }],
         edgeScore: 0.8,

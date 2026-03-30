@@ -671,11 +671,11 @@ async function insertStudy(
   },
 ) {
   const now = Date.now();
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId: researchIdentity.tokenIdentifier,
-      name: "Checkout pack",
-      description: "Pack used for lifecycle workflow tests",
+      name: "Checkout config",
+      description: "Config used for lifecycle workflow tests",
       context: "Checkout flows",
       sharedAxes: [],
       version: 1,
@@ -691,7 +691,7 @@ async function insertStudy(
     ctx.db.insert("studies", {
       ...overrides,
       orgId: researchIdentity.tokenIdentifier,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout lifecycle study",
       taskSpec: sampleTaskSpec,
       runBudget: overrides.runBudget ?? 3,
@@ -717,7 +717,7 @@ async function seedAcceptedVariants(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -731,7 +731,7 @@ async function seedAcceptedVariants(
     await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: study.personaPackId,
+        personaConfigId: study.personaConfigId,
         syntheticUserId,
         axisValues: [],
         edgeScore: 0.5,
@@ -766,7 +766,7 @@ async function seedTerminalRuns(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -780,7 +780,7 @@ async function seedTerminalRuns(
     const personaVariantId = await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: study.personaPackId,
+        personaConfigId: study.personaConfigId,
         syntheticUserId,
         axisValues: [],
         edgeScore: 0.5,
@@ -964,7 +964,7 @@ async function insertTerminalRun(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: `Proto ${Math.random()}`,
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -977,7 +977,7 @@ async function insertTerminalRun(
   const personaVariantId = await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: study.personaPackId,
+      personaConfigId: study.personaConfigId,
       syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,

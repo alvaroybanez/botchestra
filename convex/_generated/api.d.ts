@@ -155,6 +155,32 @@ export declare const api: {
       any
     >;
   };
+  configTranscripts: {
+    attachTranscript: FunctionReference<
+      "mutation",
+      "public",
+      { configId: Id<"personaConfigs">; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    detachTranscript: FunctionReference<
+      "mutation",
+      "public",
+      { configId: Id<"personaConfigs">; transcriptId: Id<"transcripts"> },
+      any
+    >;
+    listConfigTranscripts: FunctionReference<
+      "query",
+      "public",
+      { configId: Id<"personaConfigs"> },
+      any
+    >;
+    listTranscriptConfigs: FunctionReference<
+      "query",
+      "public",
+      { transcriptId: Id<"transcripts"> },
+      any
+    >;
+  };
   credentials: {
     createCredential: FunctionReference<
       "mutation",
@@ -236,37 +262,12 @@ export declare const api: {
       any
     >;
   };
-  packTranscripts: {
-    attachTranscript: FunctionReference<
-      "mutation",
-      "public",
-      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
-      any
-    >;
-    detachTranscript: FunctionReference<
-      "mutation",
-      "public",
-      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
-      any
-    >;
-    listPackTranscripts: FunctionReference<
-      "query",
-      "public",
-      { packId: Id<"personaPacks"> },
-      any
-    >;
-    listTranscriptPacks: FunctionReference<
-      "query",
-      "public",
-      { transcriptId: Id<"transcripts"> },
-      any
-    >;
-  };
-  personaPacks: {
+  personaConfigs: {
     applyTranscriptDerivedSyntheticUsers: FunctionReference<
       "mutation",
       "public",
       {
+        configId: Id<"personaConfigs">;
         input: {
           archetypes: Array<{
             axisValues: Array<{ key: string; value: number }>;
@@ -286,21 +287,20 @@ export declare const api: {
             weight: number;
           }>;
         };
-        packId: Id<"personaPacks">;
       },
       any
     >;
     archive: FunctionReference<
       "mutation",
       "public",
-      { packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs"> },
       any
     >;
     createDraft: FunctionReference<
       "mutation",
       "public",
       {
-        pack: {
+        config: {
           context: string;
           description: string;
           name: string;
@@ -321,7 +321,7 @@ export declare const api: {
       "mutation",
       "public",
       {
-        packId: Id<"personaPacks">;
+        configId: Id<"personaConfigs">;
         syntheticUser: {
           axes: Array<{
             description: string;
@@ -349,13 +349,13 @@ export declare const api: {
     exportJson: FunctionReference<
       "action",
       "public",
-      { packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs"> },
       any
     >;
     get: FunctionReference<
       "query",
       "public",
-      { packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs"> },
       any
     >;
     getSyntheticUser: FunctionReference<
@@ -369,20 +369,20 @@ export declare const api: {
     listSyntheticUsers: FunctionReference<
       "query",
       "public",
-      { packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs"> },
       any
     >;
     publish: FunctionReference<
       "mutation",
       "public",
-      { packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs"> },
       any
     >;
     updateDraft: FunctionReference<
       "mutation",
       "public",
       {
-        packId: Id<"personaPacks">;
+        configId: Id<"personaConfigs">;
         patch: {
           context?: string;
           description?: string;
@@ -434,7 +434,7 @@ export declare const api: {
     previewVariants: FunctionReference<
       "action",
       "public",
-      { budget: number; packId: Id<"personaPacks"> },
+      { budget: number; configId: Id<"personaConfigs"> },
       any
     >;
   };
@@ -442,7 +442,7 @@ export declare const api: {
     getPackVariantReview: FunctionReference<
       "query",
       "public",
-      { packId: Id<"personaPacks">; studyId?: Id<"studies"> },
+      { configId: Id<"personaConfigs">; studyId?: Id<"studies"> },
       any
     >;
     getStudyVariantReview: FunctionReference<
@@ -562,7 +562,7 @@ export declare const api: {
           activeConcurrency: number;
           description?: string;
           name: string;
-          personaPackId: Id<"personaPacks">;
+          personaConfigId: Id<"personaConfigs">;
           runBudget?: number;
           taskSpec: {
             allowedActions: Array<
@@ -689,6 +689,7 @@ export declare const api: {
       "action",
       "public",
       {
+        configId: Id<"personaConfigs">;
         guidedAxes?: Array<{
           description: string;
           highAnchor: string;
@@ -699,7 +700,6 @@ export declare const api: {
           weight: number;
         }>;
         mode: "auto_discover" | "guided";
-        packId: Id<"personaPacks">;
       },
       any
     >;
@@ -712,13 +712,14 @@ export declare const api: {
     getExtractionStatus: FunctionReference<
       "query",
       "public",
-      { packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs"> },
       any
     >;
     startExtraction: FunctionReference<
       "action",
       "public",
       {
+        configId: Id<"personaConfigs">;
         guidedAxes?: Array<{
           description: string;
           highAnchor: string;
@@ -729,7 +730,6 @@ export declare const api: {
           weight: number;
         }>;
         mode: "auto_discover" | "guided";
-        packId: Id<"personaPacks">;
       },
       any
     >;
@@ -978,11 +978,11 @@ export declare const internal: {
       any
     >;
   };
-  personaPacks: {
+  personaConfigs: {
     getExportPayload: FunctionReference<
       "query",
       "internal",
-      { orgId: string; packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs">; orgId: string },
       any
     >;
     persistImportedPack: FunctionReference<
@@ -1044,7 +1044,7 @@ export declare const internal: {
     getPreviewContext: FunctionReference<
       "query",
       "internal",
-      { orgId: string; packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs">; orgId: string },
       any
     >;
     getStudyGenerationOwner: FunctionReference<
@@ -1083,7 +1083,7 @@ export declare const internal: {
           distinctnessScore: number;
           edgeScore: number;
           firstPersonBio: string;
-          personaPackId: Id<"personaPacks">;
+          personaConfigId: Id<"personaConfigs">;
           studyId: Id<"studies">;
           syntheticUserId: Id<"syntheticUsers">;
           tensionSeed: string;
@@ -1362,6 +1362,7 @@ export declare const internal: {
             summary: string;
           }>;
           completedAt?: number;
+          configId: Id<"personaConfigs">;
           currentTranscriptId?: Id<"transcripts">;
           errorMessage?: string;
           failedTranscripts: Array<{
@@ -1379,7 +1380,6 @@ export declare const internal: {
           }>;
           mode: "auto_discover" | "guided";
           orgId: string;
-          packId: Id<"personaPacks">;
           processedTranscriptCount: number;
           proposedAxes: Array<{
             description: string;
@@ -1407,39 +1407,39 @@ export declare const internal: {
     extractTranscriptSignals: FunctionReference<
       "action",
       "internal",
-      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
+      { configId: Id<"personaConfigs">; transcriptId: Id<"transcripts"> },
       any
     >;
     getClusteringContext: FunctionReference<
       "query",
       "internal",
-      { orgId: string; packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs">; orgId: string },
       any
     >;
-    getPackExtractionContext: FunctionReference<
+    getConfigExtractionContext: FunctionReference<
       "query",
       "internal",
-      { orgId: string; packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs">; orgId: string },
       any
     >;
     getSignalExtractionContext: FunctionReference<
       "query",
       "internal",
-      { packId: Id<"personaPacks">; transcriptId: Id<"transcripts"> },
+      { configId: Id<"personaConfigs">; transcriptId: Id<"transcripts"> },
       any
     >;
     getSignalsForPack: FunctionReference<
       "query",
       "internal",
-      { packId: Id<"personaPacks"> },
+      { configId: Id<"personaConfigs"> },
       any
     >;
     markTranscriptSignalFailed: FunctionReference<
       "mutation",
       "internal",
       {
+        configId: Id<"personaConfigs">;
         orgId: string;
-        packId: Id<"personaPacks">;
         processingError: string;
         transcriptId: Id<"transcripts">;
       },
@@ -1449,8 +1449,8 @@ export declare const internal: {
       "mutation",
       "internal",
       {
+        configId: Id<"personaConfigs">;
         orgId: string;
-        packId: Id<"personaPacks">;
         transcriptId: Id<"transcripts">;
       },
       any
@@ -1473,6 +1473,7 @@ export declare const internal: {
             summary: string;
           }>;
           completedAt?: number;
+          configId: Id<"personaConfigs">;
           currentTranscriptId?: Id<"transcripts">;
           errorMessage?: string;
           failedTranscripts: Array<{
@@ -1490,7 +1491,6 @@ export declare const internal: {
           }>;
           mode: "auto_discover" | "guided";
           orgId: string;
-          packId: Id<"personaPacks">;
           processedTranscriptCount: number;
           proposedAxes: Array<{
             description: string;
@@ -1519,8 +1519,8 @@ export declare const internal: {
       "mutation",
       "internal",
       {
+        configId: Id<"personaConfigs">;
         orgId: string;
-        packId: Id<"personaPacks">;
         signals: {
           attitudes: Array<string>;
           decisionPatterns: Array<string>;

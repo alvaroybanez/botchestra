@@ -257,11 +257,11 @@ async function insertStudy(
   },
 ) {
   const now = Date.now();
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId: researchIdentity.tokenIdentifier,
-      name: "Checkout pack",
-      description: "Pack used for cancellation tests",
+      name: "Checkout config",
+      description: "Config used for cancellation tests",
       context: "Checkout flows",
       sharedAxes: [],
       version: 1,
@@ -276,7 +276,7 @@ async function insertStudy(
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: researchIdentity.tokenIdentifier,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout cancellation study",
       taskSpec: sampleTaskSpec,
       runBudget: 3,
@@ -302,7 +302,7 @@ async function insertRun(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -315,7 +315,7 @@ async function insertRun(
   const personaVariantId = await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: study.personaPackId,
+      personaConfigId: study.personaConfigId,
       syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,

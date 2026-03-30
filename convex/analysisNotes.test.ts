@@ -161,11 +161,11 @@ async function insertIssueCluster(
 ): Promise<Id<"issueClusters">> {
   const now = Date.now();
 
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId,
-      name: "Checkout pack",
-      description: "Pack used for analyst note tests",
+      name: "Checkout config",
+      description: "Config used for analyst note tests",
       context: "Checkout flow",
       sharedAxes: [],
       version: 1,
@@ -180,7 +180,7 @@ async function insertIssueCluster(
   const studyId = await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout analysis study",
       taskSpec: sampleTaskSpec,
       runBudget: 6,

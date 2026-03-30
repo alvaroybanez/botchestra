@@ -17,9 +17,9 @@ import { AxisLibraryPage as AxisLibraryRoutePage } from "@/routes/axis-library-p
 import { LoginPage } from "@/routes/login";
 import { NotFoundPlaceholder } from "@/routes/placeholders";
 import {
-  PersonaPackDetailPage as PersonaPackDetailRoutePage,
-  PersonaPacksPage as PersonaPacksRoutePage,
-} from "@/routes/persona-pack-pages";
+  PersonaConfigDetailPage as PersonaConfigDetailRoutePage,
+  PersonaConfigsPage as PersonaConfigsRoutePage,
+} from "@/routes/persona-config-pages";
 import {
   StudiesListPage as StudiesRoutePage,
   StudyCreationWizardPage as StudyCreationWizardRoutePage,
@@ -111,7 +111,7 @@ function validateTranscriptDetailSearch(search: Record<string, unknown>) {
     : {};
 }
 
-function validatePersonaPackDetailSearch(search: Record<string, unknown>) {
+function validatePersonaConfigDetailSearch(search: Record<string, unknown>) {
   const forceSuggestAxesError =
     search.forceSuggestAxesError === true ||
     search.forceSuggestAxesError === "true" ||
@@ -268,10 +268,10 @@ const studyReportRoute = createRoute({
   component: StudyReportPage,
 });
 
-const personaPacksRoute = createRoute({
+const personaConfigsRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
-  path: "persona-packs",
-  component: PersonaPacksPage,
+  path: "persona-configs",
+  component: PersonaConfigsPage,
 });
 
 const axisLibraryRoute = createRoute({
@@ -286,11 +286,11 @@ const transcriptsRoute = createRoute({
   component: TranscriptsPage,
 });
 
-const personaPackDetailRoute = createRoute({
+const personaConfigDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
-  path: "persona-packs/$packId",
-  validateSearch: validatePersonaPackDetailSearch,
-  component: PersonaPackDetailPage,
+  path: "persona-configs/$configId",
+  validateSearch: validatePersonaConfigDetailSearch,
+  component: PersonaConfigDetailPage,
 });
 
 const transcriptDetailRoute = createRoute({
@@ -330,10 +330,10 @@ const routeTree = rootRoute.addChildren([
     studyRunsRoute,
     studyFindingsRoute,
     studyReportRoute,
-    personaPacksRoute,
+    personaConfigsRoute,
     axisLibraryRoute,
     transcriptsRoute,
-    personaPackDetailRoute,
+    personaConfigDetailRoute,
     transcriptDetailRoute,
     settingsRoute,
     adminDiagnosticsRoute,
@@ -520,8 +520,8 @@ function StudyReportPage() {
   );
 }
 
-function PersonaPacksPage() {
-  return <PersonaPacksRoutePage />;
+function PersonaConfigsPage() {
+  return <PersonaConfigsRoutePage />;
 }
 
 function AxisLibraryPage() {
@@ -532,13 +532,13 @@ function TranscriptsPage() {
   return <TranscriptsRoutePage />;
 }
 
-function PersonaPackDetailPage() {
-  const { packId } = personaPackDetailRoute.useParams();
-  const { forceSuggestAxesError } = personaPackDetailRoute.useSearch();
+function PersonaConfigDetailPage() {
+  const { configId } = personaConfigDetailRoute.useParams();
+  const { forceSuggestAxesError } = personaConfigDetailRoute.useSearch();
   return (
-    <PersonaPackDetailRoutePage
+    <PersonaConfigDetailRoutePage
       forceSuggestAxesError={forceSuggestAxesError}
-      packId={packId}
+      configId={configId}
     />
   );
 }

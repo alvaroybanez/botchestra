@@ -8,7 +8,7 @@ import {
 import { emptyStudyDetailSearch } from "@/routes/study-shared";
 
 export const DEMO_STUDY_ID = "demo-study" as const;
-export const DEMO_PACK_ID = "demo-pack" as const;
+export const DEMO_PACK_ID = "demo-config" as const;
 
 const studyTabs = [
   {
@@ -206,41 +206,41 @@ export function StudyDetailSkeletonPage({
   );
 }
 
-export function PersonaPacksSkeletonPage() {
+export function PersonaConfigsSkeletonPage() {
   const placeholder = withoutKey(contentRoutePlaceholders[7]);
 
   return (
     <section className="space-y-6">
       <RoutePlaceholder
         {...placeholder}
-        routePath="/persona-packs"
+        routePath="/persona-configs"
       />
 
       <div className="rounded-xl border bg-card p-6 shadow-sm">
         <div className="space-y-4">
           <div className="space-y-2">
             <h3 className="text-xl font-semibold tracking-tight">
-              Sample persona pack route
+              Sample persona configuration route
             </h3>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Open the demo persona pack detail placeholder from this visible
+              Open the demo persona configuration detail placeholder from this visible
               list entry.
             </p>
           </div>
 
           <Link
             className="block rounded-lg border bg-background p-4 transition-colors hover:border-primary hover:bg-muted/50"
-            params={{ packId: DEMO_PACK_ID }}
-            to="/persona-packs/$packId"
+            params={{ configId: DEMO_PACK_ID }}
+            to="/persona-configs/$configId"
           >
             <span className="block text-sm font-medium text-muted-foreground">
-              Sample pack entry
+              Sample config entry
             </span>
             <span className="mt-1 block text-base font-semibold">
-              Customer Journey Stress Test Pack
+              Customer Journey Stress Test Config
             </span>
             <span className="mt-2 block text-sm text-muted-foreground">
-              Jump to the demo pack detail route to inspect pack metadata and
+              Jump to the demo persona configuration detail route to inspect persona configuration metadata and
               placeholder content.
             </span>
           </Link>
@@ -250,12 +250,12 @@ export function PersonaPacksSkeletonPage() {
   );
 }
 
-export function PersonaPackDetailSkeletonPage({ packId }: { packId: string }) {
+export function PersonaConfigDetailSkeletonPage({ configId }: { configId: string }) {
   return (
     <RoutePlaceholder
       {...withoutKey(contentRoutePlaceholders[8])}
-      params={{ "Pack ID": packId }}
-      routePath={`/persona-packs/${packId}`}
+      params={{ "Persona Configuration ID": configId }}
+      routePath={`/persona-configs/${configId}`}
     />
   );
 }

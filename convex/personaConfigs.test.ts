@@ -9,7 +9,7 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./schema.ts": () => import("./schema"),
   "./axisLibrary.ts": () => import("./axisLibrary"),
-  "./personaPacks.ts": () => import("./personaPacks"),
+  "./personaConfigs.ts": () => import("./personaConfigs"),
   "./userManagement.ts": () => import("./userManagement"),
 };
 
@@ -44,28 +44,28 @@ const makeCreateDraftInput = (
   overrides: Partial<CreateDraftInput> = {},
 ): CreateDraftInput => ({
   name: "E-commerce Shoppers",
-  description: "Pack for e-commerce checkout studies",
+  description: "Config for e-commerce checkout studies",
   context: "US online retail context",
   sharedAxes: [makeAxis()],
   ...overrides,
 });
 
-describe("personaPacks", () => {
-  it("createDraft stores a draft pack at version 1 with timestamps and creator", async () => {
+describe("personaConfigs", () => {
+  it("createDraft stores a draft config at version 1 with timestamps and creator", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const before = Date.now();
 
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
 
-    const pack = await getPackDoc(t, packId);
+    const config = await getPackDoc(t, configId);
 
-    expect(pack).not.toBeNull();
-    expect(pack).toMatchObject({
+    expect(config).not.toBeNull();
+    expect(config).toMatchObject({
       name: "E-commerce Shoppers",
-      description: "Pack for e-commerce checkout studies",
+      description: "Config for e-commerce checkout studies",
       context: "US online retail context",
       status: "draft",
       version: 1,
@@ -73,8 +73,8 @@ describe("personaPacks", () => {
       updatedBy: researchIdentity.tokenIdentifier,
       orgId: researchIdentity.tokenIdentifier,
     });
-    expect(pack!.createdAt).toBeGreaterThanOrEqual(before);
-    expect(pack!.updatedAt).toBeGreaterThanOrEqual(pack!.createdAt);
+    expect(config!.createdAt).toBeGreaterThanOrEqual(before);
+    expect(config!.updatedAt).toBeGreaterThanOrEqual(config!.createdAt);
   });
 
   it("createDraft rejects missing required fields", async () => {
@@ -87,14 +87,14 @@ describe("personaPacks", () => {
       makeCreateDraftInput({ context: "" }),
     ];
 
-    for (const pack of invalidInputs) {
+    for (const config of invalidInputs) {
       await expect(
-        asResearcher.mutation(api.personaPacks.createDraft, { pack }),
+        asResearcher.mutation(api.personaConfigs.createDraft, { config }),
       ).rejects.toThrow();
     }
 
-    const packs = await t.run(async (ctx) => ctx.db.query("personaPacks").collect());
-    expect(packs).toHaveLength(0);
+    const configs = await t.run(async (ctx) => ctx.db.query("personaConfigs").collect());
+    expect(configs).toHaveLength(0);
   });
 
   it("createDraft rejects an empty sharedAxes array", async () => {
@@ -102,8 +102,8 @@ describe("personaPacks", () => {
     const asResearcher = t.withIdentity(researchIdentity);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createDraft, {
-        pack: makeCreateDraftInput({ sharedAxes: [] }),
+      asResearcher.mutation(api.personaConfigs.createDraft, {
+        config: makeCreateDraftInput({ sharedAxes: [] }),
       }),
     ).rejects.toThrow("At least one shared axis is required");
   });
@@ -124,8 +124,8 @@ describe("personaPacks", () => {
 
     for (const overrides of invalidAxes) {
       await expect(
-        asResearcher.mutation(api.personaPacks.createDraft, {
-          pack: makeCreateDraftInput({
+        asResearcher.mutation(api.personaConfigs.createDraft, {
+          config: makeCreateDraftInput({
             sharedAxes: [makeAxis(overrides as Partial<AxisInput>)],
           }),
         }),
@@ -138,14 +138,14 @@ describe("personaPacks", () => {
     const asResearcher = t.withIdentity(researchIdentity);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createDraft, {
-        pack: makeCreateDraftInput({ sharedAxes: [makeAxis({ weight: 0 })] }),
+      asResearcher.mutation(api.personaConfigs.createDraft, {
+        config: makeCreateDraftInput({ sharedAxes: [makeAxis({ weight: 0 })] }),
       }),
     ).rejects.toThrow("Axis weight must be a positive number");
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createDraft, {
-        pack: makeCreateDraftInput({
+      asResearcher.mutation(api.personaConfigs.createDraft, {
+        config: makeCreateDraftInput({
           sharedAxes: [makeAxis(), makeAxis({ label: "Duplicate axis" })],
         }),
       }),
@@ -155,13 +155,13 @@ describe("personaPacks", () => {
   it("updateDraft updates draft fields and refreshes updatedAt", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
-    const beforeUpdate = await getPackDoc(t, packId);
+    const beforeUpdate = await getPackDoc(t, configId);
 
-    await asResearcher.mutation(api.personaPacks.updateDraft, {
-      packId,
+    await asResearcher.mutation(api.personaConfigs.updateDraft, {
+      configId,
       patch: {
         name: "Refined E-commerce Shoppers",
         description: "Updated description",
@@ -177,7 +177,7 @@ describe("personaPacks", () => {
       },
     });
 
-    const afterUpdate = await getPackDoc(t, packId);
+    const afterUpdate = await getPackDoc(t, configId);
 
     expect(afterUpdate).toMatchObject({
       name: "Refined E-commerce Shoppers",
@@ -194,8 +194,8 @@ describe("personaPacks", () => {
   it("tracks the last modifying actor separately from the creator", async () => {
     const t = createTest();
     const asCollaborator = t.withIdentity(collaboratorIdentity);
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
         ...makeCreateDraftInput(),
         version: 1,
         status: "draft",
@@ -207,15 +207,15 @@ describe("personaPacks", () => {
       }),
     );
 
-    await asCollaborator.mutation(api.personaPacks.updateDraft, {
-      packId,
+    await asCollaborator.mutation(api.personaConfigs.updateDraft, {
+      configId,
       patch: {
         description: "Collaborator-updated description",
       },
     });
 
-    const pack = await getPackDoc(t, packId);
-    expect(pack).toMatchObject({
+    const config = await getPackDoc(t, configId);
+    expect(config).toMatchObject({
       createdBy: researchIdentity.tokenIdentifier,
       updatedBy: collaboratorIdentity.tokenIdentifier,
       description: "Collaborator-updated description",
@@ -225,8 +225,8 @@ describe("personaPacks", () => {
   it("updateDraft supports adding and removing shared axes", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({
         sharedAxes: [
           makeAxis({ key: "digital_confidence" }),
           makeAxis({
@@ -238,8 +238,8 @@ describe("personaPacks", () => {
       }),
     });
 
-    await asResearcher.mutation(api.personaPacks.updateDraft, {
-      packId,
+    await asResearcher.mutation(api.personaConfigs.updateDraft, {
+      configId,
       patch: {
         sharedAxes: [
           makeAxis({ key: "digital_confidence" }),
@@ -257,8 +257,8 @@ describe("personaPacks", () => {
       },
     });
 
-    await asResearcher.mutation(api.personaPacks.updateDraft, {
-      packId,
+    await asResearcher.mutation(api.personaConfigs.updateDraft, {
+      configId,
       patch: {
         sharedAxes: [
           makeAxis({
@@ -275,45 +275,45 @@ describe("personaPacks", () => {
       },
     });
 
-    const pack = await getPackDoc(t, packId);
-    expect(pack!.sharedAxes.map((axis: AxisInput) => axis.key)).toEqual([
+    const config = await getPackDoc(t, configId);
+    expect(config!.sharedAxes.map((axis: AxisInput) => axis.key)).toEqual([
       "patience",
       "risk_tolerance",
     ]);
   });
 
-  it("updateDraft rejects changes to published and archived packs", async () => {
+  it("updateDraft rejects changes to published and archived configs", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const publishedPackId = await createPublishedPack(t);
     const archivedPackId = await createArchivedPack(t);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.updateDraft, {
-        packId: publishedPackId,
+      asResearcher.mutation(api.personaConfigs.updateDraft, {
+        configId: publishedPackId,
         patch: { name: "Should fail" },
       }),
     ).rejects.toThrow(/published/i);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.updateDraft, {
-        packId: archivedPackId,
+      asResearcher.mutation(api.personaConfigs.updateDraft, {
+        configId: archivedPackId,
         patch: { name: "Should also fail" },
       }),
     ).rejects.toThrow(/archived/i);
   });
 
-  it("publish transitions a draft pack to published, increments version, and refreshes updatedAt", async () => {
+  it("publish transitions a draft config to published, increments version, and refreshes updatedAt", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
-    await insertSyntheticUser(t, packId);
+    await insertSyntheticUser(t, configId);
 
-    const beforePublish = await getPackDoc(t, packId);
-    await asResearcher.mutation(api.personaPacks.publish, { packId });
-    const afterPublish = await getPackDoc(t, packId);
+    const beforePublish = await getPackDoc(t, configId);
+    await asResearcher.mutation(api.personaConfigs.publish, { configId });
+    const afterPublish = await getPackDoc(t, configId);
 
     expect(afterPublish!.status).toBe("published");
     expect(afterPublish!.version).toBe(beforePublish!.version + 1);
@@ -323,8 +323,8 @@ describe("personaPacks", () => {
   it("publish creates axis library entries for each shared axis", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({
         sharedAxes: [
           makeAxis({ key: "digital_confidence" }),
           makeAxis({
@@ -339,9 +339,9 @@ describe("personaPacks", () => {
         ],
       }),
     });
-    await insertSyntheticUser(t, packId);
+    await insertSyntheticUser(t, configId);
 
-    await asResearcher.mutation(api.personaPacks.publish, { packId });
+    await asResearcher.mutation(api.personaConfigs.publish, { configId });
 
     const axisDefinitions = await getAxisDefinitionsForOrg(
       t,
@@ -403,8 +403,8 @@ describe("personaPacks", () => {
         updatedAt: Date.now() - 1000,
       }),
     );
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({
         sharedAxes: [
           makeAxis({
             key: "digital_confidence",
@@ -418,9 +418,9 @@ describe("personaPacks", () => {
         ],
       }),
     });
-    await insertSyntheticUser(t, packId);
+    await insertSyntheticUser(t, configId);
 
-    await asResearcher.mutation(api.personaPacks.publish, { packId });
+    await asResearcher.mutation(api.personaConfigs.publish, { configId });
 
     const storedAxis = await getAxisDefinitionDoc(t, existingAxisId);
 
@@ -440,12 +440,12 @@ describe("personaPacks", () => {
     });
   });
 
-  it("publish deduplicates overlapping axis keys across multiple packs in the same org", async () => {
+  it("publish deduplicates overlapping axis keys across multiple configs in the same org", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const firstPackId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({
-        name: "Pack One",
+    const firstPackId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({
+        name: "Config One",
         sharedAxes: [
           makeAxis({ key: "digital_confidence" }),
           makeAxis({
@@ -456,9 +456,9 @@ describe("personaPacks", () => {
         ],
       }),
     });
-    const secondPackId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({
-        name: "Pack Two",
+    const secondPackId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({
+        name: "Config Two",
         sharedAxes: [
           makeAxis({ key: "digital_confidence" }),
           makeAxis({
@@ -472,8 +472,8 @@ describe("personaPacks", () => {
     await insertSyntheticUser(t, firstPackId);
     await insertSyntheticUser(t, secondPackId);
 
-    await asResearcher.mutation(api.personaPacks.publish, { packId: firstPackId });
-    await asResearcher.mutation(api.personaPacks.publish, { packId: secondPackId });
+    await asResearcher.mutation(api.personaConfigs.publish, { configId: firstPackId });
+    await asResearcher.mutation(api.personaConfigs.publish, { configId: secondPackId });
 
     const axisDefinitions = await getAxisDefinitionsForOrg(
       t,
@@ -492,23 +492,23 @@ describe("personaPacks", () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const asCollaborator = t.withIdentity(collaboratorIdentity);
-    const researcherPackId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({ name: "Researcher pack" }),
+    const researcherPackId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({ name: "Researcher config" }),
     });
     const collaboratorPackId = await asCollaborator.mutation(
-      api.personaPacks.createDraft,
+      api.personaConfigs.createDraft,
       {
-        pack: makeCreateDraftInput({ name: "Collaborator pack" }),
+        config: makeCreateDraftInput({ name: "Collaborator config" }),
       },
     );
     await insertSyntheticUser(t, researcherPackId);
     await insertSyntheticUser(t, collaboratorPackId);
 
-    await asResearcher.mutation(api.personaPacks.publish, {
-      packId: researcherPackId,
+    await asResearcher.mutation(api.personaConfigs.publish, {
+      configId: researcherPackId,
     });
-    await asCollaborator.mutation(api.personaPacks.publish, {
-      packId: collaboratorPackId,
+    await asCollaborator.mutation(api.personaConfigs.publish, {
+      configId: collaboratorPackId,
     });
 
     const researcherAxisDefinitions = await getAxisDefinitionsForOrg(
@@ -534,38 +534,38 @@ describe("personaPacks", () => {
     });
   });
 
-  it("publish rejects packs without synthetic users", async () => {
+  it("publish rejects configs without synthetic users", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
 
     await expect(
-      asResearcher.mutation(api.personaPacks.publish, { packId }),
+      asResearcher.mutation(api.personaConfigs.publish, { configId }),
     ).rejects.toThrow("synthetic user");
   });
 
-  it("publish rejects already published and archived packs", async () => {
+  it("publish rejects already published and archived configs", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const publishedPackId = await createPublishedPack(t);
     const archivedPackId = await createArchivedPack(t);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.publish, { packId: publishedPackId }),
+      asResearcher.mutation(api.personaConfigs.publish, { configId: publishedPackId }),
     ).rejects.toThrow("already published");
 
     await expect(
-      asResearcher.mutation(api.personaPacks.publish, { packId: archivedPackId }),
+      asResearcher.mutation(api.personaConfigs.publish, { configId: archivedPackId }),
     ).rejects.toThrow(/archived/i);
   });
 
-  it("publish rejects packs whose synthetic user axes drifted after shared axis removal", async () => {
+  it("publish rejects configs whose synthetic user axes drifted after shared axis removal", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({
         sharedAxes: [
           makeAxis({ key: "digital_confidence" }),
           makeAxis({
@@ -577,7 +577,7 @@ describe("personaPacks", () => {
       }),
     });
 
-    await insertSyntheticUser(t, packId, {
+    await insertSyntheticUser(t, configId, {
       axes: [
         makeAxis({ key: "digital_confidence" }),
         makeAxis({
@@ -588,67 +588,67 @@ describe("personaPacks", () => {
       ],
     });
 
-    await asResearcher.mutation(api.personaPacks.updateDraft, {
-      packId,
+    await asResearcher.mutation(api.personaConfigs.updateDraft, {
+      configId,
       patch: {
         sharedAxes: [makeAxis({ key: "digital_confidence" })],
       },
     });
 
     await expect(
-      asResearcher.mutation(api.personaPacks.publish, { packId }),
-    ).rejects.toThrow(/shared pack axis keys/i);
+      asResearcher.mutation(api.personaConfigs.publish, { configId }),
+    ).rejects.toThrow(/shared config axis keys/i);
   });
 
-  it("archive transitions a published pack to archived", async () => {
+  it("archive transitions a published config to archived", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t);
+    const configId = await createPublishedPack(t);
 
-    await asResearcher.mutation(api.personaPacks.archive, { packId });
+    await asResearcher.mutation(api.personaConfigs.archive, { configId });
 
-    const pack = await getPackDoc(t, packId);
-    expect(pack!.status).toBe("archived");
+    const config = await getPackDoc(t, configId);
+    expect(config!.status).toBe("archived");
   });
 
-  it("archive rejects draft packs", async () => {
+  it("archive rejects draft configs", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
 
     await expect(
-      asResearcher.mutation(api.personaPacks.archive, { packId }),
+      asResearcher.mutation(api.personaConfigs.archive, { configId }),
     ).rejects.toThrow("published");
   });
 
-  it("list returns the current user's packs and get returns pack details", async () => {
+  it("list returns the current user's configs and get returns config details", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const asCollaborator = t.withIdentity(collaboratorIdentity);
 
-    const ownPackId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({ name: "Own pack" }),
+    const ownPackId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({ name: "Own config" }),
     });
-    await asCollaborator.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput({ name: "Collaborator pack" }),
+    await asCollaborator.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput({ name: "Collaborator config" }),
     });
 
-    const packs = await asResearcher.query(api.personaPacks.list, {});
-    const pack = await asResearcher.query(api.personaPacks.get, { packId: ownPackId });
+    const configs = await asResearcher.query(api.personaConfigs.list, {});
+    const config = await asResearcher.query(api.personaConfigs.get, { configId: ownPackId });
 
-    expect(packs.map((item: { _id: Id<"personaPacks"> }) => item._id)).toEqual([
+    expect(configs.map((item: { _id: Id<"personaConfigs"> }) => item._id)).toEqual([
       ownPackId,
     ]);
-    expect(pack?._id).toBe(ownPackId);
+    expect(config?._id).toBe(ownPackId);
   });
 
-  it("concurrent draft updates leave the pack in one consistent state", async () => {
+  it("concurrent draft updates leave the config in one consistent state", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
 
     const patchA = {
@@ -663,31 +663,31 @@ describe("personaPacks", () => {
     };
 
     await Promise.allSettled([
-      asResearcher.mutation(api.personaPacks.updateDraft, { packId, patch: patchA }),
-      asResearcher.mutation(api.personaPacks.updateDraft, { packId, patch: patchB }),
+      asResearcher.mutation(api.personaConfigs.updateDraft, { configId, patch: patchA }),
+      asResearcher.mutation(api.personaConfigs.updateDraft, { configId, patch: patchB }),
     ]);
 
-    const pack = await getPackDoc(t, packId);
+    const config = await getPackDoc(t, configId);
 
     expect(
       [patchA, patchB].some(
         (patch) =>
-          pack!.name === patch.name &&
-          pack!.description === patch.description &&
-          pack!.context === patch.context,
+          config!.name === patch.name &&
+          config!.description === patch.description &&
+          config!.context === patch.context,
       ),
     ).toBe(true);
   });
 
-  it("publishes packs with transcript-derived personas, preserves source refs, and upserts discovered axes", async () => {
+  it("publishes configs with transcript-derived personas, preserves source refs, and upserts discovered axes", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-      pack: makeCreateDraftInput(),
+    const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+      config: makeCreateDraftInput(),
     });
 
-    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedSyntheticUsers, {
-      packId,
+    await asResearcher.mutation(api.personaConfigs.applyTranscriptDerivedSyntheticUsers, {
+      configId,
       input: {
         sharedAxes: [
           makeAxis({
@@ -712,7 +712,7 @@ describe("personaPacks", () => {
         ],
       },
     });
-    await insertSyntheticUser(t, packId, {
+    await insertSyntheticUser(t, configId, {
       name: "Manual synthetic user",
       axes: [
         makeAxis({
@@ -723,10 +723,10 @@ describe("personaPacks", () => {
       ],
     });
 
-    await asResearcher.mutation(api.personaPacks.publish, { packId });
+    await asResearcher.mutation(api.personaConfigs.publish, { configId });
 
-    const syntheticUsers = await asResearcher.query(api.personaPacks.listSyntheticUsers, {
-      packId,
+    const syntheticUsers = await asResearcher.query(api.personaConfigs.listSyntheticUsers, {
+      configId,
     });
     const transcriptDerivedPersona = syntheticUsers.find(
       (syntheticUser: { sourceType: string }) => syntheticUser.sourceType === "transcript_derived",
@@ -774,19 +774,19 @@ type TestInstance = ReturnType<typeof createTest>;
 
 async function createPublishedPack(t: TestInstance) {
   const asResearcher = t.withIdentity(researchIdentity);
-  const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-    pack: makeCreateDraftInput(),
+  const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+    config: makeCreateDraftInput(),
   });
-  await insertSyntheticUser(t, packId);
-  await asResearcher.mutation(api.personaPacks.publish, { packId });
-  return packId;
+  await insertSyntheticUser(t, configId);
+  await asResearcher.mutation(api.personaConfigs.publish, { configId });
+  return configId;
 }
 
 async function getPackDoc(
   t: TestInstance,
-  packId: Id<"personaPacks">,
-): Promise<Doc<"personaPacks"> | null> {
-  return await t.run(async (ctx) => (await ctx.db.get(packId)) as Doc<"personaPacks"> | null);
+  configId: Id<"personaConfigs">,
+): Promise<Doc<"personaConfigs"> | null> {
+  return await t.run(async (ctx) => (await ctx.db.get(configId)) as Doc<"personaConfigs"> | null);
 }
 
 async function getAxisDefinitionDoc(
@@ -809,19 +809,19 @@ async function getAxisDefinitionsForOrg(t: TestInstance, orgId: string) {
 
 async function createArchivedPack(t: TestInstance) {
   const asResearcher = t.withIdentity(researchIdentity);
-  const packId = await createPublishedPack(t);
-  await asResearcher.mutation(api.personaPacks.archive, { packId });
-  return packId;
+  const configId = await createPublishedPack(t);
+  await asResearcher.mutation(api.personaConfigs.archive, { configId });
+  return configId;
 }
 
 async function insertSyntheticUser(
   t: TestInstance,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   overrides: Partial<Doc<"syntheticUsers">> = {},
 ) {
   await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId,
+      configId,
       name: "Synthetic User",
       summary: "A draft synthetic user",
       axes: [makeAxis()],

@@ -248,11 +248,11 @@ async function insertStudy(
   },
 ) {
   const now = Date.now();
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId: "org_1",
-      name: "Checkout pack",
-      description: "Pack used for wave dispatch tests",
+      name: "Checkout config",
+      description: "Config used for wave dispatch tests",
       context: "Checkout flows",
       sharedAxes: [],
       version: 1,
@@ -267,7 +267,7 @@ async function insertStudy(
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: "org_1",
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Checkout study",
       taskSpec: sampleTaskSpec,
       runBudget: overrides.runBudget,
@@ -293,7 +293,7 @@ async function seedAcceptedVariants(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -307,7 +307,7 @@ async function seedAcceptedVariants(
     await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: study.personaPackId,
+        personaConfigId: study.personaConfigId,
         syntheticUserId,
         axisValues: [],
         edgeScore: 0.6,
@@ -343,7 +343,7 @@ async function seedQueuedRuns(
   const syntheticUser = await t.run(async (ctx) =>
     ctx.db
       .query("syntheticUsers")
-      .withIndex("by_packId", (q) => q.eq("packId", study.personaPackId))
+      .withIndex("by_configId", (q) => q.eq("configId", study.personaConfigId))
       .unique(),
   );
   const variants = await t.run(async (ctx) =>

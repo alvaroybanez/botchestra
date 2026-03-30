@@ -111,7 +111,7 @@ export async function getRoleFromIdentity(
 export function getRolePermissions(role: UserRole) {
   return {
     canManageStudies: role !== "reviewer",
-    canManagePersonaPacks: role !== "reviewer",
+    canManagePersonaConfigs: role !== "reviewer",
     canAddNotes: true,
     canAccessSettings: role === "admin",
     canAccessAdminDiagnostics: role === "admin",

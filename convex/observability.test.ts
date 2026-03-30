@@ -665,11 +665,11 @@ async function insertStudy(
   },
 ) {
   const now = Date.now();
-  const packId = await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+  const configId = await t.run(async (ctx) =>
+    ctx.db.insert("personaConfigs", {
       orgId: overrides.orgId,
-      name: `Pack for ${overrides.orgId}`,
-      description: "Pack used for observability tests",
+      name: `Config for ${overrides.orgId}`,
+      description: "Config used for observability tests",
       context: "Checkout flows",
       sharedAxes: [],
       version: 2,
@@ -684,7 +684,7 @@ async function insertStudy(
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: overrides.orgId,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Observability fixture study",
       taskSpec: sampleTaskSpec,
       runBudget: overrides.runBudget ?? 3,
@@ -717,7 +717,7 @@ async function seedAcceptedVariants(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -731,7 +731,7 @@ async function seedAcceptedVariants(
     await t.run(async (ctx) =>
       ctx.db.insert("personaVariants", {
         studyId,
-        personaPackId: study.personaPackId,
+        personaConfigId: study.personaConfigId,
         syntheticUserId,
         axisValues: [],
         edgeScore: 0.6,
@@ -766,7 +766,7 @@ async function insertRun(
 
   const syntheticUserId = await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId: study.personaPackId,
+      configId: study.personaConfigId,
       name: `Proto ${Date.now()}`,
       summary: "Moves quickly and expects little friction.",
       axes: [],
@@ -779,7 +779,7 @@ async function insertRun(
   const personaVariantId = await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: study.personaPackId,
+      personaConfigId: study.personaConfigId,
       syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,

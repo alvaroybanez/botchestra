@@ -8,7 +8,7 @@ import { AxisLibraryPage } from "@/routes/axis-library-page";
 type ViewerAccess = {
   role: "researcher" | "reviewer" | "admin";
   permissions: {
-    canManagePersonaPacks: boolean;
+    canManagePersonaConfigs: boolean;
   };
 } | null;
 
@@ -445,7 +445,7 @@ function makeViewerAccess(
   return {
     role,
     permissions: {
-      canManagePersonaPacks: role !== "reviewer",
+      canManagePersonaConfigs: role !== "reviewer",
     },
   };
 }

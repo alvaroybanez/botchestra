@@ -18,7 +18,7 @@ const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./axisLibrary.ts": () => import("./axisLibrary"),
   "./schema.ts": () => import("./schema"),
-  "./personaPacks.ts": () => import("./personaPacks"),
+  "./personaConfigs.ts": () => import("./personaConfigs"),
   "./personaVariantGeneration.ts": () => import("./personaVariantGeneration"),
   "./personaVariantGenerationModel.ts": () =>
     import("./personaVariantGenerationModel"),
@@ -112,14 +112,14 @@ describe("previewVariants", () => {
   it("returns projected coverage without writing personaVariants rows", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { syntheticUserCount: 4 });
+    const configId = await createDraftPack(t, { syntheticUserCount: 4 });
 
     const beforeCount = await t.run(async (ctx) =>
       ctx.db.query("personaVariants").collect(),
     );
 
     const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
-      packId,
+      configId,
       budget: 64,
     });
 
@@ -158,20 +158,20 @@ describe("previewVariants", () => {
     ).toBe(true);
   });
 
-  it("supports both draft and published packs", async () => {
+  it("supports both draft and published configs", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const draftPackId = await createDraftPack(t, { syntheticUserCount: 1 });
     const publishedPackId = await createPublishedPack(t, { syntheticUserCount: 1 });
 
     const draftPreview = await asResearcher.action(variantGenerationApi.previewVariants, {
-      packId: draftPackId,
+      configId: draftPackId,
       budget: 50,
     });
     const publishedPreview = await asResearcher.action(
       variantGenerationApi.previewVariants,
       {
-        packId: publishedPackId,
+        configId: publishedPackId,
         budget: 50,
       },
     );
@@ -185,10 +185,10 @@ describe("previewVariants", () => {
   it("reflects the 70/30 edge-interior split in the preview output", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { syntheticUserCount: 1 });
+    const configId = await createDraftPack(t, { syntheticUserCount: 1 });
 
     const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
-      packId,
+      configId,
       budget: 64,
     });
 
@@ -204,11 +204,11 @@ describe("previewVariants", () => {
   it("respects the requested budget", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { syntheticUserCount: 3 });
+    const configId = await createPublishedPack(t, { syntheticUserCount: 3 });
 
     for (const budget of [50, 64, 100]) {
       const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
-        packId,
+        configId,
         budget,
       });
 
@@ -236,11 +236,11 @@ describe("previewVariants", () => {
   it("requires at least one synthetic user", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { syntheticUserCount: 0 });
+    const configId = await createDraftPack(t, { syntheticUserCount: 0 });
 
     await expect(
       asResearcher.action(variantGenerationApi.previewVariants, {
-        packId,
+        configId,
         budget: 50,
       }),
     ).rejects.toThrow(/at least one synthetic user/i);
@@ -255,8 +255,8 @@ describe("generateVariantsForStudy", () => {
   it("writes exactly the run budget of accepted variants and returns summary metrics", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { syntheticUserCount: 4 });
-    const studyId = await insertStudy(t, packId, { runBudget: 64 });
+    const configId = await createPublishedPack(t, { syntheticUserCount: 4 });
+    const studyId = await insertStudy(t, configId, { runBudget: 64 });
 
     mockedGenerateWithModel.mockImplementation(async () =>
       createAiResult(makeCandidate()),
@@ -285,7 +285,7 @@ describe("generateVariantsForStudy", () => {
 
     for (const variant of variants) {
       expect(variant.studyId).toBe(studyId);
-      expect(variant.personaPackId).toBe(packId);
+      expect(variant.personaConfigId).toBe(configId);
       expect(variant.axisValues).not.toHaveLength(0);
       expect(variant.behaviorRules).toHaveLength(6);
       expect(variant.firstPersonBio.split(/\s+/)).toHaveLength(100);
@@ -300,10 +300,10 @@ describe("generateVariantsForStudy", () => {
   it("generates accepted variants for both manual and transcript-derived synthetic users", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { syntheticUserCount: 1 });
+    const configId = await createDraftPack(t, { syntheticUserCount: 1 });
 
-    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedSyntheticUsers, {
-      packId,
+    await asResearcher.mutation(api.personaConfigs.applyTranscriptDerivedSyntheticUsers, {
+      configId,
       input: {
         sharedAxes: [
           makeAxis(0),
@@ -328,8 +328,8 @@ describe("generateVariantsForStudy", () => {
         ],
       },
     });
-    await asResearcher.mutation(api.personaPacks.publish, { packId });
-    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    await asResearcher.mutation(api.personaConfigs.publish, { configId });
+    const studyId = await insertStudy(t, configId, { runBudget: 50 });
 
     mockedGenerateWithModel.mockImplementation(async () =>
       createAiResult(makeCandidate()),
@@ -342,7 +342,7 @@ describe("generateVariantsForStudy", () => {
     const syntheticUsers = await t.run(async (ctx) =>
       ctx.db
         .query("syntheticUsers")
-        .withIndex("by_packId", (q) => q.eq("packId", packId))
+        .withIndex("by_configId", (q) => q.eq("configId", configId))
         .collect(),
     );
     const variants = await t.run(async (ctx) =>
@@ -371,8 +371,8 @@ describe("generateVariantsForStudy", () => {
   it("passes org-level expansion model overrides into generateWithModel", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
-    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    const configId = await createPublishedPack(t, { syntheticUserCount: 1 });
+    const studyId = await insertStudy(t, configId, { runBudget: 50 });
     await t.run(async (ctx) =>
       ctx.db.insert("settings", {
         orgId: researchIdentity.tokenIdentifier,
@@ -401,8 +401,8 @@ describe("generateVariantsForStudy", () => {
   it("retries invalid generations until a valid candidate succeeds", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
-    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    const configId = await createPublishedPack(t, { syntheticUserCount: 1 });
+    const studyId = await insertStudy(t, configId, { runBudget: 50 });
 
     mockedGenerateWithModel
       .mockImplementationOnce(async () =>
@@ -435,8 +435,8 @@ describe("generateVariantsForStudy", () => {
   it("heals exhausted slots until the study has exactly the run budget of accepted variants", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
-    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    const configId = await createPublishedPack(t, { syntheticUserCount: 1 });
+    const studyId = await insertStudy(t, configId, { runBudget: 50 });
     let callCount = 0;
 
     mockedGenerateWithModel.mockImplementation(async () => {
@@ -471,8 +471,8 @@ describe("generateVariantsForStudy", () => {
   it("clamps rejected fallback coherence scores into the persisted [0, 1] range", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
-    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    const configId = await createPublishedPack(t, { syntheticUserCount: 1 });
+    const studyId = await insertStudy(t, configId, { runBudget: 50 });
     let callCount = 0;
 
     mockedGenerateWithModel.mockImplementation(async () => {
@@ -518,7 +518,7 @@ describe("generateVariantsForStudy", () => {
     expect(rejectedVariants.map((variant) => variant.coherenceScore)).toEqual([0, 1]);
   });
 
-  it("requires a published pack and enforces budget bounds plus the default budget", async () => {
+  it("requires a published config and enforces budget bounds plus the default budget", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const draftPackId = await createDraftPack(t, { syntheticUserCount: 1 });
@@ -580,8 +580,8 @@ describe("generateVariantsForStudy", () => {
   it("is idempotent per study and does not double-write variants", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { syntheticUserCount: 2 });
-    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    const configId = await createPublishedPack(t, { syntheticUserCount: 2 });
+    const studyId = await insertStudy(t, configId, { runBudget: 50 });
 
     mockedGenerateWithModel.mockImplementation(async () =>
       createAiResult(makeCandidate()),
@@ -608,14 +608,14 @@ describe("generateVariantsForStudy", () => {
     expect(variants).toHaveLength(50);
   });
 
-  it("supports packs with many axes while keeping values normalized", async () => {
+  it("supports configs with many axes while keeping values normalized", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, {
+    const configId = await createPublishedPack(t, {
       syntheticUserCount: 1,
       axisCount: 16,
     });
-    const studyId = await insertStudy(t, packId, { runBudget: 50 });
+    const studyId = await insertStudy(t, configId, { runBudget: 50 });
 
     mockedGenerateWithModel.mockImplementation(async () =>
       createAiResult(makeCandidate()),
@@ -655,18 +655,18 @@ async function createDraftPack(
   const asResearcher = t.withIdentity(researchIdentity);
   const sharedAxes = Array.from({ length: axisCount }, (_, index) => makeAxis(index));
 
-  const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
-    pack: {
-      name: "Checkout Pack",
-      description: "Pack for checkout validation",
+  const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+    config: {
+      name: "Checkout Config",
+      description: "Config for checkout validation",
       context: "US e-commerce checkout",
       sharedAxes,
     },
   });
 
   for (let index = 0; index < syntheticUserCount; index += 1) {
-    await asResearcher.mutation(api.personaPacks.createSyntheticUser, {
-      packId,
+    await asResearcher.mutation(api.personaConfigs.createSyntheticUser, {
+      configId,
       syntheticUser: {
         name: `Synthetic User ${index + 1}`,
         summary: `Summary for synthetic user ${index + 1}`,
@@ -681,7 +681,7 @@ async function createDraftPack(
     });
   }
 
-  return packId;
+  return configId;
 }
 
 async function createPublishedPack(
@@ -689,9 +689,9 @@ async function createPublishedPack(
   options: { syntheticUserCount: number; axisCount?: number },
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
-  const packId = await createDraftPack(t, options);
-  await asResearcher.mutation(api.personaPacks.publish, { packId });
-  return packId;
+  const configId = await createDraftPack(t, options);
+  await asResearcher.mutation(api.personaConfigs.publish, { configId });
+  return configId;
 }
 
 async function archivePublishedPack(
@@ -699,20 +699,20 @@ async function archivePublishedPack(
   options: { syntheticUserCount: number; axisCount?: number },
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
-  const packId = await createPublishedPack(t, options);
-  await asResearcher.mutation(api.personaPacks.archive, { packId });
-  return packId;
+  const configId = await createPublishedPack(t, options);
+  await asResearcher.mutation(api.personaConfigs.archive, { configId });
+  return configId;
 }
 
 async function insertStudy(
   t: ReturnType<typeof createTest>,
-  personaPackId: Id<"personaPacks">,
+  personaConfigId: Id<"personaConfigs">,
   { runBudget }: { runBudget: number | undefined },
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId: researchIdentity.tokenIdentifier,
-      personaPackId,
+      personaConfigId,
       name: "Study for variant generation",
       description: "Variant generation regression study",
       taskSpec: {

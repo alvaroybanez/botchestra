@@ -359,15 +359,15 @@ describe("transcripts", () => {
     });
   });
 
-  it("deletes transcript records, their storage blobs, and attached pack relationships", async () => {
+  it("deletes transcript records, their storage blobs, and attached config relationships", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
     const storageId = await storeBlob(t, "delete me", "text/plain");
     const transcriptId = await insertTranscript(t, { storageId });
-    const packId = await insertPack(t, { orgId: researcherIdentity.tokenIdentifier });
+    const configId = await insertPack(t, { orgId: researcherIdentity.tokenIdentifier });
     await t.run(async (ctx) =>
-      ctx.db.insert("packTranscripts", {
-        packId,
+      ctx.db.insert("configTranscripts", {
+        configId,
         transcriptId,
         createdAt: Date.now(),
       }),
@@ -381,8 +381,8 @@ describe("transcripts", () => {
     const storageBlob = await t.action(async (ctx) => await ctx.storage.get(storageId));
     const associations = await t.run(async (ctx) =>
       ctx.db
-        .query("packTranscripts")
-        .withIndex("by_packId", (q) => q.eq("packId", packId))
+        .query("configTranscripts")
+        .withIndex("by_configId", (q) => q.eq("configId", configId))
         .collect(),
     );
 
@@ -496,10 +496,10 @@ async function insertPack(
   const now = Date.now();
 
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
-      name: "Pack",
-      description: "Pack description",
-      context: "Pack context",
+    ctx.db.insert("personaConfigs", {
+      name: "Config",
+      description: "Config description",
+      context: "Config context",
       sharedAxes: [
         {
           key: "digital_confidence",

@@ -310,25 +310,25 @@ describe("analysis queries", () => {
 type TestInstance = ReturnType<typeof createTest>;
 
 async function seedAnalysisFixtures(t: TestInstance, orgId: string) {
-  const packId = await insertPack(t, orgId);
-  const studyId = await insertStudy(t, orgId, packId);
+  const configId = await insertPack(t, orgId);
+  const studyId = await insertStudy(t, orgId, configId);
   const syntheticUserAlphaId = await insertSyntheticUser(
     t,
-    packId,
+    configId,
     "Cautious shopper",
   );
-  const syntheticUserBetaId = await insertSyntheticUser(t, packId, "Busy parent");
+  const syntheticUserBetaId = await insertSyntheticUser(t, configId, "Busy parent");
   const primaryVariantId = await insertPersonaVariant(
     t,
     studyId,
-    packId,
+    configId,
     syntheticUserAlphaId,
     [{ key: "digital_confidence", value: -0.55 }],
   );
   const secondaryVariantId = await insertPersonaVariant(
     t,
     studyId,
-    packId,
+    configId,
     syntheticUserBetaId,
     [{ key: "digital_confidence", value: 0.45 }],
   );
@@ -452,10 +452,10 @@ function makeRunSummary(
 
 async function insertPack(t: TestInstance, orgId: string) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
+    ctx.db.insert("personaConfigs", {
       orgId,
-      name: `Pack for ${orgId}`,
-      description: "Pack for analysis query tests",
+      name: `Config for ${orgId}`,
+      description: "Config for analysis query tests",
       context: "Checkout",
       sharedAxes: [
         {
@@ -481,14 +481,14 @@ async function insertPack(t: TestInstance, orgId: string) {
 async function insertStudy(
   t: TestInstance,
   orgId: string,
-  personaPackId?: Id<"personaPacks">,
+  personaConfigId?: Id<"personaConfigs">,
 ) {
-  const packId = personaPackId ?? (await insertPack(t, orgId));
+  const configId = personaConfigId ?? (await insertPack(t, orgId));
 
   return await t.run(async (ctx) =>
     ctx.db.insert("studies", {
       orgId,
-      personaPackId: packId,
+      personaConfigId: configId,
       name: "Analysis query fixture study",
       description: "Fixture study for analysis queries",
       taskSpec: sampleTaskSpec,
@@ -504,12 +504,12 @@ async function insertStudy(
 
 async function insertSyntheticUser(
   t: TestInstance,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   name: string,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("syntheticUsers", {
-      packId,
+      configId,
       name,
       summary: `${name} summary`,
       axes: [
@@ -533,14 +533,14 @@ async function insertSyntheticUser(
 async function insertPersonaVariant(
   t: TestInstance,
   studyId: Id<"studies">,
-  personaPackId: Id<"personaPacks">,
+  personaConfigId: Id<"personaConfigs">,
   syntheticUserId: Id<"syntheticUsers">,
   axisValues: Array<{ key: string; value: number }>,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId,
+      personaConfigId,
       syntheticUserId,
       axisValues,
       edgeScore: 0.5,

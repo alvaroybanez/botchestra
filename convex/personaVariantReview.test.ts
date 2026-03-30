@@ -37,15 +37,15 @@ const makeAxis = (index: number) => ({
 });
 
 describe("personaVariantReview.getStudyVariantReview", () => {
-  it("returns accepted variants with synthetic user names for the study's pack", async () => {
+  it("returns accepted variants with synthetic user names for the study's config", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const sharedAxes = [makeAxis(0), makeAxis(1)];
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
         orgId: researchIdentity.tokenIdentifier,
-        name: "Checkout Pack",
-        description: "Pack for checkout studies",
+        name: "Checkout Config",
+        description: "Config for checkout studies",
         context: "US e-commerce checkout",
         sharedAxes,
         version: 2,
@@ -57,7 +57,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     );
     const cautiousSyntheticUserId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Cautious shopper",
         summary: "Double-checks totals before submitting payment.",
         axes: sharedAxes,
@@ -68,7 +68,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     );
     const confidentSyntheticUserId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Confident repeat buyer",
         summary: "Moves quickly through familiar storefronts.",
         axes: sharedAxes,
@@ -80,7 +80,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: researchIdentity.tokenIdentifier,
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Checkout review",
         description: "Review generated personas before launch",
         taskSpec: {
@@ -110,7 +110,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
 
     await insertVariant(t, {
       studyId,
-      packId,
+      configId,
       syntheticUserId: cautiousSyntheticUserId,
       axisValues: [
         { key: "axis_1", value: -0.6 },
@@ -125,7 +125,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     });
     await insertVariant(t, {
       studyId,
-      packId,
+      configId,
       syntheticUserId: confidentSyntheticUserId,
       axisValues: [
         { key: "axis_1", value: 0.72 },
@@ -140,7 +140,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     });
     await insertVariant(t, {
       studyId,
-      packId,
+      configId,
       syntheticUserId: confidentSyntheticUserId,
       axisValues: [
         { key: "axis_1", value: 0.2 },
@@ -161,7 +161,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     expect(review?.study).not.toBeNull();
     expect(review?.study?._id).toBe(studyId);
     expect(review?.study?.name).toBe("Checkout review");
-    expect(review?.pack.name).toBe("Checkout Pack");
+    expect(review?.config.name).toBe("Checkout Config");
     expect(review?.syntheticUsers).toHaveLength(2);
     expect(review?.variants).toHaveLength(2);
     expect(
@@ -182,10 +182,10 @@ describe("personaVariantReview.getStudyVariantReview", () => {
   it("returns null when the study belongs to another organization", async () => {
     const t = createTest();
     const asOtherResearcher = t.withIdentity(otherIdentity);
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
         orgId: researchIdentity.tokenIdentifier,
-        name: "Private Pack",
+        name: "Private Config",
         description: "Only visible to its organization",
         context: "Internal",
         sharedAxes: [makeAxis(0)],
@@ -199,7 +199,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: researchIdentity.tokenIdentifier,
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Private study",
         description: "Org scoped",
         taskSpec: {
@@ -234,15 +234,15 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     expect(review).toBeNull();
   });
 
-  it("returns pack-scoped review data with linked studies for pack detail pages", async () => {
+  it("returns config-scoped review data with linked studies for config detail pages", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const sharedAxes = [makeAxis(0), makeAxis(1)];
-    const packId = await t.run(async (ctx) =>
-      ctx.db.insert("personaPacks", {
+    const configId = await t.run(async (ctx) =>
+      ctx.db.insert("personaConfigs", {
         orgId: researchIdentity.tokenIdentifier,
-        name: "Published Checkout Pack",
-        description: "Pack for linked-study review",
+        name: "Published Checkout Config",
+        description: "Config for linked-study review",
         context: "Checkout flows",
         sharedAxes,
         version: 2,
@@ -255,7 +255,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     );
     const syntheticUserId = await t.run(async (ctx) =>
       ctx.db.insert("syntheticUsers", {
-        packId,
+        configId,
         name: "Careful shopper",
         summary: "Checks totals before continuing.",
         axes: sharedAxes,
@@ -267,9 +267,9 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     const studyId = await t.run(async (ctx) =>
       ctx.db.insert("studies", {
         orgId: researchIdentity.tokenIdentifier,
-        personaPackId: packId,
+        personaConfigId: configId,
         name: "Linked study",
-        description: "Pack detail review study",
+        description: "Config detail review study",
         taskSpec: {
           scenario: "Purchase a subscription",
           goal: "Complete checkout",
@@ -297,7 +297,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
 
     await insertVariant(t, {
       studyId,
-      packId,
+      configId,
       syntheticUserId,
       axisValues: [
         { key: "axis_1", value: -0.55 },
@@ -313,11 +313,11 @@ describe("personaVariantReview.getStudyVariantReview", () => {
 
     const review = await asResearcher.query(
       api.personaVariantReview.getPackVariantReview,
-      { packId },
+      { configId },
     );
 
     expect(review).not.toBeNull();
-    expect(review?.pack.name).toBe("Published Checkout Pack");
+    expect(review?.config.name).toBe("Published Checkout Config");
     expect(review?.studies).toHaveLength(1);
     expect(review?.studies[0]).toMatchObject({
       _id: studyId,
@@ -334,7 +334,7 @@ async function insertVariant(
   t: ReturnType<typeof createTest>,
   {
     studyId,
-    packId,
+    configId,
     syntheticUserId,
     axisValues,
     edgeScore,
@@ -344,7 +344,7 @@ async function insertVariant(
     firstPersonBio,
   }: {
     studyId: Id<"studies">;
-    packId: Id<"personaPacks">;
+    configId: Id<"personaConfigs">;
     syntheticUserId: Id<"syntheticUsers">;
     axisValues: { key: string; value: number }[];
     edgeScore: number;
@@ -357,7 +357,7 @@ async function insertVariant(
   await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
-      personaPackId: packId,
+      personaConfigId: configId,
       syntheticUserId,
       axisValues,
       edgeScore,

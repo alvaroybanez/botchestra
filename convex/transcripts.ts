@@ -208,7 +208,7 @@ export const deleteTranscript = mutation({
 
     while (true) {
       const associations = await ctx.db
-        .query("packTranscripts")
+        .query("configTranscripts")
         .withIndex("by_transcriptId", (q) => q.eq("transcriptId", args.transcriptId))
         .take(DELETE_BATCH_SIZE);
 

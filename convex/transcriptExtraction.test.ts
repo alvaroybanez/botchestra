@@ -20,8 +20,8 @@ import schema from "./schema";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
-  "./packTranscripts.ts": () => import("./packTranscripts"),
-  "./personaPacks.ts": () => import("./personaPacks"),
+  "./configTranscripts.ts": () => import("./configTranscripts"),
+  "./personaConfigs.ts": () => import("./personaConfigs"),
   "./schema.ts": () => import("./schema"),
   "./settings.ts": () => import("./settings"),
   "./transcriptExtraction.ts": () => import("./transcriptExtraction"),
@@ -130,16 +130,16 @@ describe("transcriptExtraction", () => {
     });
   });
 
-  it("extracts transcript signals, validates them, and stores them for the pack", async () => {
+  it("extracts transcript signals, validates them, and stores them for the config", async () => {
     const t = createTest();
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const transcriptBody =
       "Interviewer: What happened during checkout?\nParticipant: I hesitated because the final price felt higher than expected.";
     const transcriptId = await insertTranscript(t, {
       body: transcriptBody,
       originalFilename: "checkout.txt",
     });
-    await attachTranscript(t, packId, transcriptId);
+    await attachTranscript(t, configId, transcriptId);
     mockedGenerateWithModel.mockResolvedValue(
       createTextOnlyResult(
         JSON.stringify(
@@ -163,14 +163,14 @@ describe("transcriptExtraction", () => {
     );
 
     await t.action(transcriptExtractionInternal.extractTranscriptSignals, {
-      packId,
+      configId,
       transcriptId,
     });
 
-    const storedSignals = await getTranscriptSignalForPack(t, packId, transcriptId);
+    const storedSignals = await getTranscriptSignalForPack(t, configId, transcriptId);
 
     expect(storedSignals).toMatchObject({
-      packId,
+      configId,
       transcriptId,
       status: "completed",
       signals: createSignalsPayload({
@@ -193,19 +193,19 @@ describe("transcriptExtraction", () => {
 
   it("marks transcript signal extraction as failed and throws on malformed model output", async () => {
     const t = createTest();
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const transcriptId = await insertTranscript(t);
-    await attachTranscript(t, packId, transcriptId);
+    await attachTranscript(t, configId, transcriptId);
     mockedGenerateWithModel.mockResolvedValue(createTextOnlyResult("{ definitely bad json"));
 
     await expect(
       t.action(transcriptExtractionInternal.extractTranscriptSignals, {
-        packId,
+        configId,
         transcriptId,
       }),
     ).rejects.toThrow(/failed to parse/i);
 
-    const storedSignals = await getTranscriptSignalForPack(t, packId, transcriptId);
+    const storedSignals = await getTranscriptSignalForPack(t, configId, transcriptId);
 
     expect(storedSignals).toMatchObject({
       status: "failed",
@@ -213,27 +213,27 @@ describe("transcriptExtraction", () => {
     expect(storedSignals?.processingError).toMatch(/failed to parse/i);
   });
 
-  it("clusters guided archetypes using pack shared axes", async () => {
+  it("clusters guided archetypes using config shared axes", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const firstTranscriptId = await insertTranscript(t, {
       body: "I compare prices and wait for reassurance from support.",
     });
     const secondTranscriptId = await insertTranscript(t, {
       body: "I move fast when prices look clear and support is optional.",
     });
-    await attachTranscript(t, packId, firstTranscriptId);
-    await attachTranscript(t, packId, secondTranscriptId);
+    await attachTranscript(t, configId, firstTranscriptId);
+    await attachTranscript(t, configId, secondTranscriptId);
     await insertTranscriptSignals(t, {
-      packId,
+      configId,
       transcriptId: firstTranscriptId,
       signals: createSignalsPayload({
         themes: ["price clarity"],
       }),
     });
     await insertTranscriptSignals(t, {
-      packId,
+      configId,
       transcriptId: secondTranscriptId,
       signals: createSignalsPayload({
         attitudes: ["self-directed"],
@@ -262,7 +262,7 @@ describe("transcriptExtraction", () => {
     const result = await asResearcher.action(
       transcriptExtractionApi.clusterArchetypes,
       {
-        packId,
+        configId,
         mode: "guided",
       },
     );
@@ -285,11 +285,11 @@ describe("transcriptExtraction", () => {
   it("clusters auto-discovered archetypes and proposed axes", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const transcriptId = await insertTranscript(t);
-    await attachTranscript(t, packId, transcriptId);
+    await attachTranscript(t, configId, transcriptId);
     await insertTranscriptSignals(t, {
-      packId,
+      configId,
       transcriptId,
     });
     mockedGenerateWithModel.mockResolvedValue(
@@ -326,7 +326,7 @@ describe("transcriptExtraction", () => {
     const result = await asResearcher.action(
       transcriptExtractionApi.clusterArchetypes,
       {
-        packId,
+        configId,
         mode: "auto_discover",
       },
     );
@@ -347,37 +347,37 @@ describe("transcriptExtraction", () => {
   it("throws a descriptive error when clustering output is malformed", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const transcriptId = await insertTranscript(t);
-    await attachTranscript(t, packId, transcriptId);
+    await attachTranscript(t, configId, transcriptId);
     await insertTranscriptSignals(t, {
-      packId,
+      configId,
       transcriptId,
     });
     mockedGenerateWithModel.mockResolvedValue(createTextOnlyResult("{ nope"));
 
     await expect(
       asResearcher.action(transcriptExtractionApi.clusterArchetypes, {
-        packId,
+        configId,
         mode: "guided",
       }),
     ).rejects.toThrow(/failed to parse/i);
   });
 
-  it("blocks concurrent extraction runs for the same pack", async () => {
+  it("blocks concurrent extraction runs for the same config", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const transcriptId = await insertTranscript(t);
-    await attachTranscript(t, packId, transcriptId);
+    await attachTranscript(t, configId, transcriptId);
     await insertExtractionRun(t, {
-      packId,
+      configId,
       status: "processing",
     });
 
     await expect(
       asResearcher.action(transcriptExtractionApi.startExtraction, {
-        packId,
+        configId,
         mode: "guided",
       }),
     ).rejects.toThrow(/already in progress/i);
@@ -386,15 +386,15 @@ describe("transcriptExtraction", () => {
   it("processes transcripts sequentially, tracks progress, and proceeds on partial failure", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const firstTranscriptId = await insertTranscript(t, {
       body: "I hesitated at checkout.",
     });
     const secondTranscriptId = await insertTranscript(t, {
       body: "I finished once the price made sense.",
     });
-    await attachTranscript(t, packId, firstTranscriptId);
-    await attachTranscript(t, packId, secondTranscriptId);
+    await attachTranscript(t, configId, firstTranscriptId);
+    await attachTranscript(t, configId, secondTranscriptId);
     mockedGenerateWithModel
       .mockResolvedValueOnce(createTextOnlyResult("{ invalid"))
       .mockResolvedValueOnce(
@@ -435,13 +435,13 @@ describe("transcriptExtraction", () => {
     const result = await asResearcher.action(
       transcriptExtractionApi.startExtraction,
       {
-        packId,
+        configId,
         mode: "guided",
       },
     );
 
     expect(result).toMatchObject({
-      packId,
+      configId,
       status: "completed_with_failures",
       totalTranscripts: 2,
       processedTranscriptCount: 2,
@@ -458,7 +458,7 @@ describe("transcriptExtraction", () => {
       ],
     });
 
-    const run = await getExtractionRunForPack(t, packId);
+    const run = await getExtractionRunForPack(t, configId);
     expect(run).toMatchObject({
       status: "completed_with_failures",
       processedTranscriptCount: 2,
@@ -469,30 +469,30 @@ describe("transcriptExtraction", () => {
   it("fails extraction when a guided run has no axes available", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t, { sharedAxes: [] });
+    const configId = await insertPack(t, { sharedAxes: [] });
     const transcriptId = await insertTranscript(t);
-    await attachTranscript(t, packId, transcriptId);
+    await attachTranscript(t, configId, transcriptId);
 
     await expect(
       asResearcher.action(transcriptExtractionApi.startExtraction, {
-        packId,
+        configId,
         mode: "guided",
       }),
     ).rejects.toThrow(/at least one axis/i);
   });
 
-  it("returns the latest persisted extraction status for a pack", async () => {
+  it("returns the latest persisted extraction status for a config", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
-    const packId = await insertPack(t);
+    const configId = await insertPack(t);
     const transcriptId = await insertTranscript(t);
-    await attachTranscript(t, packId, transcriptId);
+    await attachTranscript(t, configId, transcriptId);
     await insertTranscriptSignals(t, {
-      packId,
+      configId,
       transcriptId,
     });
     await insertExtractionRun(t, {
-      packId,
+      configId,
       status: "completed",
       processedTranscriptCount: 1,
       totalTranscripts: 1,
@@ -515,7 +515,7 @@ describe("transcriptExtraction", () => {
     const status = await asResearcher.query(
       transcriptExtractionApi.getExtractionStatus,
       {
-        packId,
+        configId,
       },
     );
 
@@ -618,9 +618,9 @@ async function insertPack(
   const now = Date.now();
 
   return await t.run(async (ctx) =>
-    ctx.db.insert("personaPacks", {
-      name: "Transcript Pack",
-      description: "Pack for transcript extraction tests.",
+    ctx.db.insert("personaConfigs", {
+      name: "Transcript Config",
+      description: "Config for transcript extraction tests.",
       context: "Checkout support flow",
       sharedAxes:
         overrides.sharedAxes ??
@@ -686,12 +686,12 @@ async function insertTranscript(
 
 async function attachTranscript(
   t: ReturnType<typeof createTest>,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   transcriptId: Id<"transcripts">,
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("packTranscripts", {
-      packId,
+    ctx.db.insert("configTranscripts", {
+      configId,
       transcriptId,
       createdAt: Date.now(),
     }),
@@ -701,7 +701,7 @@ async function attachTranscript(
 async function insertTranscriptSignals(
   t: ReturnType<typeof createTest>,
   overrides: {
-    packId: Id<"personaPacks">;
+    configId: Id<"personaConfigs">;
     transcriptId: Id<"transcripts">;
     status?: "pending" | "processing" | "completed" | "failed";
     signals?: TranscriptSignalsPayload;
@@ -710,7 +710,7 @@ async function insertTranscriptSignals(
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("transcriptSignals", {
-      packId: overrides.packId,
+      configId: overrides.configId,
       transcriptId: overrides.transcriptId,
       orgId: researcherIdentity.tokenIdentifier,
       status: overrides.status ?? "completed",
@@ -725,7 +725,7 @@ async function insertTranscriptSignals(
 async function insertExtractionRun(
   t: ReturnType<typeof createTest>,
   overrides: {
-    packId: Id<"personaPacks">;
+    configId: Id<"personaConfigs">;
     status: "processing" | "completed" | "completed_with_failures" | "failed";
     mode?: "auto_discover" | "guided";
     totalTranscripts?: number;
@@ -737,7 +737,7 @@ async function insertExtractionRun(
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("transcriptExtractionRuns", {
-      packId: overrides.packId,
+      configId: overrides.configId,
       orgId: researcherIdentity.tokenIdentifier,
       mode: overrides.mode ?? "guided",
       status: overrides.status,
@@ -757,14 +757,14 @@ async function insertExtractionRun(
 
 async function getTranscriptSignalForPack(
   t: ReturnType<typeof createTest>,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   transcriptId: Id<"transcripts">,
 ): Promise<Doc<"transcriptSignals"> | null> {
   return await t.run(async (ctx) => {
     const rows = await ctx.db
       .query("transcriptSignals")
-      .withIndex("by_packId_and_transcriptId", (q) =>
-        q.eq("packId", packId).eq("transcriptId", transcriptId),
+      .withIndex("by_configId_and_transcriptId", (q) =>
+        q.eq("configId", configId).eq("transcriptId", transcriptId),
       )
       .collect();
 
@@ -774,12 +774,12 @@ async function getTranscriptSignalForPack(
 
 async function getExtractionRunForPack(
   t: ReturnType<typeof createTest>,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
 ): Promise<Doc<"transcriptExtractionRuns"> | null> {
   return await t.run(async (ctx) => {
     const rows = await ctx.db
       .query("transcriptExtractionRuns")
-      .withIndex("by_packId", (q) => q.eq("packId", packId))
+      .withIndex("by_configId", (q) => q.eq("configId", configId))
       .collect();
 
     return (rows[0] ?? null) as Doc<"transcriptExtractionRuns"> | null;

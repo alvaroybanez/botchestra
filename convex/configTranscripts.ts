@@ -3,48 +3,48 @@ import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
-import { assertPackIsDraft } from "./personaPacks";
+import { assertConfigIsDraft } from "./personaConfigs";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 
-const MAX_PACK_TRANSCRIPT_QUERY_SIZE = 100;
+const MAX_CONFIG_TRANSCRIPT_QUERY_SIZE = 100;
 
 export const attachTranscript = mutation({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const pack = await loadPackForOrg(ctx, args.packId, identity.tokenIdentifier);
+    const config = await loadConfigForOrg(ctx, args.configId, identity.tokenIdentifier);
     const transcript = await loadTranscriptForOrg(
       ctx,
       args.transcriptId,
       identity.tokenIdentifier,
     );
 
-    assertPackIsDraft(pack);
+    assertConfigIsDraft(config);
 
-    const existing = await findPackTranscript(ctx, args.packId, args.transcriptId);
+    const existing = await findConfigTranscript(ctx, args.configId, args.transcriptId);
 
     if (existing !== null) {
-      throw new ConvexError("Transcript is already attached to this pack.");
+      throw new ConvexError("Transcript is already attached to this persona configuration.");
     }
 
     const createdAt = Date.now();
-    const packTranscriptId = await ctx.db.insert("packTranscripts", {
-      packId: pack._id,
+    const configTranscriptId = await ctx.db.insert("configTranscripts", {
+      configId: config._id,
       transcriptId: transcript._id,
       createdAt,
     });
 
-    await ctx.db.patch(pack._id, {
+    await ctx.db.patch(config._id, {
       updatedBy: identity.tokenIdentifier,
       updatedAt: createdAt,
     });
 
     return {
-      _id: packTranscriptId,
-      packId: pack._id,
+      _id: configTranscriptId,
+      configId: config._id,
       transcriptId: transcript._id,
       createdAt,
     };
@@ -53,52 +53,52 @@ export const attachTranscript = mutation({
 
 export const detachTranscript = mutation({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
     transcriptId: v.id("transcripts"),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const pack = await loadPackForOrg(ctx, args.packId, identity.tokenIdentifier);
+    const config = await loadConfigForOrg(ctx, args.configId, identity.tokenIdentifier);
     await loadTranscriptForOrg(ctx, args.transcriptId, identity.tokenIdentifier);
 
-    assertPackIsDraft(pack);
+    assertConfigIsDraft(config);
 
-    const existing = await findPackTranscript(ctx, args.packId, args.transcriptId);
+    const existing = await findConfigTranscript(ctx, args.configId, args.transcriptId);
 
     if (existing === null) {
-      throw new ConvexError("Transcript is not attached to this pack.");
+      throw new ConvexError("Transcript is not attached to this persona configuration.");
     }
 
     await ctx.db.delete(existing._id);
-    await ctx.db.patch(pack._id, {
+    await ctx.db.patch(config._id, {
       updatedBy: identity.tokenIdentifier,
       updatedAt: Date.now(),
     });
 
     return {
-      packId: args.packId,
+      configId: args.configId,
       transcriptId: args.transcriptId,
       detached: true as const,
     };
   },
 });
 
-export const listPackTranscripts = query({
+export const listConfigTranscripts = query({
   args: {
-    packId: v.id("personaPacks"),
+    configId: v.id("personaConfigs"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
-    const pack = await ctx.db.get(args.packId);
+    const config = await ctx.db.get(args.configId);
 
-    if (pack === null || pack.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== identity.tokenIdentifier) {
       return [];
     }
 
     const associations = await ctx.db
-      .query("packTranscripts")
-      .withIndex("by_packId", (q) => q.eq("packId", args.packId))
-      .take(MAX_PACK_TRANSCRIPT_QUERY_SIZE);
+      .query("configTranscripts")
+      .withIndex("by_configId", (q) => q.eq("configId", args.configId))
+      .take(MAX_CONFIG_TRANSCRIPT_QUERY_SIZE);
     const results = [];
 
     for (const association of associations) {
@@ -118,7 +118,7 @@ export const listPackTranscripts = query({
   },
 });
 
-export const listTranscriptPacks = query({
+export const listTranscriptConfigs = query({
   args: {
     transcriptId: v.id("transcripts"),
   },
@@ -131,21 +131,21 @@ export const listTranscriptPacks = query({
     }
 
     const associations = await ctx.db
-      .query("packTranscripts")
+      .query("configTranscripts")
       .withIndex("by_transcriptId", (q) => q.eq("transcriptId", args.transcriptId))
-      .take(MAX_PACK_TRANSCRIPT_QUERY_SIZE);
+      .take(MAX_CONFIG_TRANSCRIPT_QUERY_SIZE);
     const results = [];
 
     for (const association of associations) {
-      const pack = await ctx.db.get(association.packId);
+      const config = await ctx.db.get(association.configId);
 
-      if (pack === null || pack.orgId !== identity.tokenIdentifier) {
+      if (config === null || config.orgId !== identity.tokenIdentifier) {
         continue;
       }
 
       results.push({
         ...association,
-        pack,
+        config,
       });
     }
 
@@ -153,18 +153,18 @@ export const listTranscriptPacks = query({
   },
 });
 
-async function loadPackForOrg(
+async function loadConfigForOrg(
   ctx: QueryCtx | MutationCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   orgId: string,
 ) {
-  const pack = await ctx.db.get(packId);
+  const config = await ctx.db.get(configId);
 
-  if (pack === null || pack.orgId !== orgId) {
-    throw new ConvexError("Persona pack not found.");
+  if (config === null || config.orgId !== orgId) {
+    throw new ConvexError("Persona configuration not found.");
   }
 
-  return pack;
+  return config;
 }
 
 async function loadTranscriptForOrg(
@@ -181,15 +181,15 @@ async function loadTranscriptForOrg(
   return transcript;
 }
 
-async function findPackTranscript(
+async function findConfigTranscript(
   ctx: QueryCtx | MutationCtx,
-  packId: Id<"personaPacks">,
+  configId: Id<"personaConfigs">,
   transcriptId: Id<"transcripts">,
 ) {
   const associations = await ctx.db
-    .query("packTranscripts")
-    .withIndex("by_packId", (q) => q.eq("packId", packId))
-    .take(MAX_PACK_TRANSCRIPT_QUERY_SIZE);
+    .query("configTranscripts")
+    .withIndex("by_configId", (q) => q.eq("configId", configId))
+    .take(MAX_CONFIG_TRANSCRIPT_QUERY_SIZE);
 
   return associations.find((association) => association.transcriptId === transcriptId) ?? null;
 }

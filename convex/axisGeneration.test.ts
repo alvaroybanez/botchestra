@@ -12,7 +12,7 @@ import { generateWithModel } from "../packages/ai/src/index";
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
   "./axisGeneration.ts": () => import("./axisGeneration"),
-  "./personaPacks.ts": () => import("./personaPacks"),
+  "./personaConfigs.ts": () => import("./personaConfigs"),
   "./schema.ts": () => import("./schema"),
   "./settings.ts": () => import("./settings"),
   "./userManagement.ts": () => import("./userManagement"),
@@ -89,7 +89,7 @@ describe("axisGeneration.suggestAxes", () => {
     mockedGenerateWithModel.mockResolvedValue(createAiResult(suggestions));
 
     const result = await asResearcher.action(axisGenerationApi.suggestAxes, {
-      name: "Checkout Pack",
+      name: "Checkout Config",
       context: "E-commerce checkout",
       description: "Shoppers comparing retailers and payment options.",
       existingAxisKeys: ["brand_loyalty"],
@@ -132,7 +132,7 @@ describe("axisGeneration.suggestAxes", () => {
     );
 
     await asAdmin.action(axisGenerationApi.suggestAxes, {
-      name: "Support pack",
+      name: "Support config",
       context: "B2B support portal",
       description: "Customers troubleshooting setup and billing issues.",
       existingAxisKeys: [],
@@ -146,7 +146,7 @@ describe("axisGeneration.suggestAxes", () => {
     );
   });
 
-  it("includes pack metadata and existing axis keys in the prompt", async () => {
+  it("includes config metadata and existing axis keys in the prompt", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researcherIdentity);
     mockedGenerateWithModel.mockResolvedValue(
@@ -158,7 +158,7 @@ describe("axisGeneration.suggestAxes", () => {
     );
 
     await asResearcher.action(axisGenerationApi.suggestAxes, {
-      name: "Travel booking pack",
+      name: "Travel booking config",
       context: "Multi-step flight booking flow",
       description: "Travelers comparing fares, baggage rules, and refund flexibility.",
       existingAxisKeys: ["budget_focus", "brand_loyalty"],
@@ -168,7 +168,7 @@ describe("axisGeneration.suggestAxes", () => {
 
     expect(options?.system).toContain("Questionnaire Generator");
     expect(options?.system).toContain("Google Persona Generators");
-    expect(options?.prompt).toContain("Travel booking pack");
+    expect(options?.prompt).toContain("Travel booking config");
     expect(options?.prompt).toContain("Multi-step flight booking flow");
     expect(options?.prompt).toContain(
       "Travelers comparing fares, baggage rules, and refund flexibility.",
@@ -185,7 +185,7 @@ describe("axisGeneration.suggestAxes", () => {
 
     await expect(
       asResearcher.action(axisGenerationApi.suggestAxes, {
-        name: "Checkout Pack",
+        name: "Checkout Config",
         context: "E-commerce checkout",
         description: "Shoppers comparing retailers and payment options.",
       }),
@@ -198,7 +198,7 @@ describe("axisGeneration.suggestAxes", () => {
 
     await expect(
       asResearcher.action(axisGenerationApi.suggestAxes, {
-        name: "Checkout Pack",
+        name: "Checkout Config",
         context: "E-commerce checkout",
         description: "Shoppers comparing retailers and payment options.",
         forceError: true,
@@ -228,7 +228,7 @@ describe("axisGeneration.suggestAxes", () => {
 
     await expect(
       asResearcher.action(axisGenerationApi.suggestAxes, {
-        name: "Checkout Pack",
+        name: "Checkout Config",
         context: "E-commerce checkout",
         description: "Shoppers comparing retailers and payment options.",
       }),
@@ -248,7 +248,7 @@ describe("axisGeneration.suggestAxes", () => {
 
     await expect(
       asResearcher.action(axisGenerationApi.suggestAxes, {
-        name: "Checkout Pack",
+        name: "Checkout Config",
         context: "E-commerce checkout",
         description: "Shoppers comparing retailers and payment options.",
       }),
@@ -268,7 +268,7 @@ describe("axisGeneration.suggestAxes", () => {
 
     await expect(
       asResearcher.action(axisGenerationApi.suggestAxes, {
-        name: "Checkout Pack",
+        name: "Checkout Config",
         context: "E-commerce checkout",
         description: "Shoppers comparing retailers and payment options.",
       }),
@@ -286,7 +286,7 @@ describe("axisGeneration.suggestAxes", () => {
     mockedGenerateWithModel.mockResolvedValue(createAiResult(axesWithoutWeight));
 
     const result = await asResearcher.action(axisGenerationApi.suggestAxes, {
-      name: "Checkout Pack",
+      name: "Checkout Config",
       context: "E-commerce checkout",
       description: "Shoppers comparing retailers and payment options.",
     });
@@ -303,7 +303,7 @@ describe("axisGeneration.suggestAxes", () => {
 
     await expect(
       asReviewer.action(axisGenerationApi.suggestAxes, {
-        name: "Checkout Pack",
+        name: "Checkout Config",
         context: "E-commerce checkout",
         description: "Shoppers comparing retailers and payment options.",
       }),
