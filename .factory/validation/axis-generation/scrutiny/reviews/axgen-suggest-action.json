@@ -1,0 +1,15 @@
+{
+  "featureId": "axgen-suggest-action",
+  "reviewedAt": "2026-03-30T13:31:00Z",
+  "commitId": "3a988660ce758f75d8e8f52f8774b5c3761a3241",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The backend action matches the milestone contract: it is a Node-runtime public Convex action gated to study managers, includes pack metadata and existing axis keys in the prompt, forwards org-level recommendation model overrides, validates that the model returns 3-5 schema-valid axes with unique snake_case keys, and converts malformed model output into descriptive ConvexErrors. The focused convex tests cover the required happy-path, prompt, RBAC, and invalid-output behaviors.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Pass: the `suggestAxes` action and its tests satisfy the reviewed axis-generation backend requirements without blocking or non-blocking issues."
+}

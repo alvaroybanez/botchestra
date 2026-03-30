@@ -1,0 +1,46 @@
+{
+  "milestone": "axis-generation",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Documented that the full `bun run test` validator now completes successfully but takes about 165 seconds because `apps/browser-executor/src/browserLeaseDO.test.ts` dominates runtime, so future validators should use a >=4 minute timeout.",
+      "sourceFeature": "axgen-frontend"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Update the scrutiny-validator procedure to explicitly fall back to manual review or a known-good built-in model when Task subagents fail to start because the inherited custom model identifier is invalid.",
+      "evidence": "During this scrutiny run, both `scrutiny-feature-reviewer` and fallback `worker` Task invocations failed before producing output because the inherited model string `custom:GPT-5.4-(xHigh)-16` was rejected as invalid, so the validator had to produce the review JSON files manually after completing the code review itself.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
