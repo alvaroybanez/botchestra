@@ -11,7 +11,8 @@ Testing surface, required tools, and resource cost classification.
   - `/axis-library` — Axis Library (browse, create, edit, delete axes)
   - `/transcripts` — Transcript Store (upload, browse, view, manage transcripts)
   - `/transcripts/:id` — Transcript detail (viewer, metadata, pack links)
-  - `/persona-packs/:packId` — Enhanced pack detail (suggest axes, browse library, extract from transcripts)
+  - `/persona-configs/:configId` — Enhanced config detail (suggest axes, browse library, extract from transcripts, batch generation)
+  - `/persona-configs` — Persona configurations list (renamed from persona-packs)
 
 ## Validation Concurrency
 
