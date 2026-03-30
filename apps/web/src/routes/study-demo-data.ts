@@ -69,9 +69,9 @@ export type DemoStudyReport = {
 export type DemoRunListItem = {
   _id: string;
   status: string;
-  protoPersonaId: string;
-  protoPersonaName: string;
-  protoPersonaSummary: string;
+  syntheticUserId: string;
+  syntheticUserName: string;
+  syntheticUserSummary: string;
   firstPersonBio: string;
   axisValues: { key: string; value: number }[];
   finalUrl?: string;
@@ -103,7 +103,7 @@ export type DemoRunDetail = {
     firstPersonBio: string;
     axisValues: { key: string; value: number }[];
   };
-  protoPersona: {
+  syntheticUser: {
     _id: string;
     name: string;
   };
@@ -130,7 +130,7 @@ export type DemoFinding = {
   recommendation: string;
   confidenceNote: string;
   replayConfidence: number;
-  affectedProtoPersonas: Array<{ _id: string; name: string }>;
+  affectedSyntheticUsers: Array<{ _id: string; name: string }>;
   evidence: Array<{
     key: string;
     thumbnailKey: string;
@@ -144,8 +144,8 @@ export type DemoFinding = {
   }>;
   representativeRuns: Array<{
     _id: string;
-    protoPersonaId: string;
-    protoPersonaName: string | null;
+    syntheticUserId: string;
+    syntheticUserName: string | null;
     status: string;
     finalUrl: string | null;
     finalOutcome: string | null;
@@ -252,9 +252,9 @@ export const demoRuns: DemoRunListItem[] = [
   {
     _id: "run-demo-address",
     status: "hard_fail",
-    protoPersonaId: "proto-demo-careful",
-    protoPersonaName: "Careful shopper",
-    protoPersonaSummary: "Moves slowly and checks totals before advancing.",
+    syntheticUserId: "proto-demo-careful",
+    syntheticUserName: "Careful shopper",
+    syntheticUserSummary: "Moves slowly and checks totals before advancing.",
     firstPersonBio:
       "I move carefully through checkout and need reassurance before I commit to payment.",
     axisValues: [
@@ -269,9 +269,9 @@ export const demoRuns: DemoRunListItem[] = [
   {
     _id: "run-demo-payment",
     status: "soft_fail",
-    protoPersonaId: "proto-demo-busy",
-    protoPersonaName: "Busy parent",
-    protoPersonaSummary: "Moves quickly and reacts strongly to unexpected price changes.",
+    syntheticUserId: "proto-demo-busy",
+    syntheticUserName: "Busy parent",
+    syntheticUserSummary: "Moves quickly and reacts strongly to unexpected price changes.",
     firstPersonBio:
       "I am juggling a busy schedule and expect totals to stay stable once I start checkout.",
     axisValues: [
@@ -334,7 +334,7 @@ export const demoRunDetailsById: Record<string, DemoRunDetail> = {
         { key: "support_needs", value: 0.72 },
       ],
     },
-    protoPersona: {
+    syntheticUser: {
       _id: "proto-demo-careful",
       name: "Careful shopper",
     },
@@ -391,7 +391,7 @@ export const demoRunDetailsById: Record<string, DemoRunDetail> = {
         { key: "support_needs", value: 0.18 },
       ],
     },
-    protoPersona: {
+    syntheticUser: {
       _id: "proto-demo-busy",
       name: "Busy parent",
     },
@@ -437,7 +437,7 @@ export const demoFindings: DemoFinding[] = [
       "Pin the continue action below the form and keep it visible after validation messages appear.",
     confidenceNote: "Replay reproduced the missing button twice with the same CSS overlap.",
     replayConfidence: 0.82,
-    affectedProtoPersonas: [
+    affectedSyntheticUsers: [
       { _id: "proto-demo-careful", name: "Careful shopper" },
     ],
     evidence: [
@@ -464,8 +464,8 @@ export const demoFindings: DemoFinding[] = [
     representativeRuns: [
       {
         _id: "run-demo-address",
-        protoPersonaId: "proto-demo-careful",
-        protoPersonaName: "Careful shopper",
+        syntheticUserId: "proto-demo-careful",
+        syntheticUserName: "Careful shopper",
         status: "hard_fail",
         finalUrl: "https://example.com/checkout/address",
         finalOutcome: "address_validation_failed",
@@ -496,7 +496,7 @@ export const demoFindings: DemoFinding[] = [
       "Explain taxes and shipping earlier so totals stay predictable by the time payment loads.",
     confidenceNote: "Observed once in replay and once in the source run.",
     replayConfidence: 0.44,
-    affectedProtoPersonas: [
+    affectedSyntheticUsers: [
       { _id: "proto-demo-busy", name: "Busy parent" },
     ],
     evidence: [
@@ -517,8 +517,8 @@ export const demoFindings: DemoFinding[] = [
     representativeRuns: [
       {
         _id: "run-demo-payment",
-        protoPersonaId: "proto-demo-busy",
-        protoPersonaName: "Busy parent",
+        syntheticUserId: "proto-demo-busy",
+        syntheticUserName: "Busy parent",
         status: "soft_fail",
         finalUrl: "https://example.com/checkout/payment",
         finalOutcome: "payment_total_unclear",

@@ -312,8 +312,8 @@ async function seedAcceptedVariants(
     throw new Error(`Study ${studyId} not found.`);
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: "Confident buyer",
       summary: "Moves quickly through checkout.",
@@ -339,7 +339,7 @@ async function seedAcceptedVariants(
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: study.personaPackId,
-        protoPersonaId,
+        syntheticUserId,
         axisValues: [{ key: "digital_confidence", value: 0.8 }],
         edgeScore: 0.8,
         tensionSeed: `Tension seed ${index + 1}`,

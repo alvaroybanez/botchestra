@@ -84,7 +84,7 @@ export const listFindings = query({
   args: {
     studyId: v.id("studies"),
     severity: v.optional(severityValidator),
-    protoPersonaId: v.optional(v.id("protoPersonas")),
+    syntheticUserId: v.optional(v.id("syntheticUsers")),
     axisRange: v.optional(axisRangeFilterValidator),
     outcome: v.optional(runStatusValidator),
     urlPrefix: v.optional(v.string()),
@@ -94,7 +94,7 @@ export const listFindings = query({
       .object({
         studyId: z.string(),
         severity: severitySchema.optional(),
-        protoPersonaId: z.string().optional(),
+        syntheticUserId: z.string().optional(),
         axisRange: axisRangeFilterSchema.optional(),
         outcome: runStatusSchema.optional(),
         urlPrefix: requiredString("URL prefix").optional(),
@@ -117,8 +117,8 @@ export const listFindings = query({
         axisRange: parsedArgs.axisRange,
         outcome: parsedArgs.outcome,
         urlPrefix: parsedArgs.urlPrefix,
-        ...(parsedArgs.protoPersonaId !== undefined
-          ? { protoPersonaId: parsedArgs.protoPersonaId as Id<"protoPersonas"> }
+        ...(parsedArgs.syntheticUserId !== undefined
+          ? { syntheticUserId: parsedArgs.syntheticUserId as Id<"syntheticUsers"> }
           : {}),
       }),
     );
@@ -168,7 +168,7 @@ async function buildFindingViews(
   issueClusters: readonly Doc<"issueClusters">[],
 ) {
   const representativeRunsById = await getRepresentativeRunsById(ctx, issueClusters);
-  const protoPersonasById = await getProtoPersonasById(ctx, issueClusters, representativeRunsById);
+  const syntheticUsersById = await getSyntheticUsersById(ctx, issueClusters, representativeRunsById);
   const notesByIssueClusterId = await getNotesByIssueClusterId(ctx, issueClusters);
 
   return issueClusters.map((issueCluster) => {
@@ -180,12 +180,12 @@ async function buildFindingViews(
       }
 
       const decodedSummary = decodeRunSummaryKey(run.summaryKey);
-      const protoPersona = protoPersonasById.get(run.protoPersonaId);
+      const syntheticUser = syntheticUsersById.get(run.syntheticUserId);
 
       return {
         _id: run._id,
-        protoPersonaId: run.protoPersonaId,
-        protoPersonaName: protoPersona?.name ?? null,
+        syntheticUserId: run.syntheticUserId,
+        syntheticUserName: syntheticUser?.name ?? null,
         status: run.status,
         finalUrl: run.finalUrl ?? null,
         finalOutcome: run.finalOutcome ?? null,
@@ -202,21 +202,21 @@ async function buildFindingViews(
 
     return {
       ...issueCluster,
-      affectedProtoPersonas: issueCluster.affectedProtoPersonaIds
-        .map((protoPersonaId) => {
-          const protoPersona = protoPersonasById.get(protoPersonaId);
+      affectedSyntheticUsers: issueCluster.affectedSyntheticUserIds
+        .map((syntheticUserId) => {
+          const syntheticUser = syntheticUsersById.get(syntheticUserId);
 
-          if (protoPersona === undefined) {
+          if (syntheticUser === undefined) {
             return null;
           }
 
           return {
-            _id: protoPersona._id,
-            name: protoPersona.name,
+            _id: syntheticUser._id,
+            name: syntheticUser.name,
           };
         })
-        .filter((protoPersona): protoPersona is { _id: Id<"protoPersonas">; name: string } =>
-          protoPersona !== null,
+        .filter((syntheticUser): syntheticUser is { _id: Id<"syntheticUsers">; name: string } =>
+          syntheticUser !== null,
         ),
       evidence: issueCluster.evidenceKeys.map(toEvidenceRef),
       notes: notesByIssueClusterId.get(issueCluster._id) ?? [],
@@ -248,29 +248,29 @@ async function getRepresentativeRunsById(
   return new Map(representativeRuns.map((run) => [run._id, run]));
 }
 
-async function getProtoPersonasById(
+async function getSyntheticUsersById(
   ctx: QueryCtx,
   issueClusters: readonly Doc<"issueClusters">[],
   representativeRunsById: Map<Id<"runs">, Doc<"runs">>,
 ) {
-  const protoPersonaIds = uniqueIds([
-    ...issueClusters.flatMap((issueCluster) => issueCluster.affectedProtoPersonaIds),
-    ...[...representativeRunsById.values()].map((run) => run.protoPersonaId),
+  const syntheticUserIds = uniqueIds([
+    ...issueClusters.flatMap((issueCluster) => issueCluster.affectedSyntheticUserIds),
+    ...[...representativeRunsById.values()].map((run) => run.syntheticUserId),
   ]);
 
-  const protoPersonas = await Promise.all(
-    protoPersonaIds.map(async (protoPersonaId) => {
-      const protoPersona = await ctx.db.get(protoPersonaId);
+  const syntheticUsers = await Promise.all(
+    syntheticUserIds.map(async (syntheticUserId) => {
+      const syntheticUser = await ctx.db.get(syntheticUserId);
 
-      if (protoPersona === null) {
-        throw new ConvexError(`Proto-persona ${protoPersonaId} not found.`);
+      if (syntheticUser === null) {
+        throw new ConvexError(`Synthetic user ${syntheticUserId} not found.`);
       }
 
-      return protoPersona;
+      return syntheticUser;
     }),
   );
 
-  return new Map(protoPersonas.map((protoPersona) => [protoPersona._id, protoPersona]));
+  return new Map(syntheticUsers.map((syntheticUser) => [syntheticUser._id, syntheticUser]));
 }
 
 async function getNotesByIssueClusterId(
@@ -297,7 +297,7 @@ function matchesFilters(
   finding: Awaited<ReturnType<typeof buildFindingViews>>[number],
   filters: {
     severity?: z.infer<typeof severitySchema>;
-    protoPersonaId?: Id<"protoPersonas">;
+    syntheticUserId?: Id<"syntheticUsers">;
     axisRange?: z.infer<typeof axisRangeFilterSchema>;
     outcome?: z.infer<typeof runStatusSchema>;
     urlPrefix?: string;
@@ -308,8 +308,8 @@ function matchesFilters(
   }
 
   if (
-    filters.protoPersonaId !== undefined &&
-    !finding.affectedProtoPersonaIds.includes(filters.protoPersonaId)
+    filters.syntheticUserId !== undefined &&
+    !finding.affectedSyntheticUserIds.includes(filters.syntheticUserId)
   ) {
     return false;
   }
@@ -410,7 +410,7 @@ async function requireIdentity(ctx: QueryCtx) {
   return identity;
 }
 
-function uniqueIds<TableName extends "issueClusters" | "protoPersonas" | "runs">(
+function uniqueIds<TableName extends "issueClusters" | "syntheticUsers" | "runs">(
   values: readonly Id<TableName>[],
 ) {
   return values.reduce<Id<TableName>[]>((accumulator, value) => {

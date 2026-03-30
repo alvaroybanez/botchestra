@@ -37,19 +37,19 @@ describe("computeSegmentSpread", () => {
   it("floors segment spread at 1 when no segments are affected", () => {
     expect(
       computeSegmentSpread({
-        distinctProtoPersonaCount: 0,
-        totalProtoPersonaCount: 0,
+        distinctSyntheticUserCount: 0,
+        totalSyntheticUserCount: 0,
         distinctAxisRangeCount: 0,
         totalAxisCount: 0,
       }),
     ).toBe(1);
   });
 
-  it("applies the proportional proto-persona and axis-range boosts", () => {
+  it("applies the proportional synthetic user and axis-range boosts", () => {
     expect(
       computeSegmentSpread({
-        distinctProtoPersonaCount: 2,
-        totalProtoPersonaCount: 4,
+        distinctSyntheticUserCount: 2,
+        totalSyntheticUserCount: 4,
         distinctAxisRangeCount: 1,
         totalAxisCount: 2,
       }),
@@ -59,8 +59,8 @@ describe("computeSegmentSpread", () => {
   it("caps segment spread at 1.5 when the affected segments exceed the totals", () => {
     expect(
       computeSegmentSpread({
-        distinctProtoPersonaCount: 10,
-        totalProtoPersonaCount: 4,
+        distinctSyntheticUserCount: 10,
+        totalSyntheticUserCount: 4,
         distinctAxisRangeCount: 12,
         totalAxisCount: 3,
       }),

@@ -171,10 +171,10 @@ export const replaceIssueClustersForStudy = internalMutation({
         }),
       ),
     );
-    const totalProtoPersonaCount = new Set(
+    const totalSyntheticUserCount = new Set(
       runs
         .filter((run) => run.replayOfRunId === undefined)
-        .map((run) => run.protoPersonaId),
+        .map((run) => run.syntheticUserId),
     ).size;
     const fallbackAxisCount = new Set(
       personaVariants.flatMap((variant) => variant.axisValues.map((axis) => axis.key)),
@@ -187,7 +187,7 @@ export const replaceIssueClustersForStudy = internalMutation({
         milestones: milestonesByRunId.get(run._id) ?? [],
       })),
       totalAxisCount: pack.sharedAxes.length > 0 ? pack.sharedAxes.length : fallbackAxisCount,
-      totalProtoPersonaCount,
+      totalSyntheticUserCount,
     });
 
     const existingClusters = await ctx.db

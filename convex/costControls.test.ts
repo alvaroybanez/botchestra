@@ -280,8 +280,8 @@ async function insertRun(
     throw new Error("Study not found.");
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
@@ -296,7 +296,7 @@ async function insertRun(
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: study.personaPackId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,
       tensionSeed: "Moves quickly through checkout",
@@ -315,7 +315,7 @@ async function insertRun(
     ctx.db.insert("runs", {
       studyId,
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       status: "queued" satisfies RunStatus,
       frustrationCount: 0,
       milestoneKeys: [],

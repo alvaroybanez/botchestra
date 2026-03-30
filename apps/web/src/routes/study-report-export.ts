@@ -128,7 +128,7 @@ function renderDemoStudyReportHtml({
                 <section>
                   <h3>Affected segments</h3>
                   <ul>
-                    ${cluster.affectedProtoPersonas
+                    ${cluster.affectedSyntheticUsers
                       .map((segment) => `<li>${escapeHtml(segment.name)}</li>`)
                       .join("")}
                   </ul>

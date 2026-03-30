@@ -64,7 +64,7 @@ const callbackPatchSchema = z.object({
 const listRunsArgsSchema = z.object({
   studyId: z.string(),
   outcome: runStatusSchema.optional(),
-  protoPersonaId: z.string().optional(),
+  syntheticUserId: z.string().optional(),
   finalUrlContains: z.string().trim().min(1).optional(),
 });
 
@@ -121,7 +121,7 @@ const callbackPatchValidator = v.object({
 const listRunsArgsValidator = {
   studyId: v.id("studies"),
   outcome: v.optional(runStatusValidator),
-  protoPersonaId: v.optional(v.id("protoPersonas")),
+  syntheticUserId: v.optional(v.id("syntheticUsers")),
   finalUrlContains: v.optional(v.string()),
 };
 
@@ -336,16 +336,16 @@ export const getRun = query({
 
     await getStudyForOrg(ctx, run.studyId);
 
-    const [personaVariant, protoPersona, milestones] = await Promise.all([
+    const [personaVariant, syntheticUser, milestones] = await Promise.all([
       ctx.db.get(run.personaVariantId),
-      ctx.db.get(run.protoPersonaId),
+      ctx.db.get(run.syntheticUserId),
       ctx.db
         .query("runMilestones")
         .withIndex("by_runId_and_stepIndex", (q) => q.eq("runId", run._id))
         .collect(),
     ]);
 
-    if (personaVariant === null || protoPersona === null) {
+    if (personaVariant === null || syntheticUser === null) {
       throw new ConvexError("Run is missing required persona records.");
     }
 
@@ -374,7 +374,7 @@ export const getRun = query({
             : null,
       },
       personaVariant,
-      protoPersona,
+      syntheticUser,
       milestones: milestones.map((milestone) => ({
         ...milestone,
         screenshotUrl:
@@ -392,8 +392,8 @@ export const listRuns = query({
     const parsedArgs = listRunsArgsSchema.parse(args);
     const studyId = parsedArgs.studyId as Id<"studies">;
     const outcome = parsedArgs.outcome;
-    const protoPersonaId =
-      parsedArgs.protoPersonaId as Id<"protoPersonas"> | undefined;
+    const syntheticUserId =
+      parsedArgs.syntheticUserId as Id<"syntheticUsers"> | undefined;
     const study = await getStudyForOrg(ctx, studyId);
 
     const baseRuns =
@@ -405,13 +405,13 @@ export const listRuns = query({
             )
             .order("desc")
             .take(200)
-        : protoPersonaId !== undefined
+        : syntheticUserId !== undefined
           ? await ctx.db
               .query("runs")
-              .withIndex("by_studyId_and_protoPersonaId", (q) =>
+              .withIndex("by_studyId_and_syntheticUserId", (q) =>
                 q
                   .eq("studyId", studyId)
-                  .eq("protoPersonaId", protoPersonaId),
+                  .eq("syntheticUserId", syntheticUserId),
               )
               .order("desc")
               .take(200)
@@ -422,7 +422,7 @@ export const listRuns = query({
               .take(200);
 
     const filteredRuns = baseRuns.filter((run) => {
-      if (protoPersonaId !== undefined && run.protoPersonaId !== protoPersonaId) {
+      if (syntheticUserId !== undefined && run.syntheticUserId !== syntheticUserId) {
         return false;
       }
 
@@ -436,16 +436,16 @@ export const listRuns = query({
       return true;
     });
 
-    const protoPersonaIds = [...new Set(filteredRuns.map((run) => run.protoPersonaId))];
+    const syntheticUserIds = [...new Set(filteredRuns.map((run) => run.syntheticUserId))];
     const personaVariantIds = [...new Set(filteredRuns.map((run) => run.personaVariantId))];
-    const [protoPersonas, personaVariants] = await Promise.all([
-      Promise.all(protoPersonaIds.map((protoPersonaId) => ctx.db.get(protoPersonaId))),
+    const [syntheticUsers, personaVariants] = await Promise.all([
+      Promise.all(syntheticUserIds.map((syntheticUserId) => ctx.db.get(syntheticUserId))),
       Promise.all(personaVariantIds.map((personaVariantId) => ctx.db.get(personaVariantId))),
     ]);
-    const protoPersonaMap = new Map(
-      protoPersonas
-        .filter((protoPersona): protoPersona is Doc<"protoPersonas"> => protoPersona !== null)
-        .map((protoPersona) => [protoPersona._id, protoPersona]),
+    const syntheticUserMap = new Map(
+      syntheticUsers
+        .filter((syntheticUser): syntheticUser is Doc<"syntheticUsers"> => syntheticUser !== null)
+        .map((syntheticUser) => [syntheticUser._id, syntheticUser]),
     );
     const personaVariantMap = new Map(
       personaVariants
@@ -457,10 +457,10 @@ export const listRuns = query({
     );
 
     return filteredRuns.map((run) => {
-      const protoPersona = protoPersonaMap.get(run.protoPersonaId);
+      const syntheticUser = syntheticUserMap.get(run.syntheticUserId);
       const personaVariant = personaVariantMap.get(run.personaVariantId);
 
-      if (protoPersona === undefined || personaVariant === undefined) {
+      if (syntheticUser === undefined || personaVariant === undefined) {
         throw new ConvexError("Run list contains missing persona records.");
       }
 
@@ -470,8 +470,8 @@ export const listRuns = query({
 
       return {
         ...run,
-        protoPersonaName: protoPersona.name,
-        protoPersonaSummary: protoPersona.summary,
+        syntheticUserName: syntheticUser.name,
+        syntheticUserSummary: syntheticUser.summary,
         firstPersonBio: personaVariant.firstPersonBio,
         axisValues: personaVariant.axisValues,
       };

@@ -42,7 +42,7 @@ type ActiveRunListItem = {
   _id: string;
   status: string;
   stepCount?: number;
-  protoPersonaName: string;
+  syntheticUserName: string;
   firstPersonBio: string;
 };
 
@@ -849,7 +849,7 @@ function DemoStudyOverviewPage({
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="space-y-1">
-                        <p className="font-medium">{run.protoPersonaName}</p>
+                        <p className="font-medium">{run.syntheticUserName}</p>
                         <p className="text-sm text-muted-foreground">
                           {run.finalOutcome ?? run.status}
                         </p>
@@ -1399,7 +1399,7 @@ function StudyOverviewResolved({
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="font-medium">{run.protoPersonaName}</p>
+                          <p className="font-medium">{run.syntheticUserName}</p>
                           <p className="text-sm text-muted-foreground">
                             {run._id}
                           </p>

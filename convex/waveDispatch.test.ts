@@ -291,8 +291,8 @@ async function seedAcceptedVariants(
     throw new Error(`Study ${studyId} not found.`);
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
@@ -308,7 +308,7 @@ async function seedAcceptedVariants(
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: study.personaPackId,
-        protoPersonaId,
+        syntheticUserId,
         axisValues: [],
         edgeScore: 0.6,
         tensionSeed: `Tension seed ${index + 1}`,
@@ -340,9 +340,9 @@ async function seedQueuedRuns(
     throw new Error(`Study ${studyId} not found.`);
   }
 
-  const protoPersona = await t.run(async (ctx) =>
+  const syntheticUser = await t.run(async (ctx) =>
     ctx.db
-      .query("protoPersonas")
+      .query("syntheticUsers")
       .withIndex("by_packId", (q) => q.eq("packId", study.personaPackId))
       .unique(),
   );
@@ -353,15 +353,15 @@ async function seedQueuedRuns(
       .take(count),
   );
 
-  if (protoPersona === null || variants.length < count) {
-    throw new Error("Missing proto-persona or accepted variants for queued runs.");
+  if (syntheticUser === null || variants.length < count) {
+    throw new Error("Missing synthetic user or accepted variants for queued runs.");
   }
 
   const originalRunId = await t.run(async (ctx) =>
     ctx.db.insert("runs", {
       studyId,
       personaVariantId: variants[0]!._id,
-      protoPersonaId: protoPersona._id,
+      syntheticUserId: syntheticUser._id,
       status: "success",
       replayOfRunId: undefined,
       frustrationCount: 0,
@@ -374,7 +374,7 @@ async function seedQueuedRuns(
       ctx.db.insert("runs", {
         studyId,
         personaVariantId: variant._id,
-        protoPersonaId: protoPersona._id,
+        syntheticUserId: syntheticUser._id,
         status: "queued",
         replayOfRunId: originalRunId,
         frustrationCount: 0,

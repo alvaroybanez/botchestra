@@ -112,7 +112,7 @@ describe("previewVariants", () => {
   it("returns projected coverage without writing personaVariants rows", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { protoPersonaCount: 4 });
+    const packId = await createDraftPack(t, { syntheticUserCount: 4 });
 
     const beforeCount = await t.run(async (ctx) =>
       ctx.db.query("personaVariants").collect(),
@@ -132,9 +132,9 @@ describe("previewVariants", () => {
     expect(preview.projectedVariants).toHaveLength(64);
     expect(preview.coverage.budget).toBe(64);
     expect(preview.coverage.edgeCount + preview.coverage.interiorCount).toBe(64);
-    expect(preview.coverage.perProtoPersona).toHaveLength(4);
+    expect(preview.coverage.perSyntheticUser).toHaveLength(4);
     expect(
-      preview.coverage.perProtoPersona.reduce(
+      preview.coverage.perSyntheticUser.reduce(
         (
           sum: number,
           allocation: {
@@ -147,7 +147,7 @@ describe("previewVariants", () => {
       ),
     ).toBe(64);
     expect(
-      preview.coverage.perProtoPersona.every(
+      preview.coverage.perSyntheticUser.every(
         (allocation: {
           projectedCount: number;
           edgeCount: number;
@@ -161,8 +161,8 @@ describe("previewVariants", () => {
   it("supports both draft and published packs", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const draftPackId = await createDraftPack(t, { protoPersonaCount: 1 });
-    const publishedPackId = await createPublishedPack(t, { protoPersonaCount: 1 });
+    const draftPackId = await createDraftPack(t, { syntheticUserCount: 1 });
+    const publishedPackId = await createPublishedPack(t, { syntheticUserCount: 1 });
 
     const draftPreview = await asResearcher.action(variantGenerationApi.previewVariants, {
       packId: draftPackId,
@@ -178,14 +178,14 @@ describe("previewVariants", () => {
 
     expect(draftPreview.projectedVariants).toHaveLength(50);
     expect(publishedPreview.projectedVariants).toHaveLength(50);
-    expect(draftPreview.coverage.perProtoPersona).toHaveLength(1);
-    expect(publishedPreview.coverage.perProtoPersona).toHaveLength(1);
+    expect(draftPreview.coverage.perSyntheticUser).toHaveLength(1);
+    expect(publishedPreview.coverage.perSyntheticUser).toHaveLength(1);
   });
 
   it("reflects the 70/30 edge-interior split in the preview output", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { protoPersonaCount: 1 });
+    const packId = await createDraftPack(t, { syntheticUserCount: 1 });
 
     const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
       packId,
@@ -194,7 +194,7 @@ describe("previewVariants", () => {
 
     expect(preview.coverage.edgeCount).toBe(45);
     expect(preview.coverage.interiorCount).toBe(19);
-    expect(preview.coverage.perProtoPersona[0]).toMatchObject({
+    expect(preview.coverage.perSyntheticUser[0]).toMatchObject({
       projectedCount: 64,
       edgeCount: 45,
       interiorCount: 19,
@@ -204,7 +204,7 @@ describe("previewVariants", () => {
   it("respects the requested budget", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { protoPersonaCount: 3 });
+    const packId = await createPublishedPack(t, { syntheticUserCount: 3 });
 
     for (const budget of [50, 64, 100]) {
       const preview = await asResearcher.action(variantGenerationApi.previewVariants, {
@@ -218,7 +218,7 @@ describe("previewVariants", () => {
         budget,
       );
       expect(
-        preview.coverage.perProtoPersona.reduce(
+        preview.coverage.perSyntheticUser.reduce(
           (
             sum: number,
             allocation: {
@@ -233,17 +233,17 @@ describe("previewVariants", () => {
     }
   });
 
-  it("requires at least one proto-persona", async () => {
+  it("requires at least one synthetic user", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { protoPersonaCount: 0 });
+    const packId = await createDraftPack(t, { syntheticUserCount: 0 });
 
     await expect(
       asResearcher.action(variantGenerationApi.previewVariants, {
         packId,
         budget: 50,
       }),
-    ).rejects.toThrow(/at least one proto-persona/i);
+    ).rejects.toThrow(/at least one synthetic user/i);
   });
 });
 
@@ -255,7 +255,7 @@ describe("generateVariantsForStudy", () => {
   it("writes exactly the run budget of accepted variants and returns summary metrics", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { protoPersonaCount: 4 });
+    const packId = await createPublishedPack(t, { syntheticUserCount: 4 });
     const studyId = await insertStudy(t, packId, { runBudget: 64 });
 
     mockedGenerateWithModel.mockImplementation(async () =>
@@ -281,7 +281,7 @@ describe("generateVariantsForStudy", () => {
     expect(summary.coverage.edgeCount + summary.coverage.interiorCount).toBe(64);
     expect(variants).toHaveLength(64);
     expect(variants.every((variant) => variant.accepted)).toBe(true);
-    expect(new Set(variants.map((variant) => variant.protoPersonaId)).size).toBe(4);
+    expect(new Set(variants.map((variant) => variant.syntheticUserId)).size).toBe(4);
 
     for (const variant of variants) {
       expect(variant.studyId).toBe(studyId);
@@ -297,12 +297,12 @@ describe("generateVariantsForStudy", () => {
     }
   });
 
-  it("generates accepted variants for both manual and transcript-derived proto-personas", async () => {
+  it("generates accepted variants for both manual and transcript-derived synthetic users", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createDraftPack(t, { protoPersonaCount: 1 });
+    const packId = await createDraftPack(t, { syntheticUserCount: 1 });
 
-    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedProtoPersonas, {
+    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedSyntheticUsers, {
       packId,
       input: {
         sharedAxes: [
@@ -339,9 +339,9 @@ describe("generateVariantsForStudy", () => {
       variantGenerationApi.generateVariantsForStudy,
       { studyId },
     );
-    const protoPersonas = await t.run(async (ctx) =>
+    const syntheticUsers = await t.run(async (ctx) =>
       ctx.db
-        .query("protoPersonas")
+        .query("syntheticUsers")
         .withIndex("by_packId", (q) => q.eq("packId", packId))
         .collect(),
     );
@@ -351,27 +351,27 @@ describe("generateVariantsForStudy", () => {
         .withIndex("by_studyId", (q) => q.eq("studyId", studyId))
         .collect(),
     );
-    const generatedProtoPersonaIds = new Set(
+    const generatedSyntheticUserIds = new Set(
       variants
         .filter((variant) => variant.accepted)
-        .map((variant) => variant.protoPersonaId),
+        .map((variant) => variant.syntheticUserId),
     );
 
     expect(summary.acceptedCount).toBe(50);
-    expect(protoPersonas).toHaveLength(2);
+    expect(syntheticUsers).toHaveLength(2);
     expect(
-      protoPersonas.map((protoPersona) => protoPersona.sourceType).sort(),
+      syntheticUsers.map((syntheticUser) => syntheticUser.sourceType).sort(),
     ).toEqual(["manual", "transcript_derived"]);
-    expect(generatedProtoPersonaIds).toEqual(
-      new Set(protoPersonas.map((protoPersona) => protoPersona._id)),
+    expect(generatedSyntheticUserIds).toEqual(
+      new Set(syntheticUsers.map((syntheticUser) => syntheticUser._id)),
     );
-    expect(summary.coverage.perProtoPersona).toHaveLength(2);
+    expect(summary.coverage.perSyntheticUser).toHaveLength(2);
   });
 
   it("passes org-level expansion model overrides into generateWithModel", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { protoPersonaCount: 1 });
+    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
     const studyId = await insertStudy(t, packId, { runBudget: 50 });
     await t.run(async (ctx) =>
       ctx.db.insert("settings", {
@@ -401,7 +401,7 @@ describe("generateVariantsForStudy", () => {
   it("retries invalid generations until a valid candidate succeeds", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { protoPersonaCount: 1 });
+    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
     const studyId = await insertStudy(t, packId, { runBudget: 50 });
 
     mockedGenerateWithModel
@@ -435,7 +435,7 @@ describe("generateVariantsForStudy", () => {
   it("heals exhausted slots until the study has exactly the run budget of accepted variants", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { protoPersonaCount: 1 });
+    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
     const studyId = await insertStudy(t, packId, { runBudget: 50 });
     let callCount = 0;
 
@@ -471,7 +471,7 @@ describe("generateVariantsForStudy", () => {
   it("clamps rejected fallback coherence scores into the persisted [0, 1] range", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { protoPersonaCount: 1 });
+    const packId = await createPublishedPack(t, { syntheticUserCount: 1 });
     const studyId = await insertStudy(t, packId, { runBudget: 50 });
     let callCount = 0;
 
@@ -521,9 +521,9 @@ describe("generateVariantsForStudy", () => {
   it("requires a published pack and enforces budget bounds plus the default budget", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const draftPackId = await createDraftPack(t, { protoPersonaCount: 1 });
-    const publishedPackId = await createPublishedPack(t, { protoPersonaCount: 1 });
-    const archivedPackId = await archivePublishedPack(t, { protoPersonaCount: 1 });
+    const draftPackId = await createDraftPack(t, { syntheticUserCount: 1 });
+    const publishedPackId = await createPublishedPack(t, { syntheticUserCount: 1 });
+    const archivedPackId = await archivePublishedPack(t, { syntheticUserCount: 1 });
 
     mockedGenerateWithModel.mockImplementation(async () =>
       createAiResult(makeCandidate()),
@@ -580,7 +580,7 @@ describe("generateVariantsForStudy", () => {
   it("is idempotent per study and does not double-write variants", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const packId = await createPublishedPack(t, { protoPersonaCount: 2 });
+    const packId = await createPublishedPack(t, { syntheticUserCount: 2 });
     const studyId = await insertStudy(t, packId, { runBudget: 50 });
 
     mockedGenerateWithModel.mockImplementation(async () =>
@@ -612,7 +612,7 @@ describe("generateVariantsForStudy", () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createPublishedPack(t, {
-      protoPersonaCount: 1,
+      syntheticUserCount: 1,
       axisCount: 16,
     });
     const studyId = await insertStudy(t, packId, { runBudget: 50 });
@@ -648,9 +648,9 @@ describe("generateVariantsForStudy", () => {
 async function createDraftPack(
   t: ReturnType<typeof createTest>,
   {
-    protoPersonaCount,
+    syntheticUserCount,
     axisCount = 2,
-  }: { protoPersonaCount: number; axisCount?: number },
+  }: { syntheticUserCount: number; axisCount?: number },
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
   const sharedAxes = Array.from({ length: axisCount }, (_, index) => makeAxis(index));
@@ -664,19 +664,19 @@ async function createDraftPack(
     },
   });
 
-  for (let index = 0; index < protoPersonaCount; index += 1) {
-    await asResearcher.mutation(api.personaPacks.createProtoPersona, {
+  for (let index = 0; index < syntheticUserCount; index += 1) {
+    await asResearcher.mutation(api.personaPacks.createSyntheticUser, {
       packId,
-      protoPersona: {
-        name: `Proto Persona ${index + 1}`,
-        summary: `Summary for proto persona ${index + 1}`,
+      syntheticUser: {
+        name: `Synthetic User ${index + 1}`,
+        summary: `Summary for synthetic user ${index + 1}`,
         axes: sharedAxes.slice(0, Math.min(axisCount, index + 2)),
         evidenceSnippets: Array.from(
           { length: Math.min(5, index + 1) },
           (_, evidenceIndex) =>
-            `Evidence ${evidenceIndex + 1} for proto persona ${index + 1}`,
+            `Evidence ${evidenceIndex + 1} for synthetic user ${index + 1}`,
         ),
-        notes: `Notes for proto persona ${index + 1}`,
+        notes: `Notes for synthetic user ${index + 1}`,
       },
     });
   }
@@ -686,7 +686,7 @@ async function createDraftPack(
 
 async function createPublishedPack(
   t: ReturnType<typeof createTest>,
-  options: { protoPersonaCount: number; axisCount?: number },
+  options: { syntheticUserCount: number; axisCount?: number },
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
   const packId = await createDraftPack(t, options);
@@ -696,7 +696,7 @@ async function createPublishedPack(
 
 async function archivePublishedPack(
   t: ReturnType<typeof createTest>,
-  options: { protoPersonaCount: number; axisCount?: number },
+  options: { syntheticUserCount: number; axisCount?: number },
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
   const packId = await createPublishedPack(t, options);

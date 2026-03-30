@@ -69,8 +69,8 @@ export function StudyRunsPage({
   const filteredRuns = useQuery(api.runs.listRuns, {
     studyId: studyId as Id<"studies">,
     ...(detailSearch.outcome ? { outcome: detailSearch.outcome as never } : {}),
-    ...(detailSearch.protoPersonaId
-      ? { protoPersonaId: detailSearch.protoPersonaId as Id<"protoPersonas"> }
+    ...(detailSearch.syntheticUserId
+      ? { syntheticUserId: detailSearch.syntheticUserId as Id<"syntheticUsers"> }
       : {}),
     ...(detailSearch.finalUrlContains
       ? { finalUrlContains: detailSearch.finalUrlContains }
@@ -114,8 +114,8 @@ function ResolvedStudyRunsPage({
     const personaMap = new Map<string, string>();
 
     for (const run of allRuns) {
-      if (!personaMap.has(run.protoPersonaId)) {
-        personaMap.set(run.protoPersonaId, run.protoPersonaName);
+      if (!personaMap.has(run.syntheticUserId)) {
+        personaMap.set(run.syntheticUserId, run.syntheticUserName);
       }
     }
 
@@ -191,14 +191,14 @@ function ResolvedStudyRunsPage({
               aria-label="Persona filter"
               className={selectClassName}
               id="run-persona-filter"
-              value={detailSearch.protoPersonaId ?? ""}
+              value={detailSearch.syntheticUserId ?? ""}
               onChange={(event) =>
                 onSearchChange({
-                  protoPersonaId: event.target.value || undefined,
+                  syntheticUserId: event.target.value || undefined,
                 })
               }
             >
-              <option value="">All proto-personas</option>
+              <option value="">All synthetic users</option>
               {personaOptions.map((persona) => (
                 <option key={persona.id} value={persona.id}>
                   {persona.name}
@@ -251,7 +251,7 @@ function ResolvedStudyRunsPage({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="space-y-1 text-left">
-                      <p className="font-medium">{run.protoPersonaName}</p>
+                      <p className="font-medium">{run.syntheticUserName}</p>
                       <p className="text-xs text-muted-foreground">
                         {run.firstPersonBio}
                       </p>
@@ -326,7 +326,7 @@ function ResolvedRunDetail({
 }: {
   runDetail: RunDetailData;
 }) {
-  const { milestones, personaVariant, protoPersona, run } = runDetail;
+  const { milestones, personaVariant, syntheticUser, run } = runDetail;
 
   return (
     <Card>
@@ -340,7 +340,7 @@ function ResolvedRunDetail({
         <section className="space-y-4">
           <div className="space-y-1">
             <h3 className="text-lg font-semibold">Persona summary</h3>
-            <p className="text-sm text-muted-foreground">{protoPersona.name}</p>
+            <p className="text-sm text-muted-foreground">{syntheticUser.name}</p>
           </div>
           <p className="rounded-lg border bg-background p-4 text-sm leading-6 text-muted-foreground">
             {personaVariant.firstPersonBio}
@@ -524,8 +524,8 @@ function filterRuns(
     }
 
     if (
-      detailSearch.protoPersonaId !== undefined &&
-      run.protoPersonaId !== detailSearch.protoPersonaId
+      detailSearch.syntheticUserId !== undefined &&
+      run.syntheticUserId !== detailSearch.syntheticUserId
     ) {
       return false;
     }

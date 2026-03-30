@@ -703,7 +703,7 @@ function IssueCard({
           />
           <SummaryValue
             label="Affected segments"
-            value={finding.affectedProtoPersonas.map((segment) => segment.name).join(", ")}
+            value={finding.affectedSyntheticUsers.map((segment) => segment.name).join(", ")}
           />
           <SummaryValue
             label="Axis coverage"

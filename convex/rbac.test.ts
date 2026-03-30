@@ -185,8 +185,8 @@ describe("rbac", () => {
     const asReviewer = t.withIdentity(reviewerIdentity);
     const publishedPackId = await insertPack(t, { status: "published" });
     const draftPackId = await insertPack(t, { status: "draft" });
-    const publishedProtoPersonaId = await insertProtoPersona(t, publishedPackId);
-    const draftProtoPersonaId = await insertProtoPersona(t, draftPackId);
+    const publishedSyntheticUserId = await insertSyntheticUser(t, publishedPackId);
+    const draftSyntheticUserId = await insertSyntheticUser(t, draftPackId);
     const draftStudyId = await insertStudy(t, {
       packId: publishedPackId,
       status: "draft",
@@ -229,20 +229,20 @@ describe("rbac", () => {
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.createProtoPersona, {
+      asReviewer.mutation(api.personaPacks.createSyntheticUser, {
         packId: draftPackId,
-        protoPersona: makeProtoPersonaInput(),
+        syntheticUser: makeSyntheticUserInput(),
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.updateProtoPersona, {
-        protoPersonaId: draftProtoPersonaId,
-        patch: { summary: "Reviewer should not edit proto-personas." },
+      asReviewer.mutation(api.personaPacks.updateSyntheticUser, {
+        syntheticUserId: draftSyntheticUserId,
+        patch: { summary: "Reviewer should not edit synthetic users." },
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
-      asReviewer.mutation(api.personaPacks.deleteProtoPersona, {
-        protoPersonaId: draftProtoPersonaId,
+      asReviewer.mutation(api.personaPacks.deleteSyntheticUser, {
+        syntheticUserId: draftSyntheticUserId,
       }),
     ).rejects.toThrowError("FORBIDDEN");
     await expect(
@@ -326,7 +326,7 @@ describe("rbac", () => {
       note: "Reviewer comments remain allowed.",
     });
     expect(note.authorId).toBe(reviewerIdentity.subject);
-    expect(publishedProtoPersonaId).toBeDefined();
+    expect(publishedSyntheticUserId).toBeDefined();
   });
 
   it("allows admins to run representative mutations across packs, studies, and notes", async () => {
@@ -385,14 +385,14 @@ async function insertPack(
   );
 }
 
-async function insertProtoPersona(
+async function insertSyntheticUser(
   t: ReturnType<typeof createTest>,
   packId: Id<"personaPacks">,
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+    ctx.db.insert("syntheticUsers", {
       packId,
-      ...makeProtoPersonaInput(),
+      ...makeSyntheticUserInput(),
       sourceType: "manual",
       sourceRefs: [],
     }),
@@ -437,7 +437,7 @@ async function insertIssueCluster(
       severity: "major",
       affectedRunCount: 2,
       affectedRunRate: 0.5,
-      affectedProtoPersonaIds: [],
+      affectedSyntheticUserIds: [],
       affectedAxisRanges: [],
       representativeRunIds: [],
       replayConfidence: 0.75,
@@ -485,7 +485,7 @@ function makeCreateDraftInput() {
   };
 }
 
-function makeProtoPersonaInput() {
+function makeSyntheticUserInput() {
   return {
     name: "Cautious shopper",
     summary: "Moves carefully through checkout.",
@@ -497,6 +497,6 @@ function makeProtoPersonaInput() {
 function makeImportedPackJson() {
   return {
     ...makeCreateDraftInput(),
-    protoPersonas: [makeProtoPersonaInput()],
+    syntheticUsers: [makeSyntheticUserInput()],
   };
 }

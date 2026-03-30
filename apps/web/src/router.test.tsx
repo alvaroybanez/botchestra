@@ -61,8 +61,8 @@ let mockedTranscriptDetail:
   | Doc<"transcripts">
   | null
   | undefined = null;
-let mockedProtoPersonas:
-  | Doc<"protoPersonas">[]
+let mockedSyntheticUsers:
+  | Doc<"syntheticUsers">[]
   | undefined = [];
 type ReviewStudy = {
   _id: string;
@@ -88,15 +88,15 @@ type ReviewData = {
       weight: number;
     }[];
   };
-  protoPersonas: {
+  syntheticUsers: {
     _id: string;
     name: string;
     summary: string;
   }[];
   variants: {
     _id: string;
-    protoPersonaId: string;
-    protoPersonaName: string;
+    syntheticUserId: string;
+    syntheticUserName: string;
     axisValues: { key: string; value: number }[];
     edgeScore: number;
     coherenceScore: number;
@@ -126,9 +126,9 @@ type RunSummary = {
 type RunListItem = {
   _id: string;
   status: string;
-  protoPersonaId: string;
-  protoPersonaName: string;
-  protoPersonaSummary: string;
+  syntheticUserId: string;
+  syntheticUserName: string;
+  syntheticUserSummary: string;
   firstPersonBio: string;
   axisValues: { key: string; value: number }[];
   finalUrl?: string;
@@ -162,7 +162,7 @@ type RunDetail = {
     firstPersonBio: string;
     axisValues: { key: string; value: number }[];
   };
-  protoPersona: {
+  syntheticUser: {
     _id: string;
     name: string;
   };
@@ -190,7 +190,7 @@ type FindingView = {
   recommendation: string;
   confidenceNote: string;
   replayConfidence: number;
-  affectedProtoPersonas: Array<{ _id: string; name: string }>;
+  affectedSyntheticUsers: Array<{ _id: string; name: string }>;
   evidence: Array<{
     key: string;
     thumbnailKey: string;
@@ -204,8 +204,8 @@ type FindingView = {
   }>;
   representativeRuns: Array<{
     _id: string;
-    protoPersonaId: string;
-    protoPersonaName: string | null;
+    syntheticUserId: string;
+    syntheticUserName: string | null;
     status: string;
     finalUrl: string | null;
     finalOutcome: string | null;
@@ -386,10 +386,10 @@ const launchStudyMock = vi.fn();
 const cancelStudyMock = vi.fn();
 const importJsonMock = vi.fn();
 const updateDraftMock = vi.fn();
-const createProtoPersonaMock = vi.fn();
+const createSyntheticUserMock = vi.fn();
 const publishMock = vi.fn();
 const archiveMock = vi.fn();
-const applyTranscriptDerivedProtoPersonasMock = vi.fn();
+const applyTranscriptDerivedSyntheticUsersMock = vi.fn();
 const suggestAxesMock = vi.fn();
 const startTranscriptExtractionMock = vi.fn();
 const uploadTranscriptMock = vi.fn();
@@ -476,12 +476,12 @@ vi.mock("convex/react", () => ({
       return updateDraftMock;
     }
 
-    if (mutationName === "personaPacks:createProtoPersona") {
-      return createProtoPersonaMock;
+    if (mutationName === "personaPacks:createSyntheticUser") {
+      return createSyntheticUserMock;
     }
 
-    if (mutationName === "personaPacks:applyTranscriptDerivedProtoPersonas") {
-      return applyTranscriptDerivedProtoPersonasMock;
+    if (mutationName === "personaPacks:applyTranscriptDerivedSyntheticUsers") {
+      return applyTranscriptDerivedSyntheticUsersMock;
     }
 
     if (mutationName === "personaPacks:publish") {
@@ -586,8 +586,8 @@ vi.mock("convex/react", () => ({
         }
 
         if (
-          typeof args?.protoPersonaId === "string" &&
-          run.protoPersonaId !== args.protoPersonaId
+          typeof args?.syntheticUserId === "string" &&
+          run.syntheticUserId !== args.syntheticUserId
         ) {
           return false;
         }
@@ -708,8 +708,8 @@ vi.mock("convex/react", () => ({
       return mockedTranscriptDetail;
     }
 
-    if (queryName === "personaPacks:listProtoPersonas") {
-      return mockedProtoPersonas;
+    if (queryName === "personaPacks:listSyntheticUsers") {
+      return mockedSyntheticUsers;
     }
 
     if (queryName === "personaVariantReview:getStudyVariantReview") {
@@ -767,7 +767,7 @@ beforeEach(() => {
   mockedTranscriptList = [];
   mockedPackDetail = null;
   mockedTranscriptDetail = null;
-  mockedProtoPersonas = [];
+  mockedSyntheticUsers = [];
   mockedViewerAccess = null;
   mockedVariantReview = undefined;
   mockedPackVariantReview = undefined;
@@ -802,14 +802,14 @@ beforeEach(() => {
   importJsonMock.mockResolvedValue("imported-pack-id" as Id<"personaPacks">);
   updateDraftMock.mockReset();
   updateDraftMock.mockResolvedValue(undefined);
-  createProtoPersonaMock.mockReset();
-  createProtoPersonaMock.mockResolvedValue(undefined);
+  createSyntheticUserMock.mockReset();
+  createSyntheticUserMock.mockResolvedValue(undefined);
   publishMock.mockReset();
   publishMock.mockResolvedValue(undefined);
   archiveMock.mockReset();
   archiveMock.mockResolvedValue(undefined);
-  applyTranscriptDerivedProtoPersonasMock.mockReset();
-  applyTranscriptDerivedProtoPersonasMock.mockResolvedValue(undefined);
+  applyTranscriptDerivedSyntheticUsersMock.mockReset();
+  applyTranscriptDerivedSyntheticUsersMock.mockResolvedValue(undefined);
   suggestAxesMock.mockReset();
   suggestAxesMock.mockResolvedValue([
     {
@@ -1281,7 +1281,7 @@ describe("@botchestra/web routing", () => {
 
     expect(container.textContent).toContain("Persona Variant Review");
     expect(container.textContent).toContain("Accepted variants");
-    expect(container.textContent).toContain("Proto-persona");
+    expect(container.textContent).toContain("Synthetic user");
     expect(container.textContent).toContain("Digital confidence");
     expect(container.textContent).toContain("Edge score");
     expect(container.textContent).toContain("Coherence score");
@@ -1290,7 +1290,7 @@ describe("@botchestra/web routing", () => {
     expect(getVariantRows(container)).toHaveLength(3);
   });
 
-  it("filters variants by proto-persona and axis range", async () => {
+  it("filters variants by synthetic user and axis range", async () => {
     mockedVariantReview = makeVariantReview();
 
     const { container } = await renderRoute({
@@ -1298,14 +1298,14 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/studies/study-live/personas"],
     });
 
-    await updateSelect(container, "#proto-persona-filter", "proto-cautious");
+    await updateSelect(container, "#synthetic-user-filter", "proto-cautious");
     expect(getVariantRows(container)).toHaveLength(2);
     expect(getVariantRows(container).every((row) => row.includes("Cautious checkout shopper"))).toBe(true);
 
     await updateInput(container, "#minimum-axis-value", "0.5");
     expect(getVariantRows(container)).toHaveLength(0);
 
-    await updateSelect(container, "#proto-persona-filter", "all");
+    await updateSelect(container, "#synthetic-user-filter", "all");
     expect(getVariantRows(container)).toHaveLength(1);
     expect(firstVariantRowText(container)).toContain("Fast-moving repeat buyer");
   });
@@ -1615,9 +1615,9 @@ describe("@botchestra/web routing", () => {
         {
           _id: "run-careful",
           status: "running",
-          protoPersonaId: "proto-careful",
-          protoPersonaName: "Careful shopper",
-          protoPersonaSummary: "Moves slowly and checks every total.",
+          syntheticUserId: "proto-careful",
+          syntheticUserName: "Careful shopper",
+          syntheticUserSummary: "Moves slowly and checks every total.",
           firstPersonBio:
             "A careful shopper is currently validating the address step and comparing every number before continuing.",
           axisValues: [{ key: "digital_confidence", value: -0.42 }],
@@ -1626,9 +1626,9 @@ describe("@botchestra/web routing", () => {
         {
           _id: "run-speedy",
           status: "dispatching",
-          protoPersonaId: "proto-speedy",
-          protoPersonaName: "Speedy repeat buyer",
-          protoPersonaSummary: "Moves quickly and expects autofill to work.",
+          syntheticUserId: "proto-speedy",
+          syntheticUserName: "Speedy repeat buyer",
+          syntheticUserSummary: "Moves quickly and expects autofill to work.",
           firstPersonBio:
             "A speedy repeat buyer is dispatching into the flow and expects most of checkout to be familiar.",
           axisValues: [{ key: "digital_confidence", value: 0.78 }],
@@ -1637,9 +1637,9 @@ describe("@botchestra/web routing", () => {
         {
           _id: "run-success",
           status: "success",
-          protoPersonaId: "proto-complete",
-          protoPersonaName: "Completed run",
-          protoPersonaSummary: "Already finished.",
+          syntheticUserId: "proto-complete",
+          syntheticUserName: "Completed run",
+          syntheticUserSummary: "Already finished.",
           firstPersonBio: "Completed successfully.",
           axisValues: [{ key: "digital_confidence", value: 0.2 }],
           stepCount: 5,
@@ -1793,7 +1793,7 @@ describe("@botchestra/web routing", () => {
       "/studies/study-live/findings",
     );
     expect(getRouterLocationHref(router)).toContain("outcome=hard_fail");
-    expect(getRouterLocationHref(router)).toContain("protoPersonaId=proto-careful");
+    expect(getRouterLocationHref(router)).toContain("syntheticUserId=proto-careful");
     expect(getRouterLocationHref(router)).toContain("finalUrlContains=address");
 
     const runsLink = [...container.querySelectorAll("a")].find(
@@ -2279,7 +2279,7 @@ describe("@botchestra/web routing", () => {
     );
   });
 
-  it("renders pack detail metadata, shared axes, proto-personas, and audit info", async () => {
+  it("renders pack detail metadata, shared axes, synthetic users, and audit info", async () => {
     mockedPackDetail = makePack({
       _id: "pack-detail" as Id<"personaPacks">,
       name: "Account Recovery Pack",
@@ -2288,9 +2288,9 @@ describe("@botchestra/web routing", () => {
       status: "draft",
       updatedBy: "reviewer|org-a",
     });
-    mockedProtoPersonas = [
-      makeProtoPersona({
-        _id: "proto-1" as Id<"protoPersonas">,
+    mockedSyntheticUsers = [
+      makeSyntheticUser({
+        _id: "proto-1" as Id<"syntheticUsers">,
         name: "Anxious new customer",
         summary: "Worried about losing access to payroll deposits.",
         sourceType: "json_import",
@@ -2306,7 +2306,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Account Recovery Pack");
     expect(container.textContent).toContain("Shared Axes");
     expect(container.textContent).toContain("Digital confidence");
-    expect(container.textContent).toContain("Proto-Personas");
+    expect(container.textContent).toContain("Synthetic Users");
     expect(container.textContent).toContain("Anxious new customer");
     expect(container.textContent).toContain("Source: json_import");
     expect(container.textContent).toContain("Audit Trail");
@@ -2339,8 +2339,8 @@ describe("@botchestra/web routing", () => {
       _id: "pack-axis-published" as Id<"personaPacks">,
       status: "published",
     });
-    mockedProtoPersonas = [
-      makeProtoPersona({ _id: "proto-axis-published" as Id<"protoPersonas"> }),
+    mockedSyntheticUsers = [
+      makeSyntheticUser({ _id: "proto-axis-published" as Id<"syntheticUsers"> }),
     ];
 
     const { container } = await renderRoute({
@@ -2887,7 +2887,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("price sensitivity");
 
     await clickButton(container, "Apply to pack");
-    expect(applyTranscriptDerivedProtoPersonasMock).toHaveBeenCalledWith({
+    expect(applyTranscriptDerivedSyntheticUsersMock).toHaveBeenCalledWith({
       packId: "pack-transcript-extraction",
       input: {
         sharedAxes: [
@@ -3133,8 +3133,8 @@ describe("@botchestra/web routing", () => {
       _id: "pack-publish" as Id<"personaPacks">,
       status: "draft",
     });
-    mockedProtoPersonas = [
-      makeProtoPersona({ _id: "proto-publish" as Id<"protoPersonas"> }),
+    mockedSyntheticUsers = [
+      makeSyntheticUser({ _id: "proto-publish" as Id<"syntheticUsers"> }),
     ];
 
     const { container } = await renderRoute({
@@ -3158,8 +3158,8 @@ describe("@botchestra/web routing", () => {
       _id: "pack-archive" as Id<"personaPacks">,
       status: "published",
     });
-    mockedProtoPersonas = [
-      makeProtoPersona({ _id: "proto-archive" as Id<"protoPersonas"> }),
+    mockedSyntheticUsers = [
+      makeSyntheticUser({ _id: "proto-archive" as Id<"syntheticUsers"> }),
     ];
 
     const { container } = await renderRoute({
@@ -3920,9 +3920,9 @@ function makeRunList(): RunListItem[] {
     {
       _id: "run-hard-fail",
       status: "hard_fail",
-      protoPersonaId: "proto-careful",
-      protoPersonaName: "Careful shopper",
-      protoPersonaSummary: "Moves slowly and checks every total.",
+      syntheticUserId: "proto-careful",
+      syntheticUserName: "Careful shopper",
+      syntheticUserSummary: "Moves slowly and checks every total.",
       firstPersonBio: "Checkout failed at address entry after the shipping form became confusing.",
       axisValues: [{ key: "digital_confidence", value: -0.42 }],
       finalUrl: "https://example.com/checkout/address",
@@ -3933,9 +3933,9 @@ function makeRunList(): RunListItem[] {
     {
       _id: "run-success",
       status: "success",
-      protoPersonaId: "proto-speedy",
-      protoPersonaName: "Speedy repeat buyer",
-      protoPersonaSummary: "Moves quickly and expects autofill to work.",
+      syntheticUserId: "proto-speedy",
+      syntheticUserName: "Speedy repeat buyer",
+      syntheticUserSummary: "Moves quickly and expects autofill to work.",
       firstPersonBio: "Fast repeat buyer who completed the flow without friction.",
       axisValues: [{ key: "digital_confidence", value: 0.78 }],
       finalUrl: "https://example.com/checkout/confirmation",
@@ -3981,10 +3981,10 @@ function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
       axisValues: [{ key: "digital_confidence", value: -0.42 }],
       ...overrides.personaVariant,
     },
-    protoPersona: {
+    syntheticUser: {
       _id: "proto-careful",
       name: "Careful shopper",
-      ...overrides.protoPersona,
+      ...overrides.syntheticUser,
     },
     milestones: [
       {
@@ -4032,7 +4032,7 @@ function makeFindings(): FindingView[] {
         "Pin the continue action below the form and keep it visible after validation messages appear.",
       confidenceNote: "Replay reproduced the missing button twice.",
       replayConfidence: 0.82,
-      affectedProtoPersonas: [
+      affectedSyntheticUsers: [
         { _id: "proto-careful", name: "Careful shopper" },
       ],
       evidence: [
@@ -4053,8 +4053,8 @@ function makeFindings(): FindingView[] {
       representativeRuns: [
         {
           _id: "run-hard-fail",
-          protoPersonaId: "proto-careful",
-          protoPersonaName: "Careful shopper",
+          syntheticUserId: "proto-careful",
+          syntheticUserName: "Careful shopper",
           status: "hard_fail",
           finalUrl: "https://example.com/checkout/address",
           finalOutcome: "address_validation_failed",
@@ -4085,7 +4085,7 @@ function makeFindings(): FindingView[] {
         "Explain taxes and shipping earlier so totals stay predictable by the time payment loads.",
       confidenceNote: "Observed in one replay and one primary run.",
       replayConfidence: 0.44,
-      affectedProtoPersonas: [
+      affectedSyntheticUsers: [
         { _id: "proto-speedy", name: "Speedy repeat buyer" },
       ],
       evidence: [
@@ -4099,8 +4099,8 @@ function makeFindings(): FindingView[] {
       representativeRuns: [
         {
           _id: "run-success",
-          protoPersonaId: "proto-speedy",
-          protoPersonaName: "Speedy repeat buyer",
+          syntheticUserId: "proto-speedy",
+          syntheticUserName: "Speedy repeat buyer",
           status: "soft_fail",
           finalUrl: "https://example.com/checkout/payment",
           finalOutcome: "payment_total_unclear",
@@ -4271,12 +4271,12 @@ function makeAxisDefinition(
   };
 }
 
-function makeProtoPersona(
-  overrides: Partial<Doc<"protoPersonas">> = {},
-): Doc<"protoPersonas"> {
+function makeSyntheticUser(
+  overrides: Partial<Doc<"syntheticUsers">> = {},
+): Doc<"syntheticUsers"> {
   return {
     _creationTime: 1,
-    _id: (overrides._id ?? "proto-1") as Id<"protoPersonas">,
+    _id: (overrides._id ?? "proto-1") as Id<"syntheticUsers">,
     packId: (overrides.packId ?? "pack-1") as Id<"personaPacks">,
     name: "Budget-focused repeat buyer",
     summary: "Wants to finish quickly and compare final totals.",
@@ -4333,7 +4333,7 @@ function makeVariantReview() {
         },
       ],
     },
-    protoPersonas: [
+    syntheticUsers: [
       {
         _id: "proto-cautious",
         name: "Cautious checkout shopper",
@@ -4348,8 +4348,8 @@ function makeVariantReview() {
     variants: [
       {
         _id: "variant-cautious-edge",
-        protoPersonaId: "proto-cautious",
-        protoPersonaName: "Cautious checkout shopper",
+        syntheticUserId: "proto-cautious",
+        syntheticUserName: "Cautious checkout shopper",
         axisValues: [
           { key: "digital_confidence", value: -0.68 },
           { key: "support_needs", value: 0.74 },
@@ -4362,8 +4362,8 @@ function makeVariantReview() {
       },
       {
         _id: "variant-power-balanced",
-        protoPersonaId: "proto-power",
-        protoPersonaName: "Goal-driven power user",
+        syntheticUserId: "proto-power",
+        syntheticUserName: "Goal-driven power user",
         axisValues: [
           { key: "digital_confidence", value: 0.82 },
           { key: "support_needs", value: -0.56 },
@@ -4376,8 +4376,8 @@ function makeVariantReview() {
       },
       {
         _id: "variant-cautious-interior",
-        protoPersonaId: "proto-cautious",
-        protoPersonaName: "Cautious checkout shopper",
+        syntheticUserId: "proto-cautious",
+        syntheticUserName: "Cautious checkout shopper",
         axisValues: [
           { key: "digital_confidence", value: 0.18 },
           { key: "support_needs", value: 0.33 },

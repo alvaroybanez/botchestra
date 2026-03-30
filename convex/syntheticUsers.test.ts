@@ -50,9 +50,9 @@ const makeCreateDraftInput = (
   ...overrides,
 });
 
-const makeProtoPersonaInput = (
-  overrides: Partial<CreateProtoPersonaInput> = {},
-): CreateProtoPersonaInput => ({
+const makeSyntheticUserInput = (
+  overrides: Partial<CreateSyntheticUserInput> = {},
+): CreateSyntheticUserInput => ({
   name: "Cautious shopper",
   summary: "Double-checks forms before submitting orders.",
   axes: [makeAxis(), makeAxis({ key: "patience", label: "Patience", description: "Tolerance for friction" })],
@@ -64,29 +64,29 @@ const makeProtoPersonaInput = (
   ...overrides,
 });
 
-describe("proto persona CRUD", () => {
-  it("creates a manual proto-persona on a draft pack and returns it from queries", async () => {
+describe("synthetic user CRUD", () => {
+  it("creates a manual synthetic user on a draft pack and returns it from queries", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createDraftPack(t);
 
-    const protoPersonaId = await asResearcher.mutation(
-      api.personaPacks.createProtoPersona,
+    const syntheticUserId = await asResearcher.mutation(
+      api.personaPacks.createSyntheticUser,
       {
         packId,
-        protoPersona: makeProtoPersonaInput(),
+        syntheticUser: makeSyntheticUserInput(),
       },
     );
 
-    const protoPersona = await asResearcher.query(api.personaPacks.getProtoPersona, {
-      protoPersonaId,
+    const syntheticUser = await asResearcher.query(api.personaPacks.getSyntheticUser, {
+      syntheticUserId,
     });
-    const protoPersonas = await asResearcher.query(api.personaPacks.listProtoPersonas, {
+    const syntheticUsers = await asResearcher.query(api.personaPacks.listSyntheticUsers, {
       packId,
     });
 
-    expect(protoPersona).toMatchObject({
-      _id: protoPersonaId,
+    expect(syntheticUser).toMatchObject({
+      _id: syntheticUserId,
       packId,
       name: "Cautious shopper",
       summary: "Double-checks forms before submitting orders.",
@@ -94,13 +94,13 @@ describe("proto persona CRUD", () => {
       sourceRefs: [],
       notes: "Initial draft persona",
     });
-    expect(protoPersona?.evidenceSnippets).toEqual([
+    expect(syntheticUser?.evidenceSnippets).toEqual([
       "Prefers to verify totals twice before checkout.",
       "Reads return policy language carefully.",
     ]);
     expect(
-      protoPersonas.map((item: { _id: Id<"protoPersonas"> }) => item._id),
-    ).toEqual([protoPersonaId]);
+      syntheticUsers.map((item: { _id: Id<"syntheticUsers"> }) => item._id),
+    ).toEqual([syntheticUserId]);
   });
 
   it("rejects missing required name or summary", async () => {
@@ -109,43 +109,43 @@ describe("proto persona CRUD", () => {
     const packId = await createDraftPack(t);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createProtoPersona, {
+      asResearcher.mutation(api.personaPacks.createSyntheticUser, {
         packId,
-        protoPersona: makeProtoPersonaInput({ name: "" }),
+        syntheticUser: makeSyntheticUserInput({ name: "" }),
       }),
-    ).rejects.toThrow("Proto-persona name is required");
+    ).rejects.toThrow("Synthetic user name is required");
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createProtoPersona, {
+      asResearcher.mutation(api.personaPacks.createSyntheticUser, {
         packId,
-        protoPersona: makeProtoPersonaInput({ summary: "" }),
+        syntheticUser: makeSyntheticUserInput({ summary: "" }),
       }),
-    ).rejects.toThrow("Proto-persona summary is required");
+    ).rejects.toThrow("Synthetic user summary is required");
   });
 
-  it("rejects proto-persona axes whose keys are not defined on the parent pack", async () => {
+  it("rejects synthetic user axes whose keys are not defined on the parent pack", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createDraftPack(t);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createProtoPersona, {
+      asResearcher.mutation(api.personaPacks.createSyntheticUser, {
         packId,
-        protoPersona: makeProtoPersonaInput({
+        syntheticUser: makeSyntheticUserInput({
           axes: [makeAxis({ key: "nonexistent_key", label: "Missing axis" })],
         }),
       }),
-    ).rejects.toThrow("Proto-persona axes must reference shared pack axis keys");
+    ).rejects.toThrow("Synthetic user axes must reference shared pack axis keys");
   });
 
-  it("updates proto-persona fields on draft packs only", async () => {
+  it("updates synthetic user fields on draft packs only", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createDraftPack(t);
-    const protoPersonaId = await insertProtoPersona(t, packId);
+    const syntheticUserId = await insertSyntheticUser(t, packId);
 
-    await asResearcher.mutation(api.personaPacks.updateProtoPersona, {
-      protoPersonaId,
+    await asResearcher.mutation(api.personaPacks.updateSyntheticUser, {
+      syntheticUserId,
       patch: {
         name: "Updated cautious shopper",
         summary: "Needs stronger reassurance throughout checkout.",
@@ -155,53 +155,53 @@ describe("proto persona CRUD", () => {
       },
     });
 
-    const protoPersona = await asResearcher.query(api.personaPacks.getProtoPersona, {
-      protoPersonaId,
+    const syntheticUser = await asResearcher.query(api.personaPacks.getSyntheticUser, {
+      syntheticUserId,
     });
 
-    expect(protoPersona).toMatchObject({
+    expect(syntheticUser).toMatchObject({
       name: "Updated cautious shopper",
       summary: "Needs stronger reassurance throughout checkout.",
       notes: "Updated after interview review",
       sourceType: "manual",
     });
     expect(
-      protoPersona?.axes.map((axis: { key: string }) => axis.key),
+      syntheticUser?.axes.map((axis: { key: string }) => axis.key),
     ).toEqual(["patience"]);
-    expect(protoPersona?.evidenceSnippets).toEqual([
+    expect(syntheticUser?.evidenceSnippets).toEqual([
       "Abandons flows after unexpected fees.",
     ]);
   });
 
-  it("deletes proto-personas from draft packs, including the last remaining proto-persona", async () => {
+  it("deletes synthetic users from draft packs, including the last remaining synthetic user", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createDraftPack(t);
-    const firstProtoPersonaId = await insertProtoPersona(t, packId, {
-      name: "First proto-persona",
+    const firstSyntheticUserId = await insertSyntheticUser(t, packId, {
+      name: "First synthetic user",
     });
-    const secondProtoPersonaId = await insertProtoPersona(t, packId, {
-      name: "Second proto-persona",
-    });
-
-    await asResearcher.mutation(api.personaPacks.deleteProtoPersona, {
-      protoPersonaId: firstProtoPersonaId,
+    const secondSyntheticUserId = await insertSyntheticUser(t, packId, {
+      name: "Second synthetic user",
     });
 
-    expect(
-      await asResearcher.query(api.personaPacks.listProtoPersonas, { packId }),
-    ).toMatchObject([{ _id: secondProtoPersonaId, name: "Second proto-persona" }]);
-
-    await asResearcher.mutation(api.personaPacks.deleteProtoPersona, {
-      protoPersonaId: secondProtoPersonaId,
+    await asResearcher.mutation(api.personaPacks.deleteSyntheticUser, {
+      syntheticUserId: firstSyntheticUserId,
     });
 
     expect(
-      await asResearcher.query(api.personaPacks.listProtoPersonas, { packId }),
+      await asResearcher.query(api.personaPacks.listSyntheticUsers, { packId }),
+    ).toMatchObject([{ _id: secondSyntheticUserId, name: "Second synthetic user" }]);
+
+    await asResearcher.mutation(api.personaPacks.deleteSyntheticUser, {
+      syntheticUserId: secondSyntheticUserId,
+    });
+
+    expect(
+      await asResearcher.query(api.personaPacks.listSyntheticUsers, { packId }),
     ).toEqual([]);
     await expect(
       asResearcher.mutation(api.personaPacks.publish, { packId }),
-    ).rejects.toThrow("proto-persona");
+    ).rejects.toThrow("synthetic user");
   });
 
   it("rejects create, update, and delete for published or archived packs", async () => {
@@ -209,85 +209,85 @@ describe("proto persona CRUD", () => {
     const asResearcher = t.withIdentity(researchIdentity);
     const publishedPackId = await createPublishedPack(t);
     const archivedPackId = await createArchivedPack(t);
-    const publishedProtoPersonaId = await getFirstProtoPersonaId(t, publishedPackId);
-    const archivedProtoPersonaId = await getFirstProtoPersonaId(t, archivedPackId);
+    const publishedSyntheticUserId = await getFirstSyntheticUserId(t, publishedPackId);
+    const archivedSyntheticUserId = await getFirstSyntheticUserId(t, archivedPackId);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createProtoPersona, {
+      asResearcher.mutation(api.personaPacks.createSyntheticUser, {
         packId: publishedPackId,
-        protoPersona: makeProtoPersonaInput(),
+        syntheticUser: makeSyntheticUserInput(),
       }),
     ).rejects.toThrow(/published/i);
     await expect(
-      asResearcher.mutation(api.personaPacks.createProtoPersona, {
+      asResearcher.mutation(api.personaPacks.createSyntheticUser, {
         packId: archivedPackId,
-        protoPersona: makeProtoPersonaInput(),
+        syntheticUser: makeSyntheticUserInput(),
       }),
     ).rejects.toThrow(/archived/i);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.updateProtoPersona, {
-        protoPersonaId: publishedProtoPersonaId,
+      asResearcher.mutation(api.personaPacks.updateSyntheticUser, {
+        syntheticUserId: publishedSyntheticUserId,
         patch: { name: "Nope" },
       }),
     ).rejects.toThrow(/published/i);
     await expect(
-      asResearcher.mutation(api.personaPacks.updateProtoPersona, {
-        protoPersonaId: archivedProtoPersonaId,
+      asResearcher.mutation(api.personaPacks.updateSyntheticUser, {
+        syntheticUserId: archivedSyntheticUserId,
         patch: { name: "Nope" },
       }),
     ).rejects.toThrow(/archived/i);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.deleteProtoPersona, {
-        protoPersonaId: publishedProtoPersonaId,
+      asResearcher.mutation(api.personaPacks.deleteSyntheticUser, {
+        syntheticUserId: publishedSyntheticUserId,
       }),
     ).rejects.toThrow(/published/i);
     await expect(
-      asResearcher.mutation(api.personaPacks.deleteProtoPersona, {
-        protoPersonaId: archivedProtoPersonaId,
+      asResearcher.mutation(api.personaPacks.deleteSyntheticUser, {
+        syntheticUserId: archivedSyntheticUserId,
       }),
     ).rejects.toThrow(/archived/i);
   });
 
-  it("preserves evidence snippets in order and enforces a maximum of 10 proto-personas per pack", async () => {
+  it("preserves evidence snippets in order and enforces a maximum of 10 synthetic users per pack", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await createDraftPack(t);
 
     for (let index = 0; index < 9; index += 1) {
-      await insertProtoPersona(t, packId, {
-        name: `Existing proto-persona ${index + 1}`,
+      await insertSyntheticUser(t, packId, {
+        name: `Existing synthetic user ${index + 1}`,
       });
     }
 
-    const tenthProtoPersonaId = await asResearcher.mutation(
-      api.personaPacks.createProtoPersona,
+    const tenthSyntheticUserId = await asResearcher.mutation(
+      api.personaPacks.createSyntheticUser,
       {
         packId,
-        protoPersona: makeProtoPersonaInput({
-          name: "Tenth proto-persona",
+        syntheticUser: makeSyntheticUserInput({
+          name: "Tenth synthetic user",
           evidenceSnippets: ["Snippet 1", "Snippet 2", "Snippet 3"],
         }),
       },
     );
 
-    const tenthProtoPersona = await asResearcher.query(api.personaPacks.getProtoPersona, {
-      protoPersonaId: tenthProtoPersonaId,
+    const tenthSyntheticUser = await asResearcher.query(api.personaPacks.getSyntheticUser, {
+      syntheticUserId: tenthSyntheticUserId,
     });
 
-    expect(tenthProtoPersona?.evidenceSnippets).toEqual([
+    expect(tenthSyntheticUser?.evidenceSnippets).toEqual([
       "Snippet 1",
       "Snippet 2",
       "Snippet 3",
     ]);
 
     await expect(
-      asResearcher.mutation(api.personaPacks.createProtoPersona, {
+      asResearcher.mutation(api.personaPacks.createSyntheticUser, {
         packId,
-        protoPersona: makeProtoPersonaInput({ name: "Eleventh proto-persona" }),
+        syntheticUser: makeSyntheticUserInput({ name: "Eleventh synthetic user" }),
       }),
-    ).rejects.toThrow("maximum of 10 proto-personas");
+    ).rejects.toThrow("maximum of 10 synthetic users");
   });
 
   it("applies transcript-derived archetypes to a draft pack with source refs and updated shared axes", async () => {
@@ -302,8 +302,8 @@ describe("proto persona CRUD", () => {
       }),
     ];
 
-    const createdProtoPersonaIds = await asResearcher.mutation(
-      api.personaPacks.applyTranscriptDerivedProtoPersonas,
+    const createdSyntheticUserIds = await asResearcher.mutation(
+      api.personaPacks.applyTranscriptDerivedSyntheticUsers,
       {
         packId,
         input: {
@@ -331,16 +331,16 @@ describe("proto persona CRUD", () => {
     );
 
     const pack = await asResearcher.query(api.personaPacks.get, { packId });
-    const protoPersonas = await asResearcher.query(api.personaPacks.listProtoPersonas, {
+    const syntheticUsers = await asResearcher.query(api.personaPacks.listSyntheticUsers, {
       packId,
     });
 
-    expect(createdProtoPersonaIds).toHaveLength(1);
+    expect(createdSyntheticUserIds).toHaveLength(1);
     expect(pack?.sharedAxes).toMatchObject(sharedAxes);
-    expect(protoPersonas).toEqual(
+    expect(syntheticUsers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          _id: createdProtoPersonaIds[0],
+          _id: createdSyntheticUserIds[0],
           sourceType: "transcript_derived",
           sourceRefs: ["transcript-1", "transcript-2"],
           evidenceSnippets: [
@@ -371,7 +371,7 @@ type CreateDraftInput = {
   sharedAxes: AxisInput[];
 };
 
-type CreateProtoPersonaInput = {
+type CreateSyntheticUserInput = {
   name: string;
   summary: string;
   axes: AxisInput[];
@@ -391,7 +391,7 @@ async function createDraftPack(t: TestInstance) {
 async function createPublishedPack(t: TestInstance) {
   const asResearcher = t.withIdentity(researchIdentity);
   const packId = await createDraftPack(t);
-  await insertProtoPersona(t, packId);
+  await insertSyntheticUser(t, packId);
   await asResearcher.mutation(api.personaPacks.publish, { packId });
   return packId;
 }
@@ -403,30 +403,30 @@ async function createArchivedPack(t: TestInstance) {
   return packId;
 }
 
-async function getFirstProtoPersonaId(
+async function getFirstSyntheticUserId(
   t: TestInstance,
   packId: Id<"personaPacks">,
 ) {
-  const protoPersonas = await t.run(async (ctx) =>
+  const syntheticUsers = await t.run(async (ctx) =>
     ctx.db
-      .query("protoPersonas")
+      .query("syntheticUsers")
       .withIndex("by_packId", (q) => q.eq("packId", packId))
       .take(1),
   );
 
-  return protoPersonas[0]!._id;
+  return syntheticUsers[0]!._id;
 }
 
-async function insertProtoPersona(
+async function insertSyntheticUser(
   t: TestInstance,
   packId: Id<"personaPacks">,
-  overrides: Partial<CreateProtoPersonaInput> = {},
+  overrides: Partial<CreateSyntheticUserInput> = {},
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+    ctx.db.insert("syntheticUsers", {
       packId,
-      name: "Proto Persona",
-      summary: "A draft proto-persona",
+      name: "Synthetic User",
+      summary: "A draft synthetic user",
       axes: [makeAxis()],
       sourceType: "manual",
       sourceRefs: [],

@@ -25,15 +25,15 @@ export type VariantReviewData = {
       weight: number;
     }[];
   };
-  protoPersonas: {
+  syntheticUsers: {
     _id: string;
     name: string;
     summary: string;
   }[];
   variants: {
     _id: string;
-    protoPersonaId: string;
-    protoPersonaName: string;
+    syntheticUserId: string;
+    syntheticUserName: string;
     axisValues: { key: string; value: number }[];
     edgeScore: number;
     coherenceScore: number;
@@ -47,12 +47,12 @@ type SortDirection = "asc" | "desc";
 
 export function PersonaVariantReviewGrid({
   reviewData,
-  emptyMessage = "No accepted variants match the current filters. Adjust the proto-persona or axis range to review a broader slice of the cohort.",
+  emptyMessage = "No accepted variants match the current filters. Adjust the synthetic user or axis range to review a broader slice of the cohort.",
 }: {
   reviewData: VariantReviewData;
   emptyMessage?: string;
 }) {
-  const [selectedProtoPersonaId, setSelectedProtoPersonaId] = useState("all");
+  const [selectedSyntheticUserId, setSelectedSyntheticUserId] = useState("all");
   const [selectedAxisKey, setSelectedAxisKey] = useState(
     reviewData.pack.sharedAxes[0]?.key ?? "",
   );
@@ -62,9 +62,9 @@ export function PersonaVariantReviewGrid({
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   useEffect(() => {
-    setSelectedProtoPersonaId((current) =>
+    setSelectedSyntheticUserId((current) =>
       current === "all" ||
-      reviewData.protoPersonas.some((protoPersona) => protoPersona._id === current)
+      reviewData.syntheticUsers.some((syntheticUser) => syntheticUser._id === current)
         ? current
         : "all",
     );
@@ -73,7 +73,7 @@ export function PersonaVariantReviewGrid({
         ? current
         : (reviewData.pack.sharedAxes[0]?.key ?? ""),
     );
-  }, [reviewData.pack._id, reviewData.pack.sharedAxes, reviewData.protoPersonas]);
+  }, [reviewData.pack._id, reviewData.pack.sharedAxes, reviewData.syntheticUsers]);
 
   const filteredVariants = useMemo(() => {
     const minimum = parseNumericFilter(minimumAxisValue);
@@ -82,8 +82,8 @@ export function PersonaVariantReviewGrid({
     return [...reviewData.variants]
       .filter((variant) => {
         if (
-          selectedProtoPersonaId !== "all" &&
-          variant.protoPersonaId !== selectedProtoPersonaId
+          selectedSyntheticUserId !== "all" &&
+          variant.syntheticUserId !== selectedSyntheticUserId
         ) {
           return false;
         }
@@ -113,7 +113,7 @@ export function PersonaVariantReviewGrid({
     minimumAxisValue,
     reviewData.variants,
     selectedAxisKey,
-    selectedProtoPersonaId,
+    selectedSyntheticUserId,
     sortDirection,
     sortKey,
   ]);
@@ -134,18 +134,18 @@ export function PersonaVariantReviewGrid({
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-4">
             <div className="grid gap-2">
-              <Label htmlFor="proto-persona-filter">Proto-persona filter</Label>
+              <Label htmlFor="synthetic-user-filter">Synthetic user filter</Label>
               <select
-                aria-label="Proto-persona filter"
+                aria-label="Synthetic user filter"
                 className={selectClassName}
-                id="proto-persona-filter"
-                value={selectedProtoPersonaId}
-                onChange={(event) => setSelectedProtoPersonaId(event.target.value)}
+                id="synthetic-user-filter"
+                value={selectedSyntheticUserId}
+                onChange={(event) => setSelectedSyntheticUserId(event.target.value)}
               >
-                <option value="all">All proto-personas</option>
-                {reviewData.protoPersonas.map((protoPersona) => (
-                  <option key={protoPersona._id} value={protoPersona._id}>
-                    {protoPersona.name}
+                <option value="all">All synthetic users</option>
+                {reviewData.syntheticUsers.map((syntheticUser) => (
+                  <option key={syntheticUser._id} value={syntheticUser._id}>
+                    {syntheticUser.name}
                   </option>
                 ))}
               </select>
@@ -216,7 +216,7 @@ export function PersonaVariantReviewGrid({
                 <table className="min-w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b">
-                      <HeaderCell>Proto-persona</HeaderCell>
+                      <HeaderCell>Synthetic user</HeaderCell>
                       {reviewData.pack.sharedAxes.map((axis) => (
                         <HeaderCell key={axis.key}>{axis.label}</HeaderCell>
                       ))}
@@ -253,11 +253,11 @@ export function PersonaVariantReviewGrid({
                       >
                         <BodyCell>
                           <div className="space-y-1">
-                            <p className="font-medium">{variant.protoPersonaName}</p>
+                            <p className="font-medium">{variant.syntheticUserName}</p>
                             <p className="text-xs text-muted-foreground">
-                              {reviewData.protoPersonas.find(
-                                (protoPersona) =>
-                                  protoPersona._id === variant.protoPersonaId,
+                              {reviewData.syntheticUsers.find(
+                                (syntheticUser) =>
+                                  syntheticUser._id === variant.syntheticUserId,
                               )?.summary ?? "Synthetic persona variant"}
                             </p>
                           </div>
@@ -291,7 +291,7 @@ export function PersonaVariantReviewGrid({
             <CardTitle>Review checklist</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>• Confirm each proto-persona is represented in the accepted set.</p>
+            <p>• Confirm each synthetic user is represented in the accepted set.</p>
             <p>• Spot-check outliers with high edge scores.</p>
             <p>• Compare coherence and distinctness before launching the study.</p>
           </CardContent>

@@ -72,7 +72,7 @@ async function createValidExecuteRunRequest(overrides: Partial<ExecuteRunRequest
     personaVariant: {
       id: "pv_001",
       personaPackId: "pp_001",
-      protoPersonaId: "proto_001",
+      syntheticUserId: "proto_001",
       axisValues: { techSavviness: 0.8, patience: -0.3 },
       edgeScore: 0.75,
       tensionSeed: "Frustrated by slow loading times",

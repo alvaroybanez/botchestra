@@ -48,7 +48,7 @@ const demoReviewData: VariantReviewData = {
       },
     ],
   },
-  protoPersonas: [
+  syntheticUsers: [
     {
       _id: "proto-cautious",
       name: "Cautious checkout shopper",
@@ -63,8 +63,8 @@ const demoReviewData: VariantReviewData = {
   variants: [
     {
       _id: "variant-cautious-edge",
-      protoPersonaId: "proto-cautious",
-      protoPersonaName: "Cautious checkout shopper",
+      syntheticUserId: "proto-cautious",
+      syntheticUserName: "Cautious checkout shopper",
       axisValues: [
         { key: "digital_confidence", value: -0.68 },
         { key: "support_needs", value: 0.74 },
@@ -77,8 +77,8 @@ const demoReviewData: VariantReviewData = {
     },
     {
       _id: "variant-power-balanced",
-      protoPersonaId: "proto-power",
-      protoPersonaName: "Goal-driven power user",
+      syntheticUserId: "proto-power",
+      syntheticUserName: "Goal-driven power user",
       axisValues: [
         { key: "digital_confidence", value: 0.82 },
         { key: "support_needs", value: -0.56 },
@@ -91,8 +91,8 @@ const demoReviewData: VariantReviewData = {
     },
     {
       _id: "variant-cautious-interior",
-      protoPersonaId: "proto-cautious",
-      protoPersonaName: "Cautious checkout shopper",
+      syntheticUserId: "proto-cautious",
+      syntheticUserName: "Cautious checkout shopper",
       axisValues: [
         { key: "digital_confidence", value: 0.18 },
         { key: "support_needs", value: 0.33 },
@@ -262,7 +262,7 @@ function VariantReviewContent({
               Persona Variant Review
             </h2>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review accepted variants for this study, filter by proto-persona or
+              Review accepted variants for this study, filter by synthetic user or
               axis range, and inspect the score distribution before launch.
             </p>
           </div>

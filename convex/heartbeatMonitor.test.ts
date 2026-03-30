@@ -185,15 +185,15 @@ async function insertRun(
       throw new Error("Study not found.");
     }
 
-    const protoPersonaId = await t.run(async (ctx) =>
+    const syntheticUserId = await t.run(async (ctx) =>
       ctx.db
-        .query("protoPersonas")
+        .query("syntheticUsers")
         .withIndex("by_packId", (q) => q.eq("packId", study.personaPackId))
         .unique(),
     );
 
-    if (protoPersonaId === null) {
-      throw new Error("Proto persona not found.");
+    if (syntheticUserId === null) {
+      throw new Error("Synthetic user not found.");
     }
 
     const personaVariantId = await t.run(async (ctx) =>
@@ -211,7 +211,7 @@ async function insertRun(
       ctx.db.insert("runs", {
         studyId: study._id,
         personaVariantId: personaVariantId._id,
-        protoPersonaId: protoPersonaId._id,
+        syntheticUserId: syntheticUserId._id,
         status: "queued",
         frustrationCount: 0,
         milestoneKeys: [],
@@ -251,8 +251,8 @@ async function insertRun(
     }),
   );
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
@@ -267,7 +267,7 @@ async function insertRun(
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: packId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,
       tensionSeed: "Moves quickly through checkout",
@@ -286,7 +286,7 @@ async function insertRun(
     ctx.db.insert("runs", {
       studyId,
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       status: "queued",
       frustrationCount: 0,
       milestoneKeys: [],

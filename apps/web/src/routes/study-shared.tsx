@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 export type StudyDetailSearch = {
   outcome: string | undefined;
-  protoPersonaId: string | undefined;
+  syntheticUserId: string | undefined;
   finalUrlContains: string | undefined;
   severity: string | undefined;
   axisKey: string | undefined;
@@ -20,7 +20,7 @@ export type StudyReportSearch = StudyDetailSearch & {
 
 export const emptyStudyDetailSearch: StudyDetailSearch = {
   outcome: undefined,
-  protoPersonaId: undefined,
+  syntheticUserId: undefined,
   finalUrlContains: undefined,
   severity: undefined,
   axisKey: undefined,
@@ -61,7 +61,7 @@ export const studyTabs = [
 export function validateStudyDetailSearch(search: Record<string, unknown>) {
   return {
     outcome: normalizeOptionalString(search.outcome),
-    protoPersonaId: normalizeOptionalString(search.protoPersonaId),
+    syntheticUserId: normalizeOptionalString(search.syntheticUserId),
     finalUrlContains: normalizeOptionalString(search.finalUrlContains),
     severity: normalizeOptionalString(search.severity),
     axisKey: normalizeOptionalString(search.axisKey),

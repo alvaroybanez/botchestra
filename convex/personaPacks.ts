@@ -67,11 +67,11 @@ const updateDraftSchema = z
     "At least one draft field must be provided.",
   );
 
-const MAX_PROTO_PERSONAS_PER_PACK = 10;
+const MAX_SYNTHETIC_USERS_PER_PACK = 10;
 
-const protoPersonaAxisSchema = z
+const syntheticUserAxisSchema = z
   .array(axisSchema)
-  .min(1, "At least one proto-persona axis is required.")
+  .min(1, "At least one synthetic user axis is required.")
   .superRefine((axes, ctx) => {
     const seen = new Set<string>();
 
@@ -80,7 +80,7 @@ const protoPersonaAxisSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [index, "key"],
-          message: "Proto-persona axis keys must be unique.",
+          message: "Synthetic user axis keys must be unique.",
         });
         return;
       }
@@ -89,25 +89,25 @@ const protoPersonaAxisSchema = z
     });
   });
 
-const protoPersonaSchema = z.object({
-  name: requiredString("Proto-persona name"),
-  summary: requiredString("Proto-persona summary"),
-  axes: protoPersonaAxisSchema,
+const syntheticUserSchema = z.object({
+  name: requiredString("Synthetic user name"),
+  summary: requiredString("Synthetic user summary"),
+  axes: syntheticUserAxisSchema,
   evidenceSnippets: z.array(requiredString("Evidence snippet")),
-  notes: requiredString("Proto-persona notes").optional(),
+  notes: requiredString("Synthetic user notes").optional(),
 });
 
-const updateProtoPersonaSchema = z
+const updateSyntheticUserSchema = z
   .object({
-    name: requiredString("Proto-persona name").optional(),
-    summary: requiredString("Proto-persona summary").optional(),
-    axes: protoPersonaAxisSchema.optional(),
+    name: requiredString("Synthetic user name").optional(),
+    summary: requiredString("Synthetic user summary").optional(),
+    axes: syntheticUserAxisSchema.optional(),
     evidenceSnippets: z.array(requiredString("Evidence snippet")).optional(),
-    notes: requiredString("Proto-persona notes").optional(),
+    notes: requiredString("Synthetic user notes").optional(),
   })
   .refine(
     (patch) => Object.values(patch).some((value) => value !== undefined),
-    "At least one proto-persona field must be provided.",
+    "At least one synthetic user field must be provided.",
   );
 
 const archetypeAxisValueSchema = z
@@ -155,7 +155,7 @@ const transcriptDerivedArchetypeSchema = z.object({
   notes: requiredString("Archetype notes").optional(),
 });
 
-const applyTranscriptDerivedProtoPersonasSchema = z.object({
+const applyTranscriptDerivedSyntheticUsersSchema = z.object({
   sharedAxes: sharedAxesSchema,
   archetypes: z
     .array(transcriptDerivedArchetypeSchema)
@@ -169,11 +169,11 @@ const importedPackJsonSchema = z.object({
   status: draftStatusSchema.optional(),
   version: z.number().int().positive().optional(),
   sharedAxes: sharedAxesSchema,
-  protoPersonas: z
-    .array(protoPersonaSchema)
+  syntheticUsers: z
+    .array(syntheticUserSchema)
     .max(
-      MAX_PROTO_PERSONAS_PER_PACK,
-      `A pack may contain a maximum of ${MAX_PROTO_PERSONAS_PER_PACK} proto-personas.`,
+      MAX_SYNTHETIC_USERS_PER_PACK,
+      `A pack may contain a maximum of ${MAX_SYNTHETIC_USERS_PER_PACK} synthetic users.`,
     ),
 });
 
@@ -209,7 +209,7 @@ const updateDraftValidator = v.object({
   sharedAxes: v.optional(sharedAxesValidator),
 });
 
-const protoPersonaValidator = v.object({
+const syntheticUserValidator = v.object({
   name: v.string(),
   summary: v.string(),
   axes: v.array(axisValidator),
@@ -217,7 +217,7 @@ const protoPersonaValidator = v.object({
   notes: v.optional(v.string()),
 });
 
-const updateProtoPersonaValidator = v.object({
+const updateSyntheticUserValidator = v.object({
   name: v.optional(v.string()),
   summary: v.optional(v.string()),
   axes: v.optional(v.array(axisValidator)),
@@ -255,7 +255,7 @@ const importedPackJsonValidator = v.object({
   status: v.optional(draftStatusValidator),
   version: v.optional(v.number()),
   sharedAxes: sharedAxesValidator,
-  protoPersonas: v.array(protoPersonaValidator),
+  syntheticUsers: v.array(syntheticUserValidator),
 });
 
 export const createDraft = mutation({
@@ -366,18 +366,18 @@ export const publish = mutation({
       throw new ConvexError("Archived persona packs cannot be published.");
     }
 
-    const hasProtoPersonas = await packHasProtoPersonas(ctx, args.packId);
+    const hasSyntheticUsers = await packHasSyntheticUsers(ctx, args.packId);
 
-    if (!hasProtoPersonas) {
+    if (!hasSyntheticUsers) {
       throw new ConvexError(
-        "At least one proto-persona is required before publishing a pack.",
+        "At least one synthetic user is required before publishing a pack.",
       );
     }
 
-    const protoPersonas = await listProtoPersonasForPack(ctx, args.packId);
+    const syntheticUsers = await listSyntheticUsersForPack(ctx, args.packId);
 
-    for (const protoPersona of protoPersonas) {
-      assertProtoPersonaAxisKeys(pack.sharedAxes, protoPersona.axes);
+    for (const syntheticUser of syntheticUsers) {
+      assertSyntheticUserAxisKeys(pack.sharedAxes, syntheticUser.axes);
     }
 
     await ctx.runMutation(internal.axisLibrary.upsertSharedAxesFromPackPublish, {
@@ -423,16 +423,16 @@ export const archive = mutation({
   },
 });
 
-export const createProtoPersona = mutation({
+export const createSyntheticUser = mutation({
   args: {
     packId: v.id("personaPacks"),
-    protoPersona: protoPersonaValidator,
+    syntheticUser: syntheticUserValidator,
   },
   handler: async (ctx, args) => {
     const parsedArgs = z
       .object({
         packId: z.string(),
-        protoPersona: protoPersonaSchema,
+        syntheticUser: syntheticUserSchema,
       })
       .parse(args);
     const packId = parsedArgs.packId as Id<"personaPacks">;
@@ -440,85 +440,85 @@ export const createProtoPersona = mutation({
     const pack = await getPackForIdentity(ctx, packId, identity.tokenIdentifier);
 
     assertPackIsDraft(pack);
-    assertProtoPersonaAxisKeys(pack.sharedAxes, parsedArgs.protoPersona.axes);
-    await assertProtoPersonaCapacity(ctx, packId);
+    assertSyntheticUserAxisKeys(pack.sharedAxes, parsedArgs.syntheticUser.axes);
+    await assertSyntheticUserCapacity(ctx, packId);
 
-    const protoPersonaId = await ctx.db.insert("protoPersonas", {
+    const syntheticUserId = await ctx.db.insert("syntheticUsers", {
       packId,
-      name: parsedArgs.protoPersona.name,
-      summary: parsedArgs.protoPersona.summary,
-      axes: parsedArgs.protoPersona.axes,
+      name: parsedArgs.syntheticUser.name,
+      summary: parsedArgs.syntheticUser.summary,
+      axes: parsedArgs.syntheticUser.axes,
       sourceType: "manual",
       sourceRefs: [],
-      evidenceSnippets: parsedArgs.protoPersona.evidenceSnippets,
-      ...(parsedArgs.protoPersona.notes !== undefined
-        ? { notes: parsedArgs.protoPersona.notes }
+      evidenceSnippets: parsedArgs.syntheticUser.evidenceSnippets,
+      ...(parsedArgs.syntheticUser.notes !== undefined
+        ? { notes: parsedArgs.syntheticUser.notes }
         : {}),
     });
 
     await touchPack(ctx, packId, identity.tokenIdentifier);
 
-    return protoPersonaId;
+    return syntheticUserId;
   },
 });
 
-export const updateProtoPersona = mutation({
+export const updateSyntheticUser = mutation({
   args: {
-    protoPersonaId: v.id("protoPersonas"),
-    patch: updateProtoPersonaValidator,
+    syntheticUserId: v.id("syntheticUsers"),
+    patch: updateSyntheticUserValidator,
   },
   handler: async (ctx, args) => {
     const parsedArgs = z
       .object({
-        protoPersonaId: z.string(),
-        patch: updateProtoPersonaSchema,
+        syntheticUserId: z.string(),
+        patch: updateSyntheticUserSchema,
       })
       .parse(args);
-    const protoPersonaId = parsedArgs.protoPersonaId as Id<"protoPersonas">;
+    const syntheticUserId = parsedArgs.syntheticUserId as Id<"syntheticUsers">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const { pack } = await getProtoPersonaForIdentity(
+    const { pack } = await getSyntheticUserForIdentity(
       ctx,
-      protoPersonaId,
+      syntheticUserId,
       identity.tokenIdentifier,
     );
 
     assertPackIsDraft(pack);
 
     if (parsedArgs.patch.axes !== undefined) {
-      assertProtoPersonaAxisKeys(pack.sharedAxes, parsedArgs.patch.axes);
+      assertSyntheticUserAxisKeys(pack.sharedAxes, parsedArgs.patch.axes);
     }
 
-    await ctx.db.patch(protoPersonaId, {
+    await ctx.db.patch(syntheticUserId, {
       ...parsedArgs.patch,
     });
     await touchPack(ctx, pack._id, identity.tokenIdentifier);
 
-    return protoPersonaId;
+    return syntheticUserId;
   },
 });
 
-export const deleteProtoPersona = mutation({
+export const deleteSyntheticUser = mutation({
   args: {
-    protoPersonaId: v.id("protoPersonas"),
+    syntheticUserId: v.id("syntheticUsers"),
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const { pack } = await getProtoPersonaForIdentity(
+    const { pack } = await getSyntheticUserForIdentity(
       ctx,
-      args.protoPersonaId,
+      args.syntheticUserId,
       identity.tokenIdentifier,
     );
 
     assertPackIsDraft(pack);
 
-    await ctx.db.delete(args.protoPersonaId);
+    await ctx.db.delete(args.syntheticUserId);
     await touchPack(ctx, pack._id, identity.tokenIdentifier);
 
-    return args.protoPersonaId;
+    return args.syntheticUserId;
   },
 });
 
-export const applyTranscriptDerivedProtoPersonas = mutation({
+export const applyTranscriptDerivedSyntheticUsers = mutation({
   args: {
     packId: v.id("personaPacks"),
     input: v.object({
@@ -530,7 +530,7 @@ export const applyTranscriptDerivedProtoPersonas = mutation({
     const parsedArgs = z
       .object({
         packId: z.string(),
-        input: applyTranscriptDerivedProtoPersonasSchema,
+        input: applyTranscriptDerivedSyntheticUsersSchema,
       })
       .parse(args);
     const packId = parsedArgs.packId as Id<"personaPacks">;
@@ -538,7 +538,7 @@ export const applyTranscriptDerivedProtoPersonas = mutation({
     const pack = await getPackForIdentity(ctx, packId, identity.tokenIdentifier);
 
     assertPackIsDraft(pack);
-    await assertProtoPersonaCapacityForBatch(
+    await assertSyntheticUserCapacityForBatch(
       ctx,
       packId,
       parsedArgs.input.archetypes.length,
@@ -554,10 +554,10 @@ export const applyTranscriptDerivedProtoPersonas = mutation({
       updatedBy: identity.tokenIdentifier,
     });
 
-    const createdProtoPersonaIds: Id<"protoPersonas">[] = [];
+    const createdSyntheticUserIds: Id<"syntheticUsers">[] = [];
 
     for (const archetype of parsedArgs.input.archetypes) {
-      const protoPersonaId = await ctx.db.insert("protoPersonas", {
+      const syntheticUserId = await ctx.db.insert("syntheticUsers", {
         packId,
         name: archetype.name,
         summary: archetype.summary,
@@ -570,12 +570,12 @@ export const applyTranscriptDerivedProtoPersonas = mutation({
           : {}),
       });
 
-      createdProtoPersonaIds.push(protoPersonaId);
+      createdSyntheticUserIds.push(syntheticUserId);
     }
 
     await touchPack(ctx, packId, identity.tokenIdentifier);
 
-    return createdProtoPersonaIds;
+    return createdSyntheticUserIds;
   },
 });
 
@@ -608,22 +608,22 @@ export const list = query({
   },
 });
 
-export const getProtoPersona = query({
+export const getSyntheticUser = query({
   args: {
-    protoPersonaId: v.id("protoPersonas"),
+    syntheticUserId: v.id("syntheticUsers"),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
 
-    return await getProtoPersonaOrNull(
+    return await getSyntheticUserOrNull(
       ctx,
-      args.protoPersonaId,
+      args.syntheticUserId,
       identity.tokenIdentifier,
     );
   },
 });
 
-export const listProtoPersonas = query({
+export const listSyntheticUsers = query({
   args: {
     packId: v.id("personaPacks"),
   },
@@ -636,9 +636,9 @@ export const listProtoPersonas = query({
     }
 
     return await ctx.db
-      .query("protoPersonas")
+      .query("syntheticUsers")
       .withIndex("by_packId", (q) => q.eq("packId", args.packId))
-      .take(MAX_PROTO_PERSONAS_PER_PACK);
+      .take(MAX_SYNTHETIC_USERS_PER_PACK);
   },
 });
 
@@ -671,17 +671,17 @@ export const persistImportedPack = internalMutation({
       updatedAt: now,
     });
 
-    for (const protoPersona of parsedArgs.importedPack.protoPersonas) {
-      await ctx.db.insert("protoPersonas", {
+    for (const syntheticUser of parsedArgs.importedPack.syntheticUsers) {
+      await ctx.db.insert("syntheticUsers", {
         packId,
-        name: protoPersona.name,
-        summary: protoPersona.summary,
-        axes: protoPersona.axes,
+        name: syntheticUser.name,
+        summary: syntheticUser.summary,
+        axes: syntheticUser.axes,
         sourceType: "json_import",
         sourceRefs: [],
-        evidenceSnippets: protoPersona.evidenceSnippets,
-        ...(protoPersona.notes !== undefined
-          ? { notes: protoPersona.notes }
+        evidenceSnippets: syntheticUser.evidenceSnippets,
+        ...(syntheticUser.notes !== undefined
+          ? { notes: syntheticUser.notes }
           : {}),
       });
     }
@@ -697,10 +697,10 @@ export const getExportPayload = internalQuery({
   },
   handler: async (ctx, args) => {
     const pack = await getPackForOrg(ctx, args.packId, args.orgId);
-    const protoPersonas = await ctx.db
-      .query("protoPersonas")
+    const syntheticUsers = await ctx.db
+      .query("syntheticUsers")
       .withIndex("by_packId", (q) => q.eq("packId", args.packId))
-      .take(MAX_PROTO_PERSONAS_PER_PACK);
+      .take(MAX_SYNTHETIC_USERS_PER_PACK);
 
     return {
       name: pack.name,
@@ -708,13 +708,13 @@ export const getExportPayload = internalQuery({
       context: pack.context,
       status: pack.status,
       sharedAxes: pack.sharedAxes,
-      protoPersonas: protoPersonas.map((protoPersona) => ({
-        name: protoPersona.name,
-        summary: protoPersona.summary,
-        axes: protoPersona.axes,
-        evidenceSnippets: protoPersona.evidenceSnippets,
-        ...(protoPersona.notes !== undefined
-          ? { notes: protoPersona.notes }
+      syntheticUsers: syntheticUsers.map((syntheticUser) => ({
+        name: syntheticUser.name,
+        summary: syntheticUser.summary,
+        axes: syntheticUser.axes,
+        evidenceSnippets: syntheticUser.evidenceSnippets,
+        ...(syntheticUser.notes !== undefined
+          ? { notes: syntheticUser.notes }
           : {}),
       })),
     };
@@ -753,47 +753,47 @@ async function getPackForOrg(
   return pack;
 }
 
-async function getProtoPersonaOrNull(
+async function getSyntheticUserOrNull(
   ctx: QueryCtx | MutationCtx,
-  protoPersonaId: Id<"protoPersonas">,
+  syntheticUserId: Id<"syntheticUsers">,
   orgId: string,
 ) {
-  const protoPersona = await ctx.db.get(protoPersonaId);
+  const syntheticUser = await ctx.db.get(syntheticUserId);
 
-  if (protoPersona === null) {
+  if (syntheticUser === null) {
     return null;
   }
 
-  const pack = await ctx.db.get(protoPersona.packId);
+  const pack = await ctx.db.get(syntheticUser.packId);
 
   if (pack === null || pack.orgId !== orgId) {
     return null;
   }
 
-  return protoPersona;
+  return syntheticUser;
 }
 
-async function getProtoPersonaForIdentity(
+async function getSyntheticUserForIdentity(
   ctx: QueryCtx | MutationCtx,
-  protoPersonaId: Id<"protoPersonas">,
+  syntheticUserId: Id<"syntheticUsers">,
   orgId: string,
 ) {
-  const protoPersona = await ctx.db.get(protoPersonaId);
+  const syntheticUser = await ctx.db.get(syntheticUserId);
 
-  if (protoPersona === null) {
-    throw new ConvexError("Proto-persona not found.");
+  if (syntheticUser === null) {
+    throw new ConvexError("Synthetic user not found.");
   }
 
-  const pack = await ctx.db.get(protoPersona.packId);
+  const pack = await ctx.db.get(syntheticUser.packId);
 
   if (pack === null || pack.orgId !== orgId) {
-    throw new ConvexError("Proto-persona not found.");
+    throw new ConvexError("Synthetic user not found.");
   }
 
-  return { protoPersona, pack };
+  return { syntheticUser, pack };
 }
 
-function assertProtoPersonaAxisKeys(
+function assertSyntheticUserAxisKeys(
   sharedAxes: readonly { key: string }[],
   axes: readonly { key: string }[],
 ) {
@@ -801,51 +801,51 @@ function assertProtoPersonaAxisKeys(
 
   if (!axes.every((axis) => validAxisKeys.has(axis.key))) {
     throw new ConvexError(
-      "Proto-persona axes must reference shared pack axis keys.",
+      "Synthetic user axes must reference shared pack axis keys.",
     );
   }
 }
 
-async function packHasProtoPersonas(
+async function packHasSyntheticUsers(
   ctx: MutationCtx,
   packId: Id<"personaPacks">,
 ) {
-  const protoPersonas = await listProtoPersonasForPack(ctx, packId, 1);
+  const syntheticUsers = await listSyntheticUsersForPack(ctx, packId, 1);
 
-  return protoPersonas.length > 0;
+  return syntheticUsers.length > 0;
 }
 
-async function assertProtoPersonaCapacity(
+async function assertSyntheticUserCapacity(
   ctx: MutationCtx,
   packId: Id<"personaPacks">,
 ) {
-  const protoPersonas = await listProtoPersonasForPack(
+  const syntheticUsers = await listSyntheticUsersForPack(
     ctx,
     packId,
-    MAX_PROTO_PERSONAS_PER_PACK,
+    MAX_SYNTHETIC_USERS_PER_PACK,
   );
 
-  if (protoPersonas.length >= MAX_PROTO_PERSONAS_PER_PACK) {
+  if (syntheticUsers.length >= MAX_SYNTHETIC_USERS_PER_PACK) {
     throw new ConvexError(
-      `A pack may contain a maximum of ${MAX_PROTO_PERSONAS_PER_PACK} proto-personas.`,
+      `A pack may contain a maximum of ${MAX_SYNTHETIC_USERS_PER_PACK} synthetic users.`,
     );
   }
 }
 
-async function assertProtoPersonaCapacityForBatch(
+async function assertSyntheticUserCapacityForBatch(
   ctx: MutationCtx,
   packId: Id<"personaPacks">,
   requestedCount: number,
 ) {
-  const protoPersonas = await listProtoPersonasForPack(
+  const syntheticUsers = await listSyntheticUsersForPack(
     ctx,
     packId,
-    MAX_PROTO_PERSONAS_PER_PACK,
+    MAX_SYNTHETIC_USERS_PER_PACK,
   );
 
-  if (protoPersonas.length + requestedCount > MAX_PROTO_PERSONAS_PER_PACK) {
+  if (syntheticUsers.length + requestedCount > MAX_SYNTHETIC_USERS_PER_PACK) {
     throw new ConvexError(
-      `A pack may contain a maximum of ${MAX_PROTO_PERSONAS_PER_PACK} proto-personas.`,
+      `A pack may contain a maximum of ${MAX_SYNTHETIC_USERS_PER_PACK} synthetic users.`,
     );
   }
 }
@@ -888,8 +888,8 @@ function parseImportedPackJson(json: string): ImportedPackJson {
     );
   }
 
-  for (const protoPersona of parsedPack.data.protoPersonas) {
-    assertProtoPersonaAxisKeys(parsedPack.data.sharedAxes, protoPersona.axes);
+  for (const syntheticUser of parsedPack.data.syntheticUsers) {
+    assertSyntheticUserAxisKeys(parsedPack.data.sharedAxes, syntheticUser.axes);
   }
 
   return parsedPack.data;
@@ -918,13 +918,13 @@ async function touchPack(
   });
 }
 
-async function listProtoPersonasForPack(
+async function listSyntheticUsersForPack(
   ctx: QueryCtx | MutationCtx,
   packId: Id<"personaPacks">,
-  limit = MAX_PROTO_PERSONAS_PER_PACK,
+  limit = MAX_SYNTHETIC_USERS_PER_PACK,
 ) {
   return await ctx.db
-    .query("protoPersonas")
+    .query("syntheticUsers")
     .withIndex("by_packId", (q) => q.eq("packId", packId))
     .take(limit);
 }

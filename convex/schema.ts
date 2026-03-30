@@ -257,8 +257,8 @@ export default defineSchema({
     .index("by_packId", ["packId"])
     .index("by_orgId", ["orgId"]),
 
-  // 3. protoPersonas
-  protoPersonas: defineTable({
+  // 3. syntheticUsers
+  syntheticUsers: defineTable({
     packId: v.id("personaPacks"),
     name: v.string(),
     summary: v.string(),
@@ -277,7 +277,7 @@ export default defineSchema({
   personaVariants: defineTable({
     studyId: v.id("studies"),
     personaPackId: v.id("personaPacks"),
-    protoPersonaId: v.id("protoPersonas"),
+    syntheticUserId: v.id("syntheticUsers"),
     axisValues: v.array(axisValueValidator),
     edgeScore: v.number(),
     tensionSeed: v.string(),
@@ -326,7 +326,7 @@ export default defineSchema({
   runs: defineTable({
     studyId: v.id("studies"),
     personaVariantId: v.id("personaVariants"),
-    protoPersonaId: v.id("protoPersonas"),
+    syntheticUserId: v.id("syntheticUsers"),
     status: v.union(
       v.literal("queued"),
       v.literal("dispatching"),
@@ -375,7 +375,7 @@ export default defineSchema({
   })
     .index("by_studyId", ["studyId"])
     .index("by_studyId_status", ["studyId", "status"])
-    .index("by_studyId_and_protoPersonaId", ["studyId", "protoPersonaId"])
+    .index("by_studyId_and_syntheticUserId", ["studyId", "syntheticUserId"])
     .index("by_status", ["status"]),
 
   // 7. runMilestones
@@ -407,7 +407,7 @@ export default defineSchema({
     ),
     affectedRunCount: v.number(),
     affectedRunRate: v.number(),
-    affectedProtoPersonaIds: v.array(v.id("protoPersonas")),
+    affectedSyntheticUserIds: v.array(v.id("syntheticUsers")),
     affectedAxisRanges: v.array(axisRangeValidator),
     representativeRunIds: v.array(v.id("runs")),
     replayConfidence: v.number(),

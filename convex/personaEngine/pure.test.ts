@@ -23,7 +23,7 @@ const axis = (key: string) => ({
 });
 
 describe("allocateVariants", () => {
-  it("splits the budget evenly when it is divisible by the proto-persona count", () => {
+  it("splits the budget evenly when it is divisible by the synthetic user count", () => {
     const allocations = allocateVariants(
       [
         { id: "alpha", axes: [axis("a")], evidenceSnippets: [] },
@@ -35,14 +35,14 @@ describe("allocateVariants", () => {
     );
 
     expect(allocations).toEqual([
-      { protoPersonaId: "alpha", variantCount: 16 },
-      { protoPersonaId: "beta", variantCount: 16 },
-      { protoPersonaId: "gamma", variantCount: 16 },
-      { protoPersonaId: "delta", variantCount: 16 },
+      { syntheticUserId: "alpha", variantCount: 16 },
+      { syntheticUserId: "beta", variantCount: 16 },
+      { syntheticUserId: "gamma", variantCount: 16 },
+      { syntheticUserId: "delta", variantCount: 16 },
     ]);
   });
 
-  it("distributes remainder variants to proto-personas with more axis overrides first", () => {
+  it("distributes remainder variants to synthetic users with more axis overrides first", () => {
     const allocations = allocateVariants(
       [
         { id: "simple", axes: [axis("a")], evidenceSnippets: ["one", "two"] },
@@ -62,10 +62,10 @@ describe("allocateVariants", () => {
     );
 
     expect(allocations).toEqual([
-      { protoPersonaId: "simple", variantCount: 16 },
-      { protoPersonaId: "complex-a", variantCount: 17 },
-      { protoPersonaId: "complex-b", variantCount: 17 },
-      { protoPersonaId: "medium", variantCount: 16 },
+      { syntheticUserId: "simple", variantCount: 16 },
+      { syntheticUserId: "complex-a", variantCount: 17 },
+      { syntheticUserId: "complex-b", variantCount: 17 },
+      { syntheticUserId: "medium", variantCount: 16 },
     ]);
   });
 
@@ -88,22 +88,22 @@ describe("allocateVariants", () => {
     );
 
     expect(allocations).toEqual([
-      { protoPersonaId: "more-evidence", variantCount: 4 },
-      { protoPersonaId: "less-evidence", variantCount: 3 },
-      { protoPersonaId: "baseline", variantCount: 3 },
+      { syntheticUserId: "more-evidence", variantCount: 4 },
+      { syntheticUserId: "less-evidence", variantCount: 3 },
+      { syntheticUserId: "baseline", variantCount: 3 },
     ]);
   });
 
-  it("allocates the entire budget to a single proto-persona", () => {
+  it("allocates the entire budget to a single synthetic user", () => {
     expect(
       allocateVariants(
         [{ id: "solo", axes: [axis("a")], evidenceSnippets: ["one"] }],
         64,
       ),
-    ).toEqual([{ protoPersonaId: "solo", variantCount: 64 }]);
+    ).toEqual([{ syntheticUserId: "solo", variantCount: 64 }]);
   });
 
-  it("maintains minimum representation for ten proto-personas at the minimum budget", () => {
+  it("maintains minimum representation for ten synthetic users at the minimum budget", () => {
     const allocations = allocateVariants(
       Array.from({ length: 10 }, (_, index) => ({
         id: `proto-${index + 1}`,
@@ -119,9 +119,9 @@ describe("allocateVariants", () => {
     );
   });
 
-  it("rejects allocation requests without any proto-personas", () => {
+  it("rejects allocation requests without any synthetic users", () => {
     expect(() => allocateVariants([], 64)).toThrowError(
-      "At least one proto-persona is required.",
+      "At least one synthetic user is required.",
     );
   });
 

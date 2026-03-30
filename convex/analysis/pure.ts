@@ -1,8 +1,8 @@
 export type AnalysisSeverity = "blocker" | "major" | "minor" | "cosmetic";
 
 export type SegmentSpreadInput = {
-  distinctProtoPersonaCount: number;
-  totalProtoPersonaCount: number;
+  distinctSyntheticUserCount: number;
+  totalSyntheticUserCount: number;
   distinctAxisRangeCount: number;
   totalAxisCount: number;
 };
@@ -48,15 +48,15 @@ export function computeImpactScore(
 }
 
 export function computeSegmentSpread({
-  distinctProtoPersonaCount,
-  totalProtoPersonaCount,
+  distinctSyntheticUserCount,
+  totalSyntheticUserCount,
   distinctAxisRangeCount,
   totalAxisCount,
 }: SegmentSpreadInput): number {
   return clamp(
     1 +
       0.25 *
-        safeRatio(distinctProtoPersonaCount, totalProtoPersonaCount, {
+        safeRatio(distinctSyntheticUserCount, totalSyntheticUserCount, {
           clampToOne: true,
         }) +
       0.25 *

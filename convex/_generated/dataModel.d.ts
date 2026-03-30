@@ -361,9 +361,9 @@ export type DataModel = {
   issueClusters: {
     document: {
       affectedAxisRanges: Array<{ key: string; max: number; min: number }>;
-      affectedProtoPersonaIds: Array<Id<"protoPersonas">>;
       affectedRunCount: number;
       affectedRunRate: number;
+      affectedSyntheticUserIds: Array<Id<"syntheticUsers">>;
       confidenceNote: string;
       evidenceKeys: Array<string>;
       recommendation: string;
@@ -381,9 +381,9 @@ export type DataModel = {
       | "_creationTime"
       | "_id"
       | "affectedAxisRanges"
-      | "affectedProtoPersonaIds"
       | "affectedRunCount"
       | "affectedRunRate"
+      | "affectedSyntheticUserIds"
       | "confidenceNote"
       | "evidenceKeys"
       | "recommendation"
@@ -522,8 +522,8 @@ export type DataModel = {
       edgeScore: number;
       firstPersonBio: string;
       personaPackId: Id<"personaPacks">;
-      protoPersonaId: Id<"protoPersonas">;
       studyId: Id<"studies">;
+      syntheticUserId: Id<"syntheticUsers">;
       tensionSeed: string;
       _id: Id<"personaVariants">;
       _creationTime: number;
@@ -539,53 +539,13 @@ export type DataModel = {
       | "edgeScore"
       | "firstPersonBio"
       | "personaPackId"
-      | "protoPersonaId"
       | "studyId"
+      | "syntheticUserId"
       | "tensionSeed";
     indexes: {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
       by_studyId: ["studyId", "_creationTime"];
-    };
-    searchIndexes: {};
-    vectorIndexes: {};
-  };
-  protoPersonas: {
-    document: {
-      axes: Array<{
-        description: string;
-        highAnchor: string;
-        key: string;
-        label: string;
-        lowAnchor: string;
-        midAnchor: string;
-        weight: number;
-      }>;
-      evidenceSnippets: Array<string>;
-      name: string;
-      notes?: string;
-      packId: Id<"personaPacks">;
-      sourceRefs: Array<string>;
-      sourceType: "manual" | "json_import" | "transcript_derived";
-      summary: string;
-      _id: Id<"protoPersonas">;
-      _creationTime: number;
-    };
-    fieldPaths:
-      | "_creationTime"
-      | "_id"
-      | "axes"
-      | "evidenceSnippets"
-      | "name"
-      | "notes"
-      | "packId"
-      | "sourceRefs"
-      | "sourceType"
-      | "summary";
-    indexes: {
-      by_id: ["_id"];
-      by_creation_time: ["_creationTime"];
-      by_packId: ["packId", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};
@@ -642,7 +602,6 @@ export type DataModel = {
       lastHeartbeatAt?: number;
       milestoneKeys: Array<string>;
       personaVariantId: Id<"personaVariants">;
-      protoPersonaId: Id<"protoPersonas">;
       replayOfRunId?: Id<"runs">;
       selfReport?: {
         answers?: Record<string, string | number | boolean>;
@@ -668,6 +627,7 @@ export type DataModel = {
       stepCount?: number;
       studyId: Id<"studies">;
       summaryKey?: string;
+      syntheticUserId: Id<"syntheticUsers">;
       workerSessionId?: string;
       _id: Id<"runs">;
       _creationTime: number;
@@ -688,7 +648,6 @@ export type DataModel = {
       | "lastHeartbeatAt"
       | "milestoneKeys"
       | "personaVariantId"
-      | "protoPersonaId"
       | "replayOfRunId"
       | "selfReport"
       | "selfReport.answers"
@@ -703,15 +662,16 @@ export type DataModel = {
       | "stepCount"
       | "studyId"
       | "summaryKey"
+      | "syntheticUserId"
       | "workerSessionId";
     indexes: {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
       by_status: ["status", "_creationTime"];
       by_studyId: ["studyId", "_creationTime"];
-      by_studyId_and_protoPersonaId: [
+      by_studyId_and_syntheticUserId: [
         "studyId",
-        "protoPersonaId",
+        "syntheticUserId",
         "_creationTime",
       ];
       by_studyId_status: ["studyId", "status", "_creationTime"];
@@ -925,6 +885,46 @@ export type DataModel = {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
       by_studyId: ["studyId", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
+  syntheticUsers: {
+    document: {
+      axes: Array<{
+        description: string;
+        highAnchor: string;
+        key: string;
+        label: string;
+        lowAnchor: string;
+        midAnchor: string;
+        weight: number;
+      }>;
+      evidenceSnippets: Array<string>;
+      name: string;
+      notes?: string;
+      packId: Id<"personaPacks">;
+      sourceRefs: Array<string>;
+      sourceType: "manual" | "json_import" | "transcript_derived";
+      summary: string;
+      _id: Id<"syntheticUsers">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "axes"
+      | "evidenceSnippets"
+      | "name"
+      | "notes"
+      | "packId"
+      | "sourceRefs"
+      | "sourceType"
+      | "summary";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_packId: ["packId", "_creationTime"];
     };
     searchIndexes: {};
     vectorIndexes: {};

@@ -505,7 +505,7 @@ function StudyReportPage() {
     <StudyReportRoutePage
       detailSearch={{
         outcome: reportSearch.outcome,
-        protoPersonaId: reportSearch.protoPersonaId,
+        syntheticUserId: reportSearch.syntheticUserId,
         finalUrlContains: reportSearch.finalUrlContains,
         severity: reportSearch.severity,
         axisKey: reportSearch.axisKey,

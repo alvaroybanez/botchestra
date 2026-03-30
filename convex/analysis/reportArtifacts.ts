@@ -26,7 +26,7 @@ export type StudyReportExportCluster = Pick<
   | "severity"
   | "affectedRunCount"
   | "affectedRunRate"
-  | "affectedProtoPersonaIds"
+  | "affectedSyntheticUserIds"
   | "affectedAxisRanges"
   | "representativeRunIds"
   | "replayConfidence"
@@ -157,7 +157,7 @@ function renderStudyReportHtml(
                 <section>
                   <h3>Affected segments</h3>
                   <ul>
-                    <li>${escapeHtml(`${cluster.affectedProtoPersonaIds.length} proto-persona segment(s)`)}</li>
+                    <li>${escapeHtml(`${cluster.affectedSyntheticUserIds.length} synthetic user segment(s)`)}</li>
                     ${cluster.affectedAxisRanges
                       .map(
                         (range) =>

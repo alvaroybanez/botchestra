@@ -58,9 +58,9 @@ export declare const api: {
           | "blocked_by_guardrail"
           | "infra_error"
           | "cancelled";
-        protoPersonaId?: Id<"protoPersonas">;
         severity?: "blocker" | "major" | "minor" | "cosmetic";
         studyId: Id<"studies">;
+        syntheticUserId?: Id<"syntheticUsers">;
         urlPrefix?: string;
       },
       any
@@ -263,7 +263,7 @@ export declare const api: {
     >;
   };
   personaPacks: {
-    applyTranscriptDerivedProtoPersonas: FunctionReference<
+    applyTranscriptDerivedSyntheticUsers: FunctionReference<
       "mutation",
       "public",
       {
@@ -317,12 +317,12 @@ export declare const api: {
       },
       any
     >;
-    createProtoPersona: FunctionReference<
+    createSyntheticUser: FunctionReference<
       "mutation",
       "public",
       {
         packId: Id<"personaPacks">;
-        protoPersona: {
+        syntheticUser: {
           axes: Array<{
             description: string;
             highAnchor: string;
@@ -340,10 +340,10 @@ export declare const api: {
       },
       any
     >;
-    deleteProtoPersona: FunctionReference<
+    deleteSyntheticUser: FunctionReference<
       "mutation",
       "public",
-      { protoPersonaId: Id<"protoPersonas"> },
+      { syntheticUserId: Id<"syntheticUsers"> },
       any
     >;
     exportJson: FunctionReference<
@@ -358,15 +358,15 @@ export declare const api: {
       { packId: Id<"personaPacks"> },
       any
     >;
-    getProtoPersona: FunctionReference<
+    getSyntheticUser: FunctionReference<
       "query",
       "public",
-      { protoPersonaId: Id<"protoPersonas"> },
+      { syntheticUserId: Id<"syntheticUsers"> },
       any
     >;
     importJson: FunctionReference<"action", "public", { json: string }, any>;
     list: FunctionReference<"query", "public", {}, any>;
-    listProtoPersonas: FunctionReference<
+    listSyntheticUsers: FunctionReference<
       "query",
       "public",
       { packId: Id<"personaPacks"> },
@@ -400,7 +400,7 @@ export declare const api: {
       },
       any
     >;
-    updateProtoPersona: FunctionReference<
+    updateSyntheticUser: FunctionReference<
       "mutation",
       "public",
       {
@@ -419,7 +419,7 @@ export declare const api: {
           notes?: string;
           summary?: string;
         };
-        protoPersonaId: Id<"protoPersonas">;
+        syntheticUserId: Id<"syntheticUsers">;
       },
       any
     >;
@@ -494,8 +494,8 @@ export declare const api: {
           | "blocked_by_guardrail"
           | "infra_error"
           | "cancelled";
-        protoPersonaId?: Id<"protoPersonas">;
         studyId: Id<"studies">;
+        syntheticUserId?: Id<"syntheticUsers">;
       },
       any
     >;
@@ -994,7 +994,17 @@ export declare const internal: {
           context: string;
           description: string;
           name: string;
-          protoPersonas: Array<{
+          sharedAxes: Array<{
+            description: string;
+            highAnchor: string;
+            key: string;
+            label: string;
+            lowAnchor: string;
+            midAnchor: string;
+            weight: number;
+          }>;
+          status?: "draft" | "published" | "archived";
+          syntheticUsers: Array<{
             axes: Array<{
               description: string;
               highAnchor: string;
@@ -1009,16 +1019,6 @@ export declare const internal: {
             notes?: string;
             summary: string;
           }>;
-          sharedAxes: Array<{
-            description: string;
-            highAnchor: string;
-            key: string;
-            label: string;
-            lowAnchor: string;
-            midAnchor: string;
-            weight: number;
-          }>;
-          status?: "draft" | "published" | "archived";
           version?: number;
         };
         orgId: string;
@@ -1066,10 +1066,10 @@ export declare const internal: {
             edgeCount: number;
             interiorCount: number;
             minimumPairwiseDistance: number;
-            perProtoPersona: Array<{
+            perSyntheticUser: Array<{
               acceptedCount: number;
-              protoPersonaId: Id<"protoPersonas">;
               rejectedCount: number;
+              syntheticUserId: Id<"syntheticUsers">;
             }>;
           };
           rejectedCount: number;
@@ -1084,8 +1084,8 @@ export declare const internal: {
           edgeScore: number;
           firstPersonBio: string;
           personaPackId: Id<"personaPacks">;
-          protoPersonaId: Id<"protoPersonas">;
           studyId: Id<"studies">;
+          syntheticUserId: Id<"syntheticUsers">;
           tensionSeed: string;
         }>;
       },

@@ -178,27 +178,27 @@ type TestInstance = ReturnType<typeof createTest>;
 async function seedReportFixtures(t: TestInstance, orgId: string) {
   const packId = await insertPack(t, orgId);
   const studyId = await insertStudy(t, orgId, packId);
-  const protoPersonaAlphaId = await insertProtoPersona(
+  const syntheticUserAlphaId = await insertSyntheticUser(
     t,
     packId,
     "Cautious shopper",
   );
-  const protoPersonaBetaId = await insertProtoPersona(t, packId, "Busy parent");
+  const syntheticUserBetaId = await insertSyntheticUser(t, packId, "Busy parent");
   const primaryVariantId = await insertPersonaVariant(
     t,
     studyId,
     packId,
-    protoPersonaAlphaId,
+    syntheticUserAlphaId,
   );
   const secondaryVariantId = await insertPersonaVariant(
     t,
     studyId,
     packId,
-    protoPersonaBetaId,
+    syntheticUserBetaId,
   );
   const primaryRunId = await insertRun(t, {
     studyId,
-    protoPersonaId: protoPersonaAlphaId,
+    syntheticUserId: syntheticUserAlphaId,
     personaVariantId: primaryVariantId,
     status: "hard_fail",
     finalUrl: "https://example.com/checkout/address",
@@ -206,7 +206,7 @@ async function seedReportFixtures(t: TestInstance, orgId: string) {
   });
   const secondaryRunId = await insertRun(t, {
     studyId,
-    protoPersonaId: protoPersonaBetaId,
+    syntheticUserId: syntheticUserBetaId,
     personaVariantId: secondaryVariantId,
     status: "soft_fail",
     finalUrl: "https://example.com/checkout/payment",
@@ -220,7 +220,7 @@ async function seedReportFixtures(t: TestInstance, orgId: string) {
     severity: "blocker",
     affectedRunCount: 3,
     affectedRunRate: 0.5,
-    affectedProtoPersonaIds: [protoPersonaAlphaId],
+    affectedSyntheticUserIds: [syntheticUserAlphaId],
     affectedAxisRanges: [
       { key: "digital_confidence", min: -0.9, max: -0.3 },
     ],
@@ -238,7 +238,7 @@ async function seedReportFixtures(t: TestInstance, orgId: string) {
     severity: "minor",
     affectedRunCount: 2,
     affectedRunRate: 0.33,
-    affectedProtoPersonaIds: [protoPersonaBetaId],
+    affectedSyntheticUserIds: [syntheticUserBetaId],
     affectedAxisRanges: [{ key: "digital_confidence", min: 0.2, max: 0.8 }],
     representativeRunIds: [secondaryRunId],
     replayConfidence: 0.4,
@@ -307,13 +307,13 @@ async function insertStudy(
   );
 }
 
-async function insertProtoPersona(
+async function insertSyntheticUser(
   t: TestInstance,
   packId: Id<"personaPacks">,
   name: string,
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+    ctx.db.insert("syntheticUsers", {
       packId,
       name,
       summary: `${name} summary`,
@@ -339,13 +339,13 @@ async function insertPersonaVariant(
   t: TestInstance,
   studyId: Id<"studies">,
   personaPackId: Id<"personaPacks">,
-  protoPersonaId: Id<"protoPersonas">,
+  syntheticUserId: Id<"syntheticUsers">,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [{ key: "digital_confidence", value: 0.1 }],
       edgeScore: 0.5,
       tensionSeed: "Wants reassurance before payment.",
@@ -369,7 +369,7 @@ async function insertRun(
   run: Pick<
     Doc<"runs">,
     | "studyId"
-    | "protoPersonaId"
+    | "syntheticUserId"
     | "personaVariantId"
     | "status"
     | "finalUrl"
@@ -379,7 +379,7 @@ async function insertRun(
   return await t.run(async (ctx) =>
     ctx.db.insert("runs", {
       studyId: run.studyId,
-      protoPersonaId: run.protoPersonaId,
+      syntheticUserId: run.syntheticUserId,
       personaVariantId: run.personaVariantId,
       status: run.status,
       finalUrl: run.finalUrl,

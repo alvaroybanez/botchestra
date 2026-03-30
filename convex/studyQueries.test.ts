@@ -203,16 +203,16 @@ describe("run queries", () => {
     });
   });
 
-  it("getRun returns the full run with milestones, persona variant, and proto-persona details", async () => {
+  it("getRun returns the full run with milestones, persona variant, and synthetic user details", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const { studyId, protoPersonaId, personaVariantId } = await buildRunFixtures(
+    const { studyId, syntheticUserId, personaVariantId } = await buildRunFixtures(
       t,
       researchIdentity.tokenIdentifier,
     );
     const runId = await insertRun(t, studyId, "success", {
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       finalUrl: "https://example.com/confirmation",
       finalOutcome: "order_confirmed",
       artifactManifestKey: "runs/run-1/manifest.json",
@@ -265,8 +265,8 @@ describe("run queries", () => {
         )}?expires=${BASE_TIME.getTime() + 14_400_000}&signature=`,
       ),
     });
-    expect(run?.protoPersona).toMatchObject({
-      _id: protoPersonaId,
+    expect(run?.syntheticUser).toMatchObject({
+      _id: syntheticUserId,
       name: "Careful shopper",
     });
     expect(run?.personaVariant).toMatchObject({
@@ -311,10 +311,10 @@ describe("run queries", () => {
     });
   });
 
-  it("listRuns filters by proto-persona", async () => {
+  it("listRuns filters by synthetic user", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const { studyId, protoPersonaId } = await buildRunFixtures(
+    const { studyId, syntheticUserId } = await buildRunFixtures(
       t,
       researchIdentity.tokenIdentifier,
     );
@@ -322,23 +322,23 @@ describe("run queries", () => {
       existingStudyId: studyId,
     });
     await insertRun(t, studyId, "success", {
-      protoPersonaId,
+      syntheticUserId,
       finalUrl: "https://example.com/confirmation/a",
     });
     await insertRun(t, studyId, "success", {
-      protoPersonaId: otherFixture.protoPersonaId,
+      syntheticUserId: otherFixture.syntheticUserId,
       personaVariantId: otherFixture.personaVariantId,
       finalUrl: "https://example.com/confirmation/b",
     });
 
     const runs = await asResearcher.query(api.runs.listRuns, {
       studyId,
-      protoPersonaId,
+      syntheticUserId,
     });
 
     expect(runs).toHaveLength(1);
-    expect(runs[0]?.protoPersonaId).toBe(protoPersonaId);
-    expect(runs[0]?.protoPersonaName).toBe("Careful shopper");
+    expect(runs[0]?.syntheticUserId).toBe(syntheticUserId);
+    expect(runs[0]?.syntheticUserName).toBe("Careful shopper");
   });
 
   it("listRuns filters by URL substring", async () => {
@@ -456,8 +456,8 @@ async function buildRunFixtures(
     throw new Error("Study fixture missing.");
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: "Careful shopper",
       summary: "Double-checks every step before continuing.",
@@ -482,7 +482,7 @@ async function buildRunFixtures(
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: study.personaPackId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [{ key: "digital_confidence", value: -0.35 }],
       edgeScore: 0.72,
       tensionSeed: "Worries about submitting payment too early.",
@@ -501,7 +501,7 @@ async function buildRunFixtures(
     }),
   );
 
-  return { studyId, protoPersonaId, personaVariantId };
+  return { studyId, syntheticUserId, personaVariantId };
 }
 
 async function insertRun(
@@ -516,13 +516,13 @@ async function insertRun(
     throw new Error("Study fixture missing.");
   }
 
-  const protoPersonaId =
-    overrides.protoPersonaId ??
+  const syntheticUserId =
+    overrides.syntheticUserId ??
     (await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+      ctx.db.insert("syntheticUsers", {
         packId: study.personaPackId,
         name: "Fallback persona",
-        summary: "Fallback proto-persona",
+        summary: "Fallback synthetic user",
         axes: [],
         sourceType: "manual",
         sourceRefs: [],
@@ -536,7 +536,7 @@ async function insertRun(
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: study.personaPackId,
-        protoPersonaId,
+        syntheticUserId,
         axisValues: [],
         edgeScore: 0.4,
         tensionSeed: "Fallback tension seed",
@@ -552,7 +552,7 @@ async function insertRun(
     ctx.db.insert("runs", {
       studyId,
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       status,
       frustrationCount: 0,
       milestoneKeys: [],

@@ -713,7 +713,7 @@ async function createVerifiedIssueClusters(
       severity: candidate.severity,
       affectedRunCount: candidate.affectedRunCount,
       affectedRunRate: candidate.affectedRunRate,
-      affectedProtoPersonaIds: candidate.affectedProtoPersonaIds,
+      affectedSyntheticUserIds: candidate.affectedSyntheticUserIds,
       affectedAxisRanges: [],
       representativeRunIds: candidate.representativeRunIds,
       replayConfidence: candidate.replayConfidence,
@@ -780,7 +780,7 @@ async function createReplayRunsForStudy(
       await ctx.db.insert("runs", {
         studyId,
         personaVariantId: representativeRun.personaVariantId,
-        protoPersonaId: representativeRun.protoPersonaId,
+        syntheticUserId: representativeRun.syntheticUserId,
         status: "queued",
         replayOfRunId: candidate.representativeRunId,
         frustrationCount: 0,
@@ -833,7 +833,7 @@ function buildReplayCandidates(runs: Array<Doc<"runs">>) {
       severity,
       affectedRunCount: groupedRuns.length,
       affectedRunRate: ratio(groupedRuns.length, originalRuns.length),
-      affectedProtoPersonaIds: uniqueIds(groupedRuns.map((run) => run.protoPersonaId)),
+      affectedSyntheticUserIds: uniqueIds(groupedRuns.map((run) => run.syntheticUserId)),
       representativeRunId: representativeRun._id,
       representativeRunIds: groupedRuns.slice(0, 3).map((run) => run._id),
       replayAttempts: replayAttempts.length,
@@ -904,7 +904,7 @@ function buildReplayCandidateSummary(candidate: ReplayCandidate) {
   return `Failure signature ${candidate.signature} affected ${candidate.affectedRunCount} original run(s) and replay reproduced ${candidate.reproducedFailures}/${candidate.replayAttempts} attempt(s).`;
 }
 
-function uniqueIds<TableName extends "issueClusters" | "protoPersonas" | "runs">(
+function uniqueIds<TableName extends "issueClusters" | "syntheticUsers" | "runs">(
   values: Array<Id<TableName>>,
 ) {
   return values.reduce<Array<Id<TableName>>>((accumulator, value) => {
@@ -1055,7 +1055,7 @@ type ReplayCandidate = {
   severity: Doc<"issueClusters">["severity"];
   affectedRunCount: number;
   affectedRunRate: number;
-  affectedProtoPersonaIds: Array<Id<"protoPersonas">>;
+  affectedSyntheticUserIds: Array<Id<"syntheticUsers">>;
   representativeRunId: Id<"runs">;
   representativeRunIds: Array<Id<"runs">>;
   replayAttempts: number;

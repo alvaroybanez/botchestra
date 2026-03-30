@@ -23,7 +23,7 @@ const axisValueValidator = v.object({
 const persistedVariantSchema = z.object({
   studyId: z.string(),
   personaPackId: z.string(),
-  protoPersonaId: z.string(),
+  syntheticUserId: z.string(),
   axisValues: z.array(axisValueSchema),
   edgeScore: z.number(),
   tensionSeed: z.string(),
@@ -43,9 +43,9 @@ const generationSummarySchema = z.object({
     edgeCount: z.number().int().nonnegative(),
     interiorCount: z.number().int().nonnegative(),
     minimumPairwiseDistance: z.number().nonnegative(),
-    perProtoPersona: z.array(
+    perSyntheticUser: z.array(
       z.object({
-        protoPersonaId: z.string(),
+        syntheticUserId: z.string(),
         acceptedCount: z.number().int().nonnegative(),
         rejectedCount: z.number().int().nonnegative(),
       }),
@@ -56,7 +56,7 @@ const generationSummarySchema = z.object({
 const persistedVariantValidator = v.object({
   studyId: v.id("studies"),
   personaPackId: v.id("personaPacks"),
-  protoPersonaId: v.id("protoPersonas"),
+  syntheticUserId: v.id("syntheticUsers"),
   axisValues: v.array(axisValueValidator),
   edgeScore: v.number(),
   tensionSeed: v.string(),
@@ -76,9 +76,9 @@ const generationSummaryValidator = v.object({
     edgeCount: v.number(),
     interiorCount: v.number(),
     minimumPairwiseDistance: v.number(),
-    perProtoPersona: v.array(
+    perSyntheticUser: v.array(
       v.object({
-        protoPersonaId: v.id("protoPersonas"),
+        syntheticUserId: v.id("syntheticUsers"),
         acceptedCount: v.number(),
         rejectedCount: v.number(),
       }),
@@ -108,13 +108,13 @@ export const getGenerationContext = internalQuery({
       throw new ConvexError("Variant generation requires a published persona pack.");
     }
 
-    const protoPersonas = await ctx.db
-      .query("protoPersonas")
+    const syntheticUsers = await ctx.db
+      .query("syntheticUsers")
       .withIndex("by_packId", (q) => q.eq("packId", pack._id))
       .take(10);
 
-    if (protoPersonas.length === 0) {
-      throw new ConvexError("At least one proto-persona is required.");
+    if (syntheticUsers.length === 0) {
+      throw new ConvexError("At least one synthetic user is required.");
     }
 
     const existingVariants = await ctx.db
@@ -129,7 +129,7 @@ export const getGenerationContext = internalQuery({
     return {
       study,
       pack,
-      protoPersonas,
+      syntheticUsers,
       existingVariants,
       resolvedBudget,
     };
@@ -171,18 +171,18 @@ export const getPreviewContext = internalQuery({
       );
     }
 
-    const protoPersonas = await ctx.db
-      .query("protoPersonas")
+    const syntheticUsers = await ctx.db
+      .query("syntheticUsers")
       .withIndex("by_packId", (q) => q.eq("packId", pack._id))
       .take(10);
 
-    if (protoPersonas.length === 0) {
-      throw new ConvexError("At least one proto-persona is required.");
+    if (syntheticUsers.length === 0) {
+      throw new ConvexError("At least one synthetic user is required.");
     }
 
     return {
       pack,
-      protoPersonas,
+      syntheticUsers,
     };
   },
 });
@@ -230,7 +230,7 @@ export const persistVariantsIfAbsent = internalMutation({
         ...variant,
         studyId: variant.studyId as Id<"studies">,
         personaPackId: variant.personaPackId as Id<"personaPacks">,
-        protoPersonaId: variant.protoPersonaId as Id<"protoPersonas">,
+        syntheticUserId: variant.syntheticUserId as Id<"syntheticUsers">,
       });
     }
 
@@ -240,7 +240,7 @@ export const persistVariantsIfAbsent = internalMutation({
 
 export function buildSummary(
   variants: readonly {
-    protoPersonaId: Id<"protoPersonas">;
+    syntheticUserId: Id<"syntheticUsers">;
     axisValues: readonly { key: string; value: number }[];
     accepted: boolean;
     edgeScore: number;
@@ -252,10 +252,10 @@ export function buildSummary(
   const rejectedCount = variants.length - acceptedCount;
   const edgeCount = acceptedVariants.filter((variant) => variant.edgeScore >= 0.65)
     .length;
-  const perProtoPersona = Array.from(
+  const perSyntheticUser = Array.from(
     variants.reduce((map, variant) => {
-      const entry = map.get(variant.protoPersonaId) ?? {
-        protoPersonaId: variant.protoPersonaId,
+      const entry = map.get(variant.syntheticUserId) ?? {
+        syntheticUserId: variant.syntheticUserId,
         acceptedCount: 0,
         rejectedCount: 0,
       };
@@ -264,10 +264,10 @@ export function buildSummary(
       } else {
         entry.rejectedCount += 1;
       }
-      map.set(variant.protoPersonaId, entry);
+      map.set(variant.syntheticUserId, entry);
       return map;
-    }, new Map<Id<"protoPersonas">, {
-      protoPersonaId: Id<"protoPersonas">;
+    }, new Map<Id<"syntheticUsers">, {
+      syntheticUserId: Id<"syntheticUsers">;
       acceptedCount: number;
       rejectedCount: number;
     }>()),
@@ -282,7 +282,7 @@ export function buildSummary(
       edgeCount,
       interiorCount: acceptedVariants.length - edgeCount,
       minimumPairwiseDistance: minimumPairwiseDistance(acceptedVariants),
-      perProtoPersona,
+      perSyntheticUser,
     },
   };
 }

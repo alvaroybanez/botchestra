@@ -1,4 +1,4 @@
-export type ProtoPersonaAllocationInput = {
+export type SyntheticUserAllocationInput = {
   id: string;
   axes: readonly unknown[];
   evidenceSnippets: readonly unknown[];
@@ -6,7 +6,7 @@ export type ProtoPersonaAllocationInput = {
 };
 
 export type VariantAllocation = {
-  protoPersonaId: string;
+  syntheticUserId: string;
   variantCount: number;
 };
 
@@ -42,31 +42,31 @@ const HALTON_PRIMES = [
 ] as const;
 
 export function allocateVariants(
-  protoPersonas: readonly ProtoPersonaAllocationInput[],
+  syntheticUsers: readonly SyntheticUserAllocationInput[],
   budget: number,
 ): VariantAllocation[] {
   if (!Number.isInteger(budget) || budget < 0) {
     throw new RangeError("Variant budget must be a non-negative integer.");
   }
 
-  if (protoPersonas.length === 0) {
-    throw new RangeError("At least one proto-persona is required.");
+  if (syntheticUsers.length === 0) {
+    throw new RangeError("At least one synthetic user is required.");
   }
 
-  const baseAllocation = Math.floor(budget / protoPersonas.length);
-  const remainder = budget % protoPersonas.length;
+  const baseAllocation = Math.floor(budget / syntheticUsers.length);
+  const remainder = budget % syntheticUsers.length;
 
-  const allocations = protoPersonas.map((protoPersona) => ({
-    protoPersonaId: protoPersona.id,
+  const allocations = syntheticUsers.map((syntheticUser) => ({
+    syntheticUserId: syntheticUser.id,
     variantCount: baseAllocation,
   }));
 
-  const rankedByComplexity = protoPersonas
-    .map((protoPersona, index) => ({
+  const rankedByComplexity = syntheticUsers
+    .map((syntheticUser, index) => ({
       index,
-      axisOverrideCount: protoPersona.axes.length,
-      evidenceSnippetCount: protoPersona.evidenceSnippets.length,
-      manualComplexity: protoPersona.manualComplexity ?? 0,
+      axisOverrideCount: syntheticUser.axes.length,
+      evidenceSnippetCount: syntheticUser.evidenceSnippets.length,
+      manualComplexity: syntheticUser.manualComplexity ?? 0,
     }))
     .sort((left, right) => {
       if (right.axisOverrideCount !== left.axisOverrideCount) {

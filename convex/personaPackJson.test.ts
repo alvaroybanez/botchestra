@@ -33,12 +33,12 @@ const makeAxis = (overrides: Partial<AxisInput> = {}): AxisInput => ({
   ...overrides,
 });
 
-const makeProtoPersona = (
+const makeSyntheticUser = (
   index: number,
-  overrides: Partial<ProtoPersonaJson> = {},
-): ProtoPersonaJson => ({
-  name: `Proto Persona ${index + 1}`,
-  summary: `Summary for proto persona ${index + 1}`,
+  overrides: Partial<SyntheticUserJson> = {},
+): SyntheticUserJson => ({
+  name: `Synthetic User ${index + 1}`,
+  summary: `Summary for synthetic user ${index + 1}`,
   axes: [
     makeAxis(),
     makeAxis({
@@ -55,7 +55,7 @@ const makeProtoPersona = (
     `Evidence snippet A${index + 1}`,
     `Evidence snippet B${index + 1}`,
   ],
-  notes: `Notes for proto persona ${index + 1}`,
+  notes: `Notes for synthetic user ${index + 1}`,
   ...overrides,
 });
 
@@ -78,7 +78,7 @@ const makeImportPayload = (
       weight: 0.6,
     }),
   ],
-  protoPersonas: [makeProtoPersona(0), makeProtoPersona(1)],
+  syntheticUsers: [makeSyntheticUser(0), makeSyntheticUser(1)],
   ...overrides,
 });
 
@@ -94,8 +94,8 @@ describe("persona pack JSON import/export", () => {
     const importedPack = await asResearcher.query(api.personaPacks.get, {
       packId: importedPackId,
     });
-    const protoPersonas = await asResearcher.query(
-      api.personaPacks.listProtoPersonas,
+    const syntheticUsers = await asResearcher.query(
+      api.personaPacks.listSyntheticUsers,
       { packId: importedPackId },
     );
 
@@ -109,21 +109,21 @@ describe("persona pack JSON import/export", () => {
       orgId: researchIdentity.tokenIdentifier,
     });
     expect(importedPack?.sharedAxes).toEqual(makeImportPayload().sharedAxes);
-    expect(protoPersonas).toHaveLength(2);
-    expect(protoPersonas).toMatchObject([
+    expect(syntheticUsers).toHaveLength(2);
+    expect(syntheticUsers).toMatchObject([
       {
-        name: "Proto Persona 1",
-        summary: "Summary for proto persona 1",
+        name: "Synthetic User 1",
+        summary: "Summary for synthetic user 1",
         sourceType: "json_import",
         evidenceSnippets: ["Evidence snippet A1", "Evidence snippet B1"],
-        notes: "Notes for proto persona 1",
+        notes: "Notes for synthetic user 1",
       },
       {
-        name: "Proto Persona 2",
-        summary: "Summary for proto persona 2",
+        name: "Synthetic User 2",
+        summary: "Summary for synthetic user 2",
         sourceType: "json_import",
         evidenceSnippets: ["Evidence snippet A2", "Evidence snippet B2"],
-        notes: "Notes for proto persona 2",
+        notes: "Notes for synthetic user 2",
       },
     ]);
   });
@@ -138,7 +138,7 @@ describe("persona pack JSON import/export", () => {
           description: "Missing name",
           context: "Checkout usability study",
           sharedAxes: [makeAxis()],
-          protoPersonas: [makeProtoPersona(0)],
+          syntheticUsers: [makeSyntheticUser(0)],
         }),
       }),
     ).rejects.toThrow("name");
@@ -181,15 +181,15 @@ describe("persona pack JSON import/export", () => {
     ).rejects.toThrow("description");
 
     const packs = await t.run(async (ctx) => ctx.db.query("personaPacks").collect());
-    const protoPersonas = await t.run(async (ctx) =>
-      ctx.db.query("protoPersonas").collect(),
+    const syntheticUsers = await t.run(async (ctx) =>
+      ctx.db.query("syntheticUsers").collect(),
     );
 
     expect(packs).toHaveLength(0);
-    expect(protoPersonas).toHaveLength(0);
+    expect(syntheticUsers).toHaveLength(0);
   });
 
-  it("rejects proto-personas whose axis keys are not present in sharedAxes", async () => {
+  it("rejects synthetic users whose axis keys are not present in sharedAxes", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
 
@@ -197,8 +197,8 @@ describe("persona pack JSON import/export", () => {
       asResearcher.action(api.personaPacks.importJson, {
         json: JSON.stringify(
           makeImportPayload({
-            protoPersonas: [
-              makeProtoPersona(0, {
+            syntheticUsers: [
+              makeSyntheticUser(0, {
                 axes: [
                   makeAxis({
                     key: "missing_axis",
@@ -214,12 +214,12 @@ describe("persona pack JSON import/export", () => {
     ).rejects.toThrow(/shared pack axis keys/i);
 
     const packs = await t.run(async (ctx) => ctx.db.query("personaPacks").collect());
-    const protoPersonas = await t.run(async (ctx) =>
-      ctx.db.query("protoPersonas").collect(),
+    const syntheticUsers = await t.run(async (ctx) =>
+      ctx.db.query("syntheticUsers").collect(),
     );
 
     expect(packs).toHaveLength(0);
-    expect(protoPersonas).toHaveLength(0);
+    expect(syntheticUsers).toHaveLength(0);
   });
 
   it("rejects malformed JSON before validation or writes", async () => {
@@ -242,13 +242,13 @@ describe("persona pack JSON import/export", () => {
     expect(packs).toHaveLength(0);
   });
 
-  it("imports a large pack with 10 proto-personas and preserves evidence snippets", async () => {
+  it("imports a large pack with 10 synthetic users and preserves evidence snippets", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
 
     const largePayload = makeImportPayload({
-      protoPersonas: Array.from({ length: 10 }, (_, index) =>
-        makeProtoPersona(index, {
+      syntheticUsers: Array.from({ length: 10 }, (_, index) =>
+        makeSyntheticUser(index, {
           evidenceSnippets: Array.from(
             { length: 20 },
             (_, snippetIndex) =>
@@ -261,19 +261,19 @@ describe("persona pack JSON import/export", () => {
     const importedPackId = await asResearcher.action(api.personaPacks.importJson, {
       json: JSON.stringify(largePayload),
     });
-    const protoPersonas = await asResearcher.query(
-      api.personaPacks.listProtoPersonas,
+    const syntheticUsers = await asResearcher.query(
+      api.personaPacks.listSyntheticUsers,
       { packId: importedPackId },
     );
 
-    expect(protoPersonas).toHaveLength(10);
-    expect(protoPersonas[0]?.evidenceSnippets).toHaveLength(20);
-    expect(protoPersonas[9]?.evidenceSnippets[19]).toBe(
+    expect(syntheticUsers).toHaveLength(10);
+    expect(syntheticUsers[0]?.evidenceSnippets).toHaveLength(20);
+    expect(syntheticUsers[9]?.evidenceSnippets[19]).toBe(
       "Proto 10 evidence snippet 20",
     );
   });
 
-  it("exports draft, published, and archived packs including proto-personas but excluding variants", async () => {
+  it("exports draft, published, and archived packs including synthetic users but excluding variants", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
 
@@ -293,12 +293,12 @@ describe("persona pack JSON import/export", () => {
       ) as PersonaPackJson & Record<string, unknown>;
 
       expect(exported.status).toBe(expectedStatus);
-      expect(exported.protoPersonas).toHaveLength(1);
-      expect(exported.protoPersonas[0]).toMatchObject({
-        name: `${expectedStatus} proto-persona`,
+      expect(exported.syntheticUsers).toHaveLength(1);
+      expect(exported.syntheticUsers[0]).toMatchObject({
+        name: `${expectedStatus} synthetic user`,
         evidenceSnippets: [`${expectedStatus} evidence`],
       });
-      expect(exported.protoPersonas[0]).not.toHaveProperty("sourceType");
+      expect(exported.syntheticUsers[0]).not.toHaveProperty("sourceType");
       expect(exported).not.toHaveProperty("variants");
       expect(exported).not.toHaveProperty("personaVariants");
     }
@@ -310,8 +310,8 @@ describe("persona pack JSON import/export", () => {
     const originalPackId = await createPublishedPack(t, "Round-trip pack", {
       description: "Round-trip description",
       context: "Round-trip context",
-      protoPersona: {
-        name: "Round-trip proto-persona",
+      syntheticUser: {
+        name: "Round-trip synthetic user",
         summary: "Summary preserved across export/import",
         evidenceSnippets: ["Quote 1", "Quote 2"],
         notes: "Detailed notes",
@@ -351,7 +351,7 @@ type AxisInput = {
   weight: number;
 };
 
-type ProtoPersonaJson = {
+type SyntheticUserJson = {
   name: string;
   summary: string;
   axes: AxisInput[];
@@ -365,7 +365,7 @@ type PersonaPackJson = {
   context: string;
   status?: "draft" | "published" | "archived";
   sharedAxes: AxisInput[];
-  protoPersonas: ProtoPersonaJson[];
+  syntheticUsers: SyntheticUserJson[];
 };
 
 type TestInstance = ReturnType<typeof createTest>;
@@ -376,7 +376,7 @@ async function createDraftPack(
   overrides: {
     description?: string;
     context?: string;
-    protoPersona?: Partial<ProtoPersonaJson>;
+    syntheticUser?: Partial<SyntheticUserJson>;
   } = {},
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
@@ -400,13 +400,13 @@ async function createDraftPack(
     },
   });
 
-  await asResearcher.mutation(api.personaPacks.createProtoPersona, {
+  await asResearcher.mutation(api.personaPacks.createSyntheticUser, {
     packId,
-    protoPersona: {
-      name: overrides.protoPersona?.name ?? "draft proto-persona",
+    syntheticUser: {
+      name: overrides.syntheticUser?.name ?? "draft synthetic user",
       summary:
-        overrides.protoPersona?.summary ?? "Summary for the exported proto-persona",
-      axes: overrides.protoPersona?.axes ?? [
+        overrides.syntheticUser?.summary ?? "Summary for the exported synthetic user",
+      axes: overrides.syntheticUser?.axes ?? [
         makeAxis(),
         makeAxis({
           key: "patience",
@@ -419,9 +419,9 @@ async function createDraftPack(
         }),
       ],
       evidenceSnippets:
-        overrides.protoPersona?.evidenceSnippets ?? ["draft evidence"],
-      ...(overrides.protoPersona?.notes !== undefined
-        ? { notes: overrides.protoPersona.notes }
+        overrides.syntheticUser?.evidenceSnippets ?? ["draft evidence"],
+      ...(overrides.syntheticUser?.notes !== undefined
+        ? { notes: overrides.syntheticUser.notes }
         : {}),
     },
   });
@@ -435,16 +435,16 @@ async function createPublishedPack(
   overrides: {
     description?: string;
     context?: string;
-    protoPersona?: Partial<ProtoPersonaJson>;
+    syntheticUser?: Partial<SyntheticUserJson>;
   } = {},
 ) {
   const asResearcher = t.withIdentity(researchIdentity);
   const packId = await createDraftPack(t, name, {
     ...overrides,
-    protoPersona: {
-      name: "published proto-persona",
+    syntheticUser: {
+      name: "published synthetic user",
       evidenceSnippets: ["published evidence"],
-      ...overrides.protoPersona,
+      ...overrides.syntheticUser,
     },
   });
 
@@ -455,8 +455,8 @@ async function createPublishedPack(
 async function createArchivedPack(t: TestInstance, name: string) {
   const asResearcher = t.withIdentity(researchIdentity);
   const packId = await createPublishedPack(t, name, {
-    protoPersona: {
-      name: "archived proto-persona",
+    syntheticUser: {
+      name: "archived synthetic user",
       evidenceSnippets: ["archived evidence"],
     },
   });
@@ -470,8 +470,8 @@ async function insertVariantForPack(
   packId: Id<"personaPacks">,
 ) {
   await t.run(async (ctx) => {
-    const protoPersonas = await ctx.db
-      .query("protoPersonas")
+    const syntheticUsers = await ctx.db
+      .query("syntheticUsers")
       .withIndex("by_packId", (q) => q.eq("packId", packId))
       .take(1);
 
@@ -506,7 +506,7 @@ async function insertVariantForPack(
     await ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: packId,
-      protoPersonaId: protoPersonas[0]!._id,
+      syntheticUserId: syntheticUsers[0]!._id,
       axisValues: [
         { key: "digital_confidence", value: 0.5 },
         { key: "patience", value: -0.2 },

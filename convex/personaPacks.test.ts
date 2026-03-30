@@ -309,7 +309,7 @@ describe("personaPacks", () => {
     const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
       pack: makeCreateDraftInput(),
     });
-    await insertProtoPersona(t, packId);
+    await insertSyntheticUser(t, packId);
 
     const beforePublish = await getPackDoc(t, packId);
     await asResearcher.mutation(api.personaPacks.publish, { packId });
@@ -339,7 +339,7 @@ describe("personaPacks", () => {
         ],
       }),
     });
-    await insertProtoPersona(t, packId);
+    await insertSyntheticUser(t, packId);
 
     await asResearcher.mutation(api.personaPacks.publish, { packId });
 
@@ -418,7 +418,7 @@ describe("personaPacks", () => {
         ],
       }),
     });
-    await insertProtoPersona(t, packId);
+    await insertSyntheticUser(t, packId);
 
     await asResearcher.mutation(api.personaPacks.publish, { packId });
 
@@ -469,8 +469,8 @@ describe("personaPacks", () => {
         ],
       }),
     });
-    await insertProtoPersona(t, firstPackId);
-    await insertProtoPersona(t, secondPackId);
+    await insertSyntheticUser(t, firstPackId);
+    await insertSyntheticUser(t, secondPackId);
 
     await asResearcher.mutation(api.personaPacks.publish, { packId: firstPackId });
     await asResearcher.mutation(api.personaPacks.publish, { packId: secondPackId });
@@ -501,8 +501,8 @@ describe("personaPacks", () => {
         pack: makeCreateDraftInput({ name: "Collaborator pack" }),
       },
     );
-    await insertProtoPersona(t, researcherPackId);
-    await insertProtoPersona(t, collaboratorPackId);
+    await insertSyntheticUser(t, researcherPackId);
+    await insertSyntheticUser(t, collaboratorPackId);
 
     await asResearcher.mutation(api.personaPacks.publish, {
       packId: researcherPackId,
@@ -534,7 +534,7 @@ describe("personaPacks", () => {
     });
   });
 
-  it("publish rejects packs without proto-personas", async () => {
+  it("publish rejects packs without synthetic users", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
@@ -543,7 +543,7 @@ describe("personaPacks", () => {
 
     await expect(
       asResearcher.mutation(api.personaPacks.publish, { packId }),
-    ).rejects.toThrow("proto-persona");
+    ).rejects.toThrow("synthetic user");
   });
 
   it("publish rejects already published and archived packs", async () => {
@@ -561,7 +561,7 @@ describe("personaPacks", () => {
     ).rejects.toThrow(/archived/i);
   });
 
-  it("publish rejects packs whose proto-persona axes drifted after shared axis removal", async () => {
+  it("publish rejects packs whose synthetic user axes drifted after shared axis removal", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
@@ -577,7 +577,7 @@ describe("personaPacks", () => {
       }),
     });
 
-    await insertProtoPersona(t, packId, {
+    await insertSyntheticUser(t, packId, {
       axes: [
         makeAxis({ key: "digital_confidence" }),
         makeAxis({
@@ -686,7 +686,7 @@ describe("personaPacks", () => {
       pack: makeCreateDraftInput(),
     });
 
-    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedProtoPersonas, {
+    await asResearcher.mutation(api.personaPacks.applyTranscriptDerivedSyntheticUsers, {
       packId,
       input: {
         sharedAxes: [
@@ -712,8 +712,8 @@ describe("personaPacks", () => {
         ],
       },
     });
-    await insertProtoPersona(t, packId, {
-      name: "Manual proto persona",
+    await insertSyntheticUser(t, packId, {
+      name: "Manual synthetic user",
       axes: [
         makeAxis({
           key: "confidence_level",
@@ -725,11 +725,11 @@ describe("personaPacks", () => {
 
     await asResearcher.mutation(api.personaPacks.publish, { packId });
 
-    const protoPersonas = await asResearcher.query(api.personaPacks.listProtoPersonas, {
+    const syntheticUsers = await asResearcher.query(api.personaPacks.listSyntheticUsers, {
       packId,
     });
-    const transcriptDerivedPersona = protoPersonas.find(
-      (protoPersona: { sourceType: string }) => protoPersona.sourceType === "transcript_derived",
+    const transcriptDerivedPersona = syntheticUsers.find(
+      (syntheticUser: { sourceType: string }) => syntheticUser.sourceType === "transcript_derived",
     );
     const axisDefinitions = await getAxisDefinitionsForOrg(
       t,
@@ -777,7 +777,7 @@ async function createPublishedPack(t: TestInstance) {
   const packId = await asResearcher.mutation(api.personaPacks.createDraft, {
     pack: makeCreateDraftInput(),
   });
-  await insertProtoPersona(t, packId);
+  await insertSyntheticUser(t, packId);
   await asResearcher.mutation(api.personaPacks.publish, { packId });
   return packId;
 }
@@ -814,16 +814,16 @@ async function createArchivedPack(t: TestInstance) {
   return packId;
 }
 
-async function insertProtoPersona(
+async function insertSyntheticUser(
   t: TestInstance,
   packId: Id<"personaPacks">,
-  overrides: Partial<Doc<"protoPersonas">> = {},
+  overrides: Partial<Doc<"syntheticUsers">> = {},
 ) {
   await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+    ctx.db.insert("syntheticUsers", {
       packId,
-      name: "Proto Persona",
-      summary: "A draft proto-persona",
+      name: "Synthetic User",
+      summary: "A draft synthetic user",
       axes: [makeAxis()],
       sourceType: "manual",
       sourceRefs: [],

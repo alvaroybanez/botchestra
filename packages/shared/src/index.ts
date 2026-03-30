@@ -30,7 +30,7 @@ const ForbiddenActionSchema = z.enum([
 const PersonaVariantSchema = z.object({
   id: z.string(),
   personaPackId: z.string(),
-  protoPersonaId: z.string(),
+  syntheticUserId: z.string(),
   axisValues: z.record(z.string(), z.number()),
   edgeScore: z.number(),
   tensionSeed: z.string(),

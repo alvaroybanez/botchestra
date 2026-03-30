@@ -112,12 +112,12 @@ async function buildVariantReviewData(
     acceptedVariants?: Doc<"personaVariants">[];
   },
 ) {
-  const protoPersonas = await ctx.db
-    .query("protoPersonas")
+  const syntheticUsers = await ctx.db
+    .query("syntheticUsers")
     .withIndex("by_packId", (q) => q.eq("packId", pack._id))
     .take(10);
-  const protoPersonaMap = new Map(
-    protoPersonas.map((protoPersona) => [protoPersona._id, protoPersona]),
+  const syntheticUserMap = new Map(
+    syntheticUsers.map((syntheticUser) => [syntheticUser._id, syntheticUser]),
   );
   const acceptedVariants =
     options?.acceptedVariants ??
@@ -133,25 +133,25 @@ async function buildVariantReviewData(
       status: pack.status,
       sharedAxes: pack.sharedAxes,
     },
-    protoPersonas: protoPersonas.map((protoPersona) => ({
-      _id: protoPersona._id,
-      name: protoPersona.name,
-      summary: protoPersona.summary,
+    syntheticUsers: syntheticUsers.map((syntheticUser) => ({
+      _id: syntheticUser._id,
+      name: syntheticUser.name,
+      summary: syntheticUser.summary,
     })),
     variants: acceptedVariants.flatMap((variant) => {
-      const protoPersona = protoPersonaMap.get(variant.protoPersonaId);
+      const syntheticUser = syntheticUserMap.get(variant.syntheticUserId);
 
-      if (!protoPersona) {
+      if (!syntheticUser) {
         throw new ConvexError(
-          "Persona variant references a proto-persona outside the study's pack.",
+          "Persona variant references a synthetic user outside the study's pack.",
         );
       }
 
       return [
         {
           _id: variant._id,
-          protoPersonaId: variant.protoPersonaId,
-          protoPersonaName: protoPersona.name,
+          syntheticUserId: variant.syntheticUserId,
+          syntheticUserName: syntheticUser.name,
           axisValues: variant.axisValues,
           edgeScore: variant.edgeScore,
           coherenceScore: variant.coherenceScore,

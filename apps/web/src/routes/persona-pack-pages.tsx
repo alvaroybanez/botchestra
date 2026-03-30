@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { emptyStudyDetailSearch } from "@/routes/study-shared";
 
 type PersonaPackDoc = Doc<"personaPacks">;
-type ProtoPersonaDoc = Doc<"protoPersonas">;
+type SyntheticUserDoc = Doc<"syntheticUsers">;
 type AxisDefinition = Doc<"axisDefinitions">;
 type PersonaPackId = Id<"personaPacks">;
 type TranscriptDoc = Doc<"transcripts">;
@@ -123,7 +123,7 @@ type ExtractionStatus = {
 
 const axisKeyPattern = /^[a-z0-9_]+$/;
 
-type ProtoPersonaFormValue = {
+type SyntheticUserFormValue = {
   name: string;
   summary: string;
   evidenceText: string;
@@ -170,7 +170,7 @@ const emptyPackForm = (): PackFormValue => ({
   sharedAxes: [emptyAxis()],
 });
 
-const emptyProtoPersonaForm = (): ProtoPersonaFormValue => ({
+const emptySyntheticUserForm = (): SyntheticUserFormValue => ({
   name: "",
   summary: "",
   evidenceText: "",
@@ -595,7 +595,7 @@ export function PersonaPacksPage() {
           <CardContent className="space-y-4">
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
               Your persona library is empty. Create your first pack to define
-              shared behavioral axes and draft proto-personas for future studies.
+              shared behavioral axes and draft synthetic users for future studies.
             </p>
             <Button onClick={() => setIsCreateFormOpen(true)}>
               Create your first pack
@@ -669,7 +669,7 @@ export function PersonaPackDetailPage({
 }) {
   const typedPackId = packId as PersonaPackId;
   const pack = useQuery(api.personaPacks.get, { packId: typedPackId });
-  const protoPersonas = useQuery(api.personaPacks.listProtoPersonas, {
+  const syntheticUsers = useQuery(api.personaPacks.listSyntheticUsers, {
     packId: typedPackId,
   });
   const axisDefinitions = useQuery((api as any).axisLibrary.listAxisDefinitions, {}) as
@@ -713,11 +713,11 @@ export function PersonaPackDetailPage({
       : { packId: typedPackId, studyId: selectedStudyId as Id<"studies"> },
   ) as PackVariantReviewData | null | undefined;
   const updateDraft = useMutation(api.personaPacks.updateDraft);
-  const createProtoPersona = useMutation(api.personaPacks.createProtoPersona);
+  const createSyntheticUser = useMutation(api.personaPacks.createSyntheticUser);
   const publishPack = useMutation(api.personaPacks.publish);
   const archivePack = useMutation(api.personaPacks.archive);
-  const applyTranscriptDerivedProtoPersonas = useMutation(
-    (api as any).personaPacks.applyTranscriptDerivedProtoPersonas,
+  const applyTranscriptDerivedSyntheticUsers = useMutation(
+    (api as any).personaPacks.applyTranscriptDerivedSyntheticUsers,
   );
   const suggestAxes = useAction((api as any).axisGeneration.suggestAxes);
   const startTranscriptExtraction = useAction(
@@ -726,11 +726,11 @@ export function PersonaPackDetailPage({
   const attachTranscript = useMutation((api as any).packTranscripts.attachTranscript);
   const detachTranscript = useMutation((api as any).packTranscripts.detachTranscript);
   const [draftForm, setDraftForm] = useState<PackFormValue>(emptyPackForm);
-  const [protoPersonaForm, setProtoPersonaForm] =
-    useState<ProtoPersonaFormValue>(emptyProtoPersonaForm);
+  const [syntheticUserForm, setSyntheticUserForm] =
+    useState<SyntheticUserFormValue>(emptySyntheticUserForm);
   const [isProtoFormOpen, setIsProtoFormOpen] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const [isSavingProtoPersona, setIsSavingProtoPersona] = useState(false);
+  const [isSavingSyntheticUser, setIsSavingSyntheticUser] = useState(false);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -895,7 +895,7 @@ export function PersonaPackDetailPage({
 
   const resolvedStatus = optimisticStatus ?? pack?.status;
   const isDraft = resolvedStatus === "draft";
-  const protoPersonaList: ProtoPersonaDoc[] = protoPersonas ?? [];
+  const syntheticUserList: SyntheticUserDoc[] = syntheticUsers ?? [];
   const canSuggestAxes =
     draftForm.name.trim().length > 0 && draftForm.context.trim().length > 0;
   const selectedSuggestionCount = suggestedAxes.filter(
@@ -912,8 +912,8 @@ export function PersonaPackDetailPage({
     return isDraft ? draftForm.sharedAxes.map(axisFormToPayload) : pack.sharedAxes;
   }, [draftForm.sharedAxes, isDraft, pack]);
   const publishedStatusHelp =
-    isDraft && protoPersonas !== undefined && protoPersonaList.length === 0
-      ? "Add at least one proto-persona before publishing this pack."
+    isDraft && syntheticUsers !== undefined && syntheticUserList.length === 0
+      ? "Add at least one synthetic user before publishing this pack."
       : null;
   const selectedStudySummary =
     packVariantReview?.selectedStudy ?? packVariantReview?.study ?? null;
@@ -1006,7 +1006,7 @@ export function PersonaPackDetailPage({
     }
   }
 
-  async function handleCreateProtoPersona(
+  async function handleCreateSyntheticUser(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -1017,31 +1017,31 @@ export function PersonaPackDetailPage({
 
     setActionError(null);
     setSaveMessage(null);
-    setIsSavingProtoPersona(true);
+    setIsSavingSyntheticUser(true);
 
     try {
-      await createProtoPersona({
+      await createSyntheticUser({
         packId: pack._id,
-        protoPersona: {
-          name: protoPersonaForm.name,
-          summary: protoPersonaForm.summary,
+        syntheticUser: {
+          name: syntheticUserForm.name,
+          summary: syntheticUserForm.summary,
           axes: pack.sharedAxes,
-          evidenceSnippets: parseEvidenceSnippets(protoPersonaForm.evidenceText),
-          ...(protoPersonaForm.notes.trim()
-            ? { notes: protoPersonaForm.notes.trim() }
+          evidenceSnippets: parseEvidenceSnippets(syntheticUserForm.evidenceText),
+          ...(syntheticUserForm.notes.trim()
+            ? { notes: syntheticUserForm.notes.trim() }
             : {}),
         },
       });
 
-      setProtoPersonaForm(emptyProtoPersonaForm());
+      setSyntheticUserForm(emptySyntheticUserForm());
       setIsProtoFormOpen(false);
-      setSaveMessage("Proto-persona added.");
+      setSaveMessage("Synthetic user added.");
     } catch (error) {
       setActionError(
-        getErrorMessage(error, "Could not create proto-persona."),
+        getErrorMessage(error, "Could not create synthetic user."),
       );
     } finally {
-      setIsSavingProtoPersona(false);
+      setIsSavingSyntheticUser(false);
     }
   }
 
@@ -1557,7 +1557,7 @@ export function PersonaPackDetailPage({
     setIsApplyingExtractionResults(true);
 
     try {
-      await applyTranscriptDerivedProtoPersonas({
+      await applyTranscriptDerivedSyntheticUsers({
         packId: pack._id,
         input: {
           sharedAxes: extractionSharedAxes.map(axisFormToPayload),
@@ -1583,12 +1583,12 @@ export function PersonaPackDetailPage({
       }));
       setSaveMessage(
         selectedArchetypes.length === 1
-          ? "Applied 1 transcript-derived proto-persona to this pack."
-          : `Applied ${selectedArchetypes.length} transcript-derived proto-personas to this pack.`,
+          ? "Applied 1 transcript-derived synthetic user to this pack."
+          : `Applied ${selectedArchetypes.length} transcript-derived synthetic users to this pack.`,
       );
     } catch (error) {
       setExtractionError(
-        getErrorMessage(error, "Could not apply transcript-derived proto-personas."),
+        getErrorMessage(error, "Could not apply transcript-derived synthetic users."),
       );
     } finally {
       setIsApplyingExtractionResults(false);
@@ -1597,7 +1597,7 @@ export function PersonaPackDetailPage({
 
   if (
     pack === undefined
-    || protoPersonas === undefined
+    || syntheticUsers === undefined
     || axisDefinitions === undefined
     || transcriptLibrary === undefined
     || packTranscripts === undefined
@@ -1606,7 +1606,7 @@ export function PersonaPackDetailPage({
     return (
       <LoadingCard
         title="Persona Pack"
-        body="Loading pack details and proto-personas..."
+        body="Loading pack details and synthetic users..."
       />
     );
   }
@@ -1640,7 +1640,7 @@ export function PersonaPackDetailPage({
               <StatusBadge status={resolvedStatus ?? pack.status} />
             </div>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review pack metadata, shared axes, and proto-personas before
+              Review pack metadata, shared axes, and synthetic users before
               publishing. Published packs are frozen and archived packs remain
               read-only.
             </p>
@@ -1652,13 +1652,13 @@ export function PersonaPackDetailPage({
             </Button>
             {isDraft ? (
               <Button
-                disabled={protoPersonaList.length === 0}
+                disabled={syntheticUserList.length === 0}
                 onClick={() =>
                   setConfirmationState({
                     kind: "publish",
                     title: "Publish persona pack?",
                     description:
-                      "Publishing freezes this pack and its proto-personas so studies can rely on a stable definition.",
+                      "Publishing freezes this pack and its synthetic users so studies can rely on a stable definition.",
                     confirmLabel: "Publish pack",
                   })
                 }
@@ -1864,9 +1864,9 @@ export function PersonaPackDetailPage({
             <Card>
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
-                  <CardTitle>Proto-Personas</CardTitle>
+                  <CardTitle>Synthetic Users</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Review the pack&apos;s source proto-personas and the evidence
+                    Review the pack&apos;s source synthetic users and the evidence
                     used to anchor them.
                   </p>
                 </div>
@@ -1875,7 +1875,7 @@ export function PersonaPackDetailPage({
                     variant="outline"
                     onClick={() => setIsProtoFormOpen((current) => !current)}
                   >
-                    {isProtoFormOpen ? "Close form" : "Add proto-persona"}
+                    {isProtoFormOpen ? "Close form" : "Add synthetic user"}
                   </Button>
                 ) : null}
               </CardHeader>
@@ -1883,15 +1883,15 @@ export function PersonaPackDetailPage({
                 {isProtoFormOpen ? (
                   <form
                     className="space-y-4 rounded-xl border bg-background p-4"
-                    onSubmit={handleCreateProtoPersona}
+                    onSubmit={handleCreateSyntheticUser}
                   >
                     <div className="grid gap-2">
                       <Label htmlFor="create-proto-name">Name</Label>
                       <Input
                         id="create-proto-name"
-                        value={protoPersonaForm.name}
+                        value={syntheticUserForm.name}
                         onChange={(event) =>
-                          setProtoPersonaForm((current) => ({
+                          setSyntheticUserForm((current) => ({
                             ...current,
                             name: event.target.value,
                           }))
@@ -1905,9 +1905,9 @@ export function PersonaPackDetailPage({
                       <textarea
                         id="create-proto-summary"
                         className={textareaClassName}
-                        value={protoPersonaForm.summary}
+                        value={syntheticUserForm.summary}
                         onChange={(event) =>
-                          setProtoPersonaForm((current) => ({
+                          setSyntheticUserForm((current) => ({
                             ...current,
                             summary: event.target.value,
                           }))
@@ -1923,9 +1923,9 @@ export function PersonaPackDetailPage({
                       <textarea
                         id="create-proto-evidence"
                         className={textareaClassName}
-                        value={protoPersonaForm.evidenceText}
+                        value={syntheticUserForm.evidenceText}
                         onChange={(event) =>
-                          setProtoPersonaForm((current) => ({
+                          setSyntheticUserForm((current) => ({
                             ...current,
                             evidenceText: event.target.value,
                           }))
@@ -1939,9 +1939,9 @@ export function PersonaPackDetailPage({
                       <textarea
                         id="create-proto-notes"
                         className={textareaClassName}
-                        value={protoPersonaForm.notes}
+                        value={syntheticUserForm.notes}
                         onChange={(event) =>
-                          setProtoPersonaForm((current) => ({
+                          setSyntheticUserForm((current) => ({
                             ...current,
                             notes: event.target.value,
                           }))
@@ -1950,29 +1950,29 @@ export function PersonaPackDetailPage({
                     </div>
 
                     <p className="text-xs leading-5 text-muted-foreground">
-                      New proto-personas inherit the current shared axes so you
+                      New synthetic users inherit the current shared axes so you
                       can quickly draft content before publishing.
                     </p>
 
-                    <Button disabled={isSavingProtoPersona} type="submit">
-                      {isSavingProtoPersona ? "Saving..." : "Save proto-persona"}
+                    <Button disabled={isSavingSyntheticUser} type="submit">
+                      {isSavingSyntheticUser ? "Saving..." : "Save synthetic user"}
                     </Button>
                   </form>
                 ) : null}
 
-                {protoPersonaList.length === 0 ? (
+                {syntheticUserList.length === 0 ? (
                   <div className="rounded-xl border border-dashed bg-background p-6">
                     <p className="text-sm leading-6 text-muted-foreground">
-                      No proto-personas yet. Add the first proto-persona to make
+                      No synthetic users yet. Add the first synthetic user to make
                       this draft pack publishable.
                     </p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {protoPersonaList.map((protoPersona) => (
-                      <ProtoPersonaCard
-                        key={protoPersona._id}
-                        protoPersona={protoPersona}
+                    {syntheticUserList.map((syntheticUser) => (
+                      <SyntheticUserCard
+                        key={syntheticUser._id}
+                        syntheticUser={syntheticUser}
                       />
                     ))}
                   </div>
@@ -1991,8 +1991,8 @@ export function PersonaPackDetailPage({
                 <SummaryValue label="Status" value={resolvedStatus ?? pack.status} />
                 <SummaryValue label="Version" value={`v${pack.version}`} />
                 <SummaryValue
-                  label="Proto-personas"
-                  value={String(protoPersonaList.length)}
+                  label="Synthetic users"
+                  value={String(syntheticUserList.length)}
                 />
               </CardContent>
             </Card>
@@ -2760,38 +2760,38 @@ function AxisInput({
   );
 }
 
-function ProtoPersonaCard({ protoPersona }: { protoPersona: ProtoPersonaDoc }) {
-  const isTranscriptDerived = protoPersona.sourceType === "transcript_derived";
+function SyntheticUserCard({ syntheticUser }: { syntheticUser: SyntheticUserDoc }) {
+  const isTranscriptDerived = syntheticUser.sourceType === "transcript_derived";
 
   return (
     <div className="rounded-xl border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h4 className="text-lg font-semibold">{protoPersona.name}</h4>
-          <p className="text-sm text-muted-foreground">Source: {protoPersona.sourceType}</p>
+          <h4 className="text-lg font-semibold">{syntheticUser.name}</h4>
+          <p className="text-sm text-muted-foreground">Source: {syntheticUser.sourceType}</p>
         </div>
         <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-          {protoPersona.axes.length} axes
+          {syntheticUser.axes.length} axes
         </span>
       </div>
 
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        {protoPersona.summary}
+        {syntheticUser.summary}
       </p>
 
-      {protoPersona.evidenceSnippets.length > 0 ? (
+      {syntheticUser.evidenceSnippets.length > 0 ? (
         <div className="mt-4 space-y-2">
           <p className="text-sm font-medium">Evidence snippets</p>
           <ul className="space-y-2">
-            {protoPersona.evidenceSnippets.map((snippet, index) => (
+            {syntheticUser.evidenceSnippets.map((snippet, index) => (
               <li
-                key={`${protoPersona._id}-${index}`}
+                key={`${syntheticUser._id}-${index}`}
               >
-                {isTranscriptDerived && protoPersona.sourceRefs[index] ? (
+                {isTranscriptDerived && syntheticUser.sourceRefs[index] ? (
                   <Link
                     className="block rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
                     params={{
-                      transcriptId: protoPersona.sourceRefs[index] as TranscriptId,
+                      transcriptId: syntheticUser.sourceRefs[index] as TranscriptId,
                     }}
                     search={{ highlightSnippet: snippet }}
                     to="/transcripts/$transcriptId"
@@ -2809,11 +2809,11 @@ function ProtoPersonaCard({ protoPersona }: { protoPersona: ProtoPersonaDoc }) {
         </div>
       ) : null}
 
-      {protoPersona.notes ? (
+      {syntheticUser.notes ? (
         <div className="mt-4">
           <p className="text-sm font-medium">Notes</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {protoPersona.notes}
+            {syntheticUser.notes}
           </p>
         </div>
       ) : null}
@@ -2854,7 +2854,7 @@ function ImportPackDialog({
           <h3 className="text-xl font-semibold">Import persona pack JSON</h3>
           <p className="text-sm leading-6 text-muted-foreground">
             Paste a valid exported persona pack JSON payload to create a new
-            draft pack and review its imported proto-personas.
+            draft pack and review its imported synthetic users.
           </p>
         </div>
 
@@ -3144,7 +3144,7 @@ function TranscriptExtractionPanel({
         <div className="space-y-1">
           <h4 className="text-lg font-semibold">Transcript extraction</h4>
           <p className="text-sm text-muted-foreground">
-            Convert attached interview transcripts into draft proto-personas with
+            Convert attached interview transcripts into draft synthetic users with
             traceable evidence.
           </p>
         </div>
@@ -3463,7 +3463,7 @@ function TranscriptExtractionPanel({
                 <p className="font-medium">Proposed axes</p>
                 <p className="text-sm text-muted-foreground">
                   Accept, edit, or remove auto-discovered axes before applying
-                  transcript-derived proto-personas.
+                  transcript-derived synthetic users.
                 </p>
               </div>
 

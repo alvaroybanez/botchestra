@@ -177,16 +177,16 @@ function ResolvedStudyFindingsPage({
     [axisRangeIsInvalid, detailSearch, findings],
   );
 
-  const protoPersonaOptions = useMemo(() => {
-    const protoPersonas = new Map<string, string>();
+  const syntheticUserOptions = useMemo(() => {
+    const syntheticUsers = new Map<string, string>();
 
     for (const finding of findings) {
-      for (const protoPersona of finding.affectedProtoPersonas) {
-        protoPersonas.set(protoPersona._id, protoPersona.name);
+      for (const syntheticUser of finding.affectedSyntheticUsers) {
+        syntheticUsers.set(syntheticUser._id, syntheticUser.name);
       }
     }
 
-    return [...protoPersonas.entries()]
+    return [...syntheticUsers.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((left, right) => left.name.localeCompare(right.name));
   }, [findings]);
@@ -231,7 +231,7 @@ function ResolvedStudyFindingsPage({
               <StudyStatusBadge status={study.status} />
             </div>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Filter issue clusters by severity, proto-persona, axis range,
+              Filter issue clusters by severity, synthetic user, axis range,
               outcome, and URL prefix. Drill into representative runs and open
               evidence links for each cluster.
             </p>
@@ -285,20 +285,20 @@ function ResolvedStudyFindingsPage({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="finding-persona-filter">Proto-persona</Label>
+                <Label htmlFor="finding-persona-filter">Synthetic user</Label>
                 <select
-                  aria-label="Proto-persona filter"
+                  aria-label="Synthetic user filter"
                   className={selectClassName}
                   id="finding-persona-filter"
-                  value={detailSearch.protoPersonaId ?? ""}
+                  value={detailSearch.syntheticUserId ?? ""}
                   onChange={(event) =>
                     onSearchChange({
-                      protoPersonaId: event.target.value || undefined,
+                      syntheticUserId: event.target.value || undefined,
                     })
                   }
                 >
-                  <option value="">All proto-personas</option>
-                  {protoPersonaOptions.map((persona) => (
+                  <option value="">All synthetic users</option>
+                  {syntheticUserOptions.map((persona) => (
                     <option key={persona.id} value={persona.id}>
                       {persona.name}
                     </option>
@@ -537,7 +537,7 @@ function FindingCard({
         <div className="grid gap-4 lg:grid-cols-2">
           <SummaryValue
             label="Affected segments"
-            value={finding.affectedProtoPersonas.map((protoPersona) => protoPersona.name).join(", ")}
+            value={finding.affectedSyntheticUsers.map((syntheticUser) => syntheticUser.name).join(", ")}
           />
           <SummaryValue
             label="Axis coverage"
@@ -565,7 +565,7 @@ function FindingCard({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="space-y-1">
                       <p className="font-medium">
-                        {run.protoPersonaName ?? "Representative run"}
+                        {run.syntheticUserName ?? "Representative run"}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {formatStatusLabel(run.status)}
@@ -712,9 +712,9 @@ function filterFindings(findings: DemoFinding[], search: StudyDetailSearch) {
     }
 
     if (
-      search.protoPersonaId &&
-      !finding.affectedProtoPersonas.some(
-        (protoPersona) => protoPersona._id === search.protoPersonaId,
+      search.syntheticUserId &&
+      !finding.affectedSyntheticUsers.some(
+        (syntheticUser) => syntheticUser._id === search.syntheticUserId,
       )
     ) {
       return false;

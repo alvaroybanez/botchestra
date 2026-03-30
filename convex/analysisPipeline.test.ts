@@ -597,7 +597,7 @@ describe("analysisPipeline clustering", () => {
         "severity",
         "affectedRunCount",
         "affectedRunRate",
-        "affectedProtoPersonaIds",
+        "affectedSyntheticUserIds",
         "affectedAxisRanges",
         "representativeRunIds",
         "replayConfidence",
@@ -631,7 +631,7 @@ describe("analysisPipeline clustering", () => {
       severity: "blocker",
       affectedRunCount: 2,
       affectedRunRate: 0.5,
-      affectedProtoPersonaIds: expect.any(Array),
+      affectedSyntheticUserIds: expect.any(Array),
       representativeRunIds: expect.arrayContaining([checkoutRunA, checkoutRunB]),
       replayConfidence: 0.5,
       evidenceKeys: expect.arrayContaining([
@@ -640,7 +640,7 @@ describe("analysisPipeline clustering", () => {
         `replays/${checkoutRunA}/CHECKOUT_BUTTON_MISSING.png`,
       ]),
     });
-    expect(checkoutCluster!.affectedProtoPersonaIds).toHaveLength(2);
+    expect(checkoutCluster!.affectedSyntheticUserIds).toHaveLength(2);
     expect(checkoutCluster!.affectedAxisRanges).toEqual(
       expect.arrayContaining([
         { key: "digital_confidence", min: -0.8, max: -0.3 },
@@ -963,8 +963,8 @@ async function insertTerminalRun(
     throw new Error(`Study ${studyId} not found.`);
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: `Proto ${Math.random()}`,
       summary: "Moves quickly and expects little friction.",
@@ -979,7 +979,7 @@ async function insertTerminalRun(
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: study.personaPackId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: options.axisValues ?? [],
       edgeScore: 0.5,
       tensionSeed: "Analysis test tension seed",
@@ -1003,7 +1003,7 @@ async function insertTerminalRun(
     ctx.db.insert("runs", {
       studyId,
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       status: options.status,
       startedAt: now - 5_000,
       endedAt: now,
@@ -1044,7 +1044,7 @@ async function insertReplayRun(
     ctx.db.insert("runs", {
       studyId,
       personaVariantId: representativeRun.personaVariantId,
-      protoPersonaId: representativeRun.protoPersonaId,
+      syntheticUserId: representativeRun.syntheticUserId,
       status: options.status,
       replayOfRunId,
       startedAt: Date.now() - 5_000,

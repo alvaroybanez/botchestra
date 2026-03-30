@@ -72,10 +72,10 @@ describe("personaPacks", () => {
   });
 });
 
-// ─── 2. protoPersonas ─────────────────────────────────────────────────────
+// ─── 2. syntheticUsers ─────────────────────────────────────────────────────
 
-describe("protoPersonas", () => {
-  it("inserts and reads back a minimal protoPersona", async () => {
+describe("syntheticUsers", () => {
+  it("inserts and reads back a minimal syntheticUser", async () => {
     const t = convexTest(schema, modules);
     const now = Date.now();
 
@@ -95,7 +95,7 @@ describe("protoPersonas", () => {
     });
 
     const id = await t.run(async (ctx) => {
-      return await ctx.db.insert("protoPersonas", {
+      return await ctx.db.insert("syntheticUsers", {
         packId,
         name: "Careful Carol",
         summary: "A cautious, detail-oriented shopper",
@@ -155,7 +155,7 @@ describe("personaVariants", () => {
     );
 
     const protoId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Quick Quinn",
         summary: "Impatient and efficient",
@@ -170,7 +170,7 @@ describe("personaVariants", () => {
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: packId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         axisValues: [{ key: "digital_confidence", value: 0.8 }],
         edgeScore: 0.75,
         tensionSeed: "Trusts interfaces too quickly",
@@ -284,7 +284,7 @@ describe("runs", () => {
     );
 
     const protoId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Proto E",
         summary: "summary",
@@ -299,7 +299,7 @@ describe("runs", () => {
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: packId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
         tensionSeed: "neutral",
@@ -315,7 +315,7 @@ describe("runs", () => {
       ctx.db.insert("runs", {
         studyId,
         personaVariantId: variantId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         status: "queued",
         frustrationCount: 0,
         milestoneKeys: [],
@@ -366,7 +366,7 @@ describe("runs", () => {
     );
 
     const protoId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Proto F",
         summary: "summary",
@@ -381,7 +381,7 @@ describe("runs", () => {
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: packId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
         tensionSeed: "neutral",
@@ -397,7 +397,7 @@ describe("runs", () => {
       ctx.db.insert("runs", {
         studyId,
         personaVariantId: variantId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         status: "success",
         startedAt: now,
         endedAt: now + 120_000,
@@ -469,7 +469,7 @@ describe("runMilestones", () => {
     );
 
     const protoId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Proto G",
         summary: "summary",
@@ -484,7 +484,7 @@ describe("runMilestones", () => {
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: packId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
         tensionSeed: "neutral",
@@ -500,7 +500,7 @@ describe("runMilestones", () => {
       ctx.db.insert("runs", {
         studyId,
         personaVariantId: variantId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         status: "running",
         frustrationCount: 0,
         milestoneKeys: [],
@@ -570,7 +570,7 @@ describe("issueClusters", () => {
     );
 
     const protoId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Proto Issue",
         summary: "summary",
@@ -585,7 +585,7 @@ describe("issueClusters", () => {
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: packId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         axisValues: [],
         edgeScore: 0.5,
         tensionSeed: "neutral",
@@ -601,7 +601,7 @@ describe("issueClusters", () => {
       ctx.db.insert("runs", {
         studyId,
         personaVariantId: variantId,
-        protoPersonaId: protoId,
+        syntheticUserId: protoId,
         status: "hard_fail",
         frustrationCount: 3,
         milestoneKeys: [],
@@ -616,7 +616,7 @@ describe("issueClusters", () => {
         severity: "major",
         affectedRunCount: 20,
         affectedRunRate: 0.32,
-        affectedProtoPersonaIds: [protoId],
+        affectedSyntheticUserIds: [protoId],
         affectedAxisRanges: [
           { key: "digital_confidence", min: -1.0, max: 0.0 },
         ],
@@ -686,7 +686,7 @@ describe("studyReports", () => {
         severity: "minor",
         affectedRunCount: 1,
         affectedRunRate: 0.1,
-        affectedProtoPersonaIds: [],
+        affectedSyntheticUserIds: [],
         affectedAxisRanges: [],
         representativeRunIds: [],
         replayConfidence: 0.5,

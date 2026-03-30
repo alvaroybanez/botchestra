@@ -287,8 +287,8 @@ async function insertRun(
     }),
   );
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
@@ -303,7 +303,7 @@ async function insertRun(
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: packId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,
       tensionSeed: "Moves quickly through checkout",
@@ -322,7 +322,7 @@ async function insertRun(
     ctx.db.insert("runs", {
       studyId,
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       status: "queued",
       frustrationCount: 0,
       milestoneKeys: [],

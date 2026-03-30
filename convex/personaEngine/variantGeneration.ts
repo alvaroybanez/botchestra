@@ -4,7 +4,7 @@ import {
   normalizeAxisValue,
   sampleEdgeHeavy,
   sampleInterior,
-  type ProtoPersonaAllocationInput,
+  type SyntheticUserAllocationInput,
   type VariantAxisValues,
 } from "./pure";
 
@@ -28,12 +28,12 @@ export type DistinctnessEvaluation = {
   isNearDuplicate: boolean;
 };
 
-export type ProtoPersonaForAllocation = ProtoPersonaAllocationInput & {
+export type SyntheticUserForAllocation = SyntheticUserAllocationInput & {
   axisKeys: readonly string[];
 };
 
 export type VariantPlan = {
-  protoPersonaId: string;
+  syntheticUserId: string;
   axisValues: VariantAxisValues;
   sampleType: "edge" | "interior";
   edgeScore: number;
@@ -61,22 +61,22 @@ export function resolveRunBudget(runBudget?: number): number {
 }
 
 export function planVariants(
-  protoPersonas: readonly ProtoPersonaForAllocation[],
+  syntheticUsers: readonly SyntheticUserForAllocation[],
   budget: number,
   minimumDistanceThreshold = MINIMUM_DISTANCE_THRESHOLD,
   existingAxisValues: readonly VariantAxisValues[] = [],
   sequenceOffset = 0,
 ): VariantPlan[] {
-  const allocations = allocateVariants(protoPersonas, budget);
+  const allocations = allocateVariants(syntheticUsers, budget);
   const plans: VariantPlan[] = [];
 
   allocations.forEach((allocation, protoIndex) => {
-    const protoPersona = protoPersonas.find(
-      (candidate) => candidate.id === allocation.protoPersonaId,
+    const syntheticUser = syntheticUsers.find(
+      (candidate) => candidate.id === allocation.syntheticUserId,
     );
 
-    if (!protoPersona) {
-      throw new RangeError(`Proto-persona ${allocation.protoPersonaId} not found.`);
+    if (!syntheticUser) {
+      throw new RangeError(`Synthetic user ${allocation.syntheticUserId} not found.`);
     }
 
     const edgeSlots = Math.round(allocation.variantCount * 0.7);
@@ -93,8 +93,8 @@ export function planVariants(
       ) {
         const candidate =
           sampleType === "edge"
-            ? sampleEdgeHeavy(protoPersona.axisKeys, sequenceIndex)
-            : sampleInterior(protoPersona.axisKeys, sequenceIndex);
+            ? sampleEdgeHeavy(syntheticUser.axisKeys, sequenceIndex)
+            : sampleInterior(syntheticUser.axisKeys, sequenceIndex);
 
         sequenceIndex += 1;
 
@@ -117,12 +117,12 @@ export function planVariants(
 
       if (plannedAxisValues === null) {
         throw new RangeError(
-          `Unable to generate a ${sampleType} plan for proto-persona ${protoPersona.id}.`,
+          `Unable to generate a ${sampleType} plan for synthetic user ${syntheticUser.id}.`,
         );
       }
 
       plans.push({
-        protoPersonaId: protoPersona.id,
+        syntheticUserId: syntheticUser.id,
         axisValues: plannedAxisValues,
         sampleType,
         edgeScore: calculateEdgeScore(plannedAxisValues),

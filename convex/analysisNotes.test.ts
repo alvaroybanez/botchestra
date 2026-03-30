@@ -200,7 +200,7 @@ async function insertIssueCluster(
       severity: "major",
       affectedRunCount: 3,
       affectedRunRate: 0.5,
-      affectedProtoPersonaIds: [],
+      affectedSyntheticUserIds: [],
       affectedAxisRanges: [],
       representativeRunIds: [],
       replayConfidence: 0.75,

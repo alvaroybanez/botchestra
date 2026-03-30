@@ -60,7 +60,7 @@ function createExecuteRunRequest(
     personaVariant: {
       id: "variant_123",
       personaPackId: "pack_123",
-      protoPersonaId: "proto_123",
+      syntheticUserId: "proto_123",
       axisValues: { confidence: 0.4 },
       edgeScore: 0.8,
       tensionSeed: "I want to finish checkout quickly.",

@@ -140,9 +140,9 @@ describe("analysis queries", () => {
           fullResolutionKey: "runs/run-secondary/milestones/3.jpg",
         },
       ],
-      affectedProtoPersonas: [
+      affectedSyntheticUsers: [
         {
-          _id: fixtures.protoPersonaBetaId,
+          _id: fixtures.syntheticUserBetaId,
           name: "Busy parent",
         },
       ],
@@ -165,7 +165,7 @@ describe("analysis queries", () => {
           _id: fixtures.primaryRunId,
           status: "hard_fail",
           finalUrl: "https://example.com/checkout/address",
-          protoPersonaName: "Cautious shopper",
+          syntheticUserName: "Cautious shopper",
           representativeQuote:
             "I could not figure out how to continue from the address step.",
         }),
@@ -173,7 +173,7 @@ describe("analysis queries", () => {
     });
   });
 
-  it("listFindings supports severity, proto-persona, axis range, outcome, URL prefix, and filter combinations", async () => {
+  it("listFindings supports severity, synthetic user, axis range, outcome, URL prefix, and filter combinations", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const fixtures = await seedAnalysisFixtures(t, researchIdentity.tokenIdentifier);
@@ -186,11 +186,11 @@ describe("analysis queries", () => {
       fixtures.clusterPrimaryId,
     ]);
 
-    const protoPersonaFindings = await asResearcher.query(analysisApi.listFindings, {
+    const syntheticUserFindings = await asResearcher.query(analysisApi.listFindings, {
       studyId: fixtures.studyId,
-      protoPersonaId: fixtures.protoPersonaBetaId,
+      syntheticUserId: fixtures.syntheticUserBetaId,
     });
-    expect(protoPersonaFindings.map((finding: any) => finding._id)).toEqual([
+    expect(syntheticUserFindings.map((finding: any) => finding._id)).toEqual([
       fixtures.clusterSecondaryId,
     ]);
 
@@ -225,7 +225,7 @@ describe("analysis queries", () => {
     const combinedFilters = await asResearcher.query(analysisApi.listFindings, {
       studyId: fixtures.studyId,
       severity: "blocker",
-      protoPersonaId: fixtures.protoPersonaAlphaId,
+      syntheticUserId: fixtures.syntheticUserAlphaId,
       axisRange: {
         key: "digital_confidence",
         min: -0.8,
@@ -241,7 +241,7 @@ describe("analysis queries", () => {
     const noMatches = await asResearcher.query(analysisApi.listFindings, {
       studyId: fixtures.studyId,
       severity: "major",
-      protoPersonaId: fixtures.protoPersonaAlphaId,
+      syntheticUserId: fixtures.syntheticUserAlphaId,
       outcome: "soft_fail",
     });
     expect(noMatches).toEqual([]);
@@ -312,29 +312,29 @@ type TestInstance = ReturnType<typeof createTest>;
 async function seedAnalysisFixtures(t: TestInstance, orgId: string) {
   const packId = await insertPack(t, orgId);
   const studyId = await insertStudy(t, orgId, packId);
-  const protoPersonaAlphaId = await insertProtoPersona(
+  const syntheticUserAlphaId = await insertSyntheticUser(
     t,
     packId,
     "Cautious shopper",
   );
-  const protoPersonaBetaId = await insertProtoPersona(t, packId, "Busy parent");
+  const syntheticUserBetaId = await insertSyntheticUser(t, packId, "Busy parent");
   const primaryVariantId = await insertPersonaVariant(
     t,
     studyId,
     packId,
-    protoPersonaAlphaId,
+    syntheticUserAlphaId,
     [{ key: "digital_confidence", value: -0.55 }],
   );
   const secondaryVariantId = await insertPersonaVariant(
     t,
     studyId,
     packId,
-    protoPersonaBetaId,
+    syntheticUserBetaId,
     [{ key: "digital_confidence", value: 0.45 }],
   );
   const primaryRunId = await insertRun(t, {
     studyId,
-    protoPersonaId: protoPersonaAlphaId,
+    syntheticUserId: syntheticUserAlphaId,
     personaVariantId: primaryVariantId,
     status: "hard_fail",
     finalUrl: "https://example.com/checkout/address",
@@ -353,7 +353,7 @@ async function seedAnalysisFixtures(t: TestInstance, orgId: string) {
   });
   const secondaryRunId = await insertRun(t, {
     studyId,
-    protoPersonaId: protoPersonaBetaId,
+    syntheticUserId: syntheticUserBetaId,
     personaVariantId: secondaryVariantId,
     status: "soft_fail",
     finalUrl: "https://example.com/checkout/payment",
@@ -376,7 +376,7 @@ async function seedAnalysisFixtures(t: TestInstance, orgId: string) {
     severity: "blocker",
     affectedRunCount: 3,
     affectedRunRate: 0.5,
-    affectedProtoPersonaIds: [protoPersonaAlphaId],
+    affectedSyntheticUserIds: [syntheticUserAlphaId],
     affectedAxisRanges: [
       { key: "digital_confidence", min: -0.9, max: -0.3 },
     ],
@@ -394,7 +394,7 @@ async function seedAnalysisFixtures(t: TestInstance, orgId: string) {
     severity: "minor",
     affectedRunCount: 2,
     affectedRunRate: 0.33,
-    affectedProtoPersonaIds: [protoPersonaBetaId],
+    affectedSyntheticUserIds: [syntheticUserBetaId],
     affectedAxisRanges: [{ key: "digital_confidence", min: 0.2, max: 0.8 }],
     representativeRunIds: [secondaryRunId],
     replayConfidence: 0.4,
@@ -422,8 +422,8 @@ async function seedAnalysisFixtures(t: TestInstance, orgId: string) {
 
   return {
     studyId,
-    protoPersonaAlphaId,
-    protoPersonaBetaId,
+    syntheticUserAlphaId,
+    syntheticUserBetaId,
     primaryRunId,
     clusterPrimaryId,
     clusterSecondaryId,
@@ -502,13 +502,13 @@ async function insertStudy(
   );
 }
 
-async function insertProtoPersona(
+async function insertSyntheticUser(
   t: TestInstance,
   packId: Id<"personaPacks">,
   name: string,
 ) {
   return await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+    ctx.db.insert("syntheticUsers", {
       packId,
       name,
       summary: `${name} summary`,
@@ -534,14 +534,14 @@ async function insertPersonaVariant(
   t: TestInstance,
   studyId: Id<"studies">,
   personaPackId: Id<"personaPacks">,
-  protoPersonaId: Id<"protoPersonas">,
+  syntheticUserId: Id<"syntheticUsers">,
   axisValues: Array<{ key: string; value: number }>,
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues,
       edgeScore: 0.5,
       tensionSeed: "Wants reassurance before payment.",
@@ -559,7 +559,7 @@ async function insertRun(
   run: Pick<
     Doc<"runs">,
     | "studyId"
-    | "protoPersonaId"
+    | "syntheticUserId"
     | "personaVariantId"
     | "status"
     | "finalUrl"
@@ -570,7 +570,7 @@ async function insertRun(
   return await t.run(async (ctx) =>
     ctx.db.insert("runs", {
       studyId: run.studyId,
-      protoPersonaId: run.protoPersonaId,
+      syntheticUserId: run.syntheticUserId,
       personaVariantId: run.personaVariantId,
       status: run.status,
       finalUrl: run.finalUrl,

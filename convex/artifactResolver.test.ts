@@ -120,8 +120,8 @@ async function seedArtifactFixture(t: TestInstance, orgId: string) {
     }),
   );
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId,
       name: "Careful shopper",
       summary: "Moves carefully through checkout.",
@@ -168,7 +168,7 @@ async function seedArtifactFixture(t: TestInstance, orgId: string) {
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: packId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [{ key: "digital_confidence", value: -0.4 }],
       edgeScore: 0.7,
       firstPersonBio: "I move carefully through checkout and avoid risky decisions online.",
@@ -190,7 +190,7 @@ async function seedArtifactFixture(t: TestInstance, orgId: string) {
     ctx.db.insert("runs", {
       studyId,
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       status: "success",
       workerSessionId: "worker-session-1",
       stepCount: 3,

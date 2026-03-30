@@ -152,7 +152,7 @@ export const getRunDispatchPayload = internalQuery({
       personaVariant: {
         id: personaVariant._id,
         personaPackId: personaVariant.personaPackId,
-        protoPersonaId: personaVariant.protoPersonaId,
+        syntheticUserId: personaVariant.syntheticUserId,
         axisValues: Object.fromEntries(
           personaVariant.axisValues.map((axisValue) => [
             axisValue.key,
@@ -358,7 +358,7 @@ async function ensureStudyRuns(
     await ctx.db.insert("runs", {
       studyId: study._id,
       personaVariantId: personaVariant._id,
-      protoPersonaId: personaVariant.protoPersonaId,
+      syntheticUserId: personaVariant.syntheticUserId,
       status: "queued",
       frustrationCount: 0,
       milestoneKeys: [],

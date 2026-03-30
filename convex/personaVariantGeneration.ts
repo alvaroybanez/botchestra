@@ -16,7 +16,7 @@ import {
   planVariants,
   resolveRunBudget,
   type GeneratedVariantCandidate,
-  type ProtoPersonaForAllocation,
+  type SyntheticUserForAllocation,
   validateGeneratedVariantCandidate,
 } from "./personaEngine/variantGeneration";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
@@ -44,17 +44,17 @@ export const previewVariants = action({
     );
 
     const budget = resolveRunBudget(parsedArgs.budget);
-    const protoPersonasForAllocation: ProtoPersonaForAllocation[] =
-      previewContext.protoPersonas.map((protoPersona) => ({
-        id: protoPersona._id,
-        axes: protoPersona.axes,
-        evidenceSnippets: protoPersona.evidenceSnippets,
+    const syntheticUsersForAllocation: SyntheticUserForAllocation[] =
+      previewContext.syntheticUsers.map((syntheticUser) => ({
+        id: syntheticUser._id,
+        axes: syntheticUser.axes,
+        evidenceSnippets: syntheticUser.evidenceSnippets,
         axisKeys: previewContext.pack.sharedAxes.map((axis) => axis.key),
       }));
 
-    const projectedVariants = planVariants(protoPersonasForAllocation, budget).map(
+    const projectedVariants = planVariants(syntheticUsersForAllocation, budget).map(
       (variantPlan) => ({
-        protoPersonaId: variantPlan.protoPersonaId as Id<"protoPersonas">,
+        syntheticUserId: variantPlan.syntheticUserId as Id<"syntheticUsers">,
         axisValues: axisValuesToArray(variantPlan.axisValues),
         sampleType: variantPlan.sampleType,
         edgeScore: variantPlan.edgeScore,
@@ -70,7 +70,7 @@ export const previewVariants = action({
           (variant) => variant.sampleType === "interior",
         ).length,
         minimumPairwiseDistance: calculateMinimumPairwiseDistance(projectedVariants),
-        perProtoPersona: summarizeProjectedPerProtoPersona(projectedVariants),
+        perSyntheticUser: summarizeProjectedPerSyntheticUser(projectedVariants),
       },
       projectedVariants,
     };
@@ -149,18 +149,18 @@ async function generateVariantsForStudyForOrg(
             edgeCount: 0,
             interiorCount: 0,
             minimumPairwiseDistance: 1,
-            perProtoPersona: [],
+            perSyntheticUser: [],
           },
         },
       },
     );
   }
 
-  const protoPersonasForAllocation: ProtoPersonaForAllocation[] =
-    generationContext.protoPersonas.map((protoPersona) => ({
-      id: protoPersona._id,
-      axes: protoPersona.axes,
-      evidenceSnippets: protoPersona.evidenceSnippets,
+  const syntheticUsersForAllocation: SyntheticUserForAllocation[] =
+    generationContext.syntheticUsers.map((syntheticUser) => ({
+      id: syntheticUser._id,
+      axes: syntheticUser.axes,
+      evidenceSnippets: syntheticUser.evidenceSnippets,
       axisKeys: generationContext.pack.sharedAxes.map((axis) => axis.key),
     }));
   const acceptedAxisValues = new Map<string, Record<string, number>>();
@@ -178,7 +178,7 @@ async function generateVariantsForStudyForOrg(
     const acceptedCountAtStartOfPass = acceptedCount;
     const remainingBudget = budget - acceptedCount;
     const variantPlans = planVariants(
-      protoPersonasForAllocation,
+      syntheticUsersForAllocation,
       remainingBudget,
       undefined,
       Array.from(acceptedAxisValues.values()),
@@ -186,13 +186,13 @@ async function generateVariantsForStudyForOrg(
     );
 
     for (const variantPlan of variantPlans) {
-      const protoPersona = generationContext.protoPersonas.find(
-        (candidate) => candidate._id === variantPlan.protoPersonaId,
+      const syntheticUser = generationContext.syntheticUsers.find(
+        (candidate) => candidate._id === variantPlan.syntheticUserId,
       );
 
-      if (!protoPersona) {
+      if (!syntheticUser) {
         throw new ConvexError(
-          `Proto-persona ${variantPlan.protoPersonaId} not found.`,
+          `Synthetic user ${variantPlan.syntheticUserId} not found.`,
         );
       }
 
@@ -210,7 +210,7 @@ async function generateVariantsForStudyForOrg(
 
         const generatedCandidate = await generateCandidate(
           generationContext.pack,
-          protoPersona,
+          syntheticUser,
           variantPlan.axisValues,
           expansionModelOverride,
         );
@@ -224,7 +224,7 @@ async function generateVariantsForStudyForOrg(
         const persistedVariant = toPersistedVariant({
           studyId: generationContext.study._id,
           personaPackId: generationContext.pack._id,
-          protoPersonaId: protoPersona._id,
+          syntheticUserId: syntheticUser._id,
           axisValues: variantPlan.axisValues,
           edgeScore: variantPlan.edgeScore,
           candidate: generatedCandidate,
@@ -244,7 +244,7 @@ async function generateVariantsForStudyForOrg(
         if (accepted) {
           persistedVariants.push(persistedVariant);
           acceptedAxisValues.set(
-            `${protoPersona._id}:${acceptedAxisValues.size}`,
+            `${syntheticUser._id}:${acceptedAxisValues.size}`,
             variantPlan.axisValues,
           );
           acceptedCount += 1;
@@ -291,7 +291,7 @@ async function generateVariantsForStudyForOrg(
           minimumPairwiseDistance: calculateMinimumPairwiseDistance(
             acceptedVariants,
           ),
-          perProtoPersona: summarizePerProtoPersona(allVariants),
+          perSyntheticUser: summarizePerSyntheticUser(allVariants),
         },
       },
     },
@@ -300,7 +300,7 @@ async function generateVariantsForStudyForOrg(
 
 async function generateCandidate(
   pack: Doc<"personaPacks">,
-  protoPersona: Doc<"protoPersonas">,
+  syntheticUser: Doc<"syntheticUsers">,
   axisValues: Record<string, number>,
   modelOverride?: string,
 ): Promise<GeneratedVariantCandidate> {
@@ -309,7 +309,7 @@ async function generateCandidate(
       modelOverride,
       system:
         "Return only valid JSON for a synthetic persona variant. Do not include markdown fences.",
-      prompt: buildExpansionPrompt(pack, protoPersona, axisValues),
+      prompt: buildExpansionPrompt(pack, syntheticUser, axisValues),
     });
 
     const parsedCandidate = generatedVariantCandidateSchema.safeParse(
@@ -334,7 +334,7 @@ async function generateCandidate(
 function toPersistedVariant({
   studyId,
   personaPackId,
-  protoPersonaId,
+  syntheticUserId,
   axisValues,
   edgeScore,
   candidate,
@@ -344,7 +344,7 @@ function toPersistedVariant({
 }: {
   studyId: Id<"studies">;
   personaPackId: Id<"personaPacks">;
-  protoPersonaId: Id<"protoPersonas">;
+  syntheticUserId: Id<"syntheticUsers">;
   axisValues: Record<string, number>;
   edgeScore: number;
   candidate: GeneratedVariantCandidate;
@@ -355,7 +355,7 @@ function toPersistedVariant({
   return {
     studyId,
     personaPackId,
-    protoPersonaId,
+    syntheticUserId,
     axisValues: axisValuesToArray(axisValues),
     edgeScore,
     tensionSeed: candidate.tensionSeed.trim(),
@@ -369,27 +369,27 @@ function toPersistedVariant({
 
 function buildExpansionPrompt(
   pack: Doc<"personaPacks">,
-  protoPersona: Doc<"protoPersonas">,
+  syntheticUser: Doc<"syntheticUsers">,
   axisValues: Record<string, number>,
 ) {
   return [
     `Pack name: ${pack.name}`,
     `Pack context: ${pack.context}`,
-    `Proto-persona summary: ${protoPersona.summary}`,
-    `Evidence snippets: ${protoPersona.evidenceSnippets.join(" | ")}`,
+    `Synthetic user summary: ${syntheticUser.summary}`,
+    `Evidence snippets: ${syntheticUser.evidenceSnippets.join(" | ")}`,
     `Axis values: ${JSON.stringify(axisValues)}`,
     "Return JSON with keys firstPersonBio, behaviorRules, tensionSeed, coherenceScore.",
     "The bio must be 80-150 words, behaviorRules must contain 5-8 strings, tensionSeed must be non-empty, and coherenceScore must be between 0 and 1.",
   ].join("\n");
 }
 
-function summarizeProjectedPerProtoPersona(
+function summarizeProjectedPerSyntheticUser(
   variants: PreviewSummary["projectedVariants"],
 ) {
   return Array.from(
     variants.reduce((map, variant) => {
-      const entry = map.get(variant.protoPersonaId) ?? {
-        protoPersonaId: variant.protoPersonaId,
+      const entry = map.get(variant.syntheticUserId) ?? {
+        syntheticUserId: variant.syntheticUserId,
         projectedCount: 0,
         edgeCount: 0,
         interiorCount: 0,
@@ -403,10 +403,10 @@ function summarizeProjectedPerProtoPersona(
         entry.interiorCount += 1;
       }
 
-      map.set(variant.protoPersonaId, entry);
+      map.set(variant.syntheticUserId, entry);
       return map;
-    }, new Map<Id<"protoPersonas">, {
-      protoPersonaId: Id<"protoPersonas">;
+    }, new Map<Id<"syntheticUsers">, {
+      syntheticUserId: Id<"syntheticUsers">;
       projectedCount: number;
       edgeCount: number;
       interiorCount: number;
@@ -414,11 +414,11 @@ function summarizeProjectedPerProtoPersona(
   ).map(([, value]) => value);
 }
 
-function summarizePerProtoPersona(variants: readonly PersistedVariant[]) {
+function summarizePerSyntheticUser(variants: readonly PersistedVariant[]) {
   return Array.from(
     variants.reduce((map, variant) => {
-      const entry = map.get(variant.protoPersonaId) ?? {
-        protoPersonaId: variant.protoPersonaId,
+      const entry = map.get(variant.syntheticUserId) ?? {
+        syntheticUserId: variant.syntheticUserId,
         acceptedCount: 0,
         rejectedCount: 0,
       };
@@ -429,10 +429,10 @@ function summarizePerProtoPersona(variants: readonly PersistedVariant[]) {
         entry.rejectedCount += 1;
       }
 
-      map.set(variant.protoPersonaId, entry);
+      map.set(variant.syntheticUserId, entry);
       return map;
-    }, new Map<Id<"protoPersonas">, {
-      protoPersonaId: Id<"protoPersonas">;
+    }, new Map<Id<"syntheticUsers">, {
+      syntheticUserId: Id<"syntheticUsers">;
       acceptedCount: number;
       rejectedCount: number;
     }>()),
@@ -484,7 +484,7 @@ const generatedVariantCandidateSchema = z.object({
 type PersistedVariant = {
   studyId: Id<"studies">;
   personaPackId: Id<"personaPacks">;
-  protoPersonaId: Id<"protoPersonas">;
+  syntheticUserId: Id<"syntheticUsers">;
   axisValues: { key: string; value: number }[];
   edgeScore: number;
   tensionSeed: string;
@@ -504,8 +504,8 @@ type GenerationSummary = {
     edgeCount: number;
     interiorCount: number;
     minimumPairwiseDistance: number;
-    perProtoPersona: {
-      protoPersonaId: Id<"protoPersonas">;
+    perSyntheticUser: {
+      syntheticUserId: Id<"syntheticUsers">;
       acceptedCount: number;
       rejectedCount: number;
     }[];
@@ -518,15 +518,15 @@ type PreviewSummary = {
     edgeCount: number;
     interiorCount: number;
     minimumPairwiseDistance: number;
-    perProtoPersona: {
-      protoPersonaId: Id<"protoPersonas">;
+    perSyntheticUser: {
+      syntheticUserId: Id<"syntheticUsers">;
       projectedCount: number;
       edgeCount: number;
       interiorCount: number;
     }[];
   };
   projectedVariants: {
-    protoPersonaId: Id<"protoPersonas">;
+    syntheticUserId: Id<"syntheticUsers">;
     axisValues: { key: string; value: number }[];
     sampleType: "edge" | "interior";
     edgeScore: number;
@@ -536,12 +536,12 @@ type PreviewSummary = {
 type GenerationContext = {
   study: Doc<"studies">;
   pack: Doc<"personaPacks">;
-  protoPersonas: Doc<"protoPersonas">[];
+  syntheticUsers: Doc<"syntheticUsers">[];
   existingVariants: PersistedVariant[];
   resolvedBudget: number;
 };
 
 type PreviewContext = {
   pack: Doc<"personaPacks">;
-  protoPersonas: Doc<"protoPersonas">[];
+  syntheticUsers: Doc<"syntheticUsers">[];
 };

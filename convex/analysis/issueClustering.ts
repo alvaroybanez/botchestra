@@ -15,7 +15,7 @@ type ClusterableRun = Pick<
   | "_id"
   | "studyId"
   | "personaVariantId"
-  | "protoPersonaId"
+  | "syntheticUserId"
   | "status"
   | "replayOfRunId"
   | "summaryKey"
@@ -41,7 +41,7 @@ export type IssueClusterDraft = {
   severity: AnalysisSeverity;
   affectedRunCount: number;
   affectedRunRate: number;
-  affectedProtoPersonaIds: Id<"protoPersonas">[];
+  affectedSyntheticUserIds: Id<"syntheticUsers">[];
   affectedAxisRanges: Doc<"issueClusters">["affectedAxisRanges"];
   representativeRunIds: Id<"runs">[];
   replayConfidence: number;
@@ -71,7 +71,7 @@ export function buildIssueClusters(params: {
   studyId: Id<"studies">;
   runs: ClusterableRun[];
   totalAxisCount: number;
-  totalProtoPersonaCount: number;
+  totalSyntheticUserCount: number;
 }) {
   const primaryRuns = params.runs.filter((run) => run.replayOfRunId === undefined);
   const replayRuns = params.runs.filter(
@@ -115,14 +115,14 @@ export function buildIssueClusters(params: {
       const affectedRunCount = members.length;
       const affectedRunRate = safeRatio(affectedRunCount, primaryRuns.length);
       const severity = deriveSeverity(members);
-      const affectedProtoPersonaIds = uniqueIds(
-        members.map((member) => member.run.protoPersonaId),
+      const affectedSyntheticUserIds = uniqueIds(
+        members.map((member) => member.run.syntheticUserId),
       );
       const affectedAxisRanges = collectAxisRanges(members);
       const representativeRunIds = members.slice(0, 3).map((member) => member.run._id);
       const segmentSpread = computeSegmentSpread({
-        distinctProtoPersonaCount: affectedProtoPersonaIds.length,
-        totalProtoPersonaCount: params.totalProtoPersonaCount,
+        distinctSyntheticUserCount: affectedSyntheticUserIds.length,
+        totalSyntheticUserCount: params.totalSyntheticUserCount,
         distinctAxisRangeCount: affectedAxisRanges.length,
         totalAxisCount: params.totalAxisCount,
       });
@@ -146,7 +146,7 @@ export function buildIssueClusters(params: {
         severity,
         affectedRunCount,
         affectedRunRate,
-        affectedProtoPersonaIds,
+        affectedSyntheticUserIds,
         affectedAxisRanges,
         representativeRunIds,
         replayConfidence: replayStats.replayConfidence,
@@ -472,7 +472,7 @@ function uniqueStrings(values: string[]) {
   return [...new Set(values)];
 }
 
-function uniqueIds<TableName extends "protoPersonas" | "runs">(values: Array<Id<TableName>>) {
+function uniqueIds<TableName extends "syntheticUsers" | "runs">(values: Array<Id<TableName>>) {
   return [...new Set(values)];
 }
 

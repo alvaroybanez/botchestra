@@ -37,7 +37,7 @@ const makeAxis = (index: number) => ({
 });
 
 describe("personaVariantReview.getStudyVariantReview", () => {
-  it("returns accepted variants with proto-persona names for the study's pack", async () => {
+  it("returns accepted variants with synthetic user names for the study's pack", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const sharedAxes = [makeAxis(0), makeAxis(1)];
@@ -55,8 +55,8 @@ describe("personaVariantReview.getStudyVariantReview", () => {
         updatedAt: Date.now(),
       }),
     );
-    const cautiousProtoPersonaId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+    const cautiousSyntheticUserId = await t.run(async (ctx) =>
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Cautious shopper",
         summary: "Double-checks totals before submitting payment.",
@@ -66,8 +66,8 @@ describe("personaVariantReview.getStudyVariantReview", () => {
         evidenceSnippets: ["Looks for hidden fees"],
       }),
     );
-    const confidentProtoPersonaId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+    const confidentSyntheticUserId = await t.run(async (ctx) =>
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Confident repeat buyer",
         summary: "Moves quickly through familiar storefronts.",
@@ -111,7 +111,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     await insertVariant(t, {
       studyId,
       packId,
-      protoPersonaId: cautiousProtoPersonaId,
+      syntheticUserId: cautiousSyntheticUserId,
       axisValues: [
         { key: "axis_1", value: -0.6 },
         { key: "axis_2", value: 0.2 },
@@ -126,7 +126,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     await insertVariant(t, {
       studyId,
       packId,
-      protoPersonaId: confidentProtoPersonaId,
+      syntheticUserId: confidentSyntheticUserId,
       axisValues: [
         { key: "axis_1", value: 0.72 },
         { key: "axis_2", value: -0.1 },
@@ -141,7 +141,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     await insertVariant(t, {
       studyId,
       packId,
-      protoPersonaId: confidentProtoPersonaId,
+      syntheticUserId: confidentSyntheticUserId,
       axisValues: [
         { key: "axis_1", value: 0.2 },
         { key: "axis_2", value: 0.1 },
@@ -162,18 +162,18 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     expect(review?.study?._id).toBe(studyId);
     expect(review?.study?.name).toBe("Checkout review");
     expect(review?.pack.name).toBe("Checkout Pack");
-    expect(review?.protoPersonas).toHaveLength(2);
+    expect(review?.syntheticUsers).toHaveLength(2);
     expect(review?.variants).toHaveLength(2);
     expect(
-      review?.variants.map((variant: { protoPersonaName: string }) => variant.protoPersonaName),
+      review?.variants.map((variant: { syntheticUserName: string }) => variant.syntheticUserName),
     ).toEqual(
       expect.arrayContaining(["Cautious shopper", "Confident repeat buyer"]),
     );
     expect(
-      review?.variants.every((variant: { protoPersonaId: Id<"protoPersonas"> }) =>
-        review.protoPersonas.some(
-          (protoPersona: { _id: Id<"protoPersonas"> }) =>
-            protoPersona._id === variant.protoPersonaId,
+      review?.variants.every((variant: { syntheticUserId: Id<"syntheticUsers"> }) =>
+        review.syntheticUsers.some(
+          (syntheticUser: { _id: Id<"syntheticUsers"> }) =>
+            syntheticUser._id === variant.syntheticUserId,
         ),
       ),
     ).toBe(true);
@@ -253,8 +253,8 @@ describe("personaVariantReview.getStudyVariantReview", () => {
         updatedAt: Date.now(),
       }),
     );
-    const protoPersonaId = await t.run(async (ctx) =>
-      ctx.db.insert("protoPersonas", {
+    const syntheticUserId = await t.run(async (ctx) =>
+      ctx.db.insert("syntheticUsers", {
         packId,
         name: "Careful shopper",
         summary: "Checks totals before continuing.",
@@ -298,7 +298,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     await insertVariant(t, {
       studyId,
       packId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [
         { key: "axis_1", value: -0.55 },
         { key: "axis_2", value: 0.48 },
@@ -326,7 +326,7 @@ describe("personaVariantReview.getStudyVariantReview", () => {
     });
     expect(review?.selectedStudy?._id).toBe(studyId);
     expect(review?.variants).toHaveLength(1);
-    expect(review?.variants[0]?.protoPersonaName).toBe("Careful shopper");
+    expect(review?.variants[0]?.syntheticUserName).toBe("Careful shopper");
   });
 });
 
@@ -335,7 +335,7 @@ async function insertVariant(
   {
     studyId,
     packId,
-    protoPersonaId,
+    syntheticUserId,
     axisValues,
     edgeScore,
     coherenceScore,
@@ -345,7 +345,7 @@ async function insertVariant(
   }: {
     studyId: Id<"studies">;
     packId: Id<"personaPacks">;
-    protoPersonaId: Id<"protoPersonas">;
+    syntheticUserId: Id<"syntheticUsers">;
     axisValues: { key: string; value: number }[];
     edgeScore: number;
     coherenceScore: number;
@@ -358,7 +358,7 @@ async function insertVariant(
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: packId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues,
       edgeScore,
       tensionSeed: "Worries about entering payment details on the wrong screen.",

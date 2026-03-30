@@ -715,8 +715,8 @@ async function seedAcceptedVariants(
     throw new Error(`Study ${studyId} not found.`);
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
@@ -732,7 +732,7 @@ async function seedAcceptedVariants(
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: study.personaPackId,
-        protoPersonaId,
+        syntheticUserId,
         axisValues: [],
         edgeScore: 0.5,
         tensionSeed: `Tension seed ${index + 1}`,
@@ -764,8 +764,8 @@ async function seedTerminalRuns(
     throw new Error(`Study ${studyId} not found.`);
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: "Focused shopper",
       summary: "Moves quickly and expects little friction.",
@@ -781,7 +781,7 @@ async function seedTerminalRuns(
       ctx.db.insert("personaVariants", {
         studyId,
         personaPackId: study.personaPackId,
-        protoPersonaId,
+        syntheticUserId,
         axisValues: [],
         edgeScore: 0.5,
         tensionSeed: `Tension seed ${index + 1}`,
@@ -804,7 +804,7 @@ async function seedTerminalRuns(
       ctx.db.insert("runs", {
         studyId,
         personaVariantId,
-        protoPersonaId,
+        syntheticUserId,
         status,
         startedAt: 1_000 + index,
         endedAt: 2_000 + index,
@@ -870,7 +870,7 @@ async function seedReplayRunsForRepresentative(
       ctx.db.insert("runs", {
         studyId,
         personaVariantId: representativeRun.personaVariantId,
-        protoPersonaId: representativeRun.protoPersonaId,
+        syntheticUserId: representativeRun.syntheticUserId,
         status: replayRun.status,
         replayOfRunId,
         startedAt: Date.now(),
@@ -962,8 +962,8 @@ async function insertTerminalRun(
     throw new Error(`Study ${studyId} not found.`);
   }
 
-  const protoPersonaId = await t.run(async (ctx) =>
-    ctx.db.insert("protoPersonas", {
+  const syntheticUserId = await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
       packId: study.personaPackId,
       name: `Proto ${Math.random()}`,
       summary: "Moves quickly and expects little friction.",
@@ -978,7 +978,7 @@ async function insertTerminalRun(
     ctx.db.insert("personaVariants", {
       studyId,
       personaPackId: study.personaPackId,
-      protoPersonaId,
+      syntheticUserId,
       axisValues: [],
       edgeScore: 0.5,
       tensionSeed: "Replay test tension seed",
@@ -1002,7 +1002,7 @@ async function insertTerminalRun(
     ctx.db.insert("runs", {
       studyId,
       personaVariantId,
-      protoPersonaId,
+      syntheticUserId,
       status: options.status,
       startedAt: now - 5_000,
       endedAt: now,
