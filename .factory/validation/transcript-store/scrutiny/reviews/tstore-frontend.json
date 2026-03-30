@@ -1,0 +1,15 @@
+{
+  "featureId": "tstore-frontend",
+  "reviewedAt": "2026-03-30T14:30:22Z",
+  "commitId": "54567ed75250e96cb690e6bfb35e17c9ff4e8597",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The transcript library frontend commit delivers the expected surface area cleanly: the sidebar and router additions are consistent with existing app patterns, the list page handles upload/search/filter states well, transcript detail supports txt/json viewing plus metadata and deletion flows, reviewer controls are hidden appropriately, and the invalid deep-link path was explicitly hardened with backend normalization and route coverage. The worker transcript also shows both targeted tests and browser validation for the critical flows.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Pass: the transcript library pages, deep-link handling, and reviewer-safe controls satisfy the reviewed transcript-store frontend requirements without blocking or non-blocking issues."
+}

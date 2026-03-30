@@ -1,0 +1,21 @@
+{
+  "featureId": "tstore-schema-crud",
+  "reviewedAt": "2026-03-30T14:30:22Z",
+  "commitId": "3d1d4398cb7fe4b0997ae3f02515d42c592162fa",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The backend transcript-store diff matches the milestone contract: it adds org-scoped `transcripts` and `packTranscripts` tables, enforces study-manager RBAC on write paths, uses storage-backed processing for txt/json files, exposes joined read APIs for both attachment directions, and covers the new behavior with focused convex-test cases. The implementation is coherent and the public surfaces line up with the later transcript UI work.",
+    "issues": [
+      {
+        "severity": "non_blocking",
+        "description": "`convex/packTranscripts.ts` relies on `findPackTranscript()` scanning only the first 100 `by_packId` rows, and the table has no `by_packId_and_transcriptId` index or other uniqueness guard. Once a draft pack accumulates more than 100 transcript links, duplicate attach calls can slip through and detach can fail to find later associations.",
+        "suggestedFix": "Add a `by_packId_and_transcriptId` index (or another exact lookup path) and use it for duplicate detection and detach so correctness does not depend on the current 100-row cap."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Pass with one non-blocking scalability concern: the transcript storage and attachment backend is functionally correct for the reviewed milestone, but exact pack-transcript lookups should stop depending on the first 100 attachment rows."
+}

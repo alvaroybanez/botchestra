@@ -1,0 +1,40 @@
+{
+  "milestone": "transcript-store",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Update the scrutiny-validator workflow to explicitly handle Task subagent startup failures caused by invalid inherited model identifiers, with a documented fallback path for manual review or a known-good built-in model.",
+      "evidence": "All three `scrutiny-feature-reviewer` Task invocations in this transcript-store scrutiny run failed immediately with `Invalid model: custom:GPT-5.4-(xHigh)-16`, so the validator had to review the features and write the JSON reports manually. The same Task failure mode was already recorded in the prior axis-generation scrutiny synthesis, so this is now a repeated mission-level problem rather than a one-off.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
