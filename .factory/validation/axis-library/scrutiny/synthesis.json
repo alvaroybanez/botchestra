@@ -1,0 +1,33 @@
+{
+  "milestone": "axis-library",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run test",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [],
+  "previousRound": null
+}
