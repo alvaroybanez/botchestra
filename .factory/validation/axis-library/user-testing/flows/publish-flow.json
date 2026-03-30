@@ -1,0 +1,51 @@
+{
+  "groupId": "publish-flow",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "summary": "Tested 4 Axis Library publish-flow assertions with a researcher account and all 4 passed. Publishing two packs with the same shared axis key created one pack-publish library entry, incremented usageCount to 2, and showed the in-use delete warning.",
+  "assertions": [
+    {
+      "id": "VAL-AXLIB-009",
+      "status": "pass",
+      "reason": "Opening Delete on the published axis showed a warning that it was in use 2 times across published packs.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/delete-warning-usage-count.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-012",
+      "status": "pass",
+      "reason": "Publishing persona packs with sharedAxes populated the Axis Library automatically and the resulting row showed creation source Pack publish.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/pack-one-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/library-after-publishes.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-013",
+      "status": "pass",
+      "reason": "After publishing a second pack with the same axis key in the same org, the existing library row showed usageCount 2 instead of duplicating the row.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/pack-two-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/library-after-publishes.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-015",
+      "status": "pass",
+      "reason": "The researcher account successfully created draft packs, added proto-personas, published both packs, and accessed Axis Library mutation controls throughout the flow.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/pack-one-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/pack-two-published.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/publish-flow/library-after-publishes.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "Publish remained disabled until at least one proto-persona was saved, so each draft pack required extra setup before the publish assertions could run.",
+    "The pack-detail flow needed explicit waits after proto-persona save and publish to let the UI settle before evidence capture."
+  ],
+  "blockers": []
+}

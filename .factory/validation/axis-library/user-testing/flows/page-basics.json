@@ -1,0 +1,67 @@
+{
+  "groupId": "page-basics",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "summary": "Tested 6 Axis Library page assertions: 4 passed, 2 failed. Sidebar navigation, empty state, text search, and metadata columns worked. Tag filtering lacked visible AND combination with text search, and a loading skeleton was not observable on reload though no JS errors were captured.",
+  "assertions": [
+    {
+      "id": "VAL-AXLIB-001",
+      "status": "pass",
+      "reason": "Authenticated sidebar showed an Axis Library entry after Persona Packs, and clicking it navigated to /axis-library.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/sidebar-studies.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/axis-library-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-002",
+      "status": "pass",
+      "reason": "Fresh org showed 'No axis definitions yet' with a Create axis CTA, and browser error output showed no JS errors on the empty page.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/axis-library-empty.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-010",
+      "status": "pass",
+      "reason": "Searching for 'sentiment' filtered the grid to the matching axis, and clearing search restored all three seeded rows.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/search-filtered.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/search-cleared.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-011",
+      "status": "fail",
+      "reason": "Selecting the 'support' tag reduced the list correctly, but combining that tag filter with text search did not demonstrate distinct AND behavior because the combined result remained the same single row scenario and the UI offers only a single-select tag dropdown.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/tag-filter-support.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/tag-filter-combined.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-018",
+      "status": "pass",
+      "reason": "The grid displayed key, label, description, low/mid/high anchors, weight, tags, usage count, and creation source for seeded axes.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/grid-after-axis-3.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-019",
+      "status": "fail",
+      "reason": "No JS console errors were captured on load, but a loading skeleton was not observable on reload; the page rendered directly to content in the captured immediate and settled screenshots.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/reload-immediate.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/page-basics/reload-settled.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "The assigned password signup redirected slowly enough that an additional wait was needed before the authenticated studies page appeared.",
+    "A first create attempt used a hyphenated key and surfaced the snake_case validation rule before seeding could continue."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,84 @@
+{
+  "groupId": "crud-validation",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "summary": "Tested 8 Axis Library CRUD assertions with a researcher account and all 8 passed. Manual create, duplicate rejection, edit, delete, weight validation, and snake_case validation all worked through the live UI.",
+  "assertions": [
+    {
+      "id": "VAL-AXLIB-003",
+      "status": "pass",
+      "reason": "Clicking Create axis opened the full form, submitting a valid manual axis succeeded, and the new row appeared in the grid immediately with creationSource Manual.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/create-axis-form-valid.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/grid-after-create.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-004",
+      "status": "pass",
+      "reason": "Submitting the empty create form kept the dialog open, focused the required Key input, and did not proceed to a mutation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/required-fields-attempt.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-005",
+      "status": "pass",
+      "reason": "Submitting a second axis with the same key produced a duplicate-key error and did not create another row.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/duplicate-key-error.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-006",
+      "status": "pass",
+      "reason": "Edit opened with the existing values pre-populated, saving updated fields succeeded, and the grid reflected the edited label, description, weight, and tags immediately.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/edit-form-prepopulated.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/grid-after-edit.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-007",
+      "status": "pass",
+      "reason": "The key input in the edit dialog was disabled/read-only, preventing key changes.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/edit-form-prepopulated.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-008",
+      "status": "pass",
+      "reason": "Delete opened a confirmation dialog; Cancel preserved the axis in the grid, and confirming Delete removed it and returned the page to the empty state.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/delete-dialog.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/grid-after-delete-cancel.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/grid-after-delete-confirm.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-017",
+      "status": "pass",
+      "reason": "Weight 0 was rejected by native number validation, while a positive decimal weight of 1.5 was accepted on successful creation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/invalid-key-weight-errors.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/grid-after-create.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-020",
+      "status": "pass",
+      "reason": "A non-snake_case key produced the expected inline validation error before creation.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/crud-validation/invalid-key-error.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "Browser-native required and min-value validation surfaced through focus and validationMessage inspection rather than custom inline alerts.",
+    "The duplicate-key failure surfaced a raw Convex stack trace in the error area instead of a friendlier message."
+  ],
+  "blockers": []
+}

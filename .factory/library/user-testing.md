@@ -24,3 +24,26 @@ Testing surface, required tools, and resource cost classification.
 - LLM-powered features (axis generation, transcript extraction) require OPENAI_API_KEY set in Convex env. init.sh handles this.
 - For transcript extraction testing, use small test transcripts (< 1000 chars each) to minimize LLM cost during validation.
 - Cross-area flows (VAL-CROSS-*) test the full pipeline and should be validated last, after all individual area flows pass.
+
+## Setup Tips
+
+- New users created through `/signup` default to the `researcher` role.
+- Promote an existing user after signup with:
+  - `bun run user:set-role -- '{"email":"<email>","role":"reviewer"}'`
+  - `bun run user:set-role -- '{"email":"<email>","role":"admin"}'`
+- Org isolation in the current app is effectively per authenticated identity/token identifier, so use separate accounts to validate org-scoped reads and writes.
+- For authenticated API probes from the browser session, the Convex auth JWT is available in localStorage under a key that starts with `__convexAuthJWT_`.
+- Minimal direct mutation probe shape for Convex HTTP API:
+  - `POST ${CONVEX_URL}/api/mutation`
+  - Headers: `Content-Type: application/json`, `Authorization: Bearer <jwt>`
+  - Body: `{"path":"module:function","format":"convex_encoded_json","args":[{...}]}`.
+- Observed during axis-library validation: data visible immediately after creation in one authenticated session was not reliably visible after logging out and back into the same account later. Treat cross-session persistence checks cautiously and avoid depending on re-login within the same flow unless the assertion explicitly requires it.
+
+## Flow Validator Guidance: web
+
+- Use one dedicated browser session and one dedicated account per flow group unless the assignment explicitly requires cross-account comparison.
+- Prefix all created data with the assigned group slug (for example `ut-axlib-crud-*`) to avoid collisions and to make cleanup/evidence review easier.
+- Keep all mutations for `usageCount` validation within the same assigned account so repeated publishes hit the same org-scoped axis definitions.
+- For org isolation checks, compare two separate accounts in separate browser sessions; do not reuse seeded data across accounts.
+- If you need to switch accounts inside one session, sign out completely before logging into the next account.
+- Capture evidence for every assertion directly from the live web UI; if an assertion also requires backend rejection evidence (for example reviewer FORBIDDEN on mutation), use the smallest direct API/CLI call needed after confirming the UI state.

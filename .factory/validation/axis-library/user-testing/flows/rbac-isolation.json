@@ -1,0 +1,46 @@
+{
+  "groupId": "rbac-isolation",
+  "surface": "web",
+  "toolsUsed": [
+    "agent-browser",
+    "bunx convex run userManagement:setUserRole"
+  ],
+  "summary": "Tested 3 Axis Library RBAC/isolation assertions and all 3 passed. Reviewer sessions were read-only and a direct authenticated reviewer mutation returned FORBIDDEN, while admin sessions exposed privileged navigation and mutation controls and an authenticated admin mutation succeeded. Data visible in the admin session was not visible in the reviewer session.",
+  "assertions": [
+    {
+      "id": "VAL-AXLIB-014",
+      "status": "pass",
+      "reason": "Reviewer login showed no Create/Edit/Delete controls on Axis Library, and a direct authenticated createAxisDefinition mutation returned FORBIDDEN.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/reviewer-read-only.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/reviewer-direct-mutation.json"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-015",
+      "status": "pass",
+      "reason": "Admin login exposed privileged navigation plus Axis Library mutation controls, UI create/edit interactions succeeded, and a direct authenticated admin createAxisDefinition mutation returned success.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/admin-axis-library.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/admin-created-axis.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/admin-edited-axis.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/admin-direct-mutation.json",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/admin-direct-axis-visible.png"
+      ]
+    },
+    {
+      "id": "VAL-AXLIB-016",
+      "status": "pass",
+      "reason": "An axis visible in the admin session was absent from the reviewer session, which continued to show the empty-state library for that separate identity.",
+      "evidence": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/admin-direct-axis-visible.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/axis-library/rbac-isolation/reviewer-org-isolation.png"
+      ]
+    }
+  ],
+  "frictions": [
+    "Because reviewer mutation controls are hidden in the UI, backend rejection evidence required a manual authenticated fetch using the reviewer session JWT from localStorage.",
+    "After switching away from the admin session and logging back in later, the previously visible admin-created axis no longer appeared, suggesting a session/org scoping quirk worth follow-up even though the assigned reviewer/admin assertions still passed at test time."
+  ],
+  "blockers": []
+}
