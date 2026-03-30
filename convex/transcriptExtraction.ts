@@ -811,8 +811,8 @@ function buildSignalExtractionPrompt(
   return [
     "Extract the participant's behavioral signals from this transcript.",
     `Persona configuration: ${context.configName}`,
-    `Persona configurationuration context: ${context.configContext}`,
-    `Persona configurationuration description: ${context.configDescription}`,
+    `Persona configuration context: ${context.configContext}`,
+    `Persona configuration description: ${context.configDescription}`,
     `Transcript filename: ${context.originalFilename}`,
     "Return JSON matching this shape exactly:",
     JSON.stringify({
@@ -857,8 +857,8 @@ function buildClusteringPrompt({
 }) {
   return [
     "Cluster these transcript signals into distinct behavioral archetypes.",
-    `Persona configurationuration name: ${config.name}`,
-    `Persona configurationuration context: ${config.context}`,
+    `Persona configuration name: ${config.name}`,
+    `Persona configuration context: ${config.context}`,
     `Extraction mode: ${mode}`,
     mode === "guided"
       ? `Use these axes exactly: ${JSON.stringify(guidedAxes)}`

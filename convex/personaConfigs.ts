@@ -49,17 +49,17 @@ const sharedAxesSchema = z
   });
 
 const createDraftSchema = z.object({
-  name: requiredString("Persona configurationuration name"),
-  description: requiredString("Persona configurationuration description"),
-  context: requiredString("Persona configurationuration context"),
+  name: requiredString("Persona configuration name"),
+  description: requiredString("Persona configuration description"),
+  context: requiredString("Persona configuration context"),
   sharedAxes: sharedAxesSchema,
 });
 
 const updateDraftSchema = z
   .object({
-    name: requiredString("Persona configurationuration name").optional(),
-    description: requiredString("Persona configurationuration description").optional(),
-    context: requiredString("Persona configurationuration context").optional(),
+    name: requiredString("Persona configuration name").optional(),
+    description: requiredString("Persona configuration description").optional(),
+    context: requiredString("Persona configuration context").optional(),
     sharedAxes: sharedAxesSchema.optional(),
   })
   .refine(
@@ -163,9 +163,9 @@ const applyTranscriptDerivedSyntheticUsersSchema = z.object({
 });
 
 const importedPackJsonSchema = z.object({
-  name: requiredString("Persona configurationuration name"),
-  description: requiredString("Persona configurationuration description"),
-  context: requiredString("Persona configurationuration context"),
+  name: requiredString("Persona configuration name"),
+  description: requiredString("Persona configuration description"),
+  context: requiredString("Persona configuration context"),
   status: draftStatusSchema.optional(),
   version: z.number().int().positive().optional(),
   sharedAxes: sharedAxesSchema,
