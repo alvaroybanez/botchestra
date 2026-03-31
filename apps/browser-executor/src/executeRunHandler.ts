@@ -1,4 +1,5 @@
 import puppeteer from "@cloudflare/puppeteer";
+import { generateWithModel } from "@botchestra/ai";
 import type { ExecuteRunRequest } from "@botchestra/shared";
 import { createAiActionSelectorWithFallback } from "./aiActionSelector";
 import { createArtifactUploader } from "./artifactUploader";
@@ -77,6 +78,7 @@ export type ExecuteRunHandlerEnv = {
   ARTIFACTS?: ArtifactBucket;
   BROWSER?: BrowserBindingLike;
   BROWSER_LEASE?: DurableObjectNamespaceLike;
+  OPENAI_API_KEY?: string;
 };
 
 type ReportGenerator = (
@@ -237,8 +239,26 @@ function getFailureStatus(errorCode: RunExecutionFailure["errorCode"]) {
   return FAILURE_STATUS_BY_CODE[errorCode] ?? 500;
 }
 
+function resolveSelectAction(
+  env: ExecuteRunHandlerEnv,
+  options: ExecuteRunIntegrationOptions,
+) {
+  if (options.selectAction) {
+    return options.selectAction;
+  }
+
+  return createAiActionSelectorWithFallback({
+    generateAction: ({ system, prompt, abortSignal }) =>
+      generateWithModel("action", {
+        system,
+        prompt,
+        abortSignal,
+        apiKey: env.OPENAI_API_KEY,
+      }),
+  });
+}
+
 export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = {}) {
-  const selectAction = options.selectAction ?? createAiActionSelectorWithFallback();
   const reportGenerator: ReportGenerator = options.generateSelfReport ?? generateSelfReport;
 
   return async (request: ExecuteRunRequest, env: ExecuteRunHandlerEnv) => {
@@ -263,6 +283,7 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
       now: options.now,
       secretValues,
     });
+    const selectAction = resolveSelectAction(env, options);
 
     try {
       await progressReporter.sendHeartbeat();

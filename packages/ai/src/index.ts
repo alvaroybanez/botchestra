@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, streamText, type GenerateTextResult, type StreamTextResult } from "ai";
 
 // -- Task categories ---------------------------------------------------------
@@ -47,6 +47,7 @@ type GenerateOptions = {
   prompt: string;
   system?: string;
   modelOverride?: string;
+  apiKey?: string;
   stream?: false;
 } & Omit<Parameters<typeof generateText>[0], "model" | "prompt" | "system">;
 
@@ -54,8 +55,14 @@ type StreamOptions = {
   prompt: string;
   system?: string;
   modelOverride?: string;
+  apiKey?: string;
   stream: true;
 } & Omit<Parameters<typeof streamText>[0], "model" | "prompt" | "system">;
+
+function resolveProvider(apiKey?: string) {
+  const normalizedApiKey = apiKey?.trim();
+  return normalizedApiKey ? createOpenAI({ apiKey: normalizedApiKey }) : openai;
+}
 
 export async function generateWithModel(
   category: TaskCategory,
@@ -70,13 +77,15 @@ export async function generateWithModel(
   options: GenerateOptions | StreamOptions,
 ) {
   const modelId = resolveModel(category, options.modelOverride);
-  const model = openai(modelId);
+  const model = resolveProvider(options.apiKey)(modelId);
 
   if ("stream" in options && options.stream) {
-    const { stream: _, modelOverride: __, ...rest } = options;
+    const { stream: _, modelOverride: __, apiKey: ___, ...rest } = options;
     return streamText({ ...rest, model });
   }
 
-  const { stream: _, modelOverride: __, ...rest } = options as GenerateOptions & { stream?: false };
+  const { stream: _, modelOverride: __, apiKey: ___, ...rest } = options as GenerateOptions & {
+    stream?: false;
+  };
   return generateText({ ...rest, model });
 }
