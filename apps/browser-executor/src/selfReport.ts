@@ -7,12 +7,16 @@ import {
 } from "@botchestra/shared";
 import type { RunExecutionResult } from "./runExecutor";
 
-type SelfReportTextGenerator = (prompt: string) => Promise<{ text: string } | string>;
+type SelfReportTextGenerator = (
+  prompt: string,
+  apiKey?: string,
+) => Promise<{ text: string } | string>;
 
 type GenerateSelfReportOptions = {
   request: ExecuteRunRequest;
   result: RunExecutionResult;
   generateText?: SelfReportTextGenerator;
+  apiKey?: string;
 };
 
 type SelfReportWithAnswers = SelfReport & {
@@ -22,10 +26,11 @@ type SelfReportWithAnswers = SelfReport & {
 const SELF_REPORT_SYSTEM_PROMPT =
   "You are generating a concise post-task self-report for a synthetic persona. Return only valid JSON with no markdown fences.";
 
-async function defaultGenerateText(prompt: string) {
+async function defaultGenerateText(prompt: string, apiKey?: string) {
   return generateWithModel("summarization", {
     system: SELF_REPORT_SYSTEM_PROMPT,
     prompt,
+    apiKey,
   });
 }
 
@@ -217,6 +222,7 @@ export async function generateSelfReport(
   try {
     const generated = await generateText(
       buildSelfReportPrompt(options.request, options.result),
+      options.apiKey,
     );
     const rawText = typeof generated === "string" ? generated : generated.text;
     const parsed = SelfReportSchema.safeParse(

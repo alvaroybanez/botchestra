@@ -313,6 +313,7 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
       const selfReport = await reportGenerator({
         request: redactSecrets(request, secretValues),
         result: redactedResult,
+        apiKey: env.OPENAI_API_KEY,
       });
       const redactedSelfReport = redactSecrets(selfReport, secretValues);
       const responseBody = redactSecrets(
