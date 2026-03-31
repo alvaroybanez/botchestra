@@ -7,17 +7,22 @@ Testing surface, required tools, and resource cost classification.
 - **Primary surface:** Web browser at `http://localhost:5180`
 - **Tool:** `agent-browser` for all UI validation flows
 - **Auth:** Convex Auth password provider. Login via `/login` page. Create test users via `/signup` if needed.
-- **New pages to test:**
+- **Pages to test:**
   - `/axis-library` — Axis Library (browse, create, edit, delete axes)
   - `/transcripts` — Transcript Store (upload, browse, view, manage transcripts)
   - `/transcripts/:id` — Transcript detail (viewer, metadata, pack links)
   - `/persona-configs/:configId` — Enhanced config detail (suggest axes, browse library, extract from transcripts, batch generation)
   - `/persona-configs` — Persona configurations list (renamed from persona-packs)
+  - `/studies` — Study list with status badges
+  - `/studies/new` — Study creation wizard
+  - `/studies/:id/overview` — Study overview with live progress
+  - `/studies/:id/runs` — Runs list with status badges, expandable milestone timelines
+  - `/studies/:id/findings` — Findings with issue clusters
 
 ## Validation Concurrency
 
-- **Max concurrent validators:** 5
-- **Rationale:** Dev server is lightweight (~55 MB RSS, 0.1% memory at idle). Machine has 36 GB RAM, 12 CPU cores, ~4 GB free pages at baseline. Each agent-browser instance uses ~300 MB. 5 instances = ~1.5 GB + 200 MB dev server = ~1.7 GB. Well within 70% of ~12 GB headroom = 8.4 GB budget.
+- **Max concurrent validators:** 4
+- **Rationale:** Dev server is lightweight (~55 MB RSS). Machine has 36 GB RAM, 12 CPU cores. Each agent-browser instance uses ~300 MB. For this mission, wrangler dev and Convex dev also run simultaneously, adding ~500 MB overhead. 4 instances = ~1.2 GB + services = ~1.7 GB total. Well within 70% of ~12 GB headroom = 8.4 GB budget.
 - **Max concurrent validators (test-cli):** 1
 - **Rationale (test-cli):** `bunx convex dev --once` and similar CLI validators already exercise workspace typecheck plus Convex preparation against the shared repo and deployment. Keep them serialized to avoid overlapping generated-file refreshes, duplicate workspace builds, and noisy contention without any throughput benefit.
 

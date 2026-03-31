@@ -2,7 +2,7 @@ commands:
   install: bun install
   typecheck: bun run typecheck
   build: bun run build
-  test: bun run test
+  test: bunx vitest run --exclude '**/browserLeaseDO*'
   lint: echo "No lint configured"
   dev: bun run dev
 

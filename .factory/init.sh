@@ -17,4 +17,7 @@ if [ -f "apps/browser-executor/.dev.vars" ]; then
   fi
 fi
 
+# Verify BROWSER_EXECUTOR_URL is set in Convex
+bunx convex env get BROWSER_EXECUTOR_URL 2>/dev/null || echo "WARNING: BROWSER_EXECUTOR_URL not set in Convex"
+
 echo "Environment ready."
