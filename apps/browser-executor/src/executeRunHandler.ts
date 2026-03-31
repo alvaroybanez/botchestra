@@ -157,8 +157,10 @@ function isCloudflareBrowserWorkerLike(value: unknown): value is CloudflareBrows
 function isPuppeteerBrowserLike(value: unknown): value is PuppeteerBrowserLike {
   return typeof value === "object"
     && value !== null
-    && "createBrowserContext" in value
-    && typeof value.createBrowserContext === "function";
+    && (
+      ("newPage" in value && typeof value.newPage === "function")
+      || ("createBrowserContext" in value && typeof value.createBrowserContext === "function")
+    );
 }
 
 function toResolvedBrowser(browser: unknown): ResolvedBrowser | null {

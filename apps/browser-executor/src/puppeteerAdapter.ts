@@ -1,6 +1,5 @@
 import type {
   Browser as CloudflarePuppeteerBrowser,
-  BrowserContext as CloudflarePuppeteerBrowserContext,
   Page as CloudflarePuppeteerPage,
 } from "@cloudflare/puppeteer";
 import type {
@@ -13,16 +12,22 @@ import type {
 } from "./runExecutor";
 
 type PuppeteerBrowserLike = {
+  newPage(): Promise<PuppeteerPageLike>;
+};
+
+type LegacyPuppeteerBrowserLike = {
   createBrowserContext(): Promise<PuppeteerBrowserContextLike>;
 };
 
+type PuppeteerBrowserSource = PuppeteerBrowserLike | LegacyPuppeteerBrowserLike;
+
 type PuppeteerBrowserContextLike = {
   newPage(): Promise<PuppeteerPageLike>;
-  close(): Promise<unknown>;
 };
 
 type PuppeteerPageLike = {
   click(selector: string): Promise<unknown>;
+  close?: () => Promise<unknown>;
   evaluate<TArgs extends unknown[], TResult>(
     pageFunction: (...args: TArgs) => TResult | Promise<TResult>,
     ...args: TArgs
@@ -38,7 +43,6 @@ type PuppeteerPageLike = {
 };
 
 type _BrowserCompatibility = CloudflarePuppeteerBrowser extends PuppeteerBrowserLike ? true : never;
-type _BrowserContextCompatibility = CloudflarePuppeteerBrowserContext extends PuppeteerBrowserContextLike ? true : never;
 type _PageCompatibility = CloudflarePuppeteerPage extends PuppeteerPageLike ? true : never;
 
 const DEFAULT_SCREENSHOT_OPTIONS: BrowserScreenshotOptions = {
@@ -62,6 +66,10 @@ function toUint8Array(value: Uint8Array | ArrayBuffer | string) {
   }
 
   return value instanceof Uint8Array ? new Uint8Array(value) : new Uint8Array(value);
+}
+
+function isModernPuppeteerBrowser(browser: PuppeteerBrowserSource): browser is PuppeteerBrowserLike {
+  return "newPage" in browser && typeof browser.newPage === "function";
 }
 
 export class PuppeteerPageAdapter implements BrowserPage {
@@ -330,27 +338,57 @@ export class PuppeteerPageAdapter implements BrowserPage {
 }
 
 class PuppeteerBrowserContextAdapter implements BrowserContext {
+  private readonly openPages = new Set<PuppeteerPageLike>();
+  private isClosed = false;
+
   constructor(
-    private readonly context: PuppeteerBrowserContextLike,
+    private readonly createPage: () => Promise<PuppeteerPageLike>,
     private readonly options: BrowserContextOptions,
   ) {}
 
   async newPage(): Promise<BrowserPage> {
-    const page = await this.context.newPage();
-    await configurePage(page, this.options);
-    return new PuppeteerPageAdapter(page);
+    if (this.isClosed) {
+      throw new Error("Puppeteer browser context is already closed");
+    }
+
+    const page = await this.createPage();
+    this.openPages.add(page);
+
+    try {
+      await configurePage(page, this.options);
+      return new PuppeteerPageAdapter(page);
+    } catch (error) {
+      this.openPages.delete(page);
+      await page.close?.();
+      throw error;
+    }
   }
 
   async close() {
-    await this.context.close();
+    this.isClosed = true;
+
+    const pages = Array.from(this.openPages);
+    this.openPages.clear();
+
+    await Promise.allSettled(
+      pages.map(async (page) => {
+        await page.close?.();
+      }),
+    );
   }
 }
 
 export class PuppeteerBrowserAdapter implements BrowserLike {
-  constructor(private readonly browser: PuppeteerBrowserLike) {}
+  constructor(private readonly browser: PuppeteerBrowserSource) {}
 
   async newContext(options: BrowserContextOptions): Promise<BrowserContext> {
-    const context = await this.browser.createBrowserContext();
-    return new PuppeteerBrowserContextAdapter(context, options);
+    const browser = this.browser;
+
+    if (isModernPuppeteerBrowser(browser)) {
+      return new PuppeteerBrowserContextAdapter(() => browser.newPage(), options);
+    }
+
+    const context = await browser.createBrowserContext();
+    return new PuppeteerBrowserContextAdapter(() => context.newPage(), options);
   }
 }

@@ -7,6 +7,7 @@ type SnapshotPayload = Pick<BrowserPageSnapshot, "url" | "title" | "visibleText"
 class MockPuppeteerPage {
   readonly setViewport = vi.fn(async () => undefined);
   readonly setExtraHTTPHeaders = vi.fn(async () => undefined);
+  readonly close = vi.fn(async () => undefined);
   readonly goto = vi.fn(async () => undefined);
   readonly click = vi.fn(async () => undefined);
   readonly type = vi.fn(async () => undefined);
@@ -38,17 +39,20 @@ class MockPuppeteerPage {
   }
 }
 
-class MockPuppeteerContext {
-  readonly close = vi.fn(async () => undefined);
-  readonly newPage = vi.fn(async () => this.page);
-
-  constructor(readonly page: MockPuppeteerPage) {}
-}
-
 class MockPuppeteerBrowser {
-  readonly createBrowserContext = vi.fn(async () => this.context);
+  private pageIndex = 0;
+  readonly newPage = vi.fn(async () => {
+    const page = this.pages.at(this.pageIndex) ?? this.pages.at(-1);
+    this.pageIndex += 1;
 
-  constructor(readonly context: MockPuppeteerContext) {}
+    if (!page) {
+      throw new Error("No mock page configured");
+    }
+
+    return page;
+  });
+
+  constructor(private readonly pages: MockPuppeteerPage[]) {}
 }
 
 function createSnapshotResult(): SnapshotPayload {
@@ -80,26 +84,30 @@ function expectBrowserPage(page: BrowserPage) {
 }
 
 describe("puppeteerAdapter", () => {
-  it("implements BrowserLike and configures locale + viewport on new pages", async () => {
-    const puppeteerPage = new MockPuppeteerPage(createSnapshotResult());
-    const puppeteerContext = new MockPuppeteerContext(puppeteerPage);
-    const puppeteerBrowser = new MockPuppeteerBrowser(puppeteerContext);
+  it("implements BrowserLike using browser.newPage() and closes tracked pages", async () => {
+    const firstPage = new MockPuppeteerPage(createSnapshotResult());
+    const secondPage = new MockPuppeteerPage(createSnapshotResult());
+    const puppeteerBrowser = new MockPuppeteerBrowser([firstPage, secondPage]);
     const adapter = expectBrowserLike(new PuppeteerBrowserAdapter(puppeteerBrowser));
 
     const context = await adapter.newContext({
       locale: "en-US",
       viewport: { width: 1280, height: 720 },
     });
-    const page = expectBrowserPage(await context.newPage());
+    const firstAdapterPage = expectBrowserPage(await context.newPage());
+    const secondAdapterPage = expectBrowserPage(await context.newPage());
 
-    expect(page).toBeInstanceOf(PuppeteerPageAdapter);
-    expect(puppeteerBrowser.createBrowserContext).toHaveBeenCalledTimes(1);
-    expect(puppeteerContext.newPage).toHaveBeenCalledTimes(1);
-    expect(puppeteerPage.setViewport).toHaveBeenCalledWith({ width: 1280, height: 720 });
-    expect(puppeteerPage.setExtraHTTPHeaders).toHaveBeenCalledWith({ "Accept-Language": "en-US" });
+    expect(firstAdapterPage).toBeInstanceOf(PuppeteerPageAdapter);
+    expect(secondAdapterPage).toBeInstanceOf(PuppeteerPageAdapter);
+    expect(puppeteerBrowser.newPage).toHaveBeenCalledTimes(2);
+    expect(firstPage.setViewport).toHaveBeenCalledWith({ width: 1280, height: 720 });
+    expect(firstPage.setExtraHTTPHeaders).toHaveBeenCalledWith({ "Accept-Language": "en-US" });
+    expect(secondPage.setViewport).toHaveBeenCalledWith({ width: 1280, height: 720 });
+    expect(secondPage.setExtraHTTPHeaders).toHaveBeenCalledWith({ "Accept-Language": "en-US" });
 
     await expect(context.close()).resolves.toBeUndefined();
-    expect(puppeteerContext.close).toHaveBeenCalledTimes(1);
+    expect(firstPage.close).toHaveBeenCalledTimes(1);
+    expect(secondPage.close).toHaveBeenCalledTimes(1);
   });
 
   it("implements BrowserPage methods and returns snapshot + screenshot data", async () => {
