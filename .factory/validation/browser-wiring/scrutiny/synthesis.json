@@ -1,0 +1,66 @@
+{
+  "milestone": "browser-wiring",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bunx vitest run --exclude '**/browserLeaseDO*'",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "failedFeatures": [
+      "handler-wiring-and-build"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "handler-wiring-and-build",
+      "severity": "blocking",
+      "description": "The new browser-resolution test suite never exercises the existing `env.BROWSER.launch()` branch in `resolveBrowser()`, so VAL-BWIRE-004 is not fully satisfied and that path could regress unnoticed."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Documented that the production Cloudflare Browser Rendering binding is the fetch-based `env.BROWSER` object passed directly to `puppeteer.launch(env.BROWSER)`, while browser resolution also supports injected `BrowserLike` doubles and bindings exposing `launch()`.",
+      "sourceFeature": "handler-wiring-and-build"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Align browser-executor snapshot guidance with the runtime contract by describing interactive elements with `role`, `label`, and `selector` fields instead of `type`.",
+      "evidence": "The `puppeteer-browser-adapter` review found the mission feature spec and `cf-worker` skill still describing snapshot interactive elements as having `type` fields, while the actual runtime contract uses `ObservationInteractiveElement.role` in `apps/browser-executor/src/observationBuilder.ts` and `BrowserPageSnapshot`.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Document how workers should handle unrelated pre-existing dirty shared-state files during cleanup and commit preparation so feature handoffs are not blocked by ambient `.factory` changes they did not introduce.",
+      "evidence": "The `puppeteer-browser-adapter` review found the worker had to deviate from the expected cleanup flow because unrelated `.factory/library/*` files were already dirty, but no project skill documented the correct procedure for that scenario.",
+      "isSystemic": false
+    },
+    {
+      "target": "skills",
+      "suggestion": "Relax `cf-worker` guidance for deployment-only Cloudflare tasks so it explicitly allows necessary `wrangler.toml` compatibility updates and remote `wrangler deploy` plus public health-check verification when local `wrangler dev` is not the relevant validation surface.",
+      "evidence": "The `deploy-browser-executor` review found the feature needed a `nodejs_compat` change in `apps/browser-executor/wrangler.toml` and validation against the deployed workers.dev endpoint, which conflicts with current `cf-worker` instructions that require local `wrangler dev` verification and say not to modify `wrangler.toml`.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}

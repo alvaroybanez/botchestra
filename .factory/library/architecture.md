@@ -41,6 +41,7 @@ packages/ai           — AI model config wrapper (per-task model resolution)
 ## Cloudflare Worker Conventions
 - Module syntax: export default { fetch(request, env, ctx) }
 - Bindings: ARTIFACTS (R2), KV, BROWSER_LEASE (DO), BROWSER (Browser Rendering)
+- The production Browser Rendering binding is the fetch-based `env.BROWSER` object passed directly to `puppeteer.launch(env.BROWSER)`; browser resolution also accepts injected `BrowserLike` test doubles and bindings that expose a `launch()` helper.
 - wrangler.toml in apps/browser-executor/
 - All secrets in .dev.vars (gitignored)
 - BrowserExecutorEnv type should include all bindings: BROWSER, BROWSER_LEASE, ARTIFACTS, KV, CALLBACK_SIGNING_SECRET, OPENAI_API_KEY
