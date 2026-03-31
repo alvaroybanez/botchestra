@@ -1,7 +1,7 @@
 {
   "milestone": "end-to-end",
-  "round": 2,
-  "status": "fail",
+  "round": 3,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,35 +20,20 @@
     }
   },
   "reviewsSummary": {
-    "total": 2,
+    "total": 1,
     "passed": 1,
-    "failed": 1,
-    "failedFeatures": [
-      "fix-worker-heartbeat-shouldstop"
-    ]
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "fix-worker-heartbeat-shouldstop",
-      "severity": "blocking",
-      "description": "The Worker now stops when heartbeat acknowledgements return `shouldStop: true`, but the new pre-step cancellation path emits a `cancel` milestone at `stepIndex: 0`, colliding with the existing `start` milestone at the same index. Because Convex de-duplicates milestones by `(runId, stepIndex)`, the terminal cancellation milestone is dropped instead of being persisted end-to-end."
-    }
-  ],
+  "blockingIssues": [],
   "appliedUpdates": [
     {
       "target": "library",
-      "description": "Documented the Convex workpool test-harness pattern: register the pool on the `convexTest` instance and drain scheduled functions to exercise enqueueAction-backed work end-to-end.",
-      "sourceFeature": "fix-wave-dispatch-integration-test"
+      "description": "Documented the run-milestone uniqueness invariant: Convex de-duplicates milestones by `(runId, stepIndex)`, so later milestones in a run must not reuse an earlier step index.",
+      "sourceFeature": "fix-cancel-milestone-step-index"
     }
   ],
-  "suggestedGuidanceUpdates": [
-    {
-      "target": "skills/backend-worker",
-      "suggestion": "Allow a test-only validation exception to the mandatory RED-first workflow when the assigned feature is purely missing regression coverage for already-correct behavior and no production code change is expected.",
-      "evidence": "The `fix-wave-dispatch-integration-test` review passed, but the worker still had to mark `followedProcedure: false` because `.factory/skills/backend-worker/SKILL.md` requires a RED cycle even for coverage-only assignments whose new tests can pass immediately against existing behavior.",
-      "isSystemic": false
-    }
-  ],
+  "suggestedGuidanceUpdates": [],
   "rejectedObservations": [],
-  "previousRound": ".factory/validation/end-to-end/scrutiny/synthesis.round-1.json"
+  "previousRound": ".factory/validation/end-to-end/scrutiny/synthesis.round-2.json"
 }

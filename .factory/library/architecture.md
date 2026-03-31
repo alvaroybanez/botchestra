@@ -49,6 +49,7 @@ packages/ai           — AI model config wrapper (per-task model resolution)
 
 ## Browser Executor Architecture
 - `runExecutor.ts` — Step loop consuming BrowserPage + selectAction abstractions. Sends periodic heartbeats and checks shouldStop.
+- Run milestones must use unique `(runId, stepIndex)` pairs end-to-end. `convex/runProgress.ts` de-duplicates on the `by_runId_and_stepIndex` index, so later milestones in the same run cannot reuse an earlier step index (for example, a terminal `cancel` milestone must not reuse the initial `start` milestone's step index).
 - `AgentAction` is effectively a discriminated union at runtime: `goto` requires `url`; `click` requires `selector`; `type` requires both `selector` and `text`; `select` requires both `selector` and `value`. Selectors and fallbacks must only return fully populated variants because `runExecutor.ts` treats missing required fields as execution errors.
 - `executeRunHandler.ts` — Creates handler with dependency injection (browser, action selector, lease client). resolveBrowser() handles 4 paths.
 - `puppeteerAdapter.ts` — Bridges @cloudflare/puppeteer to BrowserLike/BrowserPage interfaces
