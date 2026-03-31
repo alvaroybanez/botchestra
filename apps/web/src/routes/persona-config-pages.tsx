@@ -4,6 +4,10 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import {
+  PersonaGenerationSection,
+  type BatchGenerationRunView,
+} from "@/components/persona-generation-section";
+import {
   PersonaVariantReviewGrid,
   type VariantReviewData,
 } from "@/components/persona-variant-review-grid";
@@ -681,6 +685,9 @@ export function PersonaConfigDetailPage({
   const configTranscripts = useQuery((api as any).configTranscripts.listConfigTranscripts, {
     configId: typedConfigId,
   }) as ConfigTranscriptAttachment[] | undefined;
+  const batchGenerationRun = useQuery(api.batchGeneration.getBatchGenerationRun, {
+    configId: typedConfigId,
+  }) as BatchGenerationRunView | null | undefined;
   const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {}) as
     | ViewerAccess
     | undefined;
@@ -712,6 +719,8 @@ export function PersonaConfigDetailPage({
       ? { configId: typedConfigId }
       : { configId: typedConfigId, studyId: selectedStudyId as Id<"studies"> },
   ) as ConfigVariantReviewData | null | undefined;
+  const startBatchGeneration = useMutation(api.batchGeneration.startBatchGeneration);
+  const regenerateSyntheticUser = useMutation(api.batchGeneration.regenerateSyntheticUser);
   const updateDraft = useMutation(api.personaConfigs.updateDraft);
   const createSyntheticUser = useMutation(api.personaConfigs.createSyntheticUser);
   const publishConfig = useMutation(api.personaConfigs.publish);
@@ -1860,6 +1869,23 @@ export function PersonaConfigDetailPage({
                 ))}
               </CardContent>
             </Card>
+
+            <PersonaGenerationSection
+              axes={config.sharedAxes}
+              batchGenerationRun={batchGenerationRun ?? null}
+              canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
+              configStatus={resolvedStatus ?? config.status}
+              syntheticUsers={syntheticUserList}
+              onRegenerateUser={(syntheticUserId) =>
+                regenerateSyntheticUser({ syntheticUserId })
+              }
+              onStartGeneration={(levelsPerAxis) =>
+                startBatchGeneration({
+                  configId: config._id,
+                  levelsPerAxis,
+                })
+              }
+            />
 
             <Card>
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

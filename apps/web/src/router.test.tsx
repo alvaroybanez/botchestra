@@ -64,6 +64,15 @@ let mockedTranscriptDetail:
 let mockedSyntheticUsers:
   | Doc<"syntheticUsers">[]
   | undefined = [];
+type BatchGenerationRunView = Doc<"batchGenerationRuns"> & {
+  remainingCount: number;
+  progressPercent: number;
+};
+
+let mockedBatchGenerationRun:
+  | BatchGenerationRunView
+  | null
+  | undefined = null;
 type ReviewStudy = {
   _id: string;
   name: string;
@@ -387,6 +396,8 @@ const cancelStudyMock = vi.fn();
 const importJsonMock = vi.fn();
 const updateDraftMock = vi.fn();
 const createSyntheticUserMock = vi.fn();
+const startBatchGenerationMock = vi.fn();
+const regenerateSyntheticUserMock = vi.fn();
 const publishMock = vi.fn();
 const archiveMock = vi.fn();
 const applyTranscriptDerivedSyntheticUsersMock = vi.fn();
@@ -478,6 +489,14 @@ vi.mock("convex/react", () => ({
 
     if (mutationName === "personaConfigs:createSyntheticUser") {
       return createSyntheticUserMock;
+    }
+
+    if (mutationName === "batchGeneration:startBatchGeneration") {
+      return startBatchGenerationMock;
+    }
+
+    if (mutationName === "batchGeneration:regenerateSyntheticUser") {
+      return regenerateSyntheticUserMock;
     }
 
     if (mutationName === "personaConfigs:applyTranscriptDerivedSyntheticUsers") {
@@ -712,6 +731,10 @@ vi.mock("convex/react", () => ({
       return mockedSyntheticUsers;
     }
 
+    if (queryName === "batchGeneration:getBatchGenerationRun") {
+      return mockedBatchGenerationRun;
+    }
+
     if (queryName === "personaVariantReview:getStudyVariantReview") {
       return mockedVariantReview;
     }
@@ -768,6 +791,7 @@ beforeEach(() => {
   mockedPackDetail = null;
   mockedTranscriptDetail = null;
   mockedSyntheticUsers = [];
+  mockedBatchGenerationRun = null;
   mockedViewerAccess = null;
   mockedVariantReview = undefined;
   mockedPackVariantReview = undefined;
@@ -804,6 +828,10 @@ beforeEach(() => {
   updateDraftMock.mockResolvedValue(undefined);
   createSyntheticUserMock.mockReset();
   createSyntheticUserMock.mockResolvedValue(undefined);
+  startBatchGenerationMock.mockReset();
+  startBatchGenerationMock.mockResolvedValue("run-1" as Id<"batchGenerationRuns">);
+  regenerateSyntheticUserMock.mockReset();
+  regenerateSyntheticUserMock.mockResolvedValue("proto-1" as Id<"syntheticUsers">);
   publishMock.mockReset();
   publishMock.mockResolvedValue(undefined);
   archiveMock.mockReset();
@@ -2319,6 +2347,241 @@ describe("@botchestra/web routing", () => {
     expect(getVariantRows(container)).toHaveLength(3);
   });
 
+  it("renders batch generation controls, estimates, and the empty state on draft configs", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-generation-empty" as Id<"personaConfigs">,
+      sharedAxes: [
+        {
+          key: "digital_confidence",
+          label: "Digital confidence",
+          description: "Comfort level with unfamiliar digital tasks.",
+          lowAnchor: "Needs help often",
+          midAnchor: "Can complete familiar flows",
+          highAnchor: "Self-directed explorer",
+          weight: 1,
+        },
+        {
+          key: "support_needs",
+          label: "Support needs",
+          description: "How much guidance the person wants.",
+          lowAnchor: "Prefers self-service",
+          midAnchor: "Requests help when blocked",
+          highAnchor: "Needs a human quickly",
+          weight: 1,
+        },
+      ],
+    });
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-generation-empty"],
+    });
+
+    expect(container.textContent).toContain("Synthetic User Generation");
+    expect(container.textContent).toContain("Generate Synthetic Users");
+    expect(container.textContent).toContain("2 axes x 3 levels = 9 synthetic users");
+    expect(container.textContent).toContain("7,200 tokens");
+    expect(container.textContent).toContain("$0.07");
+    expect(container.textContent).toContain("No generated synthetic users yet.");
+  });
+
+  it("updates batch generation granularity and starts generation with per-axis levels", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-generation-start" as Id<"personaConfigs">,
+      sharedAxes: [
+        {
+          key: "digital_confidence",
+          label: "Digital confidence",
+          description: "Comfort level with unfamiliar digital tasks.",
+          lowAnchor: "Needs help often",
+          midAnchor: "Can complete familiar flows",
+          highAnchor: "Self-directed explorer",
+          weight: 1,
+        },
+        {
+          key: "support_needs",
+          label: "Support needs",
+          description: "How much guidance the person wants.",
+          lowAnchor: "Prefers self-service",
+          midAnchor: "Requests help when blocked",
+          highAnchor: "Needs a human quickly",
+          weight: 1,
+        },
+      ],
+    });
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-generation-start"],
+    });
+
+    await updateRadixSelect(document.body, "Support needs levels", "5 levels");
+
+    expect(container.textContent).toContain(
+      "2 axes x mixed levels (3 · 5) = 15 synthetic users",
+    );
+    expect(container.textContent).toContain("12,000 tokens");
+
+    await clickButton(container, "Confirm & Generate");
+
+    expect(startBatchGenerationMock).toHaveBeenCalledWith({
+      configId: "config-generation-start",
+      levelsPerAxis: {
+        digital_confidence: 3,
+        support_needs: 5,
+      },
+    });
+    expect(container.textContent).toContain(
+      "Batch generation started. Progress will continue even if you navigate away.",
+    );
+  });
+
+  it("shows generation progress, search, retry failed, and per-row regenerate controls", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-generation-progress" as Id<"personaConfigs">,
+      sharedAxes: [
+        {
+          key: "digital_confidence",
+          label: "Digital confidence",
+          description: "Comfort level with unfamiliar digital tasks.",
+          lowAnchor: "Needs help often",
+          midAnchor: "Can complete familiar flows",
+          highAnchor: "Self-directed explorer",
+          weight: 1,
+        },
+        {
+          key: "support_needs",
+          label: "Support needs",
+          description: "How much guidance the person wants.",
+          lowAnchor: "Prefers self-service",
+          midAnchor: "Requests help when blocked",
+          highAnchor: "Needs a human quickly",
+          weight: 1,
+        },
+      ],
+    });
+    mockedBatchGenerationRun = makeBatchGenerationRun({
+      _id: "batch-run-progress" as Id<"batchGenerationRuns">,
+      completedCount: 4,
+      configId: "config-generation-progress" as Id<"personaConfigs">,
+      failedCount: 1,
+      progressPercent: 100,
+      remainingCount: 0,
+      status: "partially_failed",
+      totalCount: 5,
+    });
+    mockedSyntheticUsers = [
+      makeSyntheticUser({
+        _id: "generated-complete" as Id<"syntheticUsers">,
+        configId: "config-generation-progress" as Id<"personaConfigs">,
+        name: "Generated finisher",
+        sourceType: "generated",
+        generationStatus: "completed",
+        firstPersonBio: "I move quickly and expect totals to stay stable.",
+        axisValues: [
+          { key: "digital_confidence", value: 1 },
+          { key: "support_needs", value: -1 },
+        ],
+      }),
+      makeSyntheticUser({
+        _id: "generated-failed" as Id<"syntheticUsers">,
+        configId: "config-generation-progress" as Id<"personaConfigs">,
+        name: "Generated retry target",
+        generationError: "Model request timed out.",
+        generationStatus: "failed",
+        sourceType: "generated",
+        axisValues: [
+          { key: "digital_confidence", value: -1 },
+          { key: "support_needs", value: 1 },
+        ],
+      }),
+      makeSyntheticUser({
+        _id: "manual-review" as Id<"syntheticUsers">,
+        configId: "config-generation-progress" as Id<"personaConfigs">,
+        name: "Manual reviewer",
+        sourceType: "manual",
+      }),
+    ];
+
+    const rowDeferred = createDeferred<Id<"syntheticUsers">>();
+    regenerateSyntheticUserMock
+      .mockReturnValueOnce(rowDeferred.promise)
+      .mockResolvedValueOnce("generated-failed" as Id<"syntheticUsers">);
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-generation-progress"],
+    });
+
+    expect(container.textContent).toContain("Generation Progress");
+    expect(container.textContent).toContain(
+      "Generated 4 synthetic users with 1 failures.",
+    );
+    expect(container.textContent).toContain("Generated Users Grid");
+    expect(container.textContent).toContain("Retry Failed");
+
+    await updateInput(container, 'input[aria-label="Search synthetic users"]', "Manual");
+    const generationGridTable = getGenerationGridTable(container);
+    expect(generationGridTable.textContent).toContain("Manual reviewer");
+    expect(generationGridTable.textContent).not.toContain("Generated finisher");
+
+    await updateInput(container, 'input[aria-label="Search synthetic users"]', "");
+
+    const completedRow = getTableRow(container, "Generated finisher");
+    await clickButton(completedRow, "Regenerate");
+
+    expect(regenerateSyntheticUserMock).toHaveBeenNthCalledWith(1, {
+      syntheticUserId: "generated-complete",
+    });
+    expect(completedRow.textContent).toContain("Regenerating...");
+
+    rowDeferred.resolve("generated-complete" as Id<"syntheticUsers">);
+    await act(async () => {
+      await rowDeferred.promise;
+    });
+
+    await clickButton(container, "Retry Failed");
+
+    expect(regenerateSyntheticUserMock).toHaveBeenNthCalledWith(2, {
+      syntheticUserId: "generated-failed",
+    });
+  });
+
+  it("hides generation controls and regenerate buttons on published configs", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-generation-published" as Id<"personaConfigs">,
+      status: "published",
+    });
+    mockedBatchGenerationRun = makeBatchGenerationRun({
+      _id: "batch-run-complete" as Id<"batchGenerationRuns">,
+      completedCount: 3,
+      configId: "config-generation-published" as Id<"personaConfigs">,
+      progressPercent: 100,
+      remainingCount: 0,
+      status: "completed",
+      totalCount: 3,
+    });
+    mockedSyntheticUsers = [
+      makeSyntheticUser({
+        _id: "generated-published" as Id<"syntheticUsers">,
+        configId: "config-generation-published" as Id<"personaConfigs">,
+        sourceType: "generated",
+        generationStatus: "completed",
+        axisValues: [{ key: "digital_confidence", value: 1 }],
+      }),
+    ];
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-generation-published"],
+    });
+
+    expect(container.textContent).toContain("Synthetic User Generation");
+    expect(container.textContent).not.toContain("Generate Synthetic Users");
+    expect(container.textContent).not.toContain("Retry Failed");
+    expect(getButton(container, "Regenerate")).toBeUndefined();
+  });
+
   it("shows axis generation controls only on draft configs", async () => {
     mockedPackDetail = makePack({
       _id: "config-axis-draft" as Id<"personaConfigs">,
@@ -3646,6 +3909,32 @@ async function updateSelect(
   });
 }
 
+async function updateRadixSelect(
+  root: ParentNode,
+  ariaLabel: string,
+  optionText: string,
+) {
+  const trigger = root.querySelector<HTMLButtonElement>(
+    `button[aria-label="${ariaLabel}"]`,
+  );
+
+  expect(trigger).not.toBeNull();
+
+  await act(async () => {
+    trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  const option = [...document.body.querySelectorAll<HTMLElement>('[role="option"]')].find(
+    (candidate) => candidate.textContent?.trim() === optionText,
+  );
+
+  expect(option).toBeDefined();
+
+  await act(async () => {
+    option!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
 async function updateFiles(
   container: HTMLDivElement,
   selector: string,
@@ -3679,6 +3968,28 @@ function getVariantRows(container: HTMLDivElement) {
   return [...container.querySelectorAll<HTMLElement>('[data-testid="variant-row"]')].map(
     (row) => row.textContent ?? "",
   );
+}
+
+function getGenerationGridTable(root: ParentNode) {
+  const table = [...root.querySelectorAll<HTMLTableElement>("table")].find((candidate) =>
+    candidate.textContent?.includes("Axis values")
+    && candidate.textContent?.includes("Bio preview")
+    && candidate.textContent?.includes("Source"),
+  );
+
+  expect(table).toBeDefined();
+
+  return table!;
+}
+
+function getTableRow(root: ParentNode, text: string) {
+  const row = [...root.querySelectorAll<HTMLTableRowElement>("tr")].find((candidate) =>
+    candidate.textContent?.includes(text),
+  );
+
+  expect(row).toBeDefined();
+
+  return row!;
 }
 
 function getAuditRows(container: HTMLDivElement) {
@@ -4295,6 +4606,29 @@ function makeSyntheticUser(
     sourceRefs: [],
     evidenceSnippets: ["Checks totals twice before placing an order."],
     notes: "Frequently cross-checks fees.",
+    ...overrides,
+  };
+}
+
+function makeBatchGenerationRun(
+  overrides: Partial<BatchGenerationRunView> = {},
+): BatchGenerationRunView {
+  return {
+    _creationTime: 1,
+    _id: (overrides._id ?? "batch-run-1") as Id<"batchGenerationRuns">,
+    completedCount: 0,
+    configId: (overrides.configId ?? "config-1") as Id<"personaConfigs">,
+    failedCount: 0,
+    levelsPerAxis: {
+      digital_confidence: 3,
+      ...(overrides.levelsPerAxis ?? {}),
+    },
+    orgId: "researcher|org-a",
+    progressPercent: 0,
+    remainingCount: 3,
+    startedAt: 1,
+    status: "pending",
+    totalCount: 3,
     ...overrides,
   };
 }
