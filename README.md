@@ -113,7 +113,13 @@ Generate 100–1,000+ synthetic users at scale:
 Create studies linked to published persona configurations. Studies orchestrate browser-agent runs against target web flows using the generated synthetic users.
 
 ### Browser Executor
-Cloudflare Worker with Durable Objects for browser lease management. AI agent loop (observe → decide → act → record) with guardrails, step policies, milestone tracking, and artifact uploading.
+Cloudflare Worker with Durable Objects for browser lease management. Deployed to Cloudflare Workers with Browser Rendering for headless browser automation.
+
+- **Puppeteer adapter** — bridges `@cloudflare/puppeteer` to the internal `BrowserLike`/`BrowserPage` interfaces, extracting DOM snapshots with interactive elements for the AI agent loop
+- **AI action selector** — persona-aware, goal-directed action selection using `generateWithModel("action")` with structured JSON output, graceful fallback to heuristic on LLM failure/timeout, and runtime action validation
+- **Agent loop** — observe → decide → act → record with guardrails (allowed/forbidden actions, domain allowlist), step policies, frustration detection, milestone tracking, and artifact uploading
+- **Heartbeat cancellation** — Worker respects `shouldStop` signals from Convex heartbeat responses for graceful run termination
+- **Secret redaction** — all outbound callbacks and responses have sensitive values replaced with `[REDACTED]`
 
 ### Analysis Pipeline
 Automated finding summarization, severity classification, observation clustering, and report generation with exportable formats (JSON, CSV).
@@ -123,7 +129,7 @@ Role-based access control (RBAC), encrypted credential storage, structured obser
 
 ## Testing
 
-The project has tests across 55 test files:
+The project has tests across 68 test files:
 
 ```bash
 bun run test
