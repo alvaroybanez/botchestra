@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@botchestra/ai": "workspace:*",
-    "@botchestra/shared": "workspace:*"
+    "@botchestra/shared": "workspace:*",
+    "@cloudflare/puppeteer": "^1.0.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250327.0",
