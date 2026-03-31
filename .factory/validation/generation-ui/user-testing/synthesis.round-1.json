@@ -1,11 +1,11 @@
 {
   "milestone": "generation-ui",
-  "round": 2,
-  "status": "pass",
+  "round": 1,
+  "status": "fail",
   "assertionsSummary": {
     "total": 27,
-    "passed": 27,
-    "failed": 0,
+    "passed": 26,
+    "failed": 1,
     "blocked": 0
   },
   "passedAssertions": [
@@ -34,10 +34,14 @@
     "VAL-CROSS-002",
     "VAL-CROSS-003",
     "VAL-CROSS-004",
-    "VAL-CROSS-005",
-    "VAL-RENAME-008"
+    "VAL-CROSS-005"
   ],
-  "failedAssertions": [],
+  "failedAssertions": [
+    {
+      "id": "VAL-RENAME-008",
+      "reason": "`bunx convex dev --once` exited 1 because Convex typecheck hit TS2304 in `convex/batchGeneration.test.ts` and TS7006 in `convex/crossAreaIntegration.test.ts`."
+    }
+  ],
   "blockedAssertions": [],
   "appliedUpdates": [
     {
@@ -54,24 +58,17 @@
       "target": "user-testing.md",
       "description": "Recorded the Task tool subagent-spawn blocker caused by the invalid inherited model alias `custom:GPT-5.4-(xHigh)-16`.",
       "source": "setup"
-    },
-    {
-      "target": "user-testing.md",
-      "description": "Added a serialized `test-cli` concurrency limit of 1 because `bunx convex dev --once` and similar CLI validators share the repo workspace and Convex preparation state.",
-      "source": "setup"
     }
   ],
-  "previousRound": ".factory/validation/generation-ui/user-testing/synthesis.round-1.json",
+  "previousRound": null,
   "flowReports": [
     ".factory/validation/generation-ui/user-testing/flows/rename-cli.json",
     ".factory/validation/generation-ui/user-testing/flows/genui-draft-panel.json",
     ".factory/validation/generation-ui/user-testing/flows/genui-runtime.json",
     ".factory/validation/generation-ui/user-testing/flows/rename-navigation.json",
-    ".factory/validation/generation-ui/user-testing/flows/cross-e2e.json",
-    ".factory/validation/generation-ui/user-testing/flows/rename-cli-rerun.json"
+    ".factory/validation/generation-ui/user-testing/flows/cross-e2e.json"
   ],
   "executionNotes": [
-    "Round 2 re-tested only `VAL-RENAME-008` because it was the sole failed assertion from round 1 and no new generation-ui fulfills were added afterward.",
-    "A Task-based flow-validator spawn still failed due to the invalid inherited model alias `custom:GPT-5.4-(xHigh)-16`, so the main worker ran the CLI validation directly."
+    "Task-based flow validator spawning failed repeatedly because the Task tool inherited an invalid custom model alias (`custom:GPT-5.4-(xHigh)-16`), so the main worker session executed the planned flow groups manually in the real user surface."
   ]
 }

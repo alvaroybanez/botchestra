@@ -18,6 +18,8 @@ Testing surface, required tools, and resource cost classification.
 
 - **Max concurrent validators:** 5
 - **Rationale:** Dev server is lightweight (~55 MB RSS, 0.1% memory at idle). Machine has 36 GB RAM, 12 CPU cores, ~4 GB free pages at baseline. Each agent-browser instance uses ~300 MB. 5 instances = ~1.5 GB + 200 MB dev server = ~1.7 GB. Well within 70% of ~12 GB headroom = 8.4 GB budget.
+- **Max concurrent validators (test-cli):** 1
+- **Rationale (test-cli):** `bunx convex dev --once` and similar CLI validators already exercise workspace typecheck plus Convex preparation against the shared repo and deployment. Keep them serialized to avoid overlapping generated-file refreshes, duplicate workspace builds, and noisy contention without any throughput benefit.
 
 ## Testing Notes
 

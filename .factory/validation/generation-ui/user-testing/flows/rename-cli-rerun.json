@@ -1,0 +1,36 @@
+{
+  "groupId": "rename-cli-rerun",
+  "surface": "test-cli",
+  "overallStatus": "pass",
+  "summary": "Re-ran the previously failing Convex validation check and confirmed `bunx convex dev --once` now succeeds, so VAL-RENAME-008 passes on this round.",
+  "assertions": [
+    {
+      "id": "VAL-RENAME-008",
+      "status": "pass",
+      "details": "`bunx convex dev --once` completed successfully after the typecheck fixes landed, so the renamed schema now validates cleanly in Convex.",
+      "evidence": [
+        "`bunx convex dev --once` exited 0.",
+        "Convex printed `Convex functions ready!` after preparing functions in about five seconds."
+      ],
+      "evidenceFiles": []
+    }
+  ],
+  "toolsUsed": [
+    "bunx convex dev --once",
+    "git status",
+    "vm_stat",
+    "sysctl",
+    "ps"
+  ],
+  "commands": [
+    {
+      "command": "bunx convex dev --once",
+      "exitCode": 0,
+      "observation": "Convex prepared functions and reported `Convex functions ready! (4.98s)`."
+    }
+  ],
+  "frictions": [
+    "A Task-based flow-validator spawn was attempted first, but the Task tool still inherited the invalid model alias `custom:GPT-5.4-(xHigh)-16`; the main worker completed the CLI validation directly instead."
+  ],
+  "blockers": []
+}
