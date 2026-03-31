@@ -365,6 +365,15 @@ export const publish = mutation({
       throw new ConvexError("Archived persona configurations cannot be published.");
     }
 
+    const activeBatchGenerationRun = await findActiveBatchGenerationRunForConfig(
+      ctx,
+      args.configId,
+    );
+
+    if (activeBatchGenerationRun !== null) {
+      throw new ConvexError("Cannot publish while batch generation is in progress");
+    }
+
     const hasSyntheticUsers = await configHasSyntheticUsers(ctx, args.configId);
 
     if (!hasSyntheticUsers) {
@@ -926,4 +935,29 @@ async function listSyntheticUsersForPack(
     .query("syntheticUsers")
     .withIndex("by_configId", (q) => q.eq("configId", configId))
     .take(limit);
+}
+
+async function findActiveBatchGenerationRunForConfig(
+  ctx: QueryCtx | MutationCtx,
+  configId: Id<"personaConfigs">,
+) {
+  const [pendingRun] = await ctx.db
+    .query("batchGenerationRuns")
+    .withIndex("by_configId_and_status", (q) =>
+      q.eq("configId", configId).eq("status", "pending"),
+    )
+    .take(1);
+
+  if (pendingRun !== undefined) {
+    return pendingRun;
+  }
+
+  const [runningRun] = await ctx.db
+    .query("batchGenerationRuns")
+    .withIndex("by_configId_and_status", (q) =>
+      q.eq("configId", configId).eq("status", "running"),
+    )
+    .take(1);
+
+  return runningRun ?? null;
 }

@@ -905,6 +905,8 @@ export function PersonaConfigDetailPage({
   const resolvedStatus = optimisticStatus ?? config?.status;
   const isDraft = resolvedStatus === "draft";
   const syntheticUserList: SyntheticUserDoc[] = syntheticUsers ?? [];
+  const hasActiveBatchGenerationRun =
+    batchGenerationRun?.status === "pending" || batchGenerationRun?.status === "running";
   const canSuggestAxes =
     draftForm.name.trim().length > 0 && draftForm.context.trim().length > 0;
   const selectedSuggestionCount = suggestedAxes.filter(
@@ -921,7 +923,9 @@ export function PersonaConfigDetailPage({
     return isDraft ? draftForm.sharedAxes.map(axisFormToPayload) : config.sharedAxes;
   }, [draftForm.sharedAxes, isDraft, config]);
   const publishedStatusHelp =
-    isDraft && syntheticUsers !== undefined && syntheticUserList.length === 0
+    isDraft && hasActiveBatchGenerationRun
+      ? "Cannot publish while batch generation is in progress."
+      : isDraft && syntheticUsers !== undefined && syntheticUserList.length === 0
       ? "Add at least one synthetic user before publishing this persona configuration."
       : null;
   const selectedStudySummary =
@@ -1661,7 +1665,7 @@ export function PersonaConfigDetailPage({
             </Button>
             {isDraft ? (
               <Button
-                disabled={syntheticUserList.length === 0}
+                disabled={syntheticUserList.length === 0 || hasActiveBatchGenerationRun}
                 onClick={() =>
                   setConfirmationState({
                     kind: "publish",

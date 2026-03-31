@@ -39,7 +39,7 @@ export const expandedSyntheticUserPersistedSchema = z.object({
   ),
   firstPersonBio: z.string(),
   behaviorRules: z.array(z.string()),
-  tensionSeed: z.string(),
+  tensionSeed: z.string().optional(),
 });
 
 export type ExpandedSyntheticUser = z.infer<

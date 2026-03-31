@@ -26,6 +26,7 @@ const createTest = () => convexTest(schema, modules);
 const mockedGenerateWithModel = vi.mocked(generateWithModel);
 const batchGenerationApi = (api as any).batchGeneration;
 const batchGenerationActionApi = (internal as any).batchGenerationAction;
+const batchGenerationInternalApi = (internal as any).batchGeneration;
 
 const researchIdentity = {
   subject: "researcher-1",
@@ -349,6 +350,33 @@ describe("batch generation", () => {
     expect(mockedGenerateWithModel).toHaveBeenCalledTimes(9);
   });
 
+  it("stops claiming more batch expansions when the config is no longer draft", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const configId = await createDraftConfig(t, { axisCount: 1 });
+
+    const runId = await asResearcher.mutation(batchGenerationApi.startBatchGeneration, {
+      configId,
+      levelsPerAxis: 3,
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch(configId, { status: "published" });
+    });
+
+    const claim = await t.mutation(batchGenerationInternalApi.claimNextSyntheticUserForExpansion, {
+      runId,
+    });
+    const generatedUsers = await listGeneratedUsersForConfig(t, configId);
+
+    expect(claim).toBeNull();
+    expect(
+      generatedUsers.every(
+        (syntheticUser) => syntheticUser.generationStatus === "pending_expansion",
+      ),
+    ).toBe(true);
+  });
+
   it("continues after a failed expansion and marks the run partially_failed", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
@@ -486,6 +514,81 @@ describe("batch generation", () => {
     });
     expect(regeneratedUser?.axisValues).toEqual(originalAxisValues);
     expect(regeneratedUser?.firstPersonBio).not.toBe(generatedUser?.firstPersonBio);
+  });
+
+  it("accepts persisted expansion payloads without tensionSeed", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const configId = await createDraftConfig(t, { axisCount: 1 });
+    const syntheticUserId = await insertGeneratedSyntheticUser(t, configId);
+
+    await t.mutation(batchGenerationInternalApi.completeSyntheticUserExpansion, {
+      syntheticUserId,
+      generatedUser: {
+        name: "Optional Tension Persona",
+        summary: "Expanded without a tension seed.",
+        axes: [makeAxis()],
+        firstPersonBio:
+          "I can keep moving through a flow when the instructions stay consistent and clearly connected to the task I am trying to finish.",
+        behaviorRules: [
+          "Read each heading before continuing.",
+          "Look for supporting helper text when labels change.",
+        ],
+      },
+    });
+
+    const syntheticUser = await asResearcher.query(api.personaConfigs.getSyntheticUser, {
+      syntheticUserId,
+    });
+
+    expect(syntheticUser).toMatchObject({
+      _id: syntheticUserId,
+      name: "Optional Tension Persona",
+      generationStatus: "completed",
+      sourceType: "generated",
+    });
+    expect(syntheticUser?.tensionSeed).toBeUndefined();
+  });
+
+  it("skips completing a generated user expansion when the config is no longer draft", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const configId = await createDraftConfig(t, { axisCount: 1 });
+    const syntheticUserId = await insertGeneratedSyntheticUser(t, configId, {
+      name: "Queued Persona",
+      summary: "Waiting for regeneration.",
+    });
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch(configId, { status: "published" });
+    });
+
+    await t.mutation(batchGenerationInternalApi.completeSyntheticUserExpansion, {
+      syntheticUserId,
+      generatedUser: {
+        name: "Should Not Persist",
+        summary: "This update should be skipped.",
+        axes: [makeAxis()],
+        firstPersonBio:
+          "This bio should never replace the existing generated user after publish.",
+        behaviorRules: ["Do not overwrite the frozen profile."],
+        tensionSeed: "Should not appear",
+      },
+    });
+
+    const syntheticUser = await asResearcher.query(api.personaConfigs.getSyntheticUser, {
+      syntheticUserId,
+    });
+
+    expect(syntheticUser).toMatchObject({
+      _id: syntheticUserId,
+      name: "Queued Persona",
+      summary: "Waiting for regeneration.",
+      generationStatus: "pending_expansion",
+      sourceType: "generated",
+    });
+    expect(syntheticUser?.firstPersonBio).toBeUndefined();
+    expect(syntheticUser?.tensionSeed).toBeUndefined();
   });
 
   it("preserves the existing generated profile when regeneration fails", async () => {
@@ -628,6 +731,27 @@ async function insertManualSyntheticUser(
       sourceType: "manual",
       sourceRefs: [],
       evidenceSnippets: ["Evidence"],
+    }),
+  );
+}
+
+async function insertGeneratedSyntheticUser(
+  t: ReturnType<typeof createTest>,
+  configId: Id<"personaConfigs">,
+  overrides: Partial<Doc<"syntheticUsers">> = {},
+) {
+  return await t.run(async (ctx) =>
+    ctx.db.insert("syntheticUsers", {
+      configId,
+      name: "Generated User",
+      summary: "Pending generated synthetic user",
+      axes: [makeAxis()],
+      axisValues: [{ key: "axis_1", value: 0 }],
+      sourceType: "generated",
+      generationStatus: "pending_expansion",
+      sourceRefs: [],
+      evidenceSnippets: [],
+      ...overrides,
     }),
   );
 }

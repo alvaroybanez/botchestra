@@ -261,6 +261,10 @@ export const claimNextSyntheticUserForExpansion = internalMutation({
       throw new ConvexError("Persona configuration not found.");
     }
 
+    if (config.status !== "draft") {
+      return null;
+    }
+
     const [syntheticUser] = await ctx.db
       .query("syntheticUsers")
       .withIndex("by_batchGenerationRunId_and_generationStatus", (q) =>
@@ -352,6 +356,21 @@ export const completeSyntheticUserExpansion = internalMutation({
       })
       .parse(args);
     const syntheticUserId = parsedArgs.syntheticUserId as Id<"syntheticUsers">;
+    const syntheticUser = await ctx.db.get(syntheticUserId);
+
+    if (syntheticUser === null) {
+      throw new ConvexError("Synthetic user not found.");
+    }
+
+    const config = await ctx.db.get(syntheticUser.configId);
+
+    if (config === null) {
+      throw new ConvexError("Persona configuration not found.");
+    }
+
+    if (config.status !== "draft") {
+      return syntheticUserId;
+    }
 
     await ctx.db.patch(syntheticUserId, {
       name: parsedArgs.generatedUser.name,

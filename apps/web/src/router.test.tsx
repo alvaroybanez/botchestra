@@ -2474,7 +2474,7 @@ describe("@botchestra/web routing", () => {
       makeSyntheticUser({
         _id: "generated-complete" as Id<"syntheticUsers">,
         configId: "config-generation-progress" as Id<"personaConfigs">,
-        name: "Generated finisher",
+        name: "Alpha Profile",
         sourceType: "generated",
         generationStatus: "completed",
         firstPersonBio: "I move quickly and expect totals to stay stable.",
@@ -2486,7 +2486,7 @@ describe("@botchestra/web routing", () => {
       makeSyntheticUser({
         _id: "generated-failed" as Id<"syntheticUsers">,
         configId: "config-generation-progress" as Id<"personaConfigs">,
-        name: "Generated retry target",
+        name: "Beta Profile",
         generationError: "Model request timed out.",
         generationStatus: "failed",
         sourceType: "generated",
@@ -2498,13 +2498,13 @@ describe("@botchestra/web routing", () => {
       makeSyntheticUser({
         _id: "manual-review" as Id<"syntheticUsers">,
         configId: "config-generation-progress" as Id<"personaConfigs">,
-        name: "Manual reviewer",
+        name: "Gamma Profile",
         sourceType: "manual",
       }),
       makeSyntheticUser({
         _id: "transcript-review" as Id<"syntheticUsers">,
         configId: "config-generation-progress" as Id<"personaConfigs">,
-        name: "Transcript-derived reviewer",
+        name: "Delta Profile",
         sourceType: "transcript_derived",
       }),
     ];
@@ -2525,20 +2525,18 @@ describe("@botchestra/web routing", () => {
     );
     expect(container.textContent).toContain("Generated Users Grid");
     expect(container.textContent).toContain("Retry Failed");
-    expect(getTableRow(container, "Generated finisher").textContent).toContain("Generated");
-    expect(getTableRow(container, "Manual reviewer").textContent).toContain("Manual");
-    expect(getTableRow(container, "Transcript-derived reviewer").textContent).toContain(
-      "Transcript-derived",
-    );
+    expect(getTableCellText(container, "Alpha Profile", 3)).toBe("Generated");
+    expect(getTableCellText(container, "Gamma Profile", 3)).toBe("Manual");
+    expect(getTableCellText(container, "Delta Profile", 3)).toBe("Transcript-derived");
 
-    await updateInput(container, 'input[aria-label="Search synthetic users"]', "Manual");
+    await updateInput(container, 'input[aria-label="Search synthetic users"]', "Gamma");
     const generationGridTable = getGenerationGridTable(container);
-    expect(generationGridTable.textContent).toContain("Manual reviewer");
-    expect(generationGridTable.textContent).not.toContain("Generated finisher");
+    expect(generationGridTable.textContent).toContain("Gamma Profile");
+    expect(generationGridTable.textContent).not.toContain("Alpha Profile");
 
     await updateInput(container, 'input[aria-label="Search synthetic users"]', "");
 
-    const completedRow = getTableRow(container, "Generated finisher");
+    const completedRow = getTableRow(container, "Alpha Profile");
     await clickButton(completedRow, "Regenerate");
 
     expect(regenerateSyntheticUserMock).toHaveBeenNthCalledWith(1, {
@@ -3427,6 +3425,35 @@ describe("@botchestra/web routing", () => {
     expect(publishMock).toHaveBeenCalledWith({ configId: "config-publish" });
   });
 
+  it("disables publish while batch generation is active", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-publish-active-run" as Id<"personaConfigs">,
+      status: "draft",
+    });
+    mockedSyntheticUsers = [
+      makeSyntheticUser({ _id: "proto-active-run" as Id<"syntheticUsers"> }),
+    ];
+    mockedBatchGenerationRun = makeBatchGenerationRun({
+      _id: "batch-run-active-publish" as Id<"batchGenerationRuns">,
+      configId: "config-publish-active-run" as Id<"personaConfigs">,
+      status: "running",
+      totalCount: 3,
+      completedCount: 1,
+      remainingCount: 2,
+      progressPercent: 33,
+    });
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-publish-active-run"],
+    });
+
+    expect(getButton(container, "Publish")?.hasAttribute("disabled")).toBe(true);
+    expect(container.textContent).toContain(
+      "Cannot publish while batch generation is in progress.",
+    );
+  });
+
   it("shows archive confirmation before archiving a published config", async () => {
     mockedPackDetail = makePack({
       _id: "config-archive" as Id<"personaConfigs">,
@@ -4001,6 +4028,15 @@ function getTableRow(root: ParentNode, text: string) {
   expect(row).toBeDefined();
 
   return row!;
+}
+
+function getTableCellText(root: ParentNode, rowText: string, cellIndex: number) {
+  const row = getTableRow(root, rowText);
+  const cells = [...row.querySelectorAll<HTMLTableCellElement>("td")];
+
+  expect(cells[cellIndex]).toBeDefined();
+
+  return cells[cellIndex]!.textContent?.trim();
 }
 
 function getAuditRows(container: HTMLDivElement) {

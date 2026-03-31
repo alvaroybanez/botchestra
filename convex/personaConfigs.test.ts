@@ -320,6 +320,37 @@ describe("personaConfigs", () => {
     expect(afterPublish!.updatedAt).toBeGreaterThanOrEqual(beforePublish!.updatedAt);
   });
 
+  it("publish rejects draft configs with an active batch generation run", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+
+    for (const status of ["pending", "running"] as const) {
+      const configId = await asResearcher.mutation(api.personaConfigs.createDraft, {
+        config: makeCreateDraftInput({
+          name: `Config with ${status} generation`,
+        }),
+      });
+      await insertSyntheticUser(t, configId);
+
+      await t.run(async (ctx) =>
+        ctx.db.insert("batchGenerationRuns", {
+          configId,
+          orgId: researchIdentity.tokenIdentifier,
+          status,
+          levelsPerAxis: { digital_confidence: 3 },
+          totalCount: 3,
+          completedCount: status === "running" ? 1 : 0,
+          failedCount: 0,
+          startedAt: Date.now(),
+        }),
+      );
+
+      await expect(
+        asResearcher.mutation(api.personaConfigs.publish, { configId }),
+      ).rejects.toThrow("Cannot publish while batch generation is in progress");
+    }
+  });
+
   it("publish creates axis library entries for each shared axis", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
