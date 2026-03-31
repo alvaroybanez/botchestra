@@ -275,15 +275,15 @@ describe("e2e cross-area integration", () => {
       }),
     });
 
-    const carefulRun = settledRuns.find((run) =>
+    const carefulRun = settledRuns.find((run: { axisValues: Array<{ key: string; value: number }> }) =>
       run.axisValues.some(
-        (axisValue) =>
+        (axisValue: { key: string; value: number }) =>
           axisValue.key === "techSavviness" && axisValue.value === 0.1,
       ),
     );
-    const fastRun = settledRuns.find((run) =>
+    const fastRun = settledRuns.find((run: { axisValues: Array<{ key: string; value: number }> }) =>
       run.axisValues.some(
-        (axisValue) =>
+        (axisValue: { key: string; value: number }) =>
           axisValue.key === "techSavviness" && axisValue.value === 0.9,
       ),
     );
