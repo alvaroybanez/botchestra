@@ -48,6 +48,7 @@ packages/ai           — AI model config wrapper (per-task model resolution)
 
 ## Browser Executor Architecture
 - `runExecutor.ts` — Step loop consuming BrowserPage + selectAction abstractions. Sends periodic heartbeats and checks shouldStop.
+- `AgentAction` is effectively a discriminated union at runtime: `goto` requires `url`; `click` requires `selector`; `type` requires both `selector` and `text`; `select` requires both `selector` and `value`. Selectors and fallbacks must only return fully populated variants because `runExecutor.ts` treats missing required fields as execution errors.
 - `executeRunHandler.ts` — Creates handler with dependency injection (browser, action selector, lease client). resolveBrowser() handles 4 paths.
 - `puppeteerAdapter.ts` — Bridges @cloudflare/puppeteer to BrowserLike/BrowserPage interfaces
 - `aiActionSelector.ts` — AI-powered action selector using generateWithModel('action') from packages/ai
