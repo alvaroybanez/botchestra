@@ -43,3 +43,16 @@ packages/ai           — AI model config wrapper (per-task model resolution)
 - Bindings: ARTIFACTS (R2), KV, BROWSER_LEASE (DO), BROWSER (Browser Rendering)
 - wrangler.toml in apps/browser-executor/
 - All secrets in .dev.vars (gitignored)
+- BrowserExecutorEnv type should include all bindings: BROWSER, BROWSER_LEASE, ARTIFACTS, KV, CALLBACK_SIGNING_SECRET, OPENAI_API_KEY
+
+## Browser Executor Architecture
+- `runExecutor.ts` — Step loop consuming BrowserPage + selectAction abstractions. Sends periodic heartbeats and checks shouldStop.
+- `executeRunHandler.ts` — Creates handler with dependency injection (browser, action selector, lease client). resolveBrowser() handles 4 paths.
+- `puppeteerAdapter.ts` — Bridges @cloudflare/puppeteer to BrowserLike/BrowserPage interfaces
+- `aiActionSelector.ts` — AI-powered action selector using generateWithModel('action') from packages/ai
+- `progressReporter.ts` — Sends callbacks to Convex (heartbeat, milestone, completion, failure)
+- `guardrails.ts` — Action validation (allowed/forbidden/domain), secret redaction, callback token validation
+- `stepPolicy.ts` — Step policies (max steps, timeout, frustration detection with 8 detectors)
+- `observationBuilder.ts` — Token-budgeted page observation bundle
+- `selfReport.ts` — AI-generated self-report with fallback
+- `artifactUploader.ts` — R2 upload for screenshots and manifests

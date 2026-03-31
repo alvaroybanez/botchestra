@@ -1,7 +1,9 @@
+import puppeteer from "@cloudflare/puppeteer";
 import type { ExecuteRunRequest } from "@botchestra/shared";
 import { createArtifactUploader } from "./artifactUploader";
 import { redactSecrets, type MaskableSecret } from "./guardrails";
 import { createProgressReporterFromRequest } from "./progressReporter";
+import { PuppeteerBrowserAdapter } from "./puppeteerAdapter";
 import {
   createRunExecutor,
   type AgentAction,
@@ -40,12 +42,19 @@ type DurableObjectNamespaceLike = {
   get(id: DurableObjectId): DurableObjectStub;
 };
 
-type BrowserBindingLike = BrowserLike | {
-  launch?: () => Promise<BrowserLike & { close?: () => Promise<void> }>;
+type CloudflareBrowserWorkerLike = {
+  fetch: typeof fetch;
 };
 
 type ProgressReporterFetch = typeof fetch;
 type GeneratedSelfReport = Awaited<ReturnType<typeof generateSelfReport>>;
+type PuppeteerBrowserLike = ConstructorParameters<typeof PuppeteerBrowserAdapter>[0];
+type ClosableBrowserLike = {
+  close?: () => Promise<void>;
+};
+type BrowserBindingLike = BrowserLike | CloudflareBrowserWorkerLike | {
+  launch?: () => Promise<BrowserLike | (PuppeteerBrowserLike & ClosableBrowserLike)>;
+};
 
 export type ExecuteRunIntegrationOptions = {
   browser?: BrowserLike;
@@ -175,6 +184,51 @@ function createDurableObjectLeaseClient(namespace: DurableObjectNamespaceLike): 
   };
 }
 
+function isBrowserLike(value: unknown): value is BrowserLike {
+  return typeof value === "object"
+    && value !== null
+    && "newContext" in value
+    && typeof value.newContext === "function";
+}
+
+function isCloudflareBrowserWorkerLike(value: unknown): value is CloudflareBrowserWorkerLike {
+  return typeof value === "object"
+    && value !== null
+    && "fetch" in value
+    && typeof value.fetch === "function";
+}
+
+function isPuppeteerBrowserLike(value: unknown): value is PuppeteerBrowserLike {
+  return typeof value === "object"
+    && value !== null
+    && "createBrowserContext" in value
+    && typeof value.createBrowserContext === "function";
+}
+
+function toResolvedBrowser(browser: unknown): ResolvedBrowser | null {
+  if (isBrowserLike(browser)) {
+    const closableBrowser = browser as ClosableBrowserLike;
+    return {
+      browser,
+      closeBrowser: async () => {
+        await closableBrowser.close?.();
+      },
+    };
+  }
+
+  if (isPuppeteerBrowserLike(browser)) {
+    const closableBrowser = browser as ClosableBrowserLike;
+    return {
+      browser: new PuppeteerBrowserAdapter(browser),
+      closeBrowser: async () => {
+        await closableBrowser.close?.();
+      },
+    };
+  }
+
+  return null;
+}
+
 async function resolveBrowser(
   env: ExecuteRunHandlerEnv,
   options: ExecuteRunIntegrationOptions,
@@ -190,22 +244,21 @@ async function resolveBrowser(
     return null;
   }
 
-  if ("newContext" in env.BROWSER && typeof env.BROWSER.newContext === "function") {
+  if (isBrowserLike(env.BROWSER)) {
     return {
       browser: env.BROWSER,
       closeBrowser: async () => undefined,
     };
   }
 
+  if (isCloudflareBrowserWorkerLike(env.BROWSER)) {
+    const launchedBrowser = await puppeteer.launch(env.BROWSER);
+    return toResolvedBrowser(launchedBrowser);
+  }
+
   if ("launch" in env.BROWSER && typeof env.BROWSER.launch === "function") {
     const launchedBrowser = await env.BROWSER.launch();
-
-    return {
-      browser: launchedBrowser,
-      closeBrowser: async () => {
-        await launchedBrowser.close?.();
-      },
-    };
+    return toResolvedBrowser(launchedBrowser);
   }
 
   return null;
