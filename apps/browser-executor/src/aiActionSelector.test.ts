@@ -315,14 +315,18 @@ describe("aiActionSelector", () => {
     expect(cautiousAction.rationale).not.toEqual(savvyAction.rationale);
   });
 
-  it("retries parsing once and throws when the model response is not valid JSON", async () => {
+  it("returns a safe fallback action when the model response is not valid JSON", async () => {
     mockedGenerateWithModel.mockResolvedValue(mockTextResult(
       "{type: click, selector: #checkout, rationale: definitely not json}",
     ));
 
     const selectAction = createAiActionSelector();
 
-    await expect(selectAction(createInput())).rejects.toThrow("AI action response was not valid JSON");
+    await expect(selectAction(createInput())).resolves.toEqual({
+      type: "wait",
+      durationMs: 250,
+      rationale: "Model response was malformed JSON, so a safe fallback wait action was used.",
+    });
     expect(mockedGenerateWithModel).toHaveBeenCalledTimes(1);
   });
 

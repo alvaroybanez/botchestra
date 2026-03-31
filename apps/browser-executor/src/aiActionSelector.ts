@@ -153,84 +153,7 @@ function parseActionResponse(text: string): ParsedAction {
   throw new Error(`AI action response was not valid JSON: ${String(lastError)}`);
 }
 
-function getSafeFallbackAction(input: SelectActionInput, invalidType: string): AgentAction {
-  const { allowedActions, startingUrl } = input.request.taskSpec;
-  const firstInteractiveSelector = input.page.interactiveElements.find((element) =>
-    typeof element.selector === "string" && element.selector.trim().length > 0
-  )?.selector;
-
-  if (allowedActions.includes("finish")) {
-    return {
-      type: "finish",
-      rationale: `Model suggested disallowed action "${invalidType}", so a safe fallback finish action was used.`,
-    };
-  }
-
-  if (allowedActions.includes("click") && firstInteractiveSelector) {
-    return {
-      type: "click",
-      selector: firstInteractiveSelector,
-      rationale: `Model suggested disallowed action "${invalidType}", so a safe fallback click action was used.`,
-    };
-  }
-
-  if (allowedActions.includes("goto")) {
-    return {
-      type: "goto",
-      url: startingUrl,
-      rationale: `Model suggested disallowed action "${invalidType}", so a safe fallback navigation was used.`,
-    };
-  }
-
-  if (allowedActions.includes("wait")) {
-    return {
-      type: "wait",
-      durationMs: 250,
-      rationale: `Model suggested disallowed action "${invalidType}", so a safe fallback wait action was used.`,
-    };
-  }
-
-  if (allowedActions.includes("scroll")) {
-    return {
-      type: "scroll",
-      durationMs: 300,
-      rationale: `Model suggested disallowed action "${invalidType}", so a safe fallback scroll action was used.`,
-    };
-  }
-
-  if (allowedActions.includes("back")) {
-    return {
-      type: "back",
-      rationale: `Model suggested disallowed action "${invalidType}", so a safe fallback back action was used.`,
-    };
-  }
-
-  if (allowedActions.includes("abort")) {
-    return {
-      type: "abort",
-      rationale: `Model suggested disallowed action "${invalidType}", so a safe fallback abort action was used.`,
-    };
-  }
-
-  throw new Error(`Action ${invalidType} is not allowed and no safe fallback action is available`);
-}
-
-function ensureAllowedAction(input: SelectActionInput, parsed: ParsedAction): AgentAction {
-  if (input.request.taskSpec.forbiddenActions.includes(parsed.type as never)) {
-    return {
-      type: parsed.type,
-      ...(parsed.url ? { url: parsed.url } : {}),
-      ...(parsed.selector ? { selector: parsed.selector } : {}),
-      ...(parsed.text ? { text: parsed.text } : {}),
-      ...(parsed.value ? { value: parsed.value } : {}),
-      rationale: parsed.rationale ?? `Advance toward the goal with ${parsed.type}.`,
-    };
-  }
-
-  if (!input.request.taskSpec.allowedActions.includes(parsed.type as never)) {
-    return getSafeFallbackAction(input, parsed.type);
-  }
-
+function buildAction(parsed: ParsedAction): AgentAction {
   return {
     type: parsed.type,
     ...(parsed.url ? { url: parsed.url } : {}),
@@ -239,6 +162,85 @@ function ensureAllowedAction(input: SelectActionInput, parsed: ParsedAction): Ag
     ...(parsed.value ? { value: parsed.value } : {}),
     rationale: parsed.rationale ?? `Advance toward the goal with ${parsed.type}.`,
   };
+}
+
+function getRecoveryAction(input: SelectActionInput, reason: string): AgentAction {
+  const { allowedActions } = input.request.taskSpec;
+
+  if (allowedActions.includes("wait")) {
+    return {
+      type: "wait",
+      durationMs: 250,
+      rationale: `${reason}, so a safe fallback wait action was used.`,
+    };
+  }
+
+  if (allowedActions.includes("scroll")) {
+    return {
+      type: "scroll",
+      durationMs: 300,
+      rationale: `${reason}, so a safe fallback scroll action was used.`,
+    };
+  }
+
+  if (allowedActions.includes("finish")) {
+    return {
+      type: "finish",
+      rationale: `${reason}, so a safe fallback finish action was used.`,
+    };
+  }
+
+  if (allowedActions.includes("abort")) {
+    return {
+      type: "abort",
+      rationale: `${reason}, so a safe fallback abort action was used.`,
+    };
+  }
+
+  return {
+    type: "abort",
+    rationale: `${reason}, so the selector aborted because no safe allowed action was available.`,
+  };
+}
+
+function getStructuralValidationError(parsed: ParsedAction) {
+  switch (parsed.type) {
+    case "goto":
+      return parsed.url ? null : 'Model suggested "goto" but the required "url" field was missing';
+    case "click":
+      return parsed.selector ? null : 'Model suggested "click" but the required "selector" field was missing';
+    case "type":
+      if (!parsed.selector) {
+        return 'Model suggested "type" but the required "selector" field was missing';
+      }
+
+      return parsed.text ? null : 'Model suggested "type" but the required "text" field was missing';
+    case "select":
+      if (!parsed.selector) {
+        return 'Model suggested "select" but the required "selector" field was missing';
+      }
+
+      return parsed.value ? null : 'Model suggested "select" but the required "value" field was missing';
+    default:
+      return null;
+  }
+}
+
+function ensureAllowedAction(input: SelectActionInput, parsed: ParsedAction): AgentAction {
+  const structuralValidationError = getStructuralValidationError(parsed);
+  if (structuralValidationError) {
+    return getRecoveryAction(input, structuralValidationError);
+  }
+
+  if (input.request.taskSpec.forbiddenActions.includes(parsed.type as never)) {
+    return buildAction(parsed);
+  }
+
+  if (!input.request.taskSpec.allowedActions.includes(parsed.type as never)) {
+    return getRecoveryAction(input, `Model suggested disallowed action "${parsed.type}"`);
+  }
+
+  return buildAction(parsed);
 }
 
 function getTimeoutError(timeoutMs: number) {
@@ -290,7 +292,14 @@ export function createAiActionSelector(options: CreateAiActionSelectorOptions = 
     const system = buildSystemPrompt(input);
     const prompt = buildUserPrompt(input);
     const response = await generateActionWithTimeout(generateAction, { system, prompt }, timeoutMs);
-    const parsed = parseActionResponse(toGenerateTextResult(response));
+    const responseText = toGenerateTextResult(response);
+    let parsed: ParsedAction;
+
+    try {
+      parsed = parseActionResponse(responseText);
+    } catch {
+      return getRecoveryAction(input, "Model response was malformed JSON");
+    }
 
     return ensureAllowedAction(input, parsed);
   };

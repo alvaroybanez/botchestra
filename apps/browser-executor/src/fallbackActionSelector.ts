@@ -1,17 +1,26 @@
 import type { ExecuteRunRequest } from "@botchestra/shared";
 import type { AgentAction, SelectActionInput } from "./runExecutor";
 
-function getDefaultAction(actionType: ExecuteRunRequest["taskSpec"]["allowedActions"][number]): AgentAction {
-  switch (actionType) {
-    case "wait":
-      return { type: "wait", durationMs: 250, rationale: "Pause briefly to observe the page." };
-    case "abort":
-      return { type: "abort", rationale: "No safe fallback action is available." };
-    case "scroll":
-      return { type: "scroll", durationMs: 300, rationale: "Reveal more of the page." };
-    default:
-      return { type: actionType, rationale: `Fallback action: ${actionType}.` };
+function getSafeFallbackAction(
+  allowedActions: readonly ExecuteRunRequest["taskSpec"]["allowedActions"][number][],
+): AgentAction {
+  if (allowedActions.includes("finish")) {
+    return { type: "finish", rationale: "End the run when no richer action selector is configured." };
   }
+
+  if (allowedActions.includes("scroll")) {
+    return { type: "scroll", durationMs: 300, rationale: "Reveal more of the page." };
+  }
+
+  if (allowedActions.includes("wait")) {
+    return { type: "wait", durationMs: 250, rationale: "Pause briefly to observe the page." };
+  }
+
+  if (allowedActions.includes("abort")) {
+    return { type: "abort", rationale: "No safe fallback action is available." };
+  }
+
+  return { type: "abort", rationale: "No safe fallback action is available." };
 }
 
 export function createFallbackActionSelector() {
@@ -30,21 +39,6 @@ export function createFallbackActionSelector() {
       }
     }
 
-    if (input.request.taskSpec.allowedActions.includes("finish")) {
-      return {
-        type: "finish",
-        rationale: "End the run when no richer action selector is configured.",
-      };
-    }
-
-    const fallbackActionType = input.request.taskSpec.allowedActions[0];
-    if (!fallbackActionType) {
-      return {
-        type: "abort",
-        rationale: "No allowed actions are available for the run.",
-      };
-    }
-
-    return getDefaultAction(fallbackActionType);
+    return getSafeFallbackAction(input.request.taskSpec.allowedActions);
   };
 }
