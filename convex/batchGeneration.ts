@@ -48,7 +48,7 @@ const expandedSyntheticUserPersistedValidator = v.object({
   ),
   firstPersonBio: v.string(),
   behaviorRules: v.array(v.string()),
-  tensionSeed: v.string(),
+  tensionSeed: v.optional(v.string()),
 });
 
 export const startBatchGeneration = mutation({

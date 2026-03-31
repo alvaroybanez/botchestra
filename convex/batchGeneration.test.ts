@@ -7,6 +7,7 @@ vi.mock("../packages/ai/src/index", () => ({
 
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { parseExpandedSyntheticUserResponse } from "./batchGeneration/expansion";
 import schema from "./schema";
 import { generateWithModel } from "../packages/ai/src/index";
 
@@ -43,6 +44,111 @@ afterEach(() => {
 });
 
 describe("batch generation", () => {
+  it("coerces array tensionSeed values to a string during expansion parsing", () => {
+    const fallbackAxes = [
+      makeAxis({
+        key: "confidence",
+        label: "Confidence",
+        weight: 2,
+      }),
+    ];
+
+    const parsed = parseExpandedSyntheticUserResponse(
+      fencedJson({
+        name: "Array Tension Persona",
+        firstPersonBio:
+          "I want to understand every checkout step before I commit so I can avoid making a mistake I have to unwind later.",
+        behaviorRules: [
+          "Read labels carefully before typing.",
+          "Pause when the page changes unexpectedly.",
+        ],
+        tensionSeed: ["Concerned about hidden fees", "Needs reassurance"],
+      }),
+      fallbackAxes,
+    );
+
+    expect(parsed.tensionSeed).toBe(
+      "Concerned about hidden fees; Needs reassurance",
+    );
+    expect(parsed.axes).toEqual(fallbackAxes);
+  });
+
+  it("uses fallback axes when the expansion response omits axes", () => {
+    const fallbackAxes = [
+      makeAxis({
+        key: "confidence",
+        label: "Confidence",
+        description: "Confidence using new technology",
+        weight: 2,
+      }),
+      makeAxis({
+        key: "patience",
+        label: "Patience",
+        description: "Tolerance for friction",
+        weight: 3,
+      }),
+    ];
+
+    const parsed = parseExpandedSyntheticUserResponse(
+      fencedJson({
+        name: "Fallback Axes Persona",
+        firstPersonBio:
+          "I compare the current step with what I expected so I can stay confident that the flow is still on track.",
+        behaviorRules: [
+          "Scan headings before acting.",
+          "Look for helper copy before continuing.",
+        ],
+        tensionSeed: "Worries that the flow could change without warning.",
+      }),
+      fallbackAxes,
+    );
+
+    expect(parsed.axes).toEqual(fallbackAxes);
+  });
+
+  it("uses fallback axes even when the expansion response returns partial axes", () => {
+    const fallbackAxes = [
+      makeAxis({
+        key: "confidence",
+        label: "Confidence",
+        description: "Confidence using new technology",
+        weight: 2,
+      }),
+      makeAxis({
+        key: "patience",
+        label: "Patience",
+        description: "Tolerance for friction",
+        weight: 3,
+      }),
+    ];
+
+    const parsed = parseExpandedSyntheticUserResponse(
+      fencedJson({
+        name: "Partial Axes Persona",
+        firstPersonBio:
+          "I stay with the task when the page explains itself clearly, but unexpected copy changes make me hesitate before moving on.",
+        behaviorRules: [
+          "Read helper text before clicking.",
+          "Re-check the previous step when labels shift.",
+        ],
+        tensionSeed: "Gets uneasy when instructions feel inconsistent.",
+        axes: [
+          {
+            key: "confidence",
+            label: "Confidence",
+            description: "Confidence using new technology",
+            lowAnchor: "Needs reassurance",
+            midAnchor: "Gets by with support",
+            highAnchor: "Explores independently",
+          },
+        ],
+      }),
+      fallbackAxes,
+    );
+
+    expect(parsed.axes).toEqual(fallbackAxes);
+  });
+
   it("startBatchGeneration rejects non-draft configs, zero-axis configs, oversized runs, and concurrent runs", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
@@ -208,7 +314,7 @@ describe("batch generation", () => {
       "Look for reassurance before submitting information.",
     ]);
     expect(expandedUser?.axisValues).toHaveLength(2);
-    expect(expandedUser?.axes.map((axis) => axis.weight)).toEqual([1, 1]);
+    expect(expandedUser?.axes.map((axis) => axis.weight)).toEqual([2, 3]);
 
     await t.finishAllScheduledFunctions(vi.runAllTimers);
 

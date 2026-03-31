@@ -1008,7 +1008,7 @@ export declare const internal: {
           firstPersonBio: string;
           name: string;
           summary: string;
-          tensionSeed: string;
+          tensionSeed?: string;
         };
         runId?: Id<"batchGenerationRuns">;
         syntheticUserId: Id<"syntheticUsers">;
