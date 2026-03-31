@@ -1,11 +1,18 @@
 import { generateWithModel } from "@botchestra/ai";
 import type { ObservationActionHistoryEntry } from "./observationBuilder";
+import { createFallbackActionSelector } from "./fallbackActionSelector";
 import type { AgentAction, SelectActionInput } from "./runExecutor";
 
 type GenerateActionResult = { text: string } | string;
+type GenerateActionOptions = {
+  system: string;
+  prompt: string;
+  abortSignal?: AbortSignal;
+};
 
 export type CreateAiActionSelectorOptions = {
-  generateAction?: (options: { system: string; prompt: string }) => Promise<GenerateActionResult>;
+  generateAction?: (options: GenerateActionOptions) => Promise<GenerateActionResult>;
+  timeoutMs?: number;
 };
 
 type ParsedAction = Pick<AgentAction, "type" | "url" | "selector" | "text" | "value" | "rationale">;
@@ -209,6 +216,17 @@ function getSafeFallbackAction(input: SelectActionInput, invalidType: string): A
 }
 
 function ensureAllowedAction(input: SelectActionInput, parsed: ParsedAction): AgentAction {
+  if (input.request.taskSpec.forbiddenActions.includes(parsed.type as never)) {
+    return {
+      type: parsed.type,
+      ...(parsed.url ? { url: parsed.url } : {}),
+      ...(parsed.selector ? { selector: parsed.selector } : {}),
+      ...(parsed.text ? { text: parsed.text } : {}),
+      ...(parsed.value ? { value: parsed.value } : {}),
+      rationale: parsed.rationale ?? `Advance toward the goal with ${parsed.type}.`,
+    };
+  }
+
   if (!input.request.taskSpec.allowedActions.includes(parsed.type as never)) {
     return getSafeFallbackAction(input, parsed.type);
   }
@@ -223,19 +241,70 @@ function ensureAllowedAction(input: SelectActionInput, parsed: ParsedAction): Ag
   };
 }
 
-async function defaultGenerateAction(options: { system: string; prompt: string }) {
-  return generateWithModel("action", options);
+function getTimeoutError(timeoutMs: number) {
+  return new Error(`AI action selection timed out after ${timeoutMs}ms`);
+}
+
+async function generateActionWithTimeout(
+  generateAction: (options: GenerateActionOptions) => Promise<GenerateActionResult>,
+  options: GenerateActionOptions,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  const timeoutError = getTimeoutError(timeoutMs);
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    const generation = generateAction({
+      ...options,
+      abortSignal: controller.signal,
+    });
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        controller.abort(timeoutError);
+        reject(timeoutError);
+      }, timeoutMs);
+    });
+
+    return await Promise.race([generation, timeout]);
+  } finally {
+    if (timeoutHandle !== undefined) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
+async function defaultGenerateAction(options: GenerateActionOptions) {
+  return generateWithModel("action", {
+    system: options.system,
+    prompt: options.prompt,
+    abortSignal: options.abortSignal,
+  });
 }
 
 export function createAiActionSelector(options: CreateAiActionSelectorOptions = {}) {
   const generateAction = options.generateAction ?? defaultGenerateAction;
+  const timeoutMs = options.timeoutMs ?? 10_000;
 
   return async (input: SelectActionInput): Promise<AgentAction> => {
     const system = buildSystemPrompt(input);
     const prompt = buildUserPrompt(input);
-    const response = await generateAction({ system, prompt });
+    const response = await generateActionWithTimeout(generateAction, { system, prompt }, timeoutMs);
     const parsed = parseActionResponse(toGenerateTextResult(response));
 
     return ensureAllowedAction(input, parsed);
+  };
+}
+
+export function createAiActionSelectorWithFallback(options: CreateAiActionSelectorOptions = {}) {
+  const aiSelector = createAiActionSelector(options);
+  const fallbackSelector = createFallbackActionSelector();
+
+  return async (input: SelectActionInput): Promise<AgentAction> => {
+    try {
+      return await aiSelector(input);
+    } catch {
+      return fallbackSelector(input);
+    }
   };
 }
