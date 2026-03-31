@@ -87,7 +87,16 @@ async function postUpdate(
     throw new Error(`Run progress callback failed with status ${response.status}`);
   }
 
-  return validatedUpdate;
+  return response;
+}
+
+async function parseHeartbeatShouldStop(response: Response) {
+  try {
+    const body = await response.json() as { shouldStop?: unknown };
+    return body.shouldStop === true;
+  } catch {
+    return false;
+  }
 }
 
 export function createProgressReporter(options: ProgressReporterOptions) {
@@ -96,14 +105,16 @@ export function createProgressReporter(options: ProgressReporterOptions) {
 
   return {
     callbackUrl,
-    sendHeartbeat(payload: Partial<RunProgressPayload<"heartbeat">> = {}) {
-      return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
+    async sendHeartbeat(payload: Partial<RunProgressPayload<"heartbeat">> = {}) {
+      const response = await postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {
         runId: options.runId,
         eventType: "heartbeat",
         payload: {
           timestamp: payload.timestamp ?? Date.now(),
         },
       }, options.secretValues ?? []);
+
+      return parseHeartbeatShouldStop(response);
     },
     sendMilestone(payload: RunProgressPayload<"milestone">) {
       return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {

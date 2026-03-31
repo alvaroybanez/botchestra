@@ -145,6 +145,7 @@ type RunExecutorDependencies = {
   browser: BrowserLike;
   leaseClient: BrowserLeaseClient;
   selectAction(input: SelectActionInput): Promise<AgentAction>;
+  sendHeartbeat?: () => Promise<boolean> | boolean;
   now?: () => number;
   observationConfig?: Partial<BuildObservationConfig>;
   frustrationPolicy?: Partial<FrustrationPolicy>;
@@ -476,6 +477,22 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
               rationaleShort: "Run exceeded the configured duration limit",
             });
             return failure("MAX_DURATION_EXCEEDED", "Run exceeded the configured duration limit", {
+              startedAt,
+              now,
+              stepCount,
+              frustrationCount,
+              milestones,
+            });
+          }
+
+          const shouldStop = (await dependencies.sendHeartbeat?.()) ?? false;
+          if (shouldStop) {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+              stepIndex: stepCount,
+              actionType: "cancel",
+              rationaleShort: "Run cancelled via heartbeat stop signal",
+            });
+            return success("ABANDONED", {
               startedAt,
               now,
               stepCount,

@@ -286,12 +286,11 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
     const selectAction = resolveSelectAction(env, options);
 
     try {
-      await progressReporter.sendHeartbeat();
-
       const runExecutor = createRunExecutor({
         browser: resolvedBrowser.browser,
         leaseClient,
         selectAction,
+        sendHeartbeat: () => progressReporter.sendHeartbeat(),
         now: options.now,
         onMilestone: async (milestone, screenshot) => {
           const screenshotKey = await uploader.handleMilestone(milestone, screenshot);

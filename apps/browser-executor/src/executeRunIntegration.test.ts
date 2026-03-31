@@ -324,13 +324,14 @@ describe("execute-run integration", () => {
 
     const updates = getPostedUpdates(callbackFetch);
     expect(updates.map((update) => update.eventType)).toEqual([
+      "milestone",
       "heartbeat",
       "milestone",
-      "milestone",
+      "heartbeat",
       "milestone",
       "completion",
     ]);
-    expect(updates[1]).toMatchObject({
+    expect(updates[0]).toMatchObject({
       runId: request.runId,
       eventType: "milestone",
       payload: {
@@ -348,7 +349,7 @@ describe("execute-run integration", () => {
         screenshotKey: `runs/${request.runId}/milestones/0_click.jpg`,
       },
     });
-    expect(updates[3]).toMatchObject({
+    expect(updates[4]).toMatchObject({
       runId: request.runId,
       eventType: "milestone",
       payload: {
@@ -357,7 +358,7 @@ describe("execute-run integration", () => {
         screenshotKey: `runs/${request.runId}/milestones/1_finish.jpg`,
       },
     });
-    expect(updates[4]).toMatchObject({
+    expect(updates[5]).toMatchObject({
       runId: request.runId,
       eventType: "completion",
       payload: {
@@ -435,8 +436,8 @@ describe("execute-run integration", () => {
 
     const updates = getPostedUpdates(callbackFetch);
     expect(updates.map((update) => update.eventType)).toEqual([
-      "heartbeat",
       "milestone",
+      "heartbeat",
       "milestone",
       "failure",
     ]);
@@ -502,8 +503,8 @@ describe("execute-run integration", () => {
 
     const updates = getPostedUpdates(callbackFetch);
     expect(updates.map((update) => update.eventType)).toEqual([
-      "heartbeat",
       "milestone",
+      "heartbeat",
       "milestone",
       "completion",
     ]);
