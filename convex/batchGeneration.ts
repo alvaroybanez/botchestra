@@ -384,6 +384,14 @@ export const completeSyntheticUserExpansion = internalMutation({
     });
 
     if (parsedArgs.runId === undefined) {
+      if (syntheticUser.batchGenerationRunId !== undefined) {
+        await updateRunSummaryAfterSuccessfulRegeneration(
+          ctx,
+          syntheticUser.batchGenerationRunId,
+          syntheticUser.generationStatus,
+        );
+      }
+
       return syntheticUserId;
     }
 
@@ -483,6 +491,37 @@ function getTerminalRunStatus({
   }
 
   return "partially_failed" as const;
+}
+
+async function updateRunSummaryAfterSuccessfulRegeneration(
+  ctx: MutationCtx,
+  runId: Id<"batchGenerationRuns">,
+  previousGenerationStatus: Doc<"syntheticUsers">["generationStatus"],
+) {
+  if (previousGenerationStatus !== "failed") {
+    return;
+  }
+
+  const run = await ctx.db.get(runId);
+
+  if (run === null) {
+    throw new ConvexError("Batch generation run not found.");
+  }
+
+  const completedCount = Math.min(run.totalCount, run.completedCount + 1);
+  const failedCount = Math.max(0, run.failedCount - 1);
+  const terminalStatus = getTerminalRunStatus({
+    completedCount,
+    failedCount,
+    totalCount: run.totalCount,
+  });
+
+  await ctx.db.patch(runId, {
+    status: terminalStatus ?? run.status,
+    completedCount,
+    failedCount,
+    completedAt: Date.now(),
+  });
 }
 
 function isTerminalRunStatus(status: Doc<"batchGenerationRuns">["status"]) {

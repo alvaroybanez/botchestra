@@ -179,11 +179,11 @@ describe("cross-area integration", () => {
     });
 
     expect(syntheticUsers).toHaveLength(3);
-    expect(syntheticUsers.map((syntheticUser) => syntheticUser.sourceType).sort()).toEqual([
-      "generated",
-      "manual",
-      "transcript_derived",
-    ]);
+    expect(
+      syntheticUsers
+        .map((syntheticUser: Doc<"syntheticUsers">) => syntheticUser.sourceType)
+        .sort(),
+    ).toEqual(["generated", "manual", "transcript_derived"]);
     expect(syntheticUsers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

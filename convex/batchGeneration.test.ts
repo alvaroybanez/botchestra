@@ -6,7 +6,7 @@ vi.mock("../packages/ai/src/index", () => ({
 }));
 
 import { api, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { parseExpandedSyntheticUserResponse } from "./batchGeneration/expansion";
 import schema from "./schema";
 import { generateWithModel } from "../packages/ai/src/index";
@@ -444,6 +444,82 @@ describe("batch generation", () => {
     expect(
       generatedUsers.every(
         (syntheticUser) => syntheticUser.generationStatus === "failed",
+      ),
+    ).toBe(true);
+  });
+
+  it("recomputes retry summaries from failed to partially_failed to completed", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const configId = await createDraftConfig(t, { axisCount: 1 });
+
+    mockedGenerateWithModel.mockRejectedValue(new Error("model unavailable"));
+
+    await asResearcher.mutation(batchGenerationApi.startBatchGeneration, {
+      configId,
+      levelsPerAxis: 3,
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const failedRun = await asResearcher.query(batchGenerationApi.getBatchGenerationRun, {
+      configId,
+    });
+    const failedUsers = (await listGeneratedUsersForConfig(t, configId)).filter(
+      (syntheticUser) => syntheticUser.generationStatus === "failed",
+    );
+
+    expect(failedRun).toMatchObject({
+      status: "failed",
+      totalCount: 3,
+      completedCount: 0,
+      failedCount: 3,
+    });
+    expect(failedUsers).toHaveLength(3);
+
+    mockedGenerateWithModel.mockReset();
+    mockedGenerateWithModel.mockResolvedValue(makeExpansionResult());
+
+    await asResearcher.mutation(batchGenerationApi.regenerateSyntheticUser, {
+      syntheticUserId: failedUsers[0]!._id,
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const partiallyFailedRun = await asResearcher.query(
+      batchGenerationApi.getBatchGenerationRun,
+      {
+        configId,
+      },
+    );
+
+    expect(partiallyFailedRun).toMatchObject({
+      status: "partially_failed",
+      totalCount: 3,
+      completedCount: 1,
+      failedCount: 2,
+    });
+
+    for (const failedUser of failedUsers.slice(1)) {
+      await asResearcher.mutation(batchGenerationApi.regenerateSyntheticUser, {
+        syntheticUserId: failedUser._id,
+      });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    }
+
+    const completedRun = await asResearcher.query(batchGenerationApi.getBatchGenerationRun, {
+      configId,
+    });
+    const regeneratedUsers = await listGeneratedUsersForConfig(t, configId);
+
+    expect(completedRun).toMatchObject({
+      status: "completed",
+      totalCount: 3,
+      completedCount: 3,
+      failedCount: 0,
+    });
+    expect(completedRun?.completedAt).toEqual(expect.any(Number));
+    expect(
+      regeneratedUsers.every(
+        (syntheticUser) => syntheticUser.generationStatus === "completed",
       ),
     ).toBe(true);
   });
