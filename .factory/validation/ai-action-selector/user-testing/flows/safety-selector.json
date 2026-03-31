@@ -1,0 +1,138 @@
+{
+  "groupId": "safety-selector",
+  "testedAt": "2026-03-31T13:27:43.995667Z",
+  "isolation": {
+    "surface": "test-cli",
+    "repoRoot": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra",
+    "cwd": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor",
+    "milestone": "ai-action-selector"
+  },
+  "toolsUsed": [
+    "bunx",
+    "vitest"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-AISEL-003",
+      "title": "Action validated against guardrails before execution",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted Vitest coverage for AI selector safety and executor guardrail handling.",
+          "expected": "A forbidden selector action fails with GUARDRAIL_VIOLATION / FORBIDDEN_ACTION before execution and a terminal guardrail milestone is captured.",
+          "observed": "`src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > surfaces FORBIDDEN_ACTION when the AI selector returns a forbidden action` passed, and `src/runExecutor.test.ts > runExecutor > captures a final terminal milestone when a guardrail violation stops the run` passed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ai-action-selector/safety-selector/vitest-safety-selector.log"
+        ],
+        "testNames": [
+          "src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > surfaces FORBIDDEN_ACTION when the AI selector returns a forbidden action",
+          "src/runExecutor.test.ts > runExecutor > captures a final terminal milestone when a guardrail violation stops the run"
+        ],
+        "command": "bunx vitest run src/aiActionSelectorSafety.test.ts src/runExecutor.test.ts src/guardrails.test.ts --reporter=verbose",
+        "result": "Passed"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-004",
+      "title": "Falls back to heuristic on LLM failure",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted safety suite with a mocked LLM rejection path.",
+          "expected": "The handler falls back to the heuristic selector and the run completes instead of crashing.",
+          "observed": "`src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > falls back and completes the run when the default AI selector throws` passed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ai-action-selector/safety-selector/vitest-safety-selector.log"
+        ],
+        "testNames": [
+          "src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > falls back and completes the run when the default AI selector throws"
+        ],
+        "command": "bunx vitest run src/aiActionSelectorSafety.test.ts src/runExecutor.test.ts src/guardrails.test.ts --reporter=verbose",
+        "result": "Passed"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-007",
+      "title": "Respects allowed/forbidden actions",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run selector and guardrail tests with restrictive allowedActions and forbiddenActions.",
+          "expected": "The selector falls back to an allowed action and runtime guardrails reject disallowed action types.",
+          "observed": "`src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > never returns an action outside taskSpec.allowedActions` passed, and `src/guardrails.test.ts > isActionAllowed > blocks actions that are outside the runtime allowlist` passed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ai-action-selector/safety-selector/vitest-safety-selector.log"
+        ],
+        "testNames": [
+          "src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > never returns an action outside taskSpec.allowedActions",
+          "src/guardrails.test.ts > isActionAllowed > blocks actions that are outside the runtime allowlist"
+        ],
+        "command": "bunx vitest run src/aiActionSelectorSafety.test.ts src/runExecutor.test.ts src/guardrails.test.ts --reporter=verbose",
+        "result": "Passed"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-008",
+      "title": "Navigation guardrail enforced on goto URLs",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted suites covering blocked goto actions and domain allowlist enforcement.",
+          "expected": "A goto to a non-allowlisted domain fails with GUARDRAIL_VIOLATION / DOMAIN_BLOCKED before page.goto executes.",
+          "observed": "`src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > surfaces DOMAIN_BLOCKED when the AI selector returns goto for a blocked domain`, `src/runExecutor.test.ts > runExecutor > blocks out-of-domain navigation before page.goto is called`, and `src/guardrails.test.ts > validateNavigation > blocks subdomains that are not exact allowlist matches` all passed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ai-action-selector/safety-selector/vitest-safety-selector.log"
+        ],
+        "testNames": [
+          "src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > surfaces DOMAIN_BLOCKED when the AI selector returns goto for a blocked domain",
+          "src/runExecutor.test.ts > runExecutor > blocks out-of-domain navigation before page.goto is called",
+          "src/guardrails.test.ts > validateNavigation > blocks subdomains that are not exact allowlist matches"
+        ],
+        "command": "bunx vitest run src/aiActionSelectorSafety.test.ts src/runExecutor.test.ts src/guardrails.test.ts --reporter=verbose",
+        "result": "Passed"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-010",
+      "title": "Action selection respects timeout budget",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted safety suite with a stalled AI selector and short timeout.",
+          "expected": "The selector aborts the stalled LLM path and falls back within the configured time budget.",
+          "observed": "`src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > falls back within the timeout budget when the AI selector stalls` passed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ai-action-selector/safety-selector/vitest-safety-selector.log"
+        ],
+        "testNames": [
+          "src/aiActionSelectorSafety.test.ts > aiActionSelector safety wiring > falls back within the timeout budget when the AI selector stalls"
+        ],
+        "command": "bunx vitest run src/aiActionSelectorSafety.test.ts src/runExecutor.test.ts src/guardrails.test.ts --reporter=verbose",
+        "result": "Passed"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Validated 5 assigned AI selector safety assertions via targeted Vitest coverage; all 5 passed with no blockers or frictions. The targeted command passed 44/44 tests across aiActionSelectorSafety, runExecutor, and guardrails suites."
+}

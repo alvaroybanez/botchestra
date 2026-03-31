@@ -1,0 +1,33 @@
+{
+  "milestone": "ai-action-selector",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-AISEL-001",
+    "VAL-AISEL-002",
+    "VAL-AISEL-003",
+    "VAL-AISEL-004",
+    "VAL-AISEL-005",
+    "VAL-AISEL-006",
+    "VAL-AISEL-007",
+    "VAL-AISEL-008",
+    "VAL-AISEL-009",
+    "VAL-AISEL-010"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Recorded the narrow package-local Vitest commands that cover the ai-action-selector milestone from the test-cli surface.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null
+}

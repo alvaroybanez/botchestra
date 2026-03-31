@@ -1,0 +1,188 @@
+{
+  "groupId": "core-selector",
+  "testedAt": "2026-03-31T13:25:06.126715+00:00",
+  "isolation": {
+    "surface": "test-cli",
+    "repoRoot": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra",
+    "missionDir": "/Users/alvaro.ybanez/.factory/missions/6ceae915-bba1-41a1-9dec-4ed54e3c81f0",
+    "milestone": "ai-action-selector",
+    "assignedAssertions": [
+      "VAL-AISEL-001",
+      "VAL-AISEL-002",
+      "VAL-AISEL-005",
+      "VAL-AISEL-006",
+      "VAL-AISEL-009"
+    ],
+    "cwd": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor"
+  },
+  "toolsUsed": [
+    "bunx",
+    "vitest"
+  ],
+  "commandsRun": [
+    {
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run src/aiActionSelector.test.ts src/aiActionSelectorActionValidation.test.ts > \"/Users/alvaro.ybanez/.factory/missions/6ceae915-bba1-41a1-9dec-4ed54e3c81f0/evidence/ai-action-selector/core-selector/vitest-output.txt\" 2>&1",
+      "exitCode": 0,
+      "observation": "Vitest passed for the 2 targeted files with 14/14 tests passing."
+    },
+    {
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --reporter=verbose src/aiActionSelector.test.ts src/aiActionSelectorActionValidation.test.ts > \"/Users/alvaro.ybanez/.factory/missions/6ceae915-bba1-41a1-9dec-4ed54e3c81f0/evidence/ai-action-selector/core-selector/vitest-output-verbose.txt\" 2>&1",
+      "exitCode": 0,
+      "observation": "Verbose Vitest output captured every passing test name needed to map the assigned assertions."
+    }
+  ],
+  "assertions": [
+    {
+      "id": "VAL-AISEL-001",
+      "title": "Receives observation bundle + persona + task spec + history",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect the selector fixture in aiActionSelector.test.ts.",
+          "expected": "SelectActionInput should include request, stepIndex, page, observation, and actionHistory with persona/task fields populated.",
+          "observed": "createRequest/createPage/createObservation/createActionHistory/createInput populate personaVariant.axisValues, firstPersonBio, behaviorRules, taskSpec.goal, successCriteria, BrowserPageSnapshot fields, ObservationBundle text summary, and prior action history before invoking selectAction."
+        },
+        {
+          "action": "Run the targeted selector Vitest suite.",
+          "expected": "A test should pass proving the selector accepts the populated input and consumes persona/history fields in its prompt.",
+          "observed": "The verbose run passed aiActionSelector > builds persona-aware prompts and returns a navigation action, and that test asserts the generated system/prompt text contains persona bio, techSavviness, goal, success criteria, recent actions, and step progress."
+        }
+      ],
+      "evidence": {
+        "terminalOutput": [
+          "ai-action-selector/core-selector/vitest-output-verbose.txt"
+        ],
+        "testNames": [
+          "src/aiActionSelector.test.ts > aiActionSelector > builds persona-aware prompts and returns a navigation action"
+        ],
+        "sourceReferences": [
+          "apps/browser-executor/src/aiActionSelector.test.ts:20",
+          "apps/browser-executor/src/aiActionSelector.test.ts:71",
+          "apps/browser-executor/src/aiActionSelector.test.ts:101",
+          "apps/browser-executor/src/aiActionSelector.test.ts:127",
+          "apps/browser-executor/src/aiActionSelector.test.ts:148",
+          "apps/browser-executor/src/aiActionSelector.test.ts:164"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-002",
+      "title": "Returns valid AgentAction with rationale",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted selector Vitest suite.",
+          "expected": "Selector should return valid AgentAction shapes with non-empty rationale across representative scenarios.",
+          "observed": "The verbose run passed navigation, form-filling, and finish-path tests, each asserting the returned action type and required fields alongside a non-empty rationale."
+        }
+      ],
+      "evidence": {
+        "terminalOutput": [
+          "ai-action-selector/core-selector/vitest-output-verbose.txt"
+        ],
+        "testNames": [
+          "src/aiActionSelector.test.ts > aiActionSelector > builds persona-aware prompts and returns a navigation action",
+          "src/aiActionSelector.test.ts > aiActionSelector > returns a form-filling action with persona-authentic text",
+          "src/aiActionSelector.test.ts > aiActionSelector > returns finish when the model recognizes the success criteria are met"
+        ],
+        "sourceReferences": [
+          "apps/browser-executor/src/aiActionSelector.test.ts:164",
+          "apps/browser-executor/src/aiActionSelector.test.ts:198",
+          "apps/browser-executor/src/aiActionSelector.test.ts:235"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-005",
+      "title": "Persona-aware \u2014 different axis values produce different choices",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted selector Vitest suite.",
+          "expected": "Two otherwise-identical personas with different axisValues should produce different choices or rationales.",
+          "observed": "The verbose run passed aiActionSelector > lets persona axis values influence the selected action; the test checks that techSavviness 0.15 selects #checkout while techSavviness 0.95 selects #express-checkout and that the rationales differ."
+        }
+      ],
+      "evidence": {
+        "terminalOutput": [
+          "ai-action-selector/core-selector/vitest-output-verbose.txt"
+        ],
+        "testNames": [
+          "src/aiActionSelector.test.ts > aiActionSelector > lets persona axis values influence the selected action"
+        ],
+        "sourceReferences": [
+          "apps/browser-executor/src/aiActionSelector.test.ts:261"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-006",
+      "title": "Goal-directed \u2014 works toward success criteria",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted selector Vitest suite against checkout progression scenarios.",
+          "expected": "Selector should choose actions that advance toward the shipping/confirmation success criteria.",
+          "observed": "The verbose run passed the navigation, form-filling, and finish tests: it clicked #checkout to advance toward the shipping step, typed into #shipping-name on the shipping page, and returned finish when the confirmation page satisfied success criteria."
+        }
+      ],
+      "evidence": {
+        "terminalOutput": [
+          "ai-action-selector/core-selector/vitest-output-verbose.txt"
+        ],
+        "testNames": [
+          "src/aiActionSelector.test.ts > aiActionSelector > builds persona-aware prompts and returns a navigation action",
+          "src/aiActionSelector.test.ts > aiActionSelector > returns a form-filling action with persona-authentic text",
+          "src/aiActionSelector.test.ts > aiActionSelector > returns finish when the model recognizes the success criteria are met"
+        ],
+        "sourceReferences": [
+          "apps/browser-executor/src/aiActionSelector.test.ts:164",
+          "apps/browser-executor/src/aiActionSelector.test.ts:198",
+          "apps/browser-executor/src/aiActionSelector.test.ts:235"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-AISEL-009",
+      "title": "Handles malformed LLM response gracefully",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted selector Vitest suite with malformed and incomplete mocked model outputs.",
+          "expected": "Selector should recover to a safe action instead of throwing on malformed JSON or missing fields.",
+          "observed": "The verbose run passed the malformed JSON fallback test plus all missing-required-field cases and the finish-only safe fallback case, demonstrating graceful recovery without unhandled exceptions."
+        }
+      ],
+      "evidence": {
+        "terminalOutput": [
+          "ai-action-selector/core-selector/vitest-output-verbose.txt"
+        ],
+        "testNames": [
+          "src/aiActionSelector.test.ts > aiActionSelector > returns a safe fallback action when the model response is not valid JSON",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > returns a safe wait action when the model response is malformed JSON",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > falls back safely when goto is missing required fields",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > falls back safely when click is missing required fields",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > falls back safely when type_missing_selector is missing required fields",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > falls back safely when type_missing_text is missing required fields",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > falls back safely when select_missing_selector is missing required fields",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > falls back safely when select_missing_value is missing required fields",
+          "src/aiActionSelectorActionValidation.test.ts > aiActionSelector action validation > falls back to finish when no safe exploratory action is allowed"
+        ],
+        "sourceReferences": [
+          "apps/browser-executor/src/aiActionSelector.test.ts:318",
+          "apps/browser-executor/src/aiActionSelectorActionValidation.test.ts:115",
+          "apps/browser-executor/src/aiActionSelectorActionValidation.test.ts:127",
+          "apps/browser-executor/src/aiActionSelectorActionValidation.test.ts:149"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 assigned AI action selector assertions with targeted Vitest runs; all 5 passed, and the verbose log captured per-test evidence for the assertion mapping."
+}
