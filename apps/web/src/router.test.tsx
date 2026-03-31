@@ -2436,7 +2436,7 @@ describe("@botchestra/web routing", () => {
     );
   });
 
-  it("shows generation progress, search, retry failed, and per-row regenerate controls", async () => {
+  it("shows generation progress, mixed source badges, search, retry failed, and per-row regenerate controls", async () => {
     mockedPackDetail = makePack({
       _id: "config-generation-progress" as Id<"personaConfigs">,
       sharedAxes: [
@@ -2501,6 +2501,12 @@ describe("@botchestra/web routing", () => {
         name: "Manual reviewer",
         sourceType: "manual",
       }),
+      makeSyntheticUser({
+        _id: "transcript-review" as Id<"syntheticUsers">,
+        configId: "config-generation-progress" as Id<"personaConfigs">,
+        name: "Transcript-derived reviewer",
+        sourceType: "transcript_derived",
+      }),
     ];
 
     const rowDeferred = createDeferred<Id<"syntheticUsers">>();
@@ -2519,6 +2525,11 @@ describe("@botchestra/web routing", () => {
     );
     expect(container.textContent).toContain("Generated Users Grid");
     expect(container.textContent).toContain("Retry Failed");
+    expect(getTableRow(container, "Generated finisher").textContent).toContain("Generated");
+    expect(getTableRow(container, "Manual reviewer").textContent).toContain("Manual");
+    expect(getTableRow(container, "Transcript-derived reviewer").textContent).toContain(
+      "Transcript-derived",
+    );
 
     await updateInput(container, 'input[aria-label="Search synthetic users"]', "Manual");
     const generationGridTable = getGenerationGridTable(container);
