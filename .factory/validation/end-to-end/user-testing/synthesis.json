@@ -1,0 +1,49 @@
+{
+  "milestone": "end-to-end",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-E2E-001",
+    "VAL-E2E-002",
+    "VAL-E2E-003",
+    "VAL-E2E-004",
+    "VAL-E2E-005",
+    "VAL-E2E-006",
+    "VAL-E2E-007",
+    "VAL-E2E-008",
+    "VAL-E2E-009",
+    "VAL-E2E-010",
+    "VAL-CROSS-001",
+    "VAL-CROSS-002",
+    "VAL-CROSS-003",
+    "VAL-CROSS-004",
+    "VAL-CROSS-005",
+    "VAL-CROSS-006",
+    "VAL-CROSS-007"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Documented that terminal-surface validators should fall back to `bunx tuistory` when `tuistory` is not on PATH.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null,
+  "flowReports": [
+    ".factory/validation/end-to-end/user-testing/flows/study-ui-web.json",
+    ".factory/validation/end-to-end/user-testing/flows/e2e-dispatch-callbacks-cli.json",
+    ".factory/validation/end-to-end/user-testing/flows/cross-area-cli.json"
+  ],
+  "executionNotes": [
+    "Validated the browser surface with an agent-browser flow validator against the demo study overview and runs pages on localhost:5180.",
+    "Validated the remaining end-to-end and cross-area assertions with serialized test-cli flow validators using targeted Vitest suites and the deployed Convex environment variable lookup."
+  ]
+}

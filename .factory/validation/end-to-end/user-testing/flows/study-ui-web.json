@@ -1,0 +1,59 @@
+{
+  "groupId": "study-ui-web",
+  "testedAt": "2026-03-31T15:16:59Z",
+  "isolation": {
+    "appUrl": "http://localhost:5180",
+    "session": "study-ui-web",
+    "accountEmail": "ut-study-ui-web-20260331-1616@example.com",
+    "routes": [
+      "/studies/demo-study/overview",
+      "/studies/demo-study/runs"
+    ],
+    "boundary": "Stayed on localhost:5180 only, used one browser session, and used one local account created via /signup."
+  },
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-E2E-009",
+      "title": "Study UI shows run progress",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Sign up via /signup with redirect back to /studies/demo-study/overview and let the app navigate to the study overview.",
+          "expected": "Authenticated study overview loads.",
+          "observed": "The app redirected to http://localhost:5180/studies/demo-study/overview after signup in the same browser session."
+        },
+        {
+          "action": "Inspect the overview page status and progress surfaces.",
+          "expected": "Study detail shows a study status badge plus progress and run summary information.",
+          "observed": "The overview page showed the study status badge `completed`, `100% complete`, `2 of 2 runs reached a terminal outcome`, `Completed 2 / 2`, `Running 0`, and `Queued / dispatching 0`."
+        },
+        {
+          "action": "Open /studies/demo-study/runs and inspect the run list plus the initially selected run detail.",
+          "expected": "Run cards show statuses and the selected run shows milestone timeline entries with step index, action type, and URL.",
+          "observed": "The runs page listed two run cards with status badges `hard fail` (Careful shopper) and `soft fail` (Busy parent). The selected Careful shopper detail showed milestone timeline entries `Step 1: Cart` \u2192 `Action click` \u2192 `URL https://example.com/checkout/cart` and `Step 2: Address` \u2192 `Action type` \u2192 `URL https://example.com/checkout/address`."
+        },
+        {
+          "action": "Select the `Busy parent` run card and inspect the updated run detail.",
+          "expected": "Run detail updates to the chosen run and still shows milestone timeline fields.",
+          "observed": "The detail panel updated to `soft fail` for Busy parent and showed `Step 1: Address` \u2192 `Action click` \u2192 `URL https://example.com/checkout/address` and `Step 2: Payment` \u2192 `Action wait` \u2192 `URL https://example.com/checkout/payment`."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "end-to-end/study-ui-web/VAL-E2E-009-overview.png",
+          "end-to-end/study-ui-web/VAL-E2E-009-runs.png",
+          "end-to-end/study-ui-web/VAL-E2E-009-runs-busy-parent.png"
+        ],
+        "consoleErrors": "none on the overview or runs pages",
+        "network": "Same-origin fetch GET /studies/demo-study/overview -> 200; same-origin fetch GET /studies/demo-study/runs?runId=run-demo-payment -> 200; agent-browser request log also captured POST https://tame-lark-825.eu-west-1.convex.cloud/api/action during page load."
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 1 assertion: 1 passed. The study overview showed a `completed` badge with `100% complete` progress, and the runs page showed `hard fail` and `soft fail` badges with milestone timelines that included step index, action type, and URL values."
+}

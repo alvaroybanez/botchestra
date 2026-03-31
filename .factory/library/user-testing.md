@@ -35,6 +35,7 @@ Testing surface, required tools, and resource cost classification.
 - For transcript extraction testing, use small test transcripts (< 1000 chars each) to minimize LLM cost during validation.
 - Cross-area flows (VAL-CROSS-*) test the full pipeline and should be validated last, after all individual area flows pass.
 - Browser-executor package-local Vitest coverage should be run from `apps/browser-executor/`; invoking `bunx vitest run --config apps/browser-executor/vitest.config.ts` from the repo root can resolve includes incorrectly and report `No test files found`.
+- If `tuistory` is not available on `PATH` during terminal-surface validation, use `bunx tuistory` from the repo root instead.
 - AI action selector milestone validation is fully covered from the `test-cli` surface with two narrow package-local commands: `bunx vitest run src/aiActionSelector.test.ts src/aiActionSelectorActionValidation.test.ts` for prompt/input/recovery assertions and `bunx vitest run src/aiActionSelectorSafety.test.ts src/runExecutor.test.ts src/guardrails.test.ts --reporter=verbose` for fallback/guardrail/timeout assertions.
 - Axis Library reloads can briefly show the app-level `Loading...` fallback before the route-level `Loading axis library...` skeleton. Wait for the latter text if you need direct evidence for VAL-AXLIB-019.
 - Axis Library's filter summary now spells out both active criteria (for example `matching tag "support" and search "insight"`), which is useful evidence for VAL-AXLIB-011's AND behavior.

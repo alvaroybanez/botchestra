@@ -1,0 +1,297 @@
+{
+  "groupId": "e2e-dispatch-callbacks-cli",
+  "testedAt": "2026-03-31T15:21:18.642925+00:00",
+  "isolation": {
+    "surface": "test-cli",
+    "repoRoot": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra",
+    "missionDir": "/Users/alvaro.ybanez/.factory/missions/6ceae915-bba1-41a1-9dec-4ed54e3c81f0",
+    "runFromRepoRootOnly": true,
+    "sharedStatePolicy": "Read-only CLI validation only; no browser/app session mutations."
+  },
+  "toolsUsed": [
+    "bunx convex",
+    "bunx vitest",
+    "Read",
+    "Grep"
+  ],
+  "commandsRun": [
+    {
+      "command": "bunx convex env get BROWSER_EXECUTOR_URL",
+      "exitCode": 0,
+      "evidence": "end-to-end/e2e-dispatch-callbacks-cli/convex-env-get-browser-executor-url.txt"
+    },
+    {
+      "command": "bunx vitest run convex/e2eCallbackDispatchVerification.test.ts --reporter=verbose",
+      "exitCode": 0,
+      "evidence": "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt"
+    },
+    {
+      "command": "bunx vitest run apps/browser-executor/src/e2eSecretRedactionVerification.test.ts apps/browser-executor/src/guardrails.test.ts --reporter=verbose",
+      "exitCode": 0,
+      "evidence": "end-to-end/e2e-dispatch-callbacks-cli/vitest-browser-secret-and-guardrails.txt"
+    }
+  ],
+  "assertions": [
+    {
+      "id": "VAL-E2E-001",
+      "title": "BROWSER_EXECUTOR_URL environment variable configured in Convex",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `bunx convex env get BROWSER_EXECUTOR_URL` from the repo root",
+          "expected": "The Convex deployment returns a valid HTTPS worker URL.",
+          "observed": "The CLI returned `https://botchestra-browser-executor.alvaroybanez-dash-cloudflare-com.workers.dev` with exit code 0."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/convex-env-get-browser-executor-url.txt"
+        ],
+        "commandOutputs": [
+          "https://botchestra-browser-executor.alvaroybanez-dash-cloudflare-com.workers.dev"
+        ],
+        "testCases": []
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-002",
+      "title": "Wave dispatch HTTP call reaches Worker",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted Convex verification suite.",
+          "expected": "A dispatchStudyWave path enqueues work and emits an HTTP POST to `/execute-run`.",
+          "observed": "Vitest case `dispatches queued runs through the workpool when dispatchStudyWave is called` passed and asserted one fetch to `${BROWSER_EXECUTOR_URL}/execute-run`, `createdRunCount: 0`, `dispatchedRunCount: 1`, and a serialized `ExecuteRunRequest` body."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt"
+        ],
+        "testCases": [
+          "e2e callback dispatch verification > dispatches queued runs through the workpool when dispatchStudyWave is called"
+        ],
+        "commandOutputs": [
+          "\u2713 dispatches queued runs through the workpool when dispatchStudyWave is called",
+          "Observed mocked HTTP POST target `${BROWSER_EXECUTOR_URL}/execute-run` and `dispatchedRunCount: 1` inside the passing test."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-003",
+      "title": "Callback token generated and validated round-trip",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect the Convex end-to-end dispatch verification suite output.",
+          "expected": "Generated callback tokens are accepted by the worker validation path during execute-run dispatch.",
+          "observed": "Both passing Vitest cases validated `request.callbackToken` with `validateWorkerCallbackToken(... expectedRunId ...)` and confirmed an `ok: true` payload containing the dispatched `runId`."
+        },
+        {
+          "action": "Run the guardrails token validation suite.",
+          "expected": "Tampered tokens are rejected.",
+          "observed": "Vitest case `validateCallbackToken > rejects tampered payloads` passed, proving tampered payloads and signatures are rejected."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt",
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-browser-secret-and-guardrails.txt"
+        ],
+        "testCases": [
+          "e2e callback dispatch verification > dispatches queued runs through the workpool when dispatchStudyWave is called",
+          "e2e callback dispatch verification > dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end",
+          "validateCallbackToken > rejects tampered payloads"
+        ],
+        "commandOutputs": [
+          "\u2713 dispatches queued runs through the workpool when dispatchStudyWave is called",
+          "\u2713 dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end",
+          "\u2713 validateCallbackToken > rejects tampered payloads"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-004",
+      "title": "Worker sends heartbeat callbacks to Convex",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted Convex verification suite.",
+          "expected": "A heartbeat callback updates `lastHeartbeatAt` on the run.",
+          "observed": "Vitest case `dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end` passed and asserted `/api/run-progress` heartbeat returned `{ ok: true, shouldStop: false }` and the stored run had `lastHeartbeatAt: 5000`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt"
+        ],
+        "testCases": [
+          "e2e callback dispatch verification > dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end"
+        ],
+        "commandOutputs": [
+          "\u2713 dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end",
+          "Observed stored run fields include `lastHeartbeatAt: 5000`."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-005",
+      "title": "Worker sends milestone callbacks to Convex",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted Convex verification suite.",
+          "expected": "Milestone callbacks append run milestone documents and milestone keys.",
+          "observed": "The same passing end-to-end callback test asserted HTTP 200 for the milestone callback, a `runMilestones` record with `stepIndex: 3` / `actionType: \"click\"`, and `run.milestoneKeys` containing `runs/run-1/milestones/3_click.jpg`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt"
+        ],
+        "testCases": [
+          "e2e callback dispatch verification > dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end"
+        ],
+        "commandOutputs": [
+          "\u2713 dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end",
+          "Observed `milestoneKeys: [\"runs/run-1/milestones/3_click.jpg\"]` and one queried milestone row for the run."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-006",
+      "title": "Worker sends completion callback and run settles",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted Convex verification suite.",
+          "expected": "Successful and abandoned completion callbacks settle the run with the mapped terminal status and populated result fields.",
+          "observed": "Passing cases asserted `status: \"success\"` with `finalOutcome: \"SUCCESS\"`, `stepCount`, `durationSec`, `frustrationCount`, and `artifactManifestKey`, and separately asserted that `finalOutcome: \"ABANDONED\"` maps to `status: \"gave_up\"`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt"
+        ],
+        "testCases": [
+          "e2e callback dispatch verification > dispatches queued runs through the workpool when dispatchStudyWave is called",
+          "e2e callback dispatch verification > dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end",
+          "e2e callback dispatch verification > maps abandoned completion callbacks to gave_up"
+        ],
+        "commandOutputs": [
+          "\u2713 dispatches queued runs through the workpool when dispatchStudyWave is called",
+          "\u2713 dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end",
+          "\u2713 maps abandoned completion callbacks to gave_up"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-007",
+      "title": "Worker sends failure callback and run settles",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the targeted Convex verification suite.",
+          "expected": "Failure callbacks map error codes to the correct terminal statuses and persist error details.",
+          "observed": "Five parameterized Vitest cases passed, proving mappings for `MAX_STEPS_EXCEEDED` \u2192 `timeout`, `MAX_DURATION_EXCEEDED` \u2192 `timeout`, `GUARDRAIL_VIOLATION` \u2192 `blocked_by_guardrail`, `LEASE_UNAVAILABLE` \u2192 `infra_error` with stored `BROWSER_LEASE_TIMEOUT`, and `BROWSER_ERROR` \u2192 `infra_error` with stored `WORKER_INTERNAL_ERROR`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt"
+        ],
+        "testCases": [
+          "e2e callback dispatch verification > maps { errorCode: 'MAX_STEPS_EXCEEDED', expectedStatus: 'timeout', expectedStoredErrorCode: 'MAX_STEPS_EXCEEDED' } failure callbacks to the expected run status",
+          "e2e callback dispatch verification > maps { errorCode: 'MAX_DURATION_EXCEEDED', expectedStatus: 'timeout', expectedStoredErrorCode: 'MAX_DURATION_EXCEEDED' } failure callbacks to the expected run status",
+          "e2e callback dispatch verification > maps { errorCode: 'GUARDRAIL_VIOLATION', expectedStatus: 'blocked_by_guardrail', expectedStoredErrorCode: 'GUARDRAIL_VIOLATION', guardrailCode: 'DOMAIN_BLOCKED' } failure callbacks to the expected run status",
+          "e2e callback dispatch verification > maps { errorCode: 'LEASE_UNAVAILABLE', expectedStatus: 'infra_error', expectedStoredErrorCode: 'BROWSER_LEASE_TIMEOUT' } failure callbacks to the expected run status",
+          "e2e callback dispatch verification > maps { errorCode: 'BROWSER_ERROR', expectedStatus: 'infra_error', expectedStoredErrorCode: 'WORKER_INTERNAL_ERROR' } failure callbacks to the expected run status"
+        ],
+        "commandOutputs": [
+          "\u2713 maps MAX_STEPS_EXCEEDED failure callbacks to the expected run status",
+          "\u2713 maps MAX_DURATION_EXCEEDED failure callbacks to the expected run status",
+          "\u2713 maps GUARDRAIL_VIOLATION failure callbacks to the expected run status",
+          "\u2713 maps LEASE_UNAVAILABLE failure callbacks to the expected run status",
+          "\u2713 maps BROWSER_ERROR failure callbacks to the expected run status"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-008",
+      "title": "Heartbeat monitor cron registered and functional",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect `convex/crons.ts` and run the targeted Convex verification suite.",
+          "expected": "The cron is registered and stale runs are transitioned by `monitorStaleRuns`.",
+          "observed": "Source inspection showed `crons.interval(\"monitor stale run heartbeats\", { seconds: HEARTBEAT_MONITOR_INTERVAL_SECONDS }, internal.heartbeatMonitor.monitorStaleRuns, {})`; the matching Vitest case passed and asserted `staleRunCount: 1` and a stored run status of `infra_error` with `errorCode: \"CALLBACK_REJECTED\"`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-e2e-callback-dispatch.txt"
+        ],
+        "sourceReferences": [
+          "convex/crons.ts:6-11"
+        ],
+        "testCases": [
+          "e2e callback dispatch verification > registers the heartbeat monitor cron and transitions stale runs to infra_error"
+        ],
+        "commandOutputs": [
+          "\u2713 registers the heartbeat monitor cron and transitions stale runs to infra_error"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-E2E-010",
+      "title": "Secrets are redacted in all callbacks and responses",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run the narrow browser-executor redaction verification suite from the repo root.",
+          "expected": "Known secret values are replaced with `[REDACTED]` in callbacks, uploaded artifacts, and the worker response.",
+          "observed": "Vitest case `replaces known secret values with [REDACTED] across callbacks, artifacts, and the worker response` passed and asserted the response body, callback payloads, and uploaded artifact bodies all contained `[REDACTED]` while excluding the raw email/password values."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/e2e-dispatch-callbacks-cli/vitest-browser-secret-and-guardrails.txt"
+        ],
+        "testCases": [
+          "e2e secret redaction verification > replaces known secret values with [REDACTED] across callbacks, artifacts, and the worker response"
+        ],
+        "commandOutputs": [
+          "\u2713 e2e secret redaction verification > replaces known secret values with [REDACTED] across callbacks, artifacts, and the worker response"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Both Vitest invocations emitted the known deprecated `test.workspace` warning.",
+      "resolved": true,
+      "resolution": "Ignored the warning per repository guidance because it is a pre-existing known issue and the targeted suites still exited 0.",
+      "affectedAssertions": [
+        "VAL-E2E-002",
+        "VAL-E2E-003",
+        "VAL-E2E-004",
+        "VAL-E2E-005",
+        "VAL-E2E-006",
+        "VAL-E2E-007",
+        "VAL-E2E-008",
+        "VAL-E2E-010"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 9 assigned assertions on the test-cli surface; all 9 passed. Evidence is captured in the three command log files plus `command-summary.json` under the assigned mission evidence directory."
+}

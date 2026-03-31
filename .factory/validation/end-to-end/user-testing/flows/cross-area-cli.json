@@ -1,0 +1,325 @@
+{
+  "groupId": "cross-area-cli",
+  "surface": "test-cli",
+  "testedAt": "2026-03-31T15:26:01Z",
+  "overallStatus": "pass",
+  "isolation": {
+    "repoRoot": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra",
+    "missionDir": "/Users/alvaro.ybanez/.factory/missions/6ceae915-bba1-41a1-9dec-4ed54e3c81f0",
+    "surface": "shared test-cli",
+    "constraints": [
+      "Ran only read-only Vitest commands from the repo root.",
+      "Did not mutate browser/app session state.",
+      "Serialized test-cli usage to respect the single-validator guidance."
+    ]
+  },
+  "toolsUsed": [
+    "tuistory",
+    "bunx vitest",
+    "Read"
+  ],
+  "commands": [
+    {
+      "command": "bunx vitest run convex/e2eCrossAreaIntegration.test.ts --reporter=verbose",
+      "exitCode": 0,
+      "outputSnippet": "\u2713 runs the full study pipeline, records persona-driven differences, and completes the study lifecycle\n\u2713 evaluates cost controls on heartbeat for the correct study and requests stop when the budget is exceeded\n\u2713 returns shouldStop when cancellation has already been requested on the run\nTest Files 1 passed (1)\nTests 3 passed (3)",
+      "observation": "Convex-side cross-area coverage passed and explicitly exercised full pipeline settlement, persona-differentiated outcomes, budget-triggered heartbeat stop requests, and cancellation acks from recordRunHeartbeat.",
+      "evidenceFiles": [
+        "end-to-end/cross-area-cli/command-1-convex-e2e.log",
+        "end-to-end/cross-area-cli/command-1-convex-e2e-snapshot.txt",
+        "end-to-end/cross-area-cli/command-1-convex-e2e.png"
+      ]
+    },
+    {
+      "command": "bunx vitest run apps/browser-executor/src/crossAreaIntegration.test.ts apps/browser-executor/src/executeRunHeartbeatCancellation.test.ts apps/browser-executor/src/progressReporter.heartbeatAck.test.ts --reporter=verbose",
+      "exitCode": 0,
+      "outputSnippet": "\u2713 returns shouldStop=true when the callback acknowledges cancellation\n\u2713 abandons early after repeated friction and returns a manifest key plus self-report\n\u2713 terminates the run with ABANDONED when a heartbeat ack returns shouldStop=true\nTest Files 3 passed (3)\nTests 7 passed (7)",
+      "observation": "Worker-side cross-area coverage passed and concretely verified frustration-triggered abandonment, manifest persistence, self-report propagation, heartbeat shouldStop parsing, and graceful cancellation during execution.",
+      "evidenceFiles": [
+        "end-to-end/cross-area-cli/command-2-worker-cross-area.log",
+        "end-to-end/cross-area-cli/command-2-worker-cross-area-snapshot.txt",
+        "end-to-end/cross-area-cli/command-2-worker-cross-area.png"
+      ]
+    },
+    {
+      "command": "bunx vitest run apps/browser-executor/src/index.test.ts --reporter=verbose -t \"serves stored artifacts for GET /artifacts/:key\"",
+      "exitCode": 0,
+      "outputSnippet": "\u2713 serves stored artifacts for GET /artifacts/:key\nTest Files 1 passed (1)\nTests 1 passed | 19 skipped (20)",
+      "observation": "A narrow worker-entry-point check passed for signed artifact retrieval; the single targeted case returned 200 with application/json while unrelated index.test.ts cases were intentionally skipped by the name filter.",
+      "evidenceFiles": [
+        "end-to-end/cross-area-cli/command-3-artifact-route.log",
+        "end-to-end/cross-area-cli/command-3-artifact-route-snapshot.txt",
+        "end-to-end/cross-area-cli/command-3-artifact-route.png"
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "title": "Full pipeline \u2014 create study \u2192 launch \u2192 browser runs \u2192 results",
+      "status": "pass",
+      "vitestCases": [
+        "convex/e2eCrossAreaIntegration.test.ts > e2e cross-area integration > runs the full study pipeline, records persona-driven differences, and completes the study lifecycle"
+      ],
+      "steps": [
+        {
+          "action": "Run the Convex cross-area integration suite from the repo root.",
+          "expected": "The study should queue, dispatch two runs, receive callback events, settle the runs, and complete the study lifecycle.",
+          "observed": "The verbose Vitest case passed and asserted queued \u2192 running dispatch, two executeRun invocations, success outcomeCounts.success=2, and final study status completed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e-snapshot.txt"
+        ],
+        "screenshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.png"
+        ],
+        "commandLogs": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.log"
+        ],
+        "observations": [
+          "dispatchStudyWave returned createdRunCount: 2 and dispatchedRunCount: 2.",
+          "After executeRun actions, run summary asserted terminalCount: 2 and outcomeCounts.success: 2.",
+          "The same test advanced the study lifecycle through replaying/analyzing and finished with completedAt set."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "title": "Persona context influences browser behavior",
+      "status": "pass",
+      "vitestCases": [
+        "convex/e2eCrossAreaIntegration.test.ts > e2e cross-area integration > runs the full study pipeline, records persona-driven differences, and completes the study lifecycle"
+      ],
+      "steps": [
+        {
+          "action": "Inspect the persona-differentiation assertions in the passing cross-area Convex suite.",
+          "expected": "Two runs with different axis values should produce measurable differences in run outputs.",
+          "observed": "The test compared a careful persona (techSavviness 0.1) versus a fast persona (techSavviness 0.9) and asserted different stepCount, frustrationCount, artifactManifestKey suffixes, and selfReport confidence values."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e-snapshot.txt"
+        ],
+        "screenshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.png"
+        ],
+        "commandLogs": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.log"
+        ],
+        "observations": [
+          "Careful run asserted status success, stepCount 7, frustrationCount 2, artifact key containing careful-manifest.json, selfReport.confidence 0.66.",
+          "Fast run asserted status success, stepCount 4, frustrationCount 0, artifact key containing fast-manifest.json, selfReport.confidence 0.97.",
+          "The test explicitly required carefulRun.stepCount > fastRun.stepCount and carefulRun.frustrationCount > fastRun.frustrationCount."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "title": "Frustration detection triggers early abandonment",
+      "status": "pass",
+      "vitestCases": [
+        "apps/browser-executor/src/crossAreaIntegration.test.ts > cross-area integration > abandons early after repeated friction and returns a manifest key plus self-report"
+      ],
+      "steps": [
+        {
+          "action": "Run the worker cross-area integration suite.",
+          "expected": "Repeated friction should cause an early ABANDONED outcome before maxSteps.",
+          "observed": "The passing test returned finalOutcome ABANDONED, required stepCount < taskSpec.maxSteps, and asserted frustrationCount >= 3."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/cross-area-cli/command-2-worker-cross-area-snapshot.txt"
+        ],
+        "screenshots": [
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.png"
+        ],
+        "commandLogs": [
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.log"
+        ],
+        "observations": [
+          "The worker response body matched ok: true and finalOutcome: ABANDONED.",
+          "The same test verified the run abandoned before maxSteps 10 and carried a generated self-report.",
+          "The manifest JSON stored for the run contained a milestone_screenshot artifact entry, showing the abandonment path still persisted artifacts."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "title": "Artifact manifest persisted and retrievable",
+      "status": "pass",
+      "vitestCases": [
+        "apps/browser-executor/src/crossAreaIntegration.test.ts > cross-area integration > abandons early after repeated friction and returns a manifest key plus self-report",
+        "apps/browser-executor/src/index.test.ts > browser executor worker entry point > serves stored artifacts for GET /artifacts/:key"
+      ],
+      "steps": [
+        {
+          "action": "Confirm manifest persistence in the worker cross-area suite.",
+          "expected": "The run should write a manifest to ARTIFACTS and return its key.",
+          "observed": "The passing test asserted artifactManifestKey === runs/run_cross_area/manifest.json and parsed the stored manifest JSON from the mock bucket."
+        },
+        {
+          "action": "Confirm signed artifact retrieval via the worker entry point.",
+          "expected": "GET /artifacts/:key should return 200 with the stored JSON body when the signature is valid.",
+          "observed": "The targeted index.test.ts case passed and asserted HTTP 200, content-type application/json, and response text artifact body."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/cross-area-cli/command-2-worker-cross-area-snapshot.txt",
+          "end-to-end/cross-area-cli/command-3-artifact-route-snapshot.txt"
+        ],
+        "screenshots": [
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.png",
+          "end-to-end/cross-area-cli/command-3-artifact-route.png"
+        ],
+        "commandLogs": [
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.log",
+          "end-to-end/cross-area-cli/command-3-artifact-route.log"
+        ],
+        "observations": [
+          "Manifest persistence: uploads.get('runs/run_cross_area/manifest.json') returned JSON matching runId, finalOutcome ABANDONED, stepCount, frustrationCount, and artifacts[].kind = milestone_screenshot.",
+          "Retrieval: the signed /artifacts request returned 200 with application/json and the stored artifact body."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "title": "Self-report generated and stored",
+      "status": "pass",
+      "vitestCases": [
+        "apps/browser-executor/src/crossAreaIntegration.test.ts > cross-area integration > abandons early after repeated friction and returns a manifest key plus self-report",
+        "convex/e2eCrossAreaIntegration.test.ts > e2e cross-area integration > runs the full study pipeline, records persona-driven differences, and completes the study lifecycle"
+      ],
+      "steps": [
+        {
+          "action": "Check worker-side self-report generation in the abandonment integration test.",
+          "expected": "The completion callback and response should include a valid SelfReport.",
+          "observed": "The worker test passed with selfReport.perceivedSuccess false, hardestPart populated, confidence 0.2, and answers keyed to the post-task question."
+        },
+        {
+          "action": "Check Convex-side storage in the full cross-area pipeline test.",
+          "expected": "Settled run documents should store persona-specific selfReport values.",
+          "observed": "The careful and fast settled runs both asserted selfReport.perceivedSuccess true and distinct confidence values (0.66 vs 0.97)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e-snapshot.txt",
+          "end-to-end/cross-area-cli/command-2-worker-cross-area-snapshot.txt"
+        ],
+        "screenshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.png",
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.png"
+        ],
+        "commandLogs": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.log",
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.log"
+        ],
+        "observations": [
+          "Worker completion payload included selfReport with perceivedSuccess false, hardestPart set, confidence 0.2, and answers['Did you complete the task?'] = false.",
+          "Convex settled runs stored selfReport objects with perceivedSuccess true and persona-specific confidence values, proving storage beyond the worker callback surface."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-006",
+      "title": "Cost controls evaluated on heartbeat",
+      "status": "pass",
+      "vitestCases": [
+        "convex/e2eCrossAreaIntegration.test.ts > e2e cross-area integration > evaluates cost controls on heartbeat for the correct study and requests stop when the budget is exceeded"
+      ],
+      "steps": [
+        {
+          "action": "Run the targeted Convex heartbeat/cost-control case.",
+          "expected": "Heartbeat handling should evaluate budget limits for the current study and request stop only for the affected study/run.",
+          "observed": "The passing test set maxBrowserSecPerStudy to 1, sent a heartbeat for the first run at timestamp 2000, and asserted shouldStop true plus cancellationRequestedAt only on the first run/study while the second run/study stayed untouched."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e-snapshot.txt"
+        ],
+        "screenshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.png"
+        ],
+        "commandLogs": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.log"
+        ],
+        "observations": [
+          "recordRunHeartbeat returned shouldStop true when the configured browser-seconds budget was exceeded.",
+          "firstRun.lastHeartbeatAt became 2000 and firstStudy/firstRun both received cancellationRequestedAt, while the second study boundary remained unaffected."
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "title": "Run cancellation respected during execution",
+      "status": "pass",
+      "vitestCases": [
+        "convex/e2eCrossAreaIntegration.test.ts > e2e cross-area integration > returns shouldStop when cancellation has already been requested on the run",
+        "apps/browser-executor/src/progressReporter.heartbeatAck.test.ts > progressReporter heartbeat acknowledgements > returns shouldStop=true when the callback acknowledges cancellation",
+        "apps/browser-executor/src/executeRunHeartbeatCancellation.test.ts > execute-run heartbeat cancellation > terminates the run with ABANDONED when a heartbeat ack returns shouldStop=true"
+      ],
+      "steps": [
+        {
+          "action": "Verify the Convex heartbeat ack when cancellationRequestedAt is already set.",
+          "expected": "recordRunHeartbeat should return shouldStop true.",
+          "observed": "The Convex test patched cancellationRequestedAt onto the run, then asserted recordRunHeartbeat returned shouldStop true and updated lastHeartbeatAt to 2000."
+        },
+        {
+          "action": "Verify the worker consumes the heartbeat acknowledgement.",
+          "expected": "The worker should stop gracefully instead of selecting another action.",
+          "observed": "The worker cancellation test passed with finalOutcome ABANDONED, stepCount 0, selectAction never called, and a completion update plus cancel milestone rationale 'Run cancelled via heartbeat stop signal'."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e-snapshot.txt",
+          "end-to-end/cross-area-cli/command-2-worker-cross-area-snapshot.txt"
+        ],
+        "screenshots": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.png",
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.png"
+        ],
+        "commandLogs": [
+          "end-to-end/cross-area-cli/command-1-convex-e2e.log",
+          "end-to-end/cross-area-cli/command-2-worker-cross-area.log"
+        ],
+        "observations": [
+          "Heartbeat ack parsing: progressReporter.sendHeartbeat resolved true when callback JSON returned shouldStop true.",
+          "Worker handling: execute-run returned finalOutcome ABANDONED with stepCount 0 and emitted a cancel milestone instead of continuing execution.",
+          "Convex handling: a run with pre-set cancellationRequestedAt yielded shouldStop true on the next heartbeat."
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "The `tuistory` binary was not available on PATH even though the CLI guidance assumes it is installed.",
+      "resolved": true,
+      "resolution": "Used `bunx tuistory` for the same single terminal session, then captured the required snapshots and screenshots successfully.",
+      "affectedAssertions": [
+        "VAL-CROSS-001",
+        "VAL-CROSS-002",
+        "VAL-CROSS-003",
+        "VAL-CROSS-004",
+        "VAL-CROSS-005",
+        "VAL-CROSS-006",
+        "VAL-CROSS-007"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 7 assigned cross-area CLI assertions. All passed: the Convex suite covered full-pipeline settlement, persona differences, cost-control heartbeats, and cancellation acknowledgements; the worker suites covered frustration-triggered abandonment, manifest persistence/retrieval, self-report propagation, and graceful shouldStop cancellation handling."
+}
