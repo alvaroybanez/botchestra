@@ -1,0 +1,82 @@
+{
+  "groupId": "genui-runtime",
+  "surface": "web",
+  "overallStatus": "pass",
+  "summary": "Generation progress, grid rendering, row regeneration, error display, retry behavior, and review-before-publish all worked through the live UI; the only quirk was that the batch run summary stayed failed after per-row retries succeeded.",
+  "assertions": [
+    {
+      "id": "VAL-GENUI-005",
+      "status": "pass",
+      "details": "A 27-user run showed live progress while running, and the progress panel persisted after navigating away to `/studies` and back to the config.",
+      "evidence": [
+        "The runtime config first showed `0/27 synthetic users generated Pending` and later `9/27 synthetic users generated Running`.",
+        "After starting another 27-user run on the draft error config, the worker navigated to `/studies` and back; the returned page still showed `Generation Progress 7/27 synthetic users generated Running`."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/runtime-progress.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/runtime-progress-midrun.png"
+      ]
+    },
+    {
+      "id": "VAL-GENUI-006",
+      "status": "pass",
+      "details": "The generated users grid displayed generated rows with name, axis badges, bio previews, source badges, and statuses.",
+      "evidence": [
+        "The completed runtime config showed rows like `Generated Synthetic User 1` with axis values, a first-person bio preview, `Generated` source, and `Completed` status."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/runtime-complete.png"
+      ]
+    },
+    {
+      "id": "VAL-GENUI-007",
+      "status": "pass",
+      "details": "Each generated row exposed a `Regenerate` action, and the row-level loading label `Regenerating...` was observed during an induced offline delay.",
+      "evidence": [
+        "Clicking `Regenerate` on the runtime config queued a regeneration and showed `Synthetic user regeneration queued.`",
+        "With offline mode temporarily enabled on the error config, the first row displayed `Regenerating...` long enough to capture the loading state."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-GENUI-008",
+      "status": "pass",
+      "details": "With an invalid expansion model override, failed generated users showed explicit error text and a `Retry Failed` control; after restoring settings, retry queued and eventually completed the rows.",
+      "evidence": [
+        "The failed config showed `All 3 synthetic users failed to generate. Failed` and each row displayed `The model `definitely-invalid-model-id` does not exist or you do not have access to it.`",
+        "After clearing the override, clicking `Retry Failed` showed `Queued regeneration for 3 failed synthetic users.` and the three rows later returned to `Completed`."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/error-state.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/error-retry-after-success.png"
+      ]
+    },
+    {
+      "id": "VAL-GENUI-009",
+      "status": "pass",
+      "details": "The researcher could inspect generated users in the draft grid before publishing.",
+      "evidence": [
+        "The runtime config remained `draft` while the generated users grid and search box were available for inspection.",
+        "Before publishing the runtime config, the grid also showed a manual row and later a transcript-derived row alongside generated users."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/runtime-complete.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser",
+    "bun run user:set-role"
+  ],
+  "commands": [
+    {
+      "command": "bun run user:set-role -- {\"email\":\"ut-validation-87ed9824@example.com\",\"role\":\"admin\"}",
+      "exitCode": 0,
+      "observation": "Convex returned the updated admin user record for the dedicated validation account."
+    }
+  ],
+  "frictions": [
+    "After `Retry Failed` regenerated the three failed rows successfully, the `batchGenerationRun` summary on the page still displayed the older terminal `Failed 3/3 processed` state even though the row statuses were `Completed`."
+  ],
+  "blockers": []
+}

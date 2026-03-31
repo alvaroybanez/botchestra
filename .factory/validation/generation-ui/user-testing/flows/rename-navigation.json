@@ -1,0 +1,90 @@
+{
+  "groupId": "rename-navigation",
+  "surface": "web",
+  "overallStatus": "pass",
+  "summary": "The renamed navigation, labels, lifecycle actions, and hidden post-publish generation controls all behaved correctly through the live web UI.",
+  "assertions": [
+    {
+      "id": "VAL-RENAME-003",
+      "status": "pass",
+      "details": "The new `/persona-configs` route worked while the old `/persona-packs` route returned the app's not-found screen.",
+      "evidence": [
+        "`http://localhost:5180/persona-configs` loaded the list page.",
+        "`http://localhost:5180/persona-packs` showed `Page not found` and `The route you requested is not defined in the Botchestra app shell yet.`"
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/persona-configs-list.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/old-route-404.png"
+      ]
+    },
+    {
+      "id": "VAL-RENAME-004",
+      "status": "pass",
+      "details": "The sidebar label and navigation target were updated to `Persona Configurations`.",
+      "evidence": [
+        "After signup, the sidebar displayed `Persona Configurations` next to Studies, Axis Library, and Transcripts.",
+        "Clicking the sidebar item navigated to `/persona-configs`."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/after-signup.png"
+      ]
+    },
+    {
+      "id": "VAL-RENAME-005",
+      "status": "pass",
+      "details": "User-visible text used `Persona Configuration` terminology on the list page, draft/detail pages, and study setup pages.",
+      "evidence": [
+        "List page buttons/headers used `Create Persona Configuration` and `Persona Configurations`.",
+        "Detail pages used copy like `Review persona configuration metadata...` and `Publish persona configuration?`.",
+        "The study creation page showed `Persona configuration selector` and `Configure the persona configuration...`."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/create-config-form.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/publish-confirmation.png"
+      ]
+    },
+    {
+      "id": "VAL-RENAME-006",
+      "status": "pass",
+      "details": "A real config was edited, given a synthetic user, published, and archived successfully after the rename.",
+      "evidence": [
+        "The draft panel config showed `Draft changes saved.` after metadata edits and `Synthetic user added.` after adding a manual row.",
+        "Publishing changed the status to `published` / version `v2`, and archiving later changed the status to `archived` with `Persona configuration archived.`"
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/publish-confirmation.png",
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/published-config.png"
+      ]
+    },
+    {
+      "id": "VAL-GENUI-010",
+      "status": "pass",
+      "details": "Publish-time generation controls were hidden on non-draft configs.",
+      "evidence": [
+        "On the published panel config, the page still showed the generation section but did not show `Generate Synthetic Users`, `Retry Failed`, or any `Regenerate` row buttons.",
+        "The annotated published screenshot exposed only `Archive` as the primary action."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/published-config.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "status": "pass",
+      "details": "Sidebar navigation across renamed areas worked as expected.",
+      "evidence": [
+        "Using sidebar links moved the same session through `/studies/new`, `/axis-library`, `/transcripts`, and `/studies` successfully.",
+        "The study setup page also showed the renamed persona-configuration terminology."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/study-created-from-published-config.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "commands": [],
+  "frictions": [],
+  "blockers": []
+}

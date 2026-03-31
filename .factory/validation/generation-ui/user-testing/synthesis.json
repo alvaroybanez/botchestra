@@ -1,0 +1,74 @@
+{
+  "milestone": "generation-ui",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 27,
+    "passed": 26,
+    "failed": 1,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-RENAME-001",
+    "VAL-RENAME-002",
+    "VAL-RENAME-003",
+    "VAL-RENAME-004",
+    "VAL-RENAME-005",
+    "VAL-RENAME-006",
+    "VAL-RENAME-007",
+    "VAL-RENAME-009",
+    "VAL-RENAME-010",
+    "VAL-RENAME-011",
+    "VAL-GENUI-001",
+    "VAL-GENUI-002",
+    "VAL-GENUI-003",
+    "VAL-GENUI-004",
+    "VAL-GENUI-005",
+    "VAL-GENUI-006",
+    "VAL-GENUI-007",
+    "VAL-GENUI-008",
+    "VAL-GENUI-009",
+    "VAL-GENUI-010",
+    "VAL-GENUI-011",
+    "VAL-CROSS-001",
+    "VAL-CROSS-002",
+    "VAL-CROSS-003",
+    "VAL-CROSS-004",
+    "VAL-CROSS-005"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-RENAME-008",
+      "reason": "`bunx convex dev --once` exited 1 because Convex typecheck hit TS2304 in `convex/batchGeneration.test.ts` and TS7006 in `convex/crossAreaIntegration.test.ts`."
+    }
+  ],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Documented the reliable guided transcript-extraction path for producing a transcript-derived synthetic user alongside generated/manual users during generation-ui validation.",
+      "source": "flow-report"
+    },
+    {
+      "target": "user-testing.md",
+      "description": "Documented the temporary offline-mode technique for capturing the otherwise transient `Regenerating...` row state.",
+      "source": "flow-report"
+    },
+    {
+      "target": "user-testing.md",
+      "description": "Recorded the Task tool subagent-spawn blocker caused by the invalid inherited model alias `custom:GPT-5.4-(xHigh)-16`.",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null,
+  "flowReports": [
+    ".factory/validation/generation-ui/user-testing/flows/rename-cli.json",
+    ".factory/validation/generation-ui/user-testing/flows/genui-draft-panel.json",
+    ".factory/validation/generation-ui/user-testing/flows/genui-runtime.json",
+    ".factory/validation/generation-ui/user-testing/flows/rename-navigation.json",
+    ".factory/validation/generation-ui/user-testing/flows/cross-e2e.json"
+  ],
+  "executionNotes": [
+    "Task-based flow validator spawning failed repeatedly because the Task tool inherited an invalid custom model alias (`custom:GPT-5.4-(xHigh)-16`), so the main worker session executed the planned flow groups manually in the real user surface."
+  ]
+}

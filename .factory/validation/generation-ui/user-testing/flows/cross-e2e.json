@@ -1,0 +1,55 @@
+{
+  "groupId": "cross-e2e",
+  "surface": "web",
+  "overallStatus": "pass",
+  "summary": "The full cross-area flow worked end-to-end: generated users were created, manual and transcript-derived users coexisted, publish upserted axes into the library, and a study draft was created from the published config.",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "status": "pass",
+      "details": "A draft config with axes generated a 27-user cohort, was reviewed, published, and then used to create a study draft.",
+      "evidence": [
+        "Runtime config `ut-runtime-87ed9824 config` generated `27/27 synthetic users` while still draft.",
+        "After publish, `/studies/new` listed `ut-runtime-87ed9824 config (published)` and saving the form produced the `ut-cross study` draft detail page."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/study-created-from-published-config.png"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "status": "pass",
+      "details": "Manual and generated users coexisted in the same config with distinct source badges.",
+      "evidence": [
+        "After adding `ut-cross manual synthetic user`, the runtime config text showed both generated rows (`Source: generated`) and the manual row (`Source: manual`)."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "status": "pass",
+      "details": "Transcript-derived and generated users coexisted in the same config.",
+      "evidence": [
+        "Uploading `transcript-cross.txt`, attaching it to the runtime config, and applying guided extraction produced `Reassurance-and-Explanation Seeker`.",
+        "The filtered grid showed the transcript-derived row with `Transcript-derived` source while generated rows remained in the same config."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "status": "pass",
+      "details": "Publishing the generated-user runtime config upserted its shared axes into the Axis Library.",
+      "evidence": [
+        "After publishing the runtime config, the Axis Library showed 3 saved definitions including the previously unpublished `time_pressure` axis.",
+        "The `time_pressure` row showed `Usage Count 1` and `Creation Source Persona configuration publish`."
+      ],
+      "evidenceFiles": []
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "commands": [],
+  "frictions": [],
+  "blockers": []
+}

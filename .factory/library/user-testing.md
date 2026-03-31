@@ -31,6 +31,9 @@ Testing surface, required tools, and resource cost classification.
 - Auto-discover extraction currently surfaces proposed axis keys in camelCase (for example `automationReliance`), which makes `Apply to pack` fail after researchers edit the shared-axis keys to snake_case because the archetype axis-value keys are not updated to match.
 - Guided extraction currently provides a reliable path for validating transcript-derived persona creation, evidence deep links, and publish-time transcript reference persistence.
 - The current `Re-run extraction` affordance does not start a fresh extraction flow after results exist; it reopens an empty/previous results shell instead.
+- For generation-ui validation, a small `.txt` transcript uploaded through `/transcripts`, then attached on `/persona-configs/:configId` and processed via `Extract from Transcripts` → `Guided` → `Continue to cost estimate` → `Confirm & Extract`, reliably produced a transcript-derived synthetic user that could coexist with generated and manual rows.
+- The row-level `Regenerating...` loading label is extremely brief on a healthy connection; when visual confirmation is required, temporarily toggling the browser session offline immediately after clicking `Regenerate` keeps the pending label visible long enough to capture evidence.
+- Task-spawned flow validators were blocked in this run because the Task tool inherited an invalid custom model alias (`custom:GPT-5.4-(xHigh)-16`); if that persists, complete user testing in the main worker session or correct the inherited model before retrying subagent spawning.
 
 ## Setup Tips
 

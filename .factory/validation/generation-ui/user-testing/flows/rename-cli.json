@@ -1,0 +1,111 @@
+{
+  "groupId": "rename-cli",
+  "surface": "test-cli",
+  "overallStatus": "fail",
+  "summary": "Schema/backend rename checks, targeted validators, and zero stale-reference grep passed, but `bunx convex dev --once` failed on Convex typecheck errors in test files, so VAL-RENAME-008 did not pass.",
+  "assertions": [
+    {
+      "id": "VAL-RENAME-001",
+      "status": "pass",
+      "details": "Schema inspection showed the renamed `personaConfigs` table and related `configTranscripts` / `batchGenerationRuns` tables use `configId` / `personaConfigId` references consistently.",
+      "evidence": [
+        "convex/schema.ts defines `personaConfigs` at line 159 and `configTranscripts` at line 224.",
+        "`configId: v.id(\"personaConfigs\")` appears in config transcript, synthetic user, batch generation, and transcript extraction related tables."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-RENAME-002",
+      "status": "pass",
+      "details": "The renamed Convex API surface is present under `personaConfigs`, including draft creation, updates, publish/archive, and transcript-derived user application.",
+      "evidence": [
+        "convex/personaConfigs.ts exports `createDraft`, `updateDraft`, `publish`, `archive`, and `applyTranscriptDerivedSyntheticUsers`.",
+        "Targeted tests `convex/personaConfigs.test.ts`, `convex/crossAreaIntegration.test.ts`, `convex/batchGeneration.test.ts`, and `apps/web/src/router.test.tsx` all passed (105 tests total)."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-RENAME-007",
+      "status": "pass",
+      "details": "Relevant targeted validators passed for the rename and generation-ui milestone, and the latest scrutiny synthesis for generation-ui also recorded passing validators.",
+      "evidence": [
+        "`bun run test -- ...batchGeneration.test.ts ...personaConfigs.test.ts ...crossAreaIntegration.test.ts ...router.test.tsx` exited 0 with 105/105 tests passing.",
+        "`bun run typecheck` exited 0 across all workspaces.",
+        ".factory/validation/generation-ui/scrutiny/synthesis.json records `status: \"pass\"` with test/typecheck/lint all passing."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-RENAME-008",
+      "status": "fail",
+      "details": "`bunx convex dev --once` did not validate cleanly because Convex typecheck failed before schema validation completed.",
+      "evidence": [
+        "`bunx convex dev --once` exited 1.",
+        "Convex reported `convex/batchGeneration.test.ts:741 TS2304 Cannot find name \"Doc\"` and `convex/crossAreaIntegration.test.ts:182 TS7006 Parameter \"syntheticUser\" implicitly has an \"any\" type`."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-RENAME-009",
+      "status": "pass",
+      "details": "Related renamed references are consistent for transcript attachments and persona configuration foreign keys.",
+      "evidence": [
+        "`configTranscripts.ts` exports `attachTranscript` and `detachTranscript` against the `configTranscripts` table.",
+        "`convex/schema.ts` uses `personaConfigId` fields in downstream tables and `configId` for config-scoped records."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-RENAME-010",
+      "status": "pass",
+      "details": "Axis library auto-population remained intact after the rename according to both targeted tests and later user-surface evidence.",
+      "evidence": [
+        "`convex/crossAreaIntegration.test.ts` passed, covering publish-time cross-area behavior.",
+        "Manual user testing later showed publishing the generated-user runtime config produced a new `time_pressure` axis library entry with usage count 1 and creation source `Persona configuration publish`."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-RENAME-011",
+      "status": "pass",
+      "details": "No stale TypeScript rename references remained outside generated files and migrations.",
+      "evidence": [
+        "`rg \"personaPack|PersonaPack|persona-pack|persona_pack|packTranscript|PackTranscript\" -g \"*.ts\" -g \"*.tsx\" --glob \"!convex/_generated/**\" --glob \"!**/migrations/**\" ...` exited 1 with no matches, which is ripgrep's zero-match success condition."
+      ],
+      "evidenceFiles": []
+    }
+  ],
+  "toolsUsed": [
+    "bun run test",
+    "bun run typecheck",
+    "bunx convex dev --once",
+    "rg",
+    "grep/read"
+  ],
+  "commands": [
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "observation": "All four workspace typecheck steps exited 0."
+    },
+    {
+      "command": "bun run test -- convex/batchGeneration.test.ts convex/personaConfigs.test.ts convex/crossAreaIntegration.test.ts apps/web/src/router.test.tsx",
+      "exitCode": 0,
+      "observation": "Vitest ran 4 files and 105 tests; all passed."
+    },
+    {
+      "command": "rg \"personaPack|PersonaPack|persona-pack|persona_pack|packTranscript|PackTranscript\" -g \"*.ts\" -g \"*.tsx\" --glob \"!convex/_generated/**\" --glob \"!**/migrations/**\" /Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra",
+      "exitCode": 1,
+      "observation": "ripgrep returned no matches, which is the expected zero-stale-reference result."
+    },
+    {
+      "command": "bunx convex dev --once",
+      "exitCode": 1,
+      "observation": "Convex preparation failed at TypeScript typecheck with TS2304 in `convex/batchGeneration.test.ts` and TS7006 in `convex/crossAreaIntegration.test.ts`."
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    "VAL-RENAME-008 failed because `bunx convex dev --once` did not complete successfully."
+  ]
+}

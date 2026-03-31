@@ -1,0 +1,68 @@
+{
+  "groupId": "genui-draft-panel",
+  "surface": "web",
+  "overallStatus": "pass",
+  "summary": "Draft-only generation controls rendered correctly on a new persona configuration, including per-axis selectors, live counts, cost estimates, and the empty state before any run.",
+  "assertions": [
+    {
+      "id": "VAL-GENUI-001",
+      "status": "pass",
+      "details": "The draft config detail page showed the `Generate Synthetic Users` controls.",
+      "evidence": [
+        "Draft config `ut-panel-87ed9824 config` showed `Generate Synthetic Users` on `/persona-configs/p17b2ypgbg1gegch6erw76fz4983y893`."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/panel-config-detail.png"
+      ]
+    },
+    {
+      "id": "VAL-GENUI-002",
+      "status": "pass",
+      "details": "Each axis rendered a 3/5/7 level selector and defaulted to 3 levels.",
+      "evidence": [
+        "The page text showed `Digital confidence ... 3 levels` and `Support needs ... 3 levels` before any changes.",
+        "Opening the selector exposed `3 levels`, `5 levels`, and `7 levels` options."
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/support-needs-levels-open.png"
+      ]
+    },
+    {
+      "id": "VAL-GENUI-003",
+      "status": "pass",
+      "details": "The live count preview updated immediately when one axis changed from 3 to 5 levels.",
+      "evidence": [
+        "Default preview: `2 axes x 3 levels = 9 synthetic users`.",
+        "After changing Support needs to 5 levels: `2 axes x mixed levels (3 \u00b7 5) = 15 synthetic users`."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-GENUI-004",
+      "status": "pass",
+      "details": "The draft config showed a token and USD estimate before any generation started.",
+      "evidence": [
+        "Default estimate: `7,200 tokens \u00b7 $0.07`.",
+        "After the mixed-level change: `12,000 tokens \u00b7 $0.12`."
+      ],
+      "evidenceFiles": []
+    },
+    {
+      "id": "VAL-GENUI-011",
+      "status": "pass",
+      "details": "Before any generation run, the section showed an instructional empty state.",
+      "evidence": [
+        "The page text included `No generated synthetic users yet. Configure per-axis granularity, confirm the estimate, and run generation to build a reviewable cohort.`"
+      ],
+      "evidenceFiles": [
+        "/Users/alvaro.ybanez/.factory/missions/8cd912c7-5c38-40b9-bf77-e7e34fb15098/evidence/generation-ui/panel-config-detail.png"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser"
+  ],
+  "commands": [],
+  "frictions": [],
+  "blockers": []
+}
