@@ -230,11 +230,6 @@ export const regenerateSyntheticUser = mutation({
       );
     }
 
-    await ctx.db.patch(args.syntheticUserId, {
-      generationStatus: "pending_expansion",
-      generationError: undefined,
-    });
-
     await ctx.scheduler.runAfter(
       0,
       internal.batchGenerationAction.regenerateSyntheticUserProfile,
@@ -334,18 +329,10 @@ export const claimSyntheticUserForRegeneration = internalMutation({
       throw new ConvexError("Persona configuration not found.");
     }
 
-    await ctx.db.patch(args.syntheticUserId, {
-      generationStatus: "expanding",
-      generationError: undefined,
-    });
-
     return {
       orgId: config.orgId,
       config,
-      syntheticUser: {
-        ...syntheticUser,
-        generationStatus: "expanding" as const,
-      },
+      syntheticUser,
     };
   },
 });
@@ -412,14 +399,25 @@ export const failSyntheticUserExpansion = internalMutation({
     errorMessage: v.string(),
   },
   handler: async (ctx, args) => {
+    const syntheticUser = await ctx.db.get(args.syntheticUserId);
+
+    if (syntheticUser === null) {
+      throw new ConvexError("Synthetic user not found.");
+    }
+
+    if (args.runId === undefined) {
+      await ctx.db.patch(args.syntheticUserId, {
+        generationStatus: syntheticUser.generationStatus ?? "failed",
+        generationError: args.errorMessage,
+      });
+
+      return args.syntheticUserId;
+    }
+
     await ctx.db.patch(args.syntheticUserId, {
       generationStatus: "failed",
       generationError: args.errorMessage,
     });
-
-    if (args.runId === undefined) {
-      return args.syntheticUserId;
-    }
 
     const run = await ctx.db.get(args.runId);
 

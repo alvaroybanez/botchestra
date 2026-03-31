@@ -1,0 +1,28 @@
+{
+  "featureId": "batch-generation-backend",
+  "reviewedAt": "2026-03-31T00:19:45.635388Z",
+  "commitId": "919e40a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The backend covers the main batch-generation flow, but regeneration can silently erase a previously completed generated synthetic user when the LLM call fails. That breaks the expected 'regenerate a single user via LLM keeping axis values' behavior because a retry can downgrade a usable user into a permanently failed shell with no profile fields.",
+    "issues": [
+      {
+        "file": "convex/batchGeneration.ts",
+        "line": 233,
+        "severity": "blocking",
+        "description": "`regenerateSyntheticUser` patches an existing generated user back to `pending_expansion` and then `claimSyntheticUserForRegeneration` flips it to `expanding`, but `failSyntheticUserExpansion` only records `generationStatus`/`generationError` on failure. If the LLM call fails during regeneration, the document keeps the in-place partially reset state instead of restoring the last completed profile, so a previously usable generated user is left failed and may no longer satisfy callers expecting populated profile fields (`firstPersonBio`, `behaviorRules`, `tensionSeed`). This is a data-loss bug in the retry path."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The worker intentionally deviated from `backend-worker` step 6 because the mission documents a known flaky/slow full-suite `bun run test`. The skill still mandates the full suite, so the procedure does not match mission reality for this repo.",
+      "evidence": "`.factory/skills/backend-worker/SKILL.md` step 6 requires `bun run test`; handoff `skillFeedback.deviations` says the worker used scoped validators instead because mission `AGENTS.md` documents the BrowserLeaseDO full-suite issue."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail: found a blocking regeneration bug. If regeneration's LLM expansion fails, the existing generated user is left in a failed/half-reset state rather than preserving its previous completed profile. Report written to the requested scrutiny review path."
+}

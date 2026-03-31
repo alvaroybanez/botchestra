@@ -1,0 +1,28 @@
+{
+  "featureId": "grid-anchor-pure-logic",
+  "reviewedAt": "2026-03-31T00:00:00Z",
+  "commitId": "368074107898f8ca1fd7736eaf6f492ba4806afc",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The helpers are cleanly structured and broadly match the intended grid/count behavior, but the feature does not fully satisfy its own API contract because `estimateBatchCost` rejects fractional token budgets even though token estimates are documented as estimates and batch cost calculations should support non-integer averages.",
+    "issues": [
+      {
+        "file": "convex/batchGeneration/gridAnchors.ts",
+        "line": 74,
+        "severity": "blocking",
+        "description": "`estimateBatchCost` calls `assertNonNegativeInteger(tokensPerUser, \"Tokens per user\")`, which throws for fractional estimates such as `800.5`. The feature contract describes `tokensPerUser` as an estimate input, not an integer-only count, so this unnecessarily rejects valid average-token budgeting inputs and makes the helper less generally usable for cost previews."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `pure-logic-worker` skill still says to run full `bun run test` for the red/green loop and final validation, but this mission's AGENTS guidance documents that full-suite Vitest runs can hang and instructs targeted test-file commands instead.",
+      "evidence": "Mission AGENTS.md: 'Run tests: Target specific files: `bun run test -- convex/file.test.ts` (NOT full `bun run test` which can hang)'; `.factory/skills/pure-logic-worker/SKILL.md` steps 2, 3, and 5 still direct workers to run `bun run test`; handoff skillFeedback also flags this deviation."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail: the grid helper implementation is mostly solid, but `estimateBatchCost` incorrectly forbids fractional `tokensPerUser` estimates, so the exported API is stricter than the feature contract. Report written to the scrutiny reviews directory."
+}

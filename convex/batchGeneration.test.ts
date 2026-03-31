@@ -381,6 +381,64 @@ describe("batch generation", () => {
     expect(regeneratedUser?.axisValues).toEqual(originalAxisValues);
     expect(regeneratedUser?.firstPersonBio).not.toBe(generatedUser?.firstPersonBio);
   });
+
+  it("preserves the existing generated profile when regeneration fails", async () => {
+    const t = createTest();
+    const asResearcher = t.withIdentity(researchIdentity);
+    const configId = await createDraftConfig(t, { axisCount: 2 });
+
+    mockedGenerateWithModel.mockResolvedValueOnce(
+      makeExpansionResult({
+        text: fencedJson({
+          name: "Stable Persona",
+          firstPersonBio:
+            "I move carefully through new flows and rely on familiar patterns to stay oriented when a form introduces unexpected questions.",
+          behaviorRules: [
+            "Read helper text before acting.",
+            "Cross-check labels against expectations.",
+          ],
+          tensionSeed: "Gets uneasy when the flow asks for personal data before explaining why.",
+        }),
+      }),
+    );
+
+    await asResearcher.mutation(batchGenerationApi.startBatchGeneration, {
+      configId,
+      levelsPerAxis: 3,
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const [generatedUser] = await listGeneratedUsersForConfig(t, configId);
+    expect(generatedUser).toBeDefined();
+
+    mockedGenerateWithModel.mockRejectedValueOnce(new Error("regeneration failed"));
+
+    await asResearcher.mutation(batchGenerationApi.regenerateSyntheticUser, {
+      syntheticUserId: generatedUser!._id,
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const preservedUser = await asResearcher.query(api.personaConfigs.getSyntheticUser, {
+      syntheticUserId: generatedUser!._id,
+    });
+
+    expect(preservedUser).toMatchObject({
+      _id: generatedUser!._id,
+      name: "Stable Persona",
+      generationStatus: "completed",
+      generationError: "regeneration failed",
+      sourceType: "generated",
+      firstPersonBio:
+        "I move carefully through new flows and rely on familiar patterns to stay oriented when a form introduces unexpected questions.",
+      behaviorRules: [
+        "Read helper text before acting.",
+        "Cross-check labels against expectations.",
+      ],
+      tensionSeed:
+        "Gets uneasy when the flow asks for personal data before explaining why.",
+    });
+    expect(preservedUser?.axisValues).toEqual(generatedUser?.axisValues);
+  });
 });
 
 function makeAxis(overrides: Partial<AxisInput> = {}): AxisInput {

@@ -193,6 +193,14 @@ describe("estimateBatchCost", () => {
       estimatedCostUsd: 0.125,
     });
   });
+
+  it("accepts fractional token estimates per synthetic user", () => {
+    expect(estimateBatchCost(10, 750.5)).toEqual({
+      totalUsers: 10,
+      estimatedTokens: 7_505,
+      estimatedCostUsd: 0.07505,
+    });
+  });
 });
 
 describe("validateGenerationConfig", () => {

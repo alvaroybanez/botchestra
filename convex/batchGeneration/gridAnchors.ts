@@ -72,9 +72,9 @@ export function estimateBatchCost(
   tokensPerUser = 800,
 ): BatchCostEstimate {
   assertNonNegativeInteger(totalUsers, "Total users");
-  assertNonNegativeInteger(tokensPerUser, "Tokens per user");
+  assertNonNegativeNumber(tokensPerUser, "Tokens per user");
 
-  const estimatedTokens = totalUsers * tokensPerUser;
+  const estimatedTokens = roundTo(totalUsers * tokensPerUser, 6);
 
   return {
     totalUsers,
@@ -191,6 +191,12 @@ function resolveLevelsForAxis(
 function assertNonNegativeInteger(value: number, label: string) {
   if (!Number.isInteger(value) || value < 0) {
     throw new RangeError(`${label} must be a non-negative integer.`);
+  }
+}
+
+function assertNonNegativeNumber(value: number, label: string) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new RangeError(`${label} must be a non-negative number.`);
   }
 }
 

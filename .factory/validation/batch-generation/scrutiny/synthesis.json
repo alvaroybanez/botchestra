@@ -1,0 +1,60 @@
+{
+  "milestone": "batch-generation",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run test -- --maxWorkers 1",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "failedFeatures": [
+      "grid-anchor-pure-logic",
+      "batch-generation-backend"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "grid-anchor-pure-logic",
+      "severity": "blocking",
+      "description": "`estimateBatchCost` rejects fractional `tokensPerUser` estimates in `convex/batchGeneration/gridAnchors.ts:74`, making the helper stricter than the feature contract for estimated token budgeting inputs."
+    },
+    {
+      "featureId": "batch-generation-backend",
+      "severity": "blocking",
+      "description": "`regenerateSyntheticUser` can leave an existing generated user in a failed or partially reset state when the regeneration LLM call fails (`convex/batchGeneration.ts:233`), instead of preserving the previously completed profile."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "Skill: pure-logic-worker",
+      "suggestion": "Allow repo-specific mission guidance to override the default `bun run test` requirement when the mission explicitly documents a known flaky full-suite validator and provides the approved scoped test command.",
+      "evidence": "Mission `AGENTS.md` says to run targeted Vitest files because full `bun run test` can hang, but `.factory/skills/pure-logic-worker/SKILL.md` steps 2, 3, and 5 still require the full suite. The `grid-anchor-pure-logic` handoff records that deviation and the reviewer flagged the mismatch as a shared-state gap.",
+      "isSystemic": true
+    },
+    {
+      "target": "Skill: backend-worker",
+      "suggestion": "Clarify that when mission guidance documents a known unrelated full-suite failure, workers may use the mission-approved scoped validators plus type checks instead of treating the flaky full suite as feature-local validation.",
+      "evidence": "Mission `AGENTS.md` documents the BrowserLeaseDO full-suite issue, but `.factory/skills/backend-worker/SKILL.md` step 6 still mandates `bun run test`. The `batch-generation-backend` handoff and scrutiny review both identified this mismatch as the reason the worker had to deviate.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
