@@ -43,6 +43,7 @@ Always use `bun`, never `npm` or `npx`. Use `bunx` instead of `npx`.
 - After deployment, URL is typically: `https://botchestra-browser-executor.<account>.workers.dev`
 - Secrets needed on Worker: CALLBACK_SIGNING_SECRET, OPENAI_API_KEY (set via `wrangler secret put`)
 - Convex env var needed: BROWSER_EXECUTOR_URL (set via `bunx convex env set`)
+- On 2026-03-31, `bunx wrangler deploy` failed with `No such module "node:buffer"` until `apps/browser-executor/wrangler.toml` added `compatibility_flags = ["nodejs_compat"]` for `@cloudflare/puppeteer`.
 
 ## Key Dependencies Not Yet Installed
 - `@convex-dev/workflow` — needed for Milestone 4 (StudyOrchestrator)

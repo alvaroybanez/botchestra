@@ -1,6 +1,7 @@
 name = "botchestra-browser-executor"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
 account_id = "4706cd867d3963eb776c8a009005861b"
 
 [observability]
