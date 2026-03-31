@@ -1,11 +1,11 @@
 {
   "milestone": "generation-ui",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
-      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run test -- \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/convex/batchGeneration.test.ts\" \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/convex/crossAreaIntegration.test.ts\" \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/web/src/router.test.tsx\"",
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run test -- \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/convex/batchGeneration.test.ts\" \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/convex/personaConfigs.test.ts\" \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/convex/crossAreaIntegration.test.ts\" \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/web/src/router.test.tsx\"",
       "exitCode": 0
     },
     "typecheck": {
@@ -20,74 +20,33 @@
     }
   },
   "reviewsSummary": {
-    "total": 3,
+    "total": 1,
     "passed": 1,
-    "failed": 2,
-    "failedFeatures": [
-      "generation-ui",
-      "cross-area-integration"
-    ]
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "generation-ui",
-      "severity": "blocking",
-      "description": "Publishing remains enabled as soon as generated-user stubs exist, so a draft persona configuration can be published while a batch run is pending or running and background expansion/regeneration can still mutate synthetic users after publish."
-    },
-    {
-      "featureId": "cross-area-integration",
-      "severity": "blocking",
-      "description": "The mixed-source router assertions are false positives because the mocked persona names already contain `Generated`, `Manual`, and `Transcript-derived`, so the test can pass even if the Source badges regress."
-    }
-  ],
-  "appliedUpdates": [
-    {
-      "target": "library",
-      "description": "Updated `.factory/library/environment.md` with the current pre-existing full-suite test blocker in `apps/browser-executor/src/browserLeaseDO.test.ts` and the approved targeted-validator fallback.",
-      "sourceFeature": "scrutiny-validator-generation-ui"
-    }
-  ],
+  "blockingIssues": [],
+  "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "Skill: fullstack-worker",
       "suggestion": "When mission guidance documents a known unrelated full-suite test failure, allow the mission-approved targeted test commands plus typecheck instead of treating `bun run test` as the only acceptable validator.",
-      "evidence": "Mission `AGENTS.md` says to use targeted test commands because `apps/browser-executor/src/browserLeaseDO.test.ts` is a known pre-existing full-suite blocker, and the `generation-ui` handoff documents the resulting deviation from fullstack-worker step 6.",
+      "evidence": "Mission `AGENTS.md` and `.factory/library/environment.md` document the known `apps/browser-executor/src/browserLeaseDO.test.ts` timeout blocker, round 1 scrutiny recorded the resulting deviation from `.factory/skills/fullstack-worker/SKILL.md` step 6, and the round 2 fix review flagged the same mismatch again.",
       "isSystemic": true
     },
     {
       "target": "Skill: fullstack-worker",
       "suggestion": "Add a test-writing checkpoint that UI assertions must target the specific rendered control or cell instead of whole-row substring matches when fixtures repeat the label under test.",
-      "evidence": "Review `.factory/validation/generation-ui/scrutiny/reviews/cross-area-integration.json` found that `apps/web/src/router.test.tsx` asserted whole-row text contains `Generated`, `Manual`, and `Transcript-derived`, but the mocked persona names already contain those same words, creating false-positive badge coverage.",
+      "evidence": "Review `.factory/validation/generation-ui/scrutiny/reviews/cross-area-integration.json` found that `apps/web/src/router.test.tsx` asserted whole-row text contains `Generated`, `Manual`, and `Transcript-derived`, but the mocked persona names already contained those words, creating false-positive badge coverage before the round 2 fix corrected the test shape.",
       "isSystemic": true
     },
     {
       "target": "Skill: backend-worker",
       "suggestion": "Call out Convex validator/schema drift explicitly when Convex validators and internal Zod schemas both define the same generated payload shape, so generated API types do not become looser than the runtime contract.",
-      "evidence": "Review `.factory/validation/generation-ui/scrutiny/reviews/fix-expansion-payload-bugs.json` found `convex/batchGeneration.ts` made `generatedUser.tensionSeed` optional in the Convex validator while `convex/batchGeneration/expansion.ts` still requires it in `expandedSyntheticUserPersistedSchema`.",
+      "evidence": "Review `.factory/validation/generation-ui/scrutiny/reviews/fix-expansion-payload-bugs.json` found `convex/batchGeneration.ts` made `generatedUser.tensionSeed` optional in the Convex validator while `convex/batchGeneration/expansion.ts` still required it in `expandedSyntheticUserPersistedSchema`; the round 2 fix then had to align those layers.",
       "isSystemic": true
     }
   ],
-  "rejectedObservations": [
-    {
-      "observation": "The `generation-ui` review noted that commit `f8eb27c` still failed the happy path because expansion payloads were invalid.",
-      "reason": "already-fixed-by-later-feature-`fix-expansion-payload-bugs`-in-the-same-milestone"
-    },
-    {
-      "observation": "Persona-config publishing and batch-generation execution share a freeze contract.",
-      "reason": "captured-as-a-current-code-review-blocker-rather-than-a-shared-state-update"
-    },
-    {
-      "observation": "Generation preview/count/cap logic is centralized in shared helpers.",
-      "reason": "already-evident-in-code-and-not-actionable-as-a-shared-state-update"
-    },
-    {
-      "observation": "Batch expansion should treat config-backed shared axes as canonical and ignore LLM-supplied axes.",
-      "reason": "already-implemented-and-covered-by-tests"
-    },
-    {
-      "observation": "Source-label rendering is centralized and should be asserted at that boundary instead of through whole-row text.",
-      "reason": "escalated-as-a-skill-guidance-suggestion"
-    }
-  ],
-  "previousRound": null
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/generation-ui/scrutiny/synthesis.round1.json"
 }

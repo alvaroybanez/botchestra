@@ -1,0 +1,24 @@
+{
+  "featureId": "fix-generation-ui-scrutiny-findings",
+  "reviewedAt": "2026-03-31T03:32:26Z",
+  "commitId": "9c9aa5ab963775fdf750bdc40b348c68fff6b601",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit resolves the prior blocking scrutiny findings. Publishing is now blocked both server-side and in the detail-page UI while batch generation is pending or running, background expansion gracefully no-ops after a config leaves draft, router coverage now targets the actual Source cell with neutral fixture names, and the persisted expansion schema matches the optional tensionSeed contract.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The fullstack-worker skill still instructs workers to finish with the full `bun run test` suite even when mission guidance explicitly documents a known unrelated full-suite timeout and provides a targeted-validator fallback.",
+      "evidence": "`.factory/skills/fullstack-worker/SKILL.md` step 6 requires `bun run test`, while mission `AGENTS.md` and `.factory/library/environment.md` document the known `apps/browser-executor/src/browserLeaseDO.test.ts` timeout blocker and the fix feature handoff records a justified deviation to targeted tests plus typecheck."
+    }
+  ],
+  "addressesFailureFrom": [
+    "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/.factory/validation/generation-ui/scrutiny/reviews/generation-ui.json",
+    "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/.factory/validation/generation-ui/scrutiny/reviews/cross-area-integration.json"
+  ],
+  "summary": "Pass: commit 9c9aa5a adequately fixes the publish guard, post-publish expansion skip, mixed-source router assertions, and tensionSeed schema alignment without introducing new blocking regressions in the reviewed surface."
+}
