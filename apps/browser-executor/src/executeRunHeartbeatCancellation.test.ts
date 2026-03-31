@@ -276,6 +276,7 @@ describe("execute-run heartbeat cancellation", () => {
     expect(updates).toContainEqual(expect.objectContaining({
       eventType: "milestone",
       payload: expect.objectContaining({
+        stepIndex: 1,
         actionType: "cancel",
         rationaleShort: "Run cancelled via heartbeat stop signal",
       }),

@@ -487,8 +487,9 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
 
           const shouldStop = (await dependencies.sendHeartbeat?.()) ?? false;
           if (shouldStop) {
+            const cancelStepIndex = Math.max(stepCount, 1);
             await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
-              stepIndex: stepCount,
+              stepIndex: cancelStepIndex,
               actionType: "cancel",
               rationaleShort: "Run cancelled via heartbeat stop signal",
             });
