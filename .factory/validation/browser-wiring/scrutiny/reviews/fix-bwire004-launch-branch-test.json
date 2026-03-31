@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-bwire004-launch-branch-test",
+  "reviewedAt": "2026-03-31T12:15:29Z",
+  "commitId": "75e73d9a24e4361eff9fd2d0f69106c9655bb3ed",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix directly addresses the prior scrutiny failure by adding a fifth test case to `apps/browser-executor/src/executeRunHandler.browserResolution.test.ts` for the `env.BROWSER.launch()` branch. The new case verifies that `resolveBrowser()` prefers the binding's own `launch()` helper, does not call `@cloudflare/puppeteer.launch`, drives execution through the launched browser via the adapter path (`createBrowserContext()`), and closes the launched browser after the request completes. I found no blocking or non-blocking code issues in the fix.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `cf-worker` skill's required RED step is too rigid for test-only coverage features where the production behavior already exists and the task is only to add the missing regression test.",
+      "evidence": "`.factory/skills/cf-worker/SKILL.md:22` requires `Write tests first (RED)`. The fix handoff for session `b39b8917-b541-4726-aeca-45526c0c2734` records `skillFeedback.followedProcedure = false` because the added coverage test passed immediately without production changes, and the transcript skeleton shows a direct edit to `apps/browser-executor/src/executeRunHandler.browserResolution.test.ts` followed by green verification."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/browser-wiring/scrutiny/reviews/handler-wiring-and-build.json",
+  "summary": "Pass: this fix closes the exact gap called out in the failed `handler-wiring-and-build` review by adding the missing `env.BROWSER.launch()` coverage at `apps/browser-executor/src/executeRunHandler.browserResolution.test.ts:266`. The new test proves the launch-helper branch is exercised, the launched browser is used through `PuppeteerBrowserAdapter` (observed via `createBrowserContext()`), and cleanup closes the launched browser after handling."
+}

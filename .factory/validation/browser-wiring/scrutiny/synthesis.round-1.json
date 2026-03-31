@@ -1,7 +1,7 @@
 {
   "milestone": "browser-wiring",
-  "round": 2,
-  "status": "pass",
+  "round": 1,
+  "status": "fail",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,12 +20,20 @@
     }
   },
   "reviewsSummary": {
-    "total": 1,
-    "passed": 1,
-    "failed": 0,
-    "failedFeatures": []
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "failedFeatures": [
+      "handler-wiring-and-build"
+    ]
   },
-  "blockingIssues": [],
+  "blockingIssues": [
+    {
+      "featureId": "handler-wiring-and-build",
+      "severity": "blocking",
+      "description": "The new browser-resolution test suite never exercises the existing `env.BROWSER.launch()` branch in `resolveBrowser()`, so VAL-BWIRE-004 is not fully satisfied and that path could regress unnoticed."
+    }
+  ],
   "appliedUpdates": [
     {
       "target": "library",
@@ -51,14 +59,8 @@
       "suggestion": "Relax `cf-worker` guidance for deployment-only Cloudflare tasks so it explicitly allows necessary `wrangler.toml` compatibility updates and remote `wrangler deploy` plus public health-check verification when local `wrangler dev` is not the relevant validation surface.",
       "evidence": "The `deploy-browser-executor` review found the feature needed a `nodejs_compat` change in `apps/browser-executor/wrangler.toml` and validation against the deployed workers.dev endpoint, which conflicts with current `cf-worker` instructions that require local `wrangler dev` verification and say not to modify `wrangler.toml`.",
       "isSystemic": false
-    },
-    {
-      "target": "skills",
-      "suggestion": "Allow scrutiny workers to treat test-only coverage tasks as an exception to strict RED-first guidance when the production behavior already exists and the task is solely to add missing regression coverage.",
-      "evidence": "The `fix-bwire004-launch-branch-test` review noted that `.factory/skills/cf-worker/SKILL.md` requires `Write tests first (RED)`, but the fix feature only needed to add missing coverage for an already-correct `resolveBrowser()` branch, so the new regression test passed immediately without any production change.",
-      "isSystemic": false
     }
   ],
   "rejectedObservations": [],
-  "previousRound": ".factory/validation/browser-wiring/scrutiny/synthesis.round-1.json"
+  "previousRound": null
 }

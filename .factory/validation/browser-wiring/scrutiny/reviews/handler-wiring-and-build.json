@@ -1,0 +1,28 @@
+{
+  "featureId": "handler-wiring-and-build",
+  "reviewedAt": "2026-03-31T11:59:48Z",
+  "commitId": "75d7f528fd9a0ca8911993a92907e87cc238f304",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The handler wiring itself looks reasonable, but the feature does not fully satisfy its own validation contract because the new browser-resolution test suite never exercises the remaining env.BROWSER.launch() branch in resolveBrowser().",
+    "issues": [
+      {
+        "file": "apps/browser-executor/src/executeRunHandler.browserResolution.test.ts",
+        "line": 170,
+        "severity": "blocking",
+        "description": "VAL-BWIRE-004 requires all resolveBrowser() branches to be exercised, including the env.BROWSER.launch() path implemented in apps/browser-executor/src/executeRunHandler.ts:259-260. The new suite only covers the injected browser, direct BrowserLike binding, fetch-based Cloudflare binding via puppeteer.launch(env.BROWSER), and the misconfigured-worker case, so the launch()-based branch is still unverified and could regress unnoticed."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "Shared architecture docs still do not spell out that the production Cloudflare Browser Rendering binding is a fetch-based object passed to puppeteer.launch(env.BROWSER), even though the worker had to consult external Cloudflare docs to confirm that shape.",
+      "evidence": "Transcript skeleton shows WebSearch/FetchUrl calls to developers.cloudflare.com for @cloudflare/puppeteer. The skill documents puppeteer.launch(env.BROWSER) at .factory/skills/cf-worker/SKILL.md:35 and :93, while .factory/library/architecture.md:43 and :50 only mention the BROWSER binding generically and that resolveBrowser() handles 4 paths."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail: the implementation appears close, but the feature's new tests do not cover the existing env.BROWSER.launch() browser-resolution branch required by VAL-BWIRE-004, so the review cannot sign off on full feature coverage."
+}
