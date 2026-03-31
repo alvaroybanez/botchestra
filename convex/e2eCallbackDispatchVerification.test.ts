@@ -1,3 +1,4 @@
+import { register as registerWorkpool } from "@convex-dev/workpool/test";
 import { convexTest } from "convex-test";
 import { ExecuteRunRequestSchema } from "@botchestra/shared";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
@@ -63,7 +64,11 @@ const sampleTaskSpec = {
   viewport: { width: 1440, height: 900 },
 };
 
-const createTest = () => convexTest(schema, modules);
+const createTest = () => {
+  const t = convexTest(schema, modules);
+  registerWorkpool(t, "browserPool");
+  return t;
+};
 
 beforeEach(() => {
   process.env.CALLBACK_SIGNING_SECRET = CALLBACK_SECRET;
@@ -77,9 +82,92 @@ afterEach(() => {
   delete process.env.BROWSER_EXECUTOR_URL;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe("e2e callback dispatch verification", () => {
+  it("dispatches queued runs through the workpool when dispatchStudyWave is called", async () => {
+    vi.useFakeTimers();
+
+    const t = createTest();
+    const { runId, studyId } = await insertRunFixture(t, {
+      status: "queued",
+      startedAt: undefined,
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(input).toBe(`${BROWSER_EXECUTOR_URL}/execute-run`);
+      expect(init?.method).toBe("POST");
+      expect(init?.headers).toMatchObject({
+        "Content-Type": "application/json",
+      });
+
+      const request = ExecuteRunRequestSchema.parse(JSON.parse(String(init?.body)));
+
+      expect(request).toMatchObject({
+        runId,
+        studyId,
+        callbackBaseUrl: CALLBACK_BASE_URL,
+        taskSpec: sampleTaskSpec,
+        personaVariant: expect.objectContaining({
+          id: expect.any(String),
+          axisValues: { checkoutConfidence: 0.6 },
+          firstPersonBio: "I want checkout to feel clear and trustworthy.",
+        }),
+      });
+
+      await expect(
+        validateWorkerCallbackToken(request.callbackToken, CALLBACK_SECRET, {
+          expectedRunId: request.runId,
+        }),
+      ).resolves.toMatchObject({
+        ok: true,
+        payload: expect.objectContaining({
+          runId: request.runId,
+        }),
+      });
+
+      return Response.json({
+        ok: true,
+        finalOutcome: "SUCCESS",
+        stepCount: 5,
+        durationSec: 45,
+        frustrationCount: 0,
+        artifactManifestKey: `runs/${request.runId}/manifest.json`,
+      });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const dispatchResult = await t.mutation(internal.waveDispatch.dispatchStudyWave, {
+      studyId,
+    });
+    const runAfterDispatch = await getRunDoc(t, runId);
+
+    expect(dispatchResult).toMatchObject({
+      studyId,
+      createdRunCount: 0,
+      dispatchedRunCount: 1,
+      workIds: [expect.any(String)],
+    });
+    expect(runAfterDispatch?.status).toBe("dispatching");
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const settledRun = await getRunDoc(t, runId);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(settledRun).toMatchObject({
+      status: "success",
+      finalOutcome: "SUCCESS",
+      stepCount: 5,
+      durationSec: 45,
+      frustrationCount: 0,
+      artifactManifestKey: `runs/${runId}/manifest.json`,
+    });
+  });
+
   it("dispatches a schema-valid execute-run request and accepts heartbeat, milestone, and completion callbacks end to end", async () => {
     const t = createTest();
     const { runId } = await insertRunFixture(t, {
