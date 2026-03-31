@@ -35,6 +35,7 @@ packages/ai           — AI model config wrapper (per-task model resolution)
 ## Convex Conventions
 - Explicit modules map in tests (no import.meta.glob)
 - convex-test for function tests
+- For `@convex-dev/workpool`-backed tests, register the pool on the `convexTest` instance with `registerWorkpool(t, "<poolName>")` and then drain scheduled work with `await t.finishAllScheduledFunctions(vi.runAllTimers)` to exercise enqueued actions end-to-end.
 - Auth tables via @convex-dev/auth defineSchema helper
 - No convex.config.ts yet — needed when installing workflow/workpool (Milestone 4)
 

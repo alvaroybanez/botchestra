@@ -1,6 +1,6 @@
 {
   "milestone": "end-to-end",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
@@ -20,58 +20,35 @@
     }
   },
   "reviewsSummary": {
-    "total": 4,
-    "passed": 2,
-    "failed": 2,
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
     "failedFeatures": [
-      "e2e-callback-dispatch-verification",
-      "e2e-cross-area-integration"
+      "fix-worker-heartbeat-shouldstop"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "e2e-callback-dispatch-verification",
+      "featureId": "fix-worker-heartbeat-shouldstop",
       "severity": "blocking",
-      "description": "The new Convex test invokes `internal.waveDispatch.executeRun` directly instead of exercising `dispatchStudyWave -> dispatchAvailableRuns -> dispatchPool.enqueueAction`, so the claimed VAL-E2E-002 coverage misses regressions in the actual wave-dispatch entry path."
-    },
-    {
-      "featureId": "e2e-cross-area-integration",
-      "severity": "blocking",
-      "description": "Cancellation is only verified up to Convex returning `shouldStop: true`; the Worker currently discards heartbeat callback response bodies and never stops on that acknowledgement, so VAL-CROSS-007 is neither covered nor satisfied."
+      "description": "The Worker now stops when heartbeat acknowledgements return `shouldStop: true`, but the new pre-step cancellation path emits a `cancel` milestone at `stepIndex: 0`, colliding with the existing `start` milestone at the same index. Because Convex de-duplicates milestones by `(runId, stepIndex)`, the terminal cancellation milestone is dropped instead of being persisted end-to-end."
     }
   ],
   "appliedUpdates": [
     {
       "target": "library",
-      "description": "Updated `.factory/library/environment.md` to note that the Worker `OPENAI_API_KEY` is required for both agent action selection and self-report generation.",
-      "sourceFeature": "fix-selfreport-openai-key"
+      "description": "Documented the Convex workpool test-harness pattern: register the pool on the `convexTest` instance and drain scheduled functions to exercise enqueueAction-backed work end-to-end.",
+      "sourceFeature": "fix-wave-dispatch-integration-test"
     }
   ],
   "suggestedGuidanceUpdates": [
     {
       "target": "skills/backend-worker",
-      "suggestion": "Align the backend-worker validator command with the repository and mission source of truth by using the configured test command from `.factory/services.yaml` / mission AGENTS guidance instead of hardcoding `bun run test`.",
-      "evidence": "The `e2e-cross-area-integration` review found `.factory/skills/backend-worker/SKILL.md` still prescribes `bun run test`, while the mission AGENTS file and `.factory/services.yaml` define the canonical validator as `bunx vitest run --exclude '**/browserLeaseDO*'` because `browserLeaseDO.test.ts` is a known flaky suite.",
-      "isSystemic": true
-    },
-    {
-      "target": "skills/backend-worker",
-      "suggestion": "Clarify that validation-focused backend features may make tightly scoped, minimal schema additions when they are the smallest change required to satisfy an assigned validation contract, instead of always returning to the orchestrator immediately.",
-      "evidence": "The `e2e-callback-dispatch-verification` review found the worker had to deviate from the current backend-worker guidance after adding a single optional `runs.errorMessage` field required by the validation contract, and the handoff explicitly recommended relaxing that rule for tiny schema gaps.",
-      "isSystemic": false
-    },
-    {
-      "target": "skills/fullstack-worker",
-      "suggestion": "Add a validation-only branch that explains how to handle fullstack assignments whose goal is browser confirmation of an existing surface with no code changes, including how to report verification-only work without appearing to violate the implementation workflow.",
-      "evidence": "The `e2e-study-ui-verification` review passed, but the worker had to mark `followedProcedure: false` because `.factory/skills/fullstack-worker/SKILL.md` assumes backend and frontend implementation steps even when the assigned feature only requires confirming an existing demo UI.",
+      "suggestion": "Allow a test-only validation exception to the mandatory RED-first workflow when the assigned feature is purely missing regression coverage for already-correct behavior and no production code change is expected.",
+      "evidence": "The `fix-wave-dispatch-integration-test` review passed, but the worker still had to mark `followedProcedure: false` because `.factory/skills/backend-worker/SKILL.md` requires a RED cycle even for coverage-only assignments whose new tests can pass immediately against existing behavior.",
       "isSystemic": false
     }
   ],
-  "rejectedObservations": [
-    {
-      "observation": "Treat the backend-worker skill schema-change guidance and stale validator command mismatch as a single combined skill issue.",
-      "reason": "rejected because they are distinct guidance problems with different evidence and remediation paths."
-    }
-  ],
-  "previousRound": null
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/end-to-end/scrutiny/synthesis.round-1.json"
 }
