@@ -36,7 +36,7 @@ Always use `bun`, never `npm` or `npx`. Use `bunx` instead of `npx`.
 ## Local Dev Notes
 - On 2026-03-25, `bun run dev` fell back from port 5180 to 5183 because 5180 was already occupied by an existing local Botchestra server. Before manual browser validation, check whether `http://localhost:5180` is already serving the app so you can reuse it instead of launching a second Vite instance.
 - On 2026-03-25, `bunx wrangler dev --port 8787` for `apps/browser-executor` failed with `Address already in use` because an existing `workerd` process was already bound to `127.0.0.1:8787`, and `curl` requests to that listener timed out. Check `lsof -nP -iTCP:8787 -sTCP:LISTEN` before starting a new Worker instance, and do not kill the process unless you started it yourself.
-- On 2026-03-30, the full `bun run test` validator completed successfully in about 165 seconds. The suite is slow rather than hung because `apps/browser-executor/src/browserLeaseDO.test.ts` contains two long-running tests (~82 seconds each), so use a timeout of at least 4 minutes before treating the command as stuck.
+- On 2026-03-31, `bun run test -- --maxWorkers 1` still fails after about 305 seconds because `apps/browser-executor/src/browserLeaseDO.test.ts` has two tests that hit the built-in 120000ms timeout (`rejects acquisitions beyond the hard concurrency cap` and `reclaims stale leases after the timeout passes`). Treat that suite failure as a known pre-existing blocker outside feature work, and use targeted test files plus `bun run typecheck` for milestone validation until those tests are fixed.
 
 ## Key Dependencies Not Yet Installed
 - `@convex-dev/workflow` — needed for Milestone 4 (StudyOrchestrator)
