@@ -11,6 +11,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { MAX_SYNTHETIC_USERS_PER_CONFIG } from "./personaConfig.constants";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 
 const draftStatusSchema = z.enum(["draft", "published", "archived"]);
@@ -66,8 +67,6 @@ const updateDraftSchema = z
     (patch) => Object.values(patch).some((value) => value !== undefined),
     "At least one draft field must be provided.",
   );
-
-const MAX_SYNTHETIC_USERS_PER_CONFIG = 10;
 
 const syntheticUserAxisSchema = z
   .array(axisSchema)

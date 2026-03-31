@@ -75,7 +75,7 @@ describe("generateGridAnchors", () => {
         expertise: "novice",
       },
     });
-    expect(anchors.at(-1)).toEqual({
+    expect(anchors[anchors.length - 1]).toEqual({
       axisValues: {
         confidence: 1,
         patience: 1,
@@ -241,6 +241,11 @@ describe("validateGenerationConfig", () => {
 
     expect(validation.valid).toBe(false);
     expect(validation.totalUsers).toBe(823_543);
+
+    if (validation.valid) {
+      throw new Error("Expected validation to fail for an oversized generation.");
+    }
+
     expect(validation.error).toContain("exceeds cap");
   });
 });

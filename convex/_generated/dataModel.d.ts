@@ -270,6 +270,48 @@ export type DataModel = {
     searchIndexes: {};
     vectorIndexes: {};
   };
+  batchGenerationRuns: {
+    document: {
+      completedAt?: number;
+      completedCount: number;
+      configId: Id<"personaConfigs">;
+      failedCount: number;
+      levelsPerAxis: Record<string, number>;
+      orgId: string;
+      startedAt: number;
+      status:
+        | "pending"
+        | "running"
+        | "completed"
+        | "failed"
+        | "partially_failed";
+      totalCount: number;
+      _id: Id<"batchGenerationRuns">;
+      _creationTime: number;
+    };
+    fieldPaths:
+      | "_creationTime"
+      | "_id"
+      | "completedAt"
+      | "completedCount"
+      | "configId"
+      | "failedCount"
+      | "levelsPerAxis"
+      | `levelsPerAxis.${string}`
+      | "orgId"
+      | "startedAt"
+      | "status"
+      | "totalCount";
+    indexes: {
+      by_id: ["_id"];
+      by_creation_time: ["_creationTime"];
+      by_configId_and_startedAt: ["configId", "startedAt", "_creationTime"];
+      by_configId_and_status: ["configId", "status", "_creationTime"];
+      by_orgId_and_startedAt: ["orgId", "startedAt", "_creationTime"];
+    };
+    searchIndexes: {};
+    vectorIndexes: {};
+  };
   configTranscripts: {
     document: {
       configId: Id<"personaConfigs">;
@@ -900,13 +942,24 @@ export type DataModel = {
         midAnchor: string;
         weight: number;
       }>;
+      axisValues?: Array<{ key: string; value: number }>;
+      batchGenerationRunId?: Id<"batchGenerationRuns">;
+      behaviorRules?: Array<string>;
       configId: Id<"personaConfigs">;
       evidenceSnippets: Array<string>;
+      firstPersonBio?: string;
+      generationError?: string;
+      generationStatus?:
+        | "pending_expansion"
+        | "expanding"
+        | "completed"
+        | "failed";
       name: string;
       notes?: string;
       sourceRefs: Array<string>;
-      sourceType: "manual" | "json_import" | "transcript_derived";
+      sourceType: "manual" | "generated" | "json_import" | "transcript_derived";
       summary: string;
+      tensionSeed?: string;
       _id: Id<"syntheticUsers">;
       _creationTime: number;
     };
@@ -914,16 +967,28 @@ export type DataModel = {
       | "_creationTime"
       | "_id"
       | "axes"
+      | "axisValues"
+      | "batchGenerationRunId"
+      | "behaviorRules"
       | "configId"
       | "evidenceSnippets"
+      | "firstPersonBio"
+      | "generationError"
+      | "generationStatus"
       | "name"
       | "notes"
       | "sourceRefs"
       | "sourceType"
-      | "summary";
+      | "summary"
+      | "tensionSeed";
     indexes: {
       by_id: ["_id"];
       by_creation_time: ["_creationTime"];
+      by_batchGenerationRunId_and_generationStatus: [
+        "batchGenerationRunId",
+        "generationStatus",
+        "_creationTime",
+      ];
       by_configId: ["configId", "_creationTime"];
     };
     searchIndexes: {};

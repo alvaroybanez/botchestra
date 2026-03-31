@@ -1,0 +1,1 @@
+export const MAX_SYNTHETIC_USERS_PER_CONFIG = 10_000;

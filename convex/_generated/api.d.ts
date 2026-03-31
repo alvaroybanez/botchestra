@@ -155,6 +155,29 @@ export declare const api: {
       any
     >;
   };
+  batchGeneration: {
+    getBatchGenerationRun: FunctionReference<
+      "query",
+      "public",
+      { configId: Id<"personaConfigs"> },
+      any
+    >;
+    regenerateSyntheticUser: FunctionReference<
+      "mutation",
+      "public",
+      { syntheticUserId: Id<"syntheticUsers"> },
+      any
+    >;
+    startBatchGeneration: FunctionReference<
+      "mutation",
+      "public",
+      {
+        configId: Id<"personaConfigs">;
+        levelsPerAxis: number | Record<string, number>;
+      },
+      any
+    >;
+  };
   configTranscripts: {
     attachTranscript: FunctionReference<
       "mutation",
@@ -951,6 +974,69 @@ export declare const internal: {
           weight: number;
         }>;
       },
+      any
+    >;
+  };
+  batchGeneration: {
+    claimNextSyntheticUserForExpansion: FunctionReference<
+      "mutation",
+      "internal",
+      { runId: Id<"batchGenerationRuns"> },
+      any
+    >;
+    claimSyntheticUserForRegeneration: FunctionReference<
+      "mutation",
+      "internal",
+      { syntheticUserId: Id<"syntheticUsers"> },
+      any
+    >;
+    completeSyntheticUserExpansion: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        generatedUser: {
+          axes: Array<{
+            description: string;
+            highAnchor: string;
+            key: string;
+            label: string;
+            lowAnchor: string;
+            midAnchor: string;
+            weight: number;
+          }>;
+          behaviorRules: Array<string>;
+          firstPersonBio: string;
+          name: string;
+          summary: string;
+          tensionSeed: string;
+        };
+        runId?: Id<"batchGenerationRuns">;
+        syntheticUserId: Id<"syntheticUsers">;
+      },
+      any
+    >;
+    failSyntheticUserExpansion: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        errorMessage: string;
+        runId?: Id<"batchGenerationRuns">;
+        syntheticUserId: Id<"syntheticUsers">;
+      },
+      any
+    >;
+  };
+  batchGenerationAction: {
+    expandNextUser: FunctionReference<
+      "action",
+      "internal",
+      { runId: Id<"batchGenerationRuns"> },
+      any
+    >;
+    regenerateSyntheticUserProfile: FunctionReference<
+      "action",
+      "internal",
+      { syntheticUserId: Id<"syntheticUsers"> },
       any
     >;
   };

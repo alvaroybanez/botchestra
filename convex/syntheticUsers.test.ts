@@ -250,7 +250,7 @@ describe("synthetic user CRUD", () => {
     ).rejects.toThrow(/archived/i);
   });
 
-  it("preserves evidence snippets in order and enforces a maximum of 10 synthetic users per config", async () => {
+  it("preserves evidence snippets in order and allows more than 10 synthetic users per config", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
     const configId = await createDraftPack(t);
@@ -281,13 +281,18 @@ describe("synthetic user CRUD", () => {
       "Snippet 2",
       "Snippet 3",
     ]);
-
     await expect(
       asResearcher.mutation(api.personaConfigs.createSyntheticUser, {
         configId,
         syntheticUser: makeSyntheticUserInput({ name: "Eleventh synthetic user" }),
       }),
-    ).rejects.toThrow("maximum of 10 synthetic users");
+    ).resolves.toBeDefined();
+
+    const syntheticUsers = await asResearcher.query(api.personaConfigs.listSyntheticUsers, {
+      configId,
+    });
+
+    expect(syntheticUsers).toHaveLength(11);
   });
 
   it("applies transcript-derived archetypes to a draft config with source refs and updated shared axes", async () => {

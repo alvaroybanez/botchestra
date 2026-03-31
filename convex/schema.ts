@@ -72,6 +72,21 @@ const transcriptSignalStatusValidator = v.union(
   v.literal("failed"),
 );
 
+const generatedSyntheticUserStatusValidator = v.union(
+  v.literal("pending_expansion"),
+  v.literal("expanding"),
+  v.literal("completed"),
+  v.literal("failed"),
+);
+
+const batchGenerationRunStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("running"),
+  v.literal("completed"),
+  v.literal("failed"),
+  v.literal("partially_failed"),
+);
+
 const transcriptArchetypeValidator = v.object({
   name: v.string(),
   summary: v.string(),
@@ -263,15 +278,43 @@ export default defineSchema({
     name: v.string(),
     summary: v.string(),
     axes: v.array(axisValidator),
+    axisValues: v.optional(v.array(axisValueValidator)),
     sourceType: v.union(
       v.literal("manual"),
+      v.literal("generated"),
       v.literal("json_import"),
       v.literal("transcript_derived"),
     ),
+    batchGenerationRunId: v.optional(v.id("batchGenerationRuns")),
+    generationStatus: v.optional(generatedSyntheticUserStatusValidator),
+    generationError: v.optional(v.string()),
     sourceRefs: v.array(v.string()),
     evidenceSnippets: v.array(v.string()),
     notes: v.optional(v.string()),
-  }).index("by_configId", ["configId"]),
+    firstPersonBio: v.optional(v.string()),
+    behaviorRules: v.optional(v.array(v.string())),
+    tensionSeed: v.optional(v.string()),
+  })
+    .index("by_configId", ["configId"])
+    .index("by_batchGenerationRunId_and_generationStatus", [
+      "batchGenerationRunId",
+      "generationStatus",
+    ]),
+
+  batchGenerationRuns: defineTable({
+    configId: v.id("personaConfigs"),
+    orgId: v.string(),
+    status: batchGenerationRunStatusValidator,
+    levelsPerAxis: v.record(v.string(), v.number()),
+    totalCount: v.number(),
+    completedCount: v.number(),
+    failedCount: v.number(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_configId_and_status", ["configId", "status"])
+    .index("by_configId_and_startedAt", ["configId", "startedAt"])
+    .index("by_orgId_and_startedAt", ["orgId", "startedAt"]),
 
   // 4. personaVariants
   personaVariants: defineTable({
