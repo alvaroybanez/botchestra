@@ -263,6 +263,31 @@ describe("createExecuteRunHandler browser resolution", () => {
     expect(rawBrowser.close).toHaveBeenCalledTimes(1);
   });
 
+  it("uses env.BROWSER.launch() when provided and closes the launched browser after handling the request", async () => {
+    const page = new MockBrowserPage(createPageSnapshot());
+    const context = new MockBrowserContext(page);
+    const rawBrowser = new MockPuppeteerBrowser(context);
+    const bindingLaunch = vi.fn(async () => rawBrowser);
+    const { namespace } = createLeaseNamespace();
+
+    const response = await createHandler()(createRequest(), {
+      BROWSER: {
+        launch: bindingLaunch,
+      },
+      BROWSER_LEASE: namespace,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      finalOutcome: "SUCCESS",
+    });
+    expect(bindingLaunch).toHaveBeenCalledTimes(1);
+    expect(launchSpy).not.toHaveBeenCalled();
+    expect(rawBrowser.createBrowserContext).toHaveBeenCalledTimes(1);
+    expect(rawBrowser.close).toHaveBeenCalledTimes(1);
+  });
+
   it("returns a misconfigured worker response when no browser binding is available", async () => {
     const { namespace } = createLeaseNamespace();
 
