@@ -1,0 +1,68 @@
+{
+  "milestone": "ai-action-selector",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "bunx vitest run --exclude '**/browserLeaseDO*'",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run typecheck",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"No lint configured\"",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "failedFeatures": [
+      "ai-action-selector-core",
+      "ai-selector-safety-wiring"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "ai-action-selector-core",
+      "severity": "blocking",
+      "description": "apps/browser-executor/src/aiActionSelector.ts returns allowed action types without validating the fields required by each action variant, so malformed-but-parseable model output can become an invalid AgentAction that later crashes in runExecutor."
+    },
+    {
+      "featureId": "ai-action-selector-core",
+      "severity": "blocking",
+      "description": "apps/browser-executor/src/aiActionSelector.ts still propagates malformed JSON parse errors out of createAiActionSelector instead of recovering to a valid action or safe fallback, so VAL-AISEL-009 is not satisfied."
+    },
+    {
+      "featureId": "ai-selector-safety-wiring",
+      "severity": "blocking",
+      "description": "apps/browser-executor/src/executeRunHandler.ts wires createAiActionSelectorWithFallback() as the default selector, but the Worker runtime never supplies OPENAI_API_KEY to the AI package, so the production path silently falls back instead of actually using the AI selector."
+    },
+    {
+      "featureId": "ai-selector-safety-wiring",
+      "severity": "blocking",
+      "description": "apps/browser-executor/src/fallbackActionSelector.ts can still emit goto/type/select actions without required url/selector/text/value fields for some allowedActions sets, which turns fallback handling into BROWSER_ERROR instead of a safe recovery path."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Documented the runtime-required fields for each AgentAction variant so future browser-executor selectors and fallbacks do not treat url/selector/text/value as universally optional.",
+      "sourceFeature": "ai-action-selector-core"
+    }
+  ],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [
+    {
+      "observation": "The cf-worker skill's timeout/fallback guidance may be misaligned with the ai-action-selector-core feature because the reviewed commit intentionally exposed createAiActionSelector without fallback while a later milestone feature added createAiActionSelectorWithFallback.",
+      "reason": "ambiguous"
+    }
+  ],
+  "previousRound": null
+}
