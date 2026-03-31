@@ -1,7 +1,7 @@
 {
   "milestone": "batch-generation",
-  "round": 2,
-  "status": "pass",
+  "round": 1,
+  "status": "fail",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -15,17 +15,31 @@
     },
     "lint": {
       "passed": true,
-      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && echo \"No lint configured\"",
+      "command": "echo \"No lint configured\"",
       "exitCode": 0
     }
   },
   "reviewsSummary": {
-    "total": 1,
-    "passed": 1,
-    "failed": 0,
-    "failedFeatures": []
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "failedFeatures": [
+      "grid-anchor-pure-logic",
+      "batch-generation-backend"
+    ]
   },
-  "blockingIssues": [],
+  "blockingIssues": [
+    {
+      "featureId": "grid-anchor-pure-logic",
+      "severity": "blocking",
+      "description": "`estimateBatchCost` rejects fractional `tokensPerUser` estimates in `convex/batchGeneration/gridAnchors.ts:74`, making the helper stricter than the feature contract for estimated token budgeting inputs."
+    },
+    {
+      "featureId": "batch-generation-backend",
+      "severity": "blocking",
+      "description": "`regenerateSyntheticUser` can leave an existing generated user in a failed or partially reset state when the regeneration LLM call fails (`convex/batchGeneration.ts:233`), instead of preserving the previously completed profile."
+    }
+  ],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
@@ -37,10 +51,10 @@
     {
       "target": "Skill: backend-worker",
       "suggestion": "Clarify that when mission guidance documents a known unrelated full-suite failure, workers may use the mission-approved scoped validators plus type checks instead of treating the flaky full suite as feature-local validation.",
-      "evidence": "Round 1 scrutiny found that mission `AGENTS.md` documents the BrowserLeaseDO full-suite issue while `.factory/skills/backend-worker/SKILL.md` step 6 still mandates `bun run test`, forcing the `batch-generation-backend` worker to deviate. The round 2 fix review for `fix-batch-generation-scrutiny` reinforced the same mismatch via the feature handoff and review evidence, which again pointed to mission-approved targeted validation for this repo.",
+      "evidence": "Mission `AGENTS.md` documents the BrowserLeaseDO full-suite issue, but `.factory/skills/backend-worker/SKILL.md` step 6 still mandates `bun run test`. The `batch-generation-backend` handoff and scrutiny review both identified this mismatch as the reason the worker had to deviate.",
       "isSystemic": true
     }
   ],
   "rejectedObservations": [],
-  "previousRound": ".factory/validation/batch-generation/scrutiny/synthesis.round1.json"
+  "previousRound": null
 }

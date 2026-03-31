@@ -1,0 +1,24 @@
+{
+  "featureId": "fix-batch-generation-scrutiny",
+  "reviewedAt": "2026-03-31T00:54:51.971636Z",
+  "commitId": "8df9c4d374777ff7cfb7b30e0ab9223932de1daa",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix directly addresses both prior blockers. `estimateBatchCost` now accepts finite non-negative fractional `tokensPerUser` values, and regeneration no longer preemptively resets a completed generated user before the LLM succeeds, so a failed regeneration preserves the existing completed profile while surfacing the new error. I did not find any new blocking or non-blocking regressions in the scoped fix diff.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `backend-worker` skill still mandates full-suite `bun run test` for validation, but this repo's mission guidance documents unrelated BrowserLeaseDO full-suite instability and instructs targeted test-file validation instead.",
+      "evidence": "Mission AGENTS.md says `Run tests: Target specific files: bun run test -- convex/file.test.ts (NOT full bun run test which can hang)` and lists BrowserLeaseDO full-suite instability as a known pre-existing issue; `.factory/skills/backend-worker/SKILL.md` step 6 still requires `bun run test`; the fix handoff's `skillFeedback.deviations` cites this mismatch."
+    }
+  ],
+  "addressesFailureFrom": [
+    ".factory/validation/batch-generation/scrutiny/reviews/grid-anchor-pure-logic.json",
+    ".factory/validation/batch-generation/scrutiny/reviews/batch-generation-backend.json"
+  ],
+  "summary": "Pass: the rerun resolves both earlier blocking scrutiny findings. Fractional token estimates are now accepted, regeneration failures preserve the prior completed generated profile, and the batch-generation scrutiny artifacts referenced in the feature description are tracked in the reviewed commit."
+}
