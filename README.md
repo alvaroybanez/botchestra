@@ -26,12 +26,18 @@ botchestra/
 │   └── shared/               # Zod schemas and shared types
 ├── convex/                   # Convex backend — schema, mutations, queries, workflows
 │   ├── schema.ts             # Source-of-truth data model
+│   ├── personaConfigs.ts     # Persona configuration CRUD & lifecycle
+│   ├── axisLibrary.ts        # Org-scoped axis library (search, CRUD)
+│   ├── axisGeneration.ts     # LLM-powered axis auto-generation
+│   ├── batchGeneration.ts    # Batch synthetic user generation (100-1000+)
+│   ├── batchGeneration/      # Grid anchor Cartesian product & expansion
+│   ├── transcripts.ts        # Transcript upload & management
+│   ├── transcriptExtraction.ts  # LLM-driven synthetic user extraction
+│   ├── configTranscripts.ts  # Transcript ↔ config attachment
 │   ├── studies.ts            # Study CRUD & lifecycle
 │   ├── studyLifecycleWorkflow.ts  # End-to-end study orchestration
 │   ├── waveDispatch.ts       # Wave-based run dispatch
 │   ├── runs.ts               # Run management
-│   ├── personaPacks.ts       # Persona pack CRUD
-│   ├── personaVariantGeneration.ts  # AI-driven variant generation
 │   ├── analysisPipeline.ts   # Summarization, clustering, reports
 │   ├── analysisQueries.ts    # Analysis read queries
 │   ├── rbac.ts               # Role-based access control
@@ -39,7 +45,7 @@ botchestra/
 │   ├── observability.ts      # Structured logging & metrics
 │   ├── costControls.ts       # Budget guardrails
 │   └── ...
-├── specs/                    # Product spec & PRDs (PRD-0 through PRD-5)
+├── specs/                    # Product spec & PRDs
 ├── vitest.config.ts          # Root workspace test config
 ├── tsconfig.base.json        # Shared TypeScript configuration
 └── package.json              # Bun workspace root
@@ -50,7 +56,7 @@ botchestra/
 - **[Bun](https://bun.sh/)** — package manager and runtime (always use `bun`/`bunx`, never `npm`/`npx`)
 - **[Convex](https://convex.dev/)** account — backend platform
 - **[Cloudflare](https://www.cloudflare.com/)** account — for the browser executor worker
-- **OpenAI API key** — for persona generation and analysis
+- **OpenAI API key** — for persona generation, axis generation, transcript extraction, and analysis
 
 ## Setup
 
@@ -83,56 +89,41 @@ cd apps/browser-executor && bunx wrangler dev
 
 ## Key Features
 
-Implementation spans six PRDs (PRD-0 through PRD-5):
+### Persona Configurations
+Create, edit, publish, and archive persona configurations with shared axes, synthetic users, and transcript attachments. Configurations progress through a draft → published → archived lifecycle with validation at each transition.
 
-### PRD-0 — App Shell
-- Convex Auth with password provider (sign-up / sign-in)
-- TanStack Router with protected routes and role-aware navigation
-- Settings page for API keys, model configuration, and user preferences
-- shadcn/ui component library integration
+### Axis Library
+Org-scoped, searchable library of axis definitions. Auto-populated from axes in published persona configurations and enriched via manual curation. Axes define the behavioral and demographic dimensions used to generate diverse synthetic users.
 
-### PRD-1 — Persona Engine
-- Persona pack CRUD (create, list, archive, duplicate)
-- Multi-axis persona model with configurable dimensions (tech savviness, patience, domain expertise, etc.)
-- AI-driven variant generation with demographic and behavioral diversity
-- Proto-persona templates for quick-start scenarios
-- Variant review workflow (approve / reject / regenerate)
+### Axis Generation
+LLM-powered auto-generation of axes from configuration context. Given a persona config's purpose and target audience, suggests 3–5 relevant axes with level definitions to accelerate config authoring.
 
-### PRD-2 — Browser Executor
-- Cloudflare Worker with Durable Objects for browser lease management
-- AI agent loop: observe → decide → act → record
-- Guardrail enforcer (URL scope, forbidden actions, step limits, cost caps)
-- Step policy with configurable action allowlists
-- Milestone-based progress tracking
-- Artifact uploading (screenshots, HAR traces, DOM snapshots)
-- Self-report generation from agent observations
+### Transcript Ingestion
+Upload interview transcripts and extract synthetic users via LLM analysis. Supports two modes:
+- **Auto-discover** — the LLM identifies persona patterns and proposes synthetic users from the transcript
+- **Guided** — provide axis hints to steer extraction toward specific dimensions
 
-### PRD-3 — Study Orchestrator
-- Full study lifecycle workflow (draft → queued → running → analyzing → completed)
-- Wave-based dispatch with configurable concurrency
-- Run progress tracking with heartbeat monitoring
-- Cancellation fan-out for graceful shutdown
-- Cost controls and budget enforcement
-- Cron-based health checks
+### Batch Synthetic User Generation
+Generate 100–1,000+ synthetic users at scale:
+- **Grid anchor Cartesian product** — combines per-axis granularity levels (3/5/7) to create anchor profiles
+- **Sequential LLM expansion** — enriches each anchor into a full synthetic user with demographics and behavioral traits
+- Cost estimation before generation, real-time progress tracking, and individual profile regeneration
 
-### PRD-4 — Analysis Pipeline
-- Automated finding summarization and severity classification
-- Observation clustering with affinity scoring
-- Analysis notes and annotations
-- Report generation with exportable formats
-- Finding ranking with configurable algorithms
-- Artifact resolution for replay evidence
+### Studies
+Create studies linked to published persona configurations. Studies orchestrate browser-agent runs against target web flows using the generated synthetic users.
 
-### PRD-5 — Hardening
-- Role-based access control (RBAC) with admin / researcher / viewer roles
-- Encrypted credential storage for target site authentication
-- Structured observability (audit events, function-level logging, metrics)
-- Report export (JSON, CSV) with local file download
-- Cost control dashboards and alerts
+### Browser Executor
+Cloudflare Worker with Durable Objects for browser lease management. AI agent loop (observe → decide → act → record) with guardrails, step policies, milestone tracking, and artifact uploading.
+
+### Analysis Pipeline
+Automated finding summarization, severity classification, observation clustering, and report generation with exportable formats (JSON, CSV).
+
+### Hardening
+Role-based access control (RBAC), encrypted credential storage, structured observability, cost control dashboards, and report exports.
 
 ## Testing
 
-The project has **378 tests** across 45 test files, all passing:
+The project has tests across 55 test files:
 
 ```bash
 bun run test
@@ -140,7 +131,7 @@ bun run test
 
 - **[Vitest](https://vitest.dev/)** for all test workspaces
 - **[convex-test](https://docs.convex.dev/testing)** for Convex function tests
-- **Pure function tests** for domain logic (sampling, ranking, guardrails, frustration heuristics)
+- **Pure function tests** for domain logic (sampling, ranking, guardrails, grid anchors, frustration heuristics)
 - **Mock browser abstractions** — no real browser tests in CI
 
 Tests are organized as a Vitest workspace spanning `packages/*/vitest.config.ts`, `apps/*/vitest.config.ts`, and `convex/vitest.config.ts`.
