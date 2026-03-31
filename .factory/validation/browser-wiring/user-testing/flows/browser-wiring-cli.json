@@ -1,0 +1,269 @@
+{
+  "groupId": "browser-wiring-cli",
+  "surface": "cli",
+  "assertions": [
+    {
+      "id": "VAL-BWIRE-001",
+      "title": "Adapter implements BrowserLike interface",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run typecheck",
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "passingTests": [
+          "src/puppeteerAdapter.test.ts > puppeteerAdapter > implements BrowserLike and configures locale + viewport on new pages"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/typecheck.log",
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-002",
+      "title": "BrowserPage implements full page contract",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "passingTests": [
+          "src/puppeteerAdapter.test.ts > puppeteerAdapter > implements BrowserPage methods and returns snapshot + screenshot data",
+          "src/puppeteerAdapter.test.ts > puppeteerAdapter > delegates navigation and interaction methods to the puppeteer page"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-003",
+      "title": "BrowserContext lifecycle management",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "passingTests": [
+          "src/puppeteerAdapter.test.ts > puppeteerAdapter > implements BrowserLike and configures locale + viewport on new pages"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-004",
+      "title": "Production handler resolves browser from env binding",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "passingTests": [
+          "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > uses the injected browser and resolves the durable-object lease client from env.BROWSER_LEASE",
+          "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > uses env.BROWSER directly when it already satisfies BrowserLike",
+          "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > launches the Cloudflare browser binding through @cloudflare/puppeteer and wraps it with PuppeteerBrowserAdapter",
+          "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > uses env.BROWSER.launch() when provided and closes the launched browser after handling the request",
+          "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > returns a misconfigured worker response when no browser binding is available"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-005",
+      "title": "Build produces deployable Worker bundle",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bun run build"
+        ],
+        "artifacts": [
+          "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor/dist/index.js",
+          "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor/dist/index.js.map"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/build.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-007",
+      "title": "Existing tests still pass",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "summary": {
+          "testFilesPassed": 12,
+          "testsPassed": 116
+        },
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-008",
+      "title": "/execute-run accepts valid ExecuteRunRequest",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "passingTests": [
+          "src/index.test.ts > browser executor worker entry point > dispatches valid POST /execute-run requests to the handler",
+          "src/executeRunIntegration.test.ts > execute-run integration > runs the full success lifecycle and sends callbacks in order"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-009",
+      "title": "/execute-run rejects invalid payloads",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "passingTests": [
+          "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with missing required fields",
+          "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with missing taskSpec",
+          "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with invalid taskSpec.maxSteps",
+          "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with invalid JSON",
+          "src/index.test.ts > browser executor worker entry point > returns 401 for POST /execute-run with an invalid callback token"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-BWIRE-010",
+      "title": "Lease client integration via Durable Object",
+      "status": "pass",
+      "validatedBy": {
+        "commands": [
+          "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose"
+        ],
+        "passingTests": [
+          "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > uses the injected browser and resolves the durable-object lease client from env.BROWSER_LEASE"
+        ],
+        "evidence": [
+          "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log"
+        ]
+      }
+    }
+  ],
+  "statusByAssertion": {
+    "VAL-BWIRE-001": "pass",
+    "VAL-BWIRE-002": "pass",
+    "VAL-BWIRE-003": "pass",
+    "VAL-BWIRE-004": "pass",
+    "VAL-BWIRE-005": "pass",
+    "VAL-BWIRE-007": "pass",
+    "VAL-BWIRE-008": "pass",
+    "VAL-BWIRE-009": "pass",
+    "VAL-BWIRE-010": "pass"
+  },
+  "commands": [
+    {
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bun run typecheck",
+      "cwd": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra",
+      "exitCode": 0,
+      "evidence": "browser-wiring/browser-wiring-cli/typecheck.log"
+    },
+    {
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra\" && bunx vitest run --config apps/browser-executor/vitest.config.ts --exclude '**/browserLeaseDO*' --reporter=verbose",
+      "cwd": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra",
+      "exitCode": 1,
+      "evidence": "browser-wiring/browser-wiring-cli/vitest-browser-executor.log",
+      "notes": "No test files found when the package-local Vitest config was executed from the repo root."
+    },
+    {
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose",
+      "cwd": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor",
+      "exitCode": 0,
+      "evidence": "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log",
+      "summary": {
+        "testFilesPassed": 12,
+        "testsPassed": 116
+      },
+      "relevantPassingTests": [
+        "src/puppeteerAdapter.test.ts > puppeteerAdapter > implements BrowserLike and configures locale + viewport on new pages",
+        "src/puppeteerAdapter.test.ts > puppeteerAdapter > implements BrowserPage methods and returns snapshot + screenshot data",
+        "src/puppeteerAdapter.test.ts > puppeteerAdapter > delegates navigation and interaction methods to the puppeteer page",
+        "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > uses the injected browser and resolves the durable-object lease client from env.BROWSER_LEASE",
+        "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > uses env.BROWSER directly when it already satisfies BrowserLike",
+        "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > launches the Cloudflare browser binding through @cloudflare/puppeteer and wraps it with PuppeteerBrowserAdapter",
+        "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > uses env.BROWSER.launch() when provided and closes the launched browser after handling the request",
+        "src/executeRunHandler.browserResolution.test.ts > createExecuteRunHandler browser resolution > returns a misconfigured worker response when no browser binding is available",
+        "src/executeRunIntegration.test.ts > execute-run integration > runs the full success lifecycle and sends callbacks in order",
+        "src/index.test.ts > browser executor worker entry point > dispatches valid POST /execute-run requests to the handler",
+        "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with missing required fields",
+        "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with missing taskSpec",
+        "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with invalid taskSpec.maxSteps",
+        "src/index.test.ts > browser executor worker entry point > returns 400 for POST /execute-run with invalid JSON",
+        "src/index.test.ts > browser executor worker entry point > returns 401 for POST /execute-run with an invalid callback token"
+      ]
+    },
+    {
+      "command": "cd \"/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor\" && bun run build",
+      "cwd": "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor",
+      "exitCode": 0,
+      "evidence": "browser-wiring/browser-wiring-cli/build.log",
+      "artifacts": [
+        "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor/dist/index.js",
+        "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor/dist/index.js.map"
+      ]
+    }
+  ],
+  "evidence": {
+    "logFiles": [
+      "browser-wiring/browser-wiring-cli/typecheck.log",
+      "browser-wiring/browser-wiring-cli/typecheck.exit",
+      "browser-wiring/browser-wiring-cli/vitest-browser-executor.log",
+      "browser-wiring/browser-wiring-cli/vitest-browser-executor.exit",
+      "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.log",
+      "browser-wiring/browser-wiring-cli/vitest-browser-executor-rerun.exit",
+      "browser-wiring/browser-wiring-cli/build.log",
+      "browser-wiring/browser-wiring-cli/build.exit"
+    ],
+    "buildOutputs": [
+      "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor/dist/index.js",
+      "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor/dist/index.js.map",
+      "/Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor/dist/README.md"
+    ]
+  },
+  "frictions": [
+    {
+      "description": "Running the package-local Vitest config from the repo root with --config apps/browser-executor/vitest.config.ts returned 'No test files found' because the config's include pattern is relative to the package directory.",
+      "resolved": true,
+      "resolution": "Reran Vitest from /Users/alvaro.ybanez/workspace/github.com/alvaroybanez/botchestra/apps/browser-executor using bunx vitest run --exclude '**/browserLeaseDO*' --reporter=verbose.",
+      "affectedAssertions": [
+        "VAL-BWIRE-001",
+        "VAL-BWIRE-002",
+        "VAL-BWIRE-003",
+        "VAL-BWIRE-004",
+        "VAL-BWIRE-007",
+        "VAL-BWIRE-008",
+        "VAL-BWIRE-009",
+        "VAL-BWIRE-010"
+      ]
+    }
+  ],
+  "blockers": [],
+  "toolsUsed": [
+    "Read",
+    "Grep",
+    "LS",
+    "Execute"
+  ],
+  "summary": "Validated 9 assigned browser-wiring CLI assertions. Typecheck passed, the browser-executor Vitest suite passed (12 files / 116 tests) after rerunning from the package directory, and apps/browser-executor built successfully with deployable dist artifacts present."
+}

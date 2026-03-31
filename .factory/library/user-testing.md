@@ -25,6 +25,8 @@ Testing surface, required tools, and resource cost classification.
 - **Rationale:** Dev server is lightweight (~55 MB RSS). Machine has 36 GB RAM, 12 CPU cores. Each agent-browser instance uses ~300 MB. For this mission, wrangler dev and Convex dev also run simultaneously, adding ~500 MB overhead. 4 instances = ~1.2 GB + services = ~1.7 GB total. Well within 70% of ~12 GB headroom = 8.4 GB budget.
 - **Max concurrent validators (test-cli):** 1
 - **Rationale (test-cli):** `bunx convex dev --once` and similar CLI validators already exercise workspace typecheck plus Convex preparation against the shared repo and deployment. Keep them serialized to avoid overlapping generated-file refreshes, duplicate workspace builds, and noisy contention without any throughput benefit.
+- **Max concurrent validators (worker-http):** 1
+- **Rationale (worker-http):** Browser-executor HTTP probes share one local `wrangler dev` port and one deployed worker URL. Keep them serialized so request logs, health checks, and any callback-token fixtures stay attributable to a single validator.
 
 ## Testing Notes
 
@@ -32,6 +34,7 @@ Testing surface, required tools, and resource cost classification.
 - LLM-powered features (axis generation, transcript extraction) require OPENAI_API_KEY set in Convex env. init.sh handles this.
 - For transcript extraction testing, use small test transcripts (< 1000 chars each) to minimize LLM cost during validation.
 - Cross-area flows (VAL-CROSS-*) test the full pipeline and should be validated last, after all individual area flows pass.
+- Browser-executor package-local Vitest coverage should be run from `apps/browser-executor/`; invoking `bunx vitest run --config apps/browser-executor/vitest.config.ts` from the repo root can resolve includes incorrectly and report `No test files found`.
 - Axis Library reloads can briefly show the app-level `Loading...` fallback before the route-level `Loading axis library...` skeleton. Wait for the latter text if you need direct evidence for VAL-AXLIB-019.
 - Axis Library's filter summary now spells out both active criteria (for example `matching tag "support" and search "insight"`), which is useful evidence for VAL-AXLIB-011's AND behavior.
 - Transcript extraction progress does not stay visibly mounted after same-tab navigation away and back; future validators should expect VAL-TEXTR-006 to fail unless that UI is fixed.
@@ -71,3 +74,10 @@ Testing surface, required tools, and resource cost classification.
 - Prefer the narrowest Vitest command that covers the assigned assertions. For axis-generation contract assertions `VAL-AXGEN-013` through `VAL-AXGEN-015`, use `bun run test -- convex/axisGeneration.test.ts`.
 - Treat CLI validation as read-only with respect to app data; do not seed or mutate shared browser state from this surface.
 - Save the exact command, exit code, and the relevant passing test names in the flow report so the synthesis can map the output back to the contract assertions.
+
+## Flow Validator Guidance: worker-http
+
+- Use the deployed worker URL for externally visible contract checks unless the assertion explicitly targets local dev behavior.
+- If local browser-executor checks are required, use only `http://localhost:8787` and ensure one validator owns that port at a time.
+- Save raw HTTP status codes and response bodies for `/health` or `/execute-run` probes in the flow report.
+- Do not attempt destructive or stateful retries against production endpoints; prefer idempotent `POST /health` checks and rely on targeted Vitest coverage for malformed `/execute-run` contract cases when a valid callback token is not readily available.

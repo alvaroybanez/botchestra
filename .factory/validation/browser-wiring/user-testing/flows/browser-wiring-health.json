@@ -1,0 +1,35 @@
+{
+  "groupId": "browser-wiring-health",
+  "surface": "worker-http",
+  "assertions": [
+    {
+      "id": "VAL-BWIRE-006",
+      "status": "pass",
+      "reason": "POST /health returned HTTP 200 with body {\"status\":\"ok\"}.",
+      "httpStatus": 200,
+      "responseBody": "{\"status\":\"ok\"}",
+      "responseHeaders": "HTTP/2 200 \ndate: Tue, 31 Mar 2026 12:23:33 GMT\ncontent-type: application/json\ncontent-length: 15\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=RorDr1PndFXCkeXzYBDhjDSlhJUuDxPM%2FADHorNwZDHDCbmxAjziyaRjn3lc0FE%2BVt9qGlLK1bYAr4lHyqgg1QUqrlae332zOpHK3foINsV26bR6AZy9%2F%2FCHxcU726eise18t15x4bKIY50zRDY5cvoZbpKRbBAAauwVrVaCGV2W5e3OwvIQC0a%2BI%2BLv3yVmFeZSUvPRrGgBi%2FYZXfg9BUQO31BYoUs%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: 9e4f5370abce13a4-MAD\nalt-svc: h3=\":443\"; ma=86400"
+    }
+  ],
+  "statusByAssertion": {
+    "VAL-BWIRE-006": "pass"
+  },
+  "commands": [
+    "curl -sS -X POST -D '<evidence>/response.headers.txt' -o '<evidence>/response.body.txt' -w '%{http_code}' 'https://botchestra-browser-executor.alvaroybanez-dash-cloudflare-com.workers.dev/health'"
+  ],
+  "evidence": {
+    "baseDir": "/Users/alvaro.ybanez/.factory/missions/6ceae915-bba1-41a1-9dec-4ed54e3c81f0/evidence",
+    "files": [
+      "browser-wiring/browser-wiring-health/response.headers.txt",
+      "browser-wiring/browser-wiring-health/response.body.txt",
+      "browser-wiring/browser-wiring-health/status.code.txt",
+      "browser-wiring/browser-wiring-health/response.raw.txt"
+    ]
+  },
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": [
+    "curl"
+  ],
+  "summary": "Validated VAL-BWIRE-006 at 2026-03-31T12:23:58.160619+00:00: POST /health returned HTTP 200 with body {\"status\":\"ok\"}."
+}

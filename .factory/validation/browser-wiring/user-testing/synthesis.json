@@ -1,0 +1,38 @@
+{
+  "milestone": "browser-wiring",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-BWIRE-001",
+    "VAL-BWIRE-002",
+    "VAL-BWIRE-003",
+    "VAL-BWIRE-004",
+    "VAL-BWIRE-005",
+    "VAL-BWIRE-006",
+    "VAL-BWIRE-007",
+    "VAL-BWIRE-008",
+    "VAL-BWIRE-009",
+    "VAL-BWIRE-010"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added worker-http concurrency and flow-guidance entries so deployed browser-executor HTTP checks stay serialized and use the deployed /health endpoint by default.",
+      "source": "setup"
+    },
+    {
+      "target": "user-testing.md",
+      "description": "Documented that browser-executor package-local Vitest coverage should be run from apps/browser-executor because repo-root invocation with --config can report no test files found.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null
+}
