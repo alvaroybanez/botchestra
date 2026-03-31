@@ -21,7 +21,7 @@ Environment variables, external dependencies, and setup notes.
 
 ### Worker `.dev.vars` (apps/browser-executor/.dev.vars)
 - `CALLBACK_SIGNING_SECRET` — HMAC signing secret for callback tokens
-- `OPENAI_API_KEY` — OpenAI API key for agent action selection
+- `OPENAI_API_KEY` — OpenAI API key for Worker-side LLM calls, including agent action selection and self-report generation
 
 ## Cloudflare Account
 - Account: ybaniez (alvaroybanez@gmail.com)
