@@ -637,6 +637,7 @@ export type DataModel = {
       durationSec?: number;
       endedAt?: number;
       errorCode?: string;
+      errorMessage?: string;
       finalOutcome?: string;
       finalUrl?: string;
       frustrationCount: number;
@@ -683,6 +684,7 @@ export type DataModel = {
       | "durationSec"
       | "endedAt"
       | "errorCode"
+      | "errorMessage"
       | "finalOutcome"
       | "finalUrl"
       | "frustrationCount"

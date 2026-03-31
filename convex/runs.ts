@@ -243,6 +243,9 @@ export const settleRunFromCallback = internalMutation({
       ...(parsedArgs.patch?.guardrailCode !== undefined
         ? { guardrailCode: parsedArgs.patch.guardrailCode }
         : {}),
+      ...(parsedArgs.patch?.errorMessage !== undefined
+        ? { errorMessage: parsedArgs.patch.errorMessage }
+        : {}),
     });
 
     const updatedRun = await getRunById(ctx, runId);
