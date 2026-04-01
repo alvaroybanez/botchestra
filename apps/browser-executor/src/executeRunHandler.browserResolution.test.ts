@@ -69,6 +69,16 @@ class MockPuppeteerBrowser {
   constructor(readonly context: MockBrowserContext) {}
 }
 
+class MockAmbiguousCloudflareBrowser {
+  readonly newPage = vi.fn(async () => this.page);
+  readonly newContext = vi.fn(async () => {
+    throw new Error("The RPC receiver does not implement the method newContext");
+  });
+  readonly close = vi.fn(async () => undefined);
+
+  constructor(readonly page: MockBrowserPage) {}
+}
+
 function createPageSnapshot(): BrowserPageSnapshot {
   return {
     url: "https://shop.example.com/cart",
@@ -285,6 +295,30 @@ describe("createExecuteRunHandler browser resolution", () => {
     expect(bindingLaunch).toHaveBeenCalledTimes(1);
     expect(launchSpy).not.toHaveBeenCalled();
     expect(rawBrowser.createBrowserContext).toHaveBeenCalledTimes(1);
+    expect(rawBrowser.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefers wrapping launched browsers with newPage over treating them as BrowserLike when they also expose a broken newContext", async () => {
+    const page = new MockBrowserPage(createPageSnapshot());
+    const rawBrowser = new MockAmbiguousCloudflareBrowser(page);
+    const bindingLaunch = vi.fn(async () => rawBrowser);
+    const { namespace } = createLeaseNamespace();
+
+    const response = await createHandler()(createRequest(), {
+      BROWSER: {
+        launch: bindingLaunch,
+      },
+      BROWSER_LEASE: namespace,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      finalOutcome: "SUCCESS",
+    });
+    expect(bindingLaunch).toHaveBeenCalledTimes(1);
+    expect(rawBrowser.newContext).not.toHaveBeenCalled();
+    expect(rawBrowser.newPage).toHaveBeenCalledTimes(1);
     expect(rawBrowser.close).toHaveBeenCalledTimes(1);
   });
 

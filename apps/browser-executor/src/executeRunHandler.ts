@@ -164,20 +164,20 @@ function isPuppeteerBrowserLike(value: unknown): value is PuppeteerBrowserLike {
 }
 
 function toResolvedBrowser(browser: unknown): ResolvedBrowser | null {
-  if (isBrowserLike(browser)) {
+  if (isPuppeteerBrowserLike(browser)) {
     const closableBrowser = browser as ClosableBrowserLike;
     return {
-      browser,
+      browser: new PuppeteerBrowserAdapter(browser),
       closeBrowser: async () => {
         await closableBrowser.close?.();
       },
     };
   }
 
-  if (isPuppeteerBrowserLike(browser)) {
+  if (isBrowserLike(browser)) {
     const closableBrowser = browser as ClosableBrowserLike;
     return {
-      browser: new PuppeteerBrowserAdapter(browser),
+      browser,
       closeBrowser: async () => {
         await closableBrowser.close?.();
       },
