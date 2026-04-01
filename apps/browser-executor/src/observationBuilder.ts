@@ -6,6 +6,7 @@ export type ObservationInteractiveElement = {
   role: string;
   label: string;
   selector?: string | null;
+  href?: string | null;
   hint?: string | null;
   disabled?: boolean;
 };
@@ -98,10 +99,11 @@ function summarizeInteractiveElements(
   const summarizedElements = interactiveElements.slice(0, maxInteractiveElements).map((element) => {
     const label = normalizeWhitespace(element.label || "Unlabeled element");
     const selector = element.selector ? ` (${normalizeWhitespace(element.selector)})` : "";
+    const href = element.href ? ` → ${normalizeWhitespace(element.href)}` : "";
     const hint = element.hint ? ` — ${normalizeWhitespace(element.hint)}` : "";
     const disabled = element.disabled ? " [disabled]" : "";
 
-    return `${element.role} "${label}"${selector}${disabled}${hint}`;
+    return `${element.role} "${label}"${selector}${href}${disabled}${hint}`;
   });
 
   const remainingCount = interactiveElements.length - summarizedElements.length;

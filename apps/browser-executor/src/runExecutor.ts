@@ -232,12 +232,37 @@ function getCompletedMilestones(milestones: readonly RunMilestone[]) {
     .map((milestone) => `${milestone.actionType} @ step ${milestone.stepIndex + 1}`);
 }
 
-function toActionHistoryEntry(stepIndex: number, action: AgentAction): ObservationActionHistoryEntry {
+function describeActionOutcome(
+  previousPage: BrowserPageSnapshot,
+  nextPage: BrowserPageSnapshot,
+) {
+  if (previousPage.url !== nextPage.url) {
+    return `navigated to ${nextPage.url}`;
+  }
+
+  if (previousPage.title !== nextPage.title) {
+    return `page title changed to ${nextPage.title}`;
+  }
+
+  const previousInteractiveElementCount = previousPage.interactiveElements.length;
+  const nextInteractiveElementCount = nextPage.interactiveElements.length;
+  if (previousInteractiveElementCount !== nextInteractiveElementCount) {
+    return `page updated (${previousInteractiveElementCount} -> ${nextInteractiveElementCount} interactive elements)`;
+  }
+
+  return "no visible change (same URL, title, and elements)";
+}
+
+function toActionHistoryEntry(
+  stepIndex: number,
+  action: AgentAction,
+  outcome: string | null = null,
+): ObservationActionHistoryEntry {
   return {
     stepIndex,
     actionType: action.type,
     target: action.url ?? action.selector ?? action.value ?? null,
-    outcome: action.rationale ?? null,
+    outcome,
   };
 }
 
@@ -669,7 +694,9 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             history,
             milestones,
           );
-          actionHistory.push(toActionHistoryEntry(stepCount, action));
+          actionHistory.push(
+            toActionHistoryEntry(stepCount, action, describeActionOutcome(pageSnapshot, nextPageSnapshot)),
+          );
 
           const frustrationState = updateFrustrationState({
             currentStep: stepState,

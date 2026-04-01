@@ -39,6 +39,7 @@ type PuppeteerPageLike = {
   setExtraHTTPHeaders(headers: Record<string, string>): Promise<unknown>;
   setViewport(viewport: BrowserContextOptions["viewport"]): Promise<unknown>;
   type(selector: string, text: string): Promise<unknown>;
+  waitForNavigation?: (options: { waitUntil: "networkidle0"; timeout: number }) => Promise<unknown>;
   waitForTimeout?: (durationMs: number) => Promise<unknown>;
 };
 
@@ -52,6 +53,7 @@ const DEFAULT_SCREENSHOT_OPTIONS: BrowserScreenshotOptions = {
 
 const DEFAULT_SCROLL_DELTA_Y = 640;
 const DEFAULT_WAIT_DURATION_MS = 250;
+const POST_ACTION_SETTLE_TIMEOUT_MS = 2000;
 
 async function configurePage(page: PuppeteerPageLike, options: BrowserContextOptions) {
   await page.setViewport(options.viewport);
@@ -70,6 +72,34 @@ function toUint8Array(value: Uint8Array | ArrayBuffer | string) {
 
 function isModernPuppeteerBrowser(browser: PuppeteerBrowserSource): browser is PuppeteerBrowserLike {
   return "newPage" in browser && typeof browser.newPage === "function";
+}
+
+async function waitForTimeout(page: PuppeteerPageLike, durationMs: number) {
+  if (typeof page.waitForTimeout === "function") {
+    await page.waitForTimeout(durationMs);
+    return;
+  }
+
+  await page.evaluate((timeoutMs) => {
+    return new Promise<void>((resolve) => {
+      window.setTimeout(resolve, timeoutMs);
+    });
+  }, durationMs);
+}
+
+async function waitForActionToSettle(page: PuppeteerPageLike) {
+  const navigationWait =
+    typeof page.waitForNavigation === "function"
+      ? page.waitForNavigation({
+          waitUntil: "networkidle0",
+          timeout: POST_ACTION_SETTLE_TIMEOUT_MS,
+        }).catch(() => undefined)
+      : Promise.resolve(undefined);
+
+  await Promise.race([
+    navigationWait,
+    waitForTimeout(page, POST_ACTION_SETTLE_TIMEOUT_MS),
+  ]);
 }
 
 export class PuppeteerPageAdapter implements BrowserPage {
@@ -268,13 +298,22 @@ export class PuppeteerPageAdapter implements BrowserPage {
         document.querySelectorAll("input:not([type='hidden']), textarea, button, a[href], select"),
       )
         .filter(isVisible)
-        .map((element) => ({
-          role: getRole(element),
-          label: getLabel(element) || "Unlabeled element",
-          selector: buildSelector(element),
-          hint: getHint(element),
-          disabled: isDisabled(element),
-        }));
+        .map((element) => {
+          const role = getRole(element);
+          const href =
+            role === "link" && element instanceof HTMLAnchorElement
+              ? normalizeWhitespace(element.getAttribute("href"))
+              : "";
+
+          return {
+            role,
+            label: getLabel(element) || "Unlabeled element",
+            selector: buildSelector(element),
+            ...(href ? { href } : {}),
+            hint: getHint(element),
+            disabled: isDisabled(element),
+          };
+        });
 
       return {
         url: window.location.href,
@@ -303,14 +342,17 @@ export class PuppeteerPageAdapter implements BrowserPage {
 
   async click(selector: string) {
     await this.page.click(selector);
+    await waitForActionToSettle(this.page);
   }
 
   async type(selector: string, text: string) {
     await this.page.type(selector, text);
+    await waitForActionToSettle(this.page);
   }
 
   async select(selector: string, value: string) {
     await this.page.select(selector, value);
+    await waitForActionToSettle(this.page);
   }
 
   async scroll(deltaY = DEFAULT_SCROLL_DELTA_Y) {
@@ -320,16 +362,7 @@ export class PuppeteerPageAdapter implements BrowserPage {
   }
 
   async wait(durationMs = DEFAULT_WAIT_DURATION_MS) {
-    if (typeof this.page.waitForTimeout === "function") {
-      await this.page.waitForTimeout(durationMs);
-      return;
-    }
-
-    await this.page.evaluate((timeoutMs) => {
-      return new Promise<void>((resolve) => {
-        window.setTimeout(resolve, timeoutMs);
-      });
-    }, durationMs);
+    await waitForTimeout(this.page, durationMs);
   }
 
   async back() {

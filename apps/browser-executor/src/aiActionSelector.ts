@@ -67,6 +67,7 @@ function buildSystemPrompt(input: SelectActionInput) {
   return [
     "You are selecting the next browser action for a synthetic persona navigating a web flow.",
     "Stay persona-authentic, goal-directed, and safe.",
+    "IMPORTANT: If your action history shows you tried the same action and the outcome was no visible change, you MUST try a completely different action or selector. Never repeat a failed action.",
     `Return only valid JSON matching exactly ${ACTION_RESPONSE_SHAPE}.`,
     `Allowed actions: ${taskSpec.allowedActions.join(", ")}.`,
     "",
@@ -90,6 +91,7 @@ function buildUserPrompt(input: SelectActionInput) {
     role: element.role,
     label: element.label,
     selector: element.selector ?? null,
+    href: element.href ?? null,
     hint: element.hint ?? null,
     disabled: element.disabled ?? false,
   }));
