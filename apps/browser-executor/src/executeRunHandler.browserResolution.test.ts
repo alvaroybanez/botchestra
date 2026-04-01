@@ -322,6 +322,34 @@ describe("createExecuteRunHandler browser resolution", () => {
     expect(rawBrowser.close).toHaveBeenCalledTimes(1);
   });
 
+  it("prefers the Cloudflare binding path when env.BROWSER satisfies both BrowserLike and Cloudflare binding detection", async () => {
+    const page = new MockBrowserPage(createPageSnapshot());
+    const rawBrowser = new MockPuppeteerBrowser(new MockBrowserContext(page));
+    const browserBinding = {
+      fetch: vi.fn<typeof fetch>(),
+      newContext: vi.fn(async () => {
+        throw new Error("The RPC receiver does not implement the method newContext");
+      }),
+    };
+    const { namespace } = createLeaseNamespace();
+    launchSpy.mockResolvedValue(rawBrowser);
+
+    const response = await createHandler()(createRequest(), {
+      BROWSER: browserBinding,
+      BROWSER_LEASE: namespace,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      finalOutcome: "SUCCESS",
+    });
+    expect(launchSpy).toHaveBeenCalledWith(browserBinding);
+    expect(browserBinding.newContext).not.toHaveBeenCalled();
+    expect(rawBrowser.createBrowserContext).toHaveBeenCalledTimes(1);
+    expect(rawBrowser.close).toHaveBeenCalledTimes(1);
+  });
+
   it("returns a misconfigured worker response when no browser binding is available", async () => {
     const { namespace } = createLeaseNamespace();
 

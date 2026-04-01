@@ -102,6 +102,10 @@ const FAILURE_STATUS_BY_CODE: RunFailureResponseStatus = {
   BROWSER_ERROR: 500,
 };
 
+function logResolveBrowser(message: string) {
+  console.log(`resolveBrowser: ${message}`);
+}
+
 function json(body: unknown, status: number) {
   return Response.json(body, { status });
 }
@@ -192,6 +196,7 @@ async function resolveBrowser(
   options: ExecuteRunIntegrationOptions,
 ): Promise<ResolvedBrowser | null> {
   if (options.browser) {
+    logResolveBrowser("injected BrowserLike provided via options.browser");
     return {
       browser: options.browser,
       closeBrowser: async () => undefined,
@@ -199,26 +204,43 @@ async function resolveBrowser(
   }
 
   if (!env.BROWSER) {
+    logResolveBrowser("no BROWSER binding available");
     return null;
   }
 
+  if (isCloudflareBrowserWorkerLike(env.BROWSER)) {
+    logResolveBrowser("CF browser binding detected, launching puppeteer");
+    const launchedBrowser = await puppeteer.launch(env.BROWSER);
+    const resolvedBrowser = toResolvedBrowser(launchedBrowser);
+    logResolveBrowser(
+      resolvedBrowser
+        ? "puppeteer-launched browser resolved successfully"
+        : "puppeteer-launched browser could not be resolved",
+    );
+    return resolvedBrowser;
+  }
+
   if (isBrowserLike(env.BROWSER)) {
+    logResolveBrowser("pre-resolved BrowserLike detected");
     return {
       browser: env.BROWSER,
       closeBrowser: async () => undefined,
     };
   }
 
-  if (isCloudflareBrowserWorkerLike(env.BROWSER)) {
-    const launchedBrowser = await puppeteer.launch(env.BROWSER);
-    return toResolvedBrowser(launchedBrowser);
-  }
-
   if ("launch" in env.BROWSER && typeof env.BROWSER.launch === "function") {
+    logResolveBrowser("custom browser launch() binding detected");
     const launchedBrowser = await env.BROWSER.launch();
-    return toResolvedBrowser(launchedBrowser);
+    const resolvedBrowser = toResolvedBrowser(launchedBrowser);
+    logResolveBrowser(
+      resolvedBrowser
+        ? "custom launch() browser resolved successfully"
+        : "custom launch() browser could not be resolved",
+    );
+    return resolvedBrowser;
   }
 
+  logResolveBrowser("BROWSER binding did not match any supported browser shape");
   return null;
 }
 
