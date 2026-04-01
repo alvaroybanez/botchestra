@@ -146,36 +146,41 @@ describe("cost controls", () => {
     expect(queuedRun?.status).toBe("cancelled");
   });
 
-  it("auto-cancels remaining queued runs when cumulative failures exceed the threshold", async () => {
+  it("auto-cancels remaining queued runs when hard failures exceed the threshold of 10", async () => {
     const t = createTest();
     const studyId = await insertStudy(t, { status: "running" });
-    await insertRun(t, studyId, {
-      status: "hard_fail",
-      startedAt: 1_000,
-      endedAt: 2_000,
-      durationSec: 1,
-      finalOutcome: "FAILED",
-      errorCode: "PRIMARY_FAILURE",
-    });
-    await insertRun(t, studyId, {
-      status: "timeout",
-      startedAt: 1_000,
-      endedAt: 4_000,
-      durationSec: 3,
-      finalOutcome: "FAILED",
-      errorCode: "MAX_DURATION_EXCEEDED",
-    });
-    await insertRun(t, studyId, {
-      status: "infra_error",
-      startedAt: 1_000,
-      endedAt: 5_000,
-      durationSec: 4,
-      finalOutcome: "FAILED",
-      errorCode: "WORKER_INTERNAL_ERROR",
-    });
+    const failureStatuses: RunStatus[] = [
+      "hard_fail",
+      "timeout",
+      "infra_error",
+      "blocked_by_guardrail",
+      "hard_fail",
+      "timeout",
+      "infra_error",
+      "blocked_by_guardrail",
+      "hard_fail",
+      "timeout",
+    ];
+    for (const [index, status] of failureStatuses.entries()) {
+      await insertRun(t, studyId, {
+        status,
+        startedAt: 1_000 + index * 1_000,
+        endedAt: 1_500 + index * 1_000,
+        durationSec: 1,
+        finalOutcome: "FAILED",
+        errorCode:
+          status === "blocked_by_guardrail"
+            ? "DOMAIN_BLOCKED"
+            : status === "infra_error"
+              ? "WORKER_INTERNAL_ERROR"
+              : status === "timeout"
+                ? "MAX_DURATION_EXCEEDED"
+                : "PRIMARY_FAILURE",
+      });
+    }
     const runningRunId = await insertRun(t, studyId, {
       status: "running",
-      startedAt: 6_000,
+      startedAt: 12_000,
     });
     const queuedRunId = await insertRun(t, studyId, { status: "queued" });
 
@@ -200,6 +205,64 @@ describe("cost controls", () => {
     expect(study?.cancellationReason).toMatch(/cumulative failures/i);
     expect(study?.cancellationReason).toMatch(/threshold/i);
     expect(queuedRun?.status).toBe("cancelled");
+  });
+
+  it("does not count gave_up runs toward the cumulative failure threshold", async () => {
+    const t = createTest();
+    const studyId = await insertStudy(t, { status: "running" });
+    const softOutcomeStatuses: RunStatus[] = [
+      "gave_up",
+      "soft_fail",
+      "gave_up",
+      "soft_fail",
+      "gave_up",
+      "soft_fail",
+      "gave_up",
+      "soft_fail",
+      "gave_up",
+      "soft_fail",
+      "gave_up",
+    ];
+    for (const [index, status] of softOutcomeStatuses.entries()) {
+      await insertRun(t, studyId, {
+        status,
+        startedAt: 1_000 + index * 1_000,
+        endedAt: 1_500 + index * 1_000,
+        durationSec: 1,
+        finalOutcome: status === "gave_up" ? "ABANDONED" : "FAILED",
+        errorCode:
+          status === "gave_up"
+            ? "RUN_CANCELLED"
+            : "CHECKOUT_COPY_CONFUSING",
+      });
+    }
+    const runningRunId = await insertRun(t, studyId, {
+      status: "running",
+      startedAt: 20_000,
+    });
+    const queuedRunId = await insertRun(t, studyId, { status: "queued" });
+
+    await t.mutation(internal.runs.settleRunFromCallback, {
+      runId: runningRunId,
+      nextStatus: "gave_up",
+      patch: {
+        endedAt: 22_000,
+        durationSec: 2,
+        stepCount: 9,
+        finalOutcome: "ABANDONED",
+        frustrationCount: 3,
+        errorCode: "RUN_CANCELLED",
+        errorMessage: "Heartbeat asked the worker to stop after the run finished the goal.",
+      },
+    });
+
+    const study = await getStudyDoc(t, studyId);
+    const queuedRun = await getRunDoc(t, queuedRunId);
+
+    expect(study?.status).toBe("running");
+    expect(study?.cancellationRequestedAt).toBeUndefined();
+    expect(study?.cancellationReason).toBeUndefined();
+    expect(queuedRun?.status).toBe("queued");
   });
 });
 

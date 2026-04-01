@@ -8,7 +8,7 @@ import { internalMutation } from "./_generated/server";
 import { recordAuditEvent } from "./observability";
 import { loadEffectiveSettingsForOrg } from "./settings";
 
-export const DEFAULT_CUMULATIVE_FAILURE_THRESHOLD = 3;
+export const DEFAULT_CUMULATIVE_FAILURE_THRESHOLD = 10;
 export const SYSTEM_COST_CONTROL_ACTOR = "system:cost-controls";
 
 export const evaluateStudyCostControls = internalMutation({
@@ -239,8 +239,6 @@ function resolveRunBrowserSeconds(
 function isFailedRunStatus(status: Doc<"runs">["status"]) {
   return (
     status === "hard_fail" ||
-    status === "soft_fail" ||
-    status === "gave_up" ||
     status === "timeout" ||
     status === "blocked_by_guardrail" ||
     status === "infra_error"
