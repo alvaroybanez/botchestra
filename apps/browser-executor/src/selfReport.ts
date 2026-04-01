@@ -6,6 +6,7 @@ import {
   type SelfReportAnswer,
 } from "@botchestra/shared";
 import type { RunExecutionResult } from "./runExecutor";
+import { logStructuredError } from "./structuredLogger";
 
 type SelfReportTextGenerator = (
   prompt: string,
@@ -17,6 +18,7 @@ type GenerateSelfReportOptions = {
   result: RunExecutionResult;
   generateText?: SelfReportTextGenerator;
   apiKey?: string;
+  onResult?: (result: { success: boolean; fallback: boolean; reason?: string }) => void;
 };
 
 type SelfReportWithAnswers = SelfReport & {
@@ -230,15 +232,19 @@ export async function generateSelfReport(
     );
 
     if (!parsed.success) {
+      options.onResult?.({ success: false, fallback: true, reason: "invalid_schema" });
       return fallback;
     }
 
+    options.onResult?.({ success: true, fallback: false });
     return normalizeSelfReport(
       parsed.data,
       fallback,
       options.request.taskSpec.postTaskQuestions,
     );
-  } catch {
+  } catch (error) {
+    logStructuredError("selfReport.error", options.request.runId, error);
+    options.onResult?.({ success: false, fallback: true, reason: "exception" });
     return fallback;
   }
 }

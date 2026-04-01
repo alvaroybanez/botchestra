@@ -2,6 +2,11 @@ import { generateWithModel } from "@botchestra/ai";
 import type { ObservationActionHistoryEntry } from "./observationBuilder";
 import { createFallbackActionSelector } from "./fallbackActionSelector";
 import type { AgentAction, SelectActionInput } from "./runExecutor";
+import {
+  getErrorMessage,
+  logStructured,
+  truncateForLog,
+} from "./structuredLogger";
 
 type GenerateActionResult = { text: string } | string;
 type GenerateActionOptions = {
@@ -16,9 +21,14 @@ export type CreateAiActionSelectorOptions = {
 };
 
 type ParsedAction = Pick<AgentAction, "type" | "url" | "selector" | "text" | "value" | "rationale">;
+type AllowedActionResult = {
+  action: AgentAction;
+  recoveryReason?: string;
+};
 
 const ACTION_RESPONSE_SHAPE =
   "{type, url?, selector?, text?, value?, rationale}";
+const ACTION_MODEL_CATEGORY = "action";
 
 function stringify(value: unknown) {
   return JSON.stringify(value, null, 2);
@@ -226,25 +236,44 @@ function getStructuralValidationError(parsed: ParsedAction) {
   }
 }
 
-function ensureAllowedAction(input: SelectActionInput, parsed: ParsedAction): AgentAction {
+function ensureAllowedAction(input: SelectActionInput, parsed: ParsedAction): AllowedActionResult {
   const structuralValidationError = getStructuralValidationError(parsed);
   if (structuralValidationError) {
-    return getRecoveryAction(input, structuralValidationError);
+    return {
+      action: getRecoveryAction(input, structuralValidationError),
+      recoveryReason: structuralValidationError,
+    };
   }
 
   if (input.request.taskSpec.forbiddenActions.includes(parsed.type as never)) {
-    return buildAction(parsed);
+    return { action: buildAction(parsed) };
   }
 
   if (!input.request.taskSpec.allowedActions.includes(parsed.type as never)) {
-    return getRecoveryAction(input, `Model suggested disallowed action "${parsed.type}"`);
+    const recoveryReason = `Model suggested disallowed action "${parsed.type}"`;
+    return {
+      action: getRecoveryAction(input, recoveryReason),
+      recoveryReason,
+    };
   }
 
-  return buildAction(parsed);
+  return { action: buildAction(parsed) };
 }
 
 function getTimeoutError(timeoutMs: number) {
   return new Error(`AI action selection timed out after ${timeoutMs}ms`);
+}
+
+function isTimeoutError(error: unknown, timeoutMs: number) {
+  return error instanceof Error && error.message === getTimeoutError(timeoutMs).message;
+}
+
+function toLoggedAction(action: AgentAction) {
+  return {
+    type: action.type,
+    selector: action.selector,
+    rationale: action.rationale,
+  };
 }
 
 async function generateActionWithTimeout(
@@ -277,7 +306,7 @@ async function generateActionWithTimeout(
 }
 
 async function defaultGenerateAction(options: GenerateActionOptions) {
-  return generateWithModel("action", {
+  return generateWithModel(ACTION_MODEL_CATEGORY, {
     system: options.system,
     prompt: options.prompt,
     abortSignal: options.abortSignal,
@@ -291,17 +320,64 @@ export function createAiActionSelector(options: CreateAiActionSelectorOptions = 
   return async (input: SelectActionInput): Promise<AgentAction> => {
     const system = buildSystemPrompt(input);
     const prompt = buildUserPrompt(input);
-    const response = await generateActionWithTimeout(generateAction, { system, prompt }, timeoutMs);
+    logStructured("ai.select", input.request.runId, {
+      step: input.stepIndex,
+      systemPromptLen: system.length,
+      userPromptLen: prompt.length,
+      model: ACTION_MODEL_CATEGORY,
+    });
+
+    const startedAt = Date.now();
+    let response: GenerateActionResult;
+
+    try {
+      response = await generateActionWithTimeout(generateAction, { system, prompt }, timeoutMs);
+    } catch (error) {
+      if (isTimeoutError(error, timeoutMs)) {
+        logStructured("ai.timeout", input.request.runId, {
+          step: input.stepIndex,
+        });
+      }
+
+      throw error;
+    }
+
     const responseText = toGenerateTextResult(response);
+    const durationMs = Date.now() - startedAt;
     let parsed: ParsedAction;
 
     try {
       parsed = parseActionResponse(responseText);
-    } catch {
-      return getRecoveryAction(input, "Model response was malformed JSON");
+    } catch (error) {
+      const recoveryAction = getRecoveryAction(input, "Model response was malformed JSON");
+      logStructured("ai.recovery", input.request.runId, {
+        step: input.stepIndex,
+        reason: getErrorMessage(error),
+        recoveryAction: toLoggedAction(recoveryAction),
+      });
+      return recoveryAction;
     }
 
-    return ensureAllowedAction(input, parsed);
+    const allowedAction = ensureAllowedAction(input, parsed);
+
+    if (allowedAction.recoveryReason) {
+      logStructured("ai.recovery", input.request.runId, {
+        step: input.stepIndex,
+        reason: allowedAction.recoveryReason,
+        recoveryAction: toLoggedAction(allowedAction.action),
+      });
+      return allowedAction.action;
+    }
+
+    logStructured("ai.response", input.request.runId, {
+      step: input.stepIndex,
+      rawResponseLen: responseText.length,
+      rawResponsePreview: truncateForLog(responseText),
+      parsedAction: toLoggedAction(allowedAction.action),
+      durationMs,
+    });
+
+    return allowedAction.action;
   };
 }
 
@@ -312,7 +388,11 @@ export function createAiActionSelectorWithFallback(options: CreateAiActionSelect
   return async (input: SelectActionInput): Promise<AgentAction> => {
     try {
       return await aiSelector(input);
-    } catch {
+    } catch (error) {
+      logStructured("ai.fallback", input.request.runId, {
+        step: input.stepIndex,
+        reason: getErrorMessage(error),
+      });
       return fallbackSelector(input);
     }
   };

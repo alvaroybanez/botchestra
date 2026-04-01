@@ -22,6 +22,11 @@ import {
   type FrustrationPolicy,
   type StepSnapshot,
 } from "./stepPolicy";
+import {
+  getErrorMessage,
+  logStructured,
+  logStructuredError,
+} from "./structuredLogger";
 
 type AllowedAction = ExecuteRunRequest["taskSpec"]["allowedActions"][number];
 
@@ -340,10 +345,12 @@ async function captureMilestone(
 async function getLatestSnapshot(
   page: BrowserPage,
   fallbackSnapshot: BrowserPageSnapshot | null,
+  runId: string,
 ) {
   try {
     return await page.snapshot();
-  } catch {
+  } catch (error) {
+    logStructuredError("run.snapshot.error", runId, error);
     return fallbackSnapshot;
   }
 }
@@ -353,6 +360,7 @@ async function captureTerminalMilestone(
   page: BrowserPage | null,
   milestones: RunMilestone[],
   fallbackSnapshot: BrowserPageSnapshot | null,
+  runId: string,
   milestone: Pick<RunMilestone, "stepIndex" | "actionType" | "rationaleShort">,
 ) {
   if (!page) {
@@ -360,7 +368,7 @@ async function captureTerminalMilestone(
   }
 
   try {
-    const snapshot = await getLatestSnapshot(page, fallbackSnapshot);
+    const snapshot = await getLatestSnapshot(page, fallbackSnapshot, runId);
 
     if (!snapshot) {
       return;
@@ -379,7 +387,11 @@ async function captureTerminalMilestone(
       },
       milestones,
     );
-  } catch {
+  } catch (error) {
+    logStructuredError("run.milestone.error", runId, error, {
+      step: milestone.stepIndex,
+      actionType: milestone.actionType,
+    });
     // Preserve the original terminal result if evidence capture fails.
   }
 }
@@ -407,21 +419,51 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
       let context: BrowserContext | null = null;
       let page: BrowserPage | null = null;
       let lastPageSnapshot: BrowserPageSnapshot | null = null;
+      const finishRun = <TResult extends RunExecutionResult>(
+        result: TResult,
+        exitReason: string,
+      ) => {
+        logStructured("run.end", request.runId, {
+          outcome: result.finalOutcome,
+          stepCount: result.stepCount,
+          durationSec: result.durationSec,
+          frustrationCount: result.frustrationCount,
+          exitReason,
+        });
+        return result;
+      };
+
+      logStructured("run.start", request.runId, {
+        personaVariantId: request.personaVariant.id,
+        startingUrl: request.taskSpec.startingUrl,
+        maxSteps: request.taskSpec.maxSteps,
+        maxDurationSec: request.taskSpec.maxDurationSec,
+      });
 
       try {
         const lease = await dependencies.leaseClient.acquire({
           runId: request.runId,
           leaseTimeoutMs: Math.ceil(request.taskSpec.maxDurationSec * 1000),
         });
+        logStructured("run.lease", request.runId, lease.ok
+          ? {
+              success: true,
+              leaseId: lease.leaseId,
+            }
+          : {
+              success: false,
+              errorCode: lease.errorCode,
+              message: lease.message ?? "Browser lease unavailable",
+            });
 
         if (!lease.ok) {
-          return failure(lease.errorCode, lease.message ?? "Browser lease unavailable", {
+          return finishRun(failure(lease.errorCode, lease.message ?? "Browser lease unavailable", {
             startedAt,
             now,
             stepCount,
             frustrationCount,
             milestones,
-          });
+          }), "lease_unavailable");
         }
 
         leaseId = lease.leaseId;
@@ -437,12 +479,12 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
         );
 
         if (!startingNavigation.ok) {
-          await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+          await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
             stepIndex: stepCount,
             actionType: "guardrail_violation",
             rationaleShort: startingNavigation.message,
           });
-          return failure("GUARDRAIL_VIOLATION", startingNavigation.message, {
+          return finishRun(failure("GUARDRAIL_VIOLATION", startingNavigation.message, {
             startedAt,
             now,
             stepCount,
@@ -450,7 +492,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             milestones,
           }, {
             guardrailCode: toGuardrailRuleCode(startingNavigation.code),
-          });
+          }), "starting_url_guardrail_violation");
         }
 
         await page.goto(request.taskSpec.startingUrl);
@@ -471,39 +513,46 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
 
         while (stepCount < request.taskSpec.maxSteps) {
           if (hasExceededMaxDuration(request, startedAt, now)) {
-            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
               stepIndex: stepCount,
               actionType: "max_duration_exceeded",
               rationaleShort: "Run exceeded the configured duration limit",
             });
-            return failure("MAX_DURATION_EXCEEDED", "Run exceeded the configured duration limit", {
+            return finishRun(failure("MAX_DURATION_EXCEEDED", "Run exceeded the configured duration limit", {
               startedAt,
               now,
               stepCount,
               frustrationCount,
               milestones,
-            });
+            }), "max_duration_exceeded");
           }
 
           const shouldStop = (await dependencies.sendHeartbeat?.()) ?? false;
+          logStructured("run.heartbeat", request.runId, { shouldStop });
           if (shouldStop) {
             const cancelStepIndex = Math.max(stepCount, 1);
-            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
               stepIndex: cancelStepIndex,
               actionType: "cancel",
               rationaleShort: "Run cancelled via heartbeat stop signal",
             });
-            return success("ABANDONED", {
+            return finishRun(success("ABANDONED", {
               startedAt,
               now,
               stepCount,
               frustrationCount,
               milestones,
-            });
+            }), "heartbeat_stop");
           }
 
           const pageSnapshot = await page.snapshot();
           lastPageSnapshot = pageSnapshot;
+          logStructured("step.begin", request.runId, {
+            step: stepCount,
+            url: pageSnapshot.url,
+            title: pageSnapshot.title,
+            interactiveElementCount: pageSnapshot.interactiveElements.length,
+          });
           const observation = buildObservation(
             {
               url: pageSnapshot.url,
@@ -529,15 +578,23 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             observation,
             actionHistory,
           });
+          logStructured("step.action", request.runId, {
+            step: stepCount,
+            actionType: action.type,
+            selector: action.selector,
+            url: action.url,
+            text: action.text,
+            rationale: action.rationale,
+          });
 
           const actionValidation = isActionAllowed(action, request.taskSpec);
           if (!actionValidation.ok) {
-            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
               stepIndex: stepCount,
               actionType: "guardrail_violation",
               rationaleShort: actionValidation.message,
             });
-            return failure("GUARDRAIL_VIOLATION", actionValidation.message, {
+            return finishRun(failure("GUARDRAIL_VIOLATION", actionValidation.message, {
               startedAt,
               now,
               stepCount,
@@ -545,7 +602,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
               milestones,
             }, {
               guardrailCode: toGuardrailRuleCode(actionValidation.code),
-            });
+            }), "action_guardrail_violation");
           }
 
           if (action.type === "finish" || action.type === "abort") {
@@ -561,34 +618,48 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             actionHistory.push(toActionHistoryEntry(stepCount, action));
             stepCount += 1;
 
-            return success(action.type === "finish" ? "SUCCESS" : "ABANDONED", {
+            return finishRun(success(action.type === "finish" ? "SUCCESS" : "ABANDONED", {
               startedAt,
               now,
               stepCount,
               frustrationCount,
               milestones,
-            });
+            }), action.type === "finish" ? "finish" : "abort");
           }
 
-          await executeAction(page, action);
+          let nextPageSnapshot: BrowserPageSnapshot;
+          try {
+            await executeAction(page, action);
+            nextPageSnapshot = await page.snapshot();
+          } catch (error) {
+            logStructured("step.result", request.runId, {
+              step: stepCount,
+              error: getErrorMessage(error),
+            });
+            throw error;
+          }
 
           if (hasExceededMaxDuration(request, startedAt, now)) {
-            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
               stepIndex: stepCount,
               actionType: "max_duration_exceeded",
               rationaleShort: "Run exceeded the configured duration limit",
             });
-            return failure("MAX_DURATION_EXCEEDED", "Run exceeded the configured duration limit", {
+            return finishRun(failure("MAX_DURATION_EXCEEDED", "Run exceeded the configured duration limit", {
               startedAt,
               now,
               stepCount,
               frustrationCount,
               milestones,
-            });
+            }), "max_duration_exceeded");
           }
 
-          const nextPageSnapshot = await page.snapshot();
           lastPageSnapshot = nextPageSnapshot;
+          logStructured("step.result", request.runId, {
+            step: stepCount,
+            newUrl: nextPageSnapshot.url,
+            newTitle: nextPageSnapshot.title,
+          });
           const stepState = toStepState(stepCount, action, nextPageSnapshot);
           await maybeCaptureMilestone(
             dependencies,
@@ -608,52 +679,59 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           });
 
           frustrationCount = frustrationState.frustrationCount;
+          if (frustrationState.events.length > 0) {
+            logStructured("step.frustration", request.runId, {
+              step: stepCount,
+              events: frustrationState.events,
+            });
+          }
           history.push(stepState);
           stepCount += 1;
 
           if (frustrationState.shouldAbort) {
-            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+            await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
               stepIndex: stepCount,
               actionType: "abandon",
               rationaleShort: "Repeated friction caused the run to be abandoned.",
             });
-            return success("ABANDONED", {
+            return finishRun(success("ABANDONED", {
               startedAt,
               now,
               stepCount,
               frustrationCount,
               milestones,
-            });
+            }), "frustration_abort");
           }
         }
 
-        await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+        await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
           stepIndex: stepCount,
           actionType: "max_steps_exceeded",
           rationaleShort: "Run exceeded the configured maximum step count",
         });
-        return failure("MAX_STEPS_EXCEEDED", "Run exceeded the configured maximum step count", {
+        return finishRun(failure("MAX_STEPS_EXCEEDED", "Run exceeded the configured maximum step count", {
           startedAt,
           now,
           stepCount,
           frustrationCount,
           milestones,
-        });
+        }), "max_steps_exceeded");
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown browser execution error";
-        await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, {
+        logStructuredError("run.error", request.runId, error, { step: stepCount });
+        await captureTerminalMilestone(dependencies, page, milestones, lastPageSnapshot, request.runId, {
           stepIndex: stepCount,
           actionType: "browser_error",
           rationaleShort: message,
         });
 
-        return failure("BROWSER_ERROR", message, {
+        return finishRun(failure("BROWSER_ERROR", message, {
           startedAt,
           now,
           stepCount,
           frustrationCount,
           milestones,
-        });
+        }), "browser_error");
       } finally {
         await context?.close();
 

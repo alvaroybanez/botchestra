@@ -4,6 +4,7 @@ import {
   type RunProgressUpdate,
 } from "@botchestra/shared";
 import { redactSecrets, type MaskableSecret } from "./guardrails";
+import { logStructured, logStructuredError } from "./structuredLogger";
 
 export const RUN_FAILURE_ERROR_CODES = [
   "LEASE_UNAVAILABLE",
@@ -73,28 +74,44 @@ async function postUpdate(
   update: RunProgressUpdate,
   secretValues: readonly MaskableSecret[],
 ) {
-  const validatedUpdate = validateRunProgressUpdate(redactSecrets(update, secretValues));
-  const response = await fetchImplementation(callbackUrl, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${callbackToken}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(validatedUpdate),
-  });
+  try {
+    const validatedUpdate = validateRunProgressUpdate(redactSecrets(update, secretValues));
+    const response = await fetchImplementation(callbackUrl, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${callbackToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(validatedUpdate),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Run progress callback failed with status ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`Run progress callback failed with status ${response.status}`);
+    }
+
+    logStructured("callback.sent", update.runId, {
+      type: update.eventType,
+      status: response.status,
+    });
+
+    return response;
+  } catch (error) {
+    logStructuredError("callback.error", update.runId, error, {
+      type: update.eventType,
+    });
+    throw error;
   }
-
-  return response;
 }
 
-async function parseHeartbeatShouldStop(response: Response) {
+async function parseHeartbeatShouldStop(response: Response, runId: string) {
   try {
     const body = await response.json() as { shouldStop?: unknown };
     return body.shouldStop === true;
-  } catch {
+  } catch (error) {
+    logStructuredError("callback.error", runId, error, {
+      type: "heartbeat",
+      status: response.status,
+    });
     return false;
   }
 }
@@ -114,7 +131,7 @@ export function createProgressReporter(options: ProgressReporterOptions) {
         },
       }, options.secretValues ?? []);
 
-      return parseHeartbeatShouldStop(response);
+      return parseHeartbeatShouldStop(response, options.runId);
     },
     sendMilestone(payload: RunProgressPayload<"milestone">) {
       return postUpdate(fetchImplementation, callbackUrl, options.callbackToken, {

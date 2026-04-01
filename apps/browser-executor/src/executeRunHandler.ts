@@ -16,6 +16,7 @@ import {
   type SelectActionInput,
 } from "./runExecutor";
 import { generateSelfReport } from "./selfReport";
+import { logStructured } from "./structuredLogger";
 
 type ArtifactBucket = {
   get(
@@ -70,6 +71,8 @@ export type ExecuteRunIntegrationOptions = {
   generateSelfReport?: (options: {
     request: ExecuteRunRequest;
     result: Awaited<ReturnType<ReturnType<typeof createRunExecutor>["execute"]>>;
+    apiKey?: string;
+    onResult?: (result: { success: boolean; fallback: boolean; reason?: string }) => void;
   }) => Promise<GeneratedSelfReport>;
   now?: () => number;
 };
@@ -102,16 +105,12 @@ const FAILURE_STATUS_BY_CODE: RunFailureResponseStatus = {
   BROWSER_ERROR: 500,
 };
 
-function logResolveBrowser(message: string) {
-  console.log(`resolveBrowser: ${message}`);
+function getNow(now?: () => number) {
+  return now ?? Date.now;
 }
 
 function json(body: unknown, status: number) {
   return Response.json(body, { status });
-}
-
-function misconfiguredWorker(message: string) {
-  return json({ error: "misconfigured_worker", message }, 500);
 }
 
 async function parseJsonResponse<TResponse>(response: Response): Promise<TResponse> {
@@ -192,11 +191,15 @@ function toResolvedBrowser(browser: unknown): ResolvedBrowser | null {
 }
 
 async function resolveBrowser(
+  runId: string,
   env: ExecuteRunHandlerEnv,
   options: ExecuteRunIntegrationOptions,
 ): Promise<ResolvedBrowser | null> {
   if (options.browser) {
-    logResolveBrowser("injected BrowserLike provided via options.browser");
+    logStructured("handler.browser", runId, {
+      branch: "options.browser",
+      detail: "injected BrowserLike provided via options.browser",
+    });
     return {
       browser: options.browser,
       closeBrowser: async () => undefined,
@@ -204,24 +207,35 @@ async function resolveBrowser(
   }
 
   if (!env.BROWSER) {
-    logResolveBrowser("no BROWSER binding available");
+    logStructured("handler.browser", runId, {
+      branch: "missing",
+      detail: "no BROWSER binding available",
+    });
     return null;
   }
 
   if (isCloudflareBrowserWorkerLike(env.BROWSER)) {
-    logResolveBrowser("CF browser binding detected, launching puppeteer");
+    logStructured("handler.browser", runId, {
+      branch: "cloudflare-binding",
+      detail: "CF browser binding detected, launching puppeteer",
+    });
     const launchedBrowser = await puppeteer.launch(env.BROWSER);
     const resolvedBrowser = toResolvedBrowser(launchedBrowser);
-    logResolveBrowser(
-      resolvedBrowser
+    logStructured("handler.browser", runId, {
+      branch: "cloudflare-binding",
+      detail: resolvedBrowser
         ? "puppeteer-launched browser resolved successfully"
         : "puppeteer-launched browser could not be resolved",
-    );
+      success: resolvedBrowser !== null,
+    });
     return resolvedBrowser;
   }
 
   if (isBrowserLike(env.BROWSER)) {
-    logResolveBrowser("pre-resolved BrowserLike detected");
+    logStructured("handler.browser", runId, {
+      branch: "browser-like",
+      detail: "pre-resolved BrowserLike detected",
+    });
     return {
       browser: env.BROWSER,
       closeBrowser: async () => undefined,
@@ -229,18 +243,26 @@ async function resolveBrowser(
   }
 
   if ("launch" in env.BROWSER && typeof env.BROWSER.launch === "function") {
-    logResolveBrowser("custom browser launch() binding detected");
+    logStructured("handler.browser", runId, {
+      branch: "custom-launch",
+      detail: "custom browser launch() binding detected",
+    });
     const launchedBrowser = await env.BROWSER.launch();
     const resolvedBrowser = toResolvedBrowser(launchedBrowser);
-    logResolveBrowser(
-      resolvedBrowser
+    logStructured("handler.browser", runId, {
+      branch: "custom-launch",
+      detail: resolvedBrowser
         ? "custom launch() browser resolved successfully"
         : "custom launch() browser could not be resolved",
-    );
+      success: resolvedBrowser !== null,
+    });
     return resolvedBrowser;
   }
 
-  logResolveBrowser("BROWSER binding did not match any supported browser shape");
+  logStructured("handler.browser", runId, {
+    branch: "unsupported",
+    detail: "BROWSER binding did not match any supported browser shape",
+  });
   return null;
 }
 
@@ -284,16 +306,41 @@ function resolveSelectAction(
 
 export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = {}) {
   const reportGenerator: ReportGenerator = options.generateSelfReport ?? generateSelfReport;
+  const now = getNow(options.now);
 
   return async (request: ExecuteRunRequest, env: ExecuteRunHandlerEnv) => {
+    const startedAt = now();
+    const respond = (body: unknown, status: number, outcome: string) => {
+      const response = json(body, status);
+      logStructured("handler.response", request.runId, {
+        status,
+        durationMs: now() - startedAt,
+        outcome,
+      });
+      return response;
+    };
+
+    logStructured("handler.request", request.runId, {
+      studyId: request.studyId,
+      goal: request.taskSpec.goal,
+    });
+
     const leaseClient = resolveLeaseClient(env, options);
     if (!leaseClient) {
-      return misconfiguredWorker("BROWSER_LEASE binding is required for run execution");
+      return respond(
+        { error: "misconfigured_worker", message: "BROWSER_LEASE binding is required for run execution" },
+        500,
+        "MISCONFIGURED_WORKER",
+      );
     }
 
-    const resolvedBrowser = await resolveBrowser(env, options);
+    const resolvedBrowser = await resolveBrowser(request.runId, env, options);
     if (!resolvedBrowser) {
-      return misconfiguredWorker("BROWSER binding is required for run execution");
+      return respond(
+        { error: "misconfigured_worker", message: "BROWSER binding is required for run execution" },
+        500,
+        "MISCONFIGURED_WORKER",
+      );
     }
 
     const secretValues = (await options.resolveSecrets?.(request)) ?? [];
@@ -333,11 +380,24 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
       const result = await runExecutor.execute(request);
       const redactedResult = redactSecrets(result, secretValues);
       const artifactManifestKey = await uploader.writeManifest(redactedResult);
+      logStructured("handler.artifacts", request.runId, {
+        milestoneCount: redactedResult.milestones.length,
+        manifestKey: artifactManifestKey ?? null,
+      });
+      const selfReportResult = {
+        success: true,
+        fallback: false,
+      };
       const selfReport = await reportGenerator({
         request: redactSecrets(request, secretValues),
         result: redactedResult,
         apiKey: env.OPENAI_API_KEY,
+        onResult: (resultMeta) => {
+          selfReportResult.success = resultMeta.success;
+          selfReportResult.fallback = resultMeta.fallback;
+        },
       });
+      logStructured("handler.selfReport", request.runId, selfReportResult);
       const redactedSelfReport = redactSecrets(selfReport, secretValues);
       const responseBody = redactSecrets(
         {
@@ -358,7 +418,7 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
           selfReport: redactedSelfReport,
         });
 
-        return json(responseBody, getFailureStatus(redactedResult.errorCode));
+        return respond(responseBody, getFailureStatus(redactedResult.errorCode), redactedResult.finalOutcome);
       }
 
       await progressReporter.sendCompletion({
@@ -370,7 +430,7 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
         artifactManifestKey,
       });
 
-      return json(responseBody, 200);
+      return respond(responseBody, 200, redactedResult.finalOutcome);
     } finally {
       await resolvedBrowser.closeBrowser();
     }

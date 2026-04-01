@@ -5,6 +5,7 @@ import {
   stripJpegMetadata,
   type MaskableSecret,
 } from "./guardrails";
+import { logStructuredError } from "./structuredLogger";
 
 type ArtifactBucket = {
   put(
@@ -92,7 +93,8 @@ export function createArtifactUploader(options: ArtifactUploaderOptions) {
           captureReason: redactedMilestone.captureReason,
         });
         return key;
-      } catch {
+      } catch (error) {
+        logStructuredError("artifacts.milestone.error", options.runId, error, { key });
         return undefined;
       }
     },
@@ -118,7 +120,8 @@ export function createArtifactUploader(options: ArtifactUploaderOptions) {
           httpMetadata: { contentType: "application/json" },
         });
         return key;
-      } catch {
+      } catch (error) {
+        logStructuredError("artifacts.manifest.error", options.runId, error, { key });
         return undefined;
       }
     },
