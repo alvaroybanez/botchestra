@@ -92,4 +92,22 @@ describe("buildObservation", () => {
     expect(observation.recentActionHistory).toBe("No prior actions recorded.");
     expect(observation.taskProgressSummary).toContain("No milestones completed yet.");
   });
+
+  it("shows more than five interactive elements by default so clickable cards are not truncated out", () => {
+    const observation = buildObservation(
+      {
+        ...createPageState(),
+        interactiveElements: Array.from({ length: 8 }, (_, index) => ({
+          role: index < 2 ? "button" : "clickable",
+          label: `Option ${index + 1}`,
+          selector: `#option-${index + 1}`,
+        })),
+      },
+      { tokenBudget: 300 },
+    );
+
+    expect(observation.interactiveElementSummary).toContain('button "Option 1" (#option-1)');
+    expect(observation.interactiveElementSummary).toContain('clickable "Option 8" (#option-8)');
+    expect(observation.interactiveElementSummary).not.toContain("+3 more");
+  });
 });

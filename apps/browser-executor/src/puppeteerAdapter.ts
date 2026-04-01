@@ -294,26 +294,73 @@ export class PuppeteerPageAdapter implements BrowserPage {
         return element.getAttribute("aria-disabled") === "true";
       };
 
-      const interactiveElements = Array.from(
+      const toInteractiveElement = (element: Element, roleOverride?: string) => {
+        const role = roleOverride ?? getRole(element);
+        const href =
+          element instanceof HTMLAnchorElement
+            ? normalizeWhitespace(element.getAttribute("href"))
+            : "";
+
+        return {
+          role,
+          label: getLabel(element) || "Unlabeled element",
+          selector: buildSelector(element),
+          ...(href ? { href } : {}),
+          hint: getHint(element),
+          disabled: isDisabled(element),
+        };
+      };
+
+      const isStandardInteractiveElement = (element: Element) =>
+        element instanceof HTMLButtonElement ||
+        element instanceof HTMLAnchorElement ||
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement ||
+        element instanceof HTMLSelectElement;
+
+      const capturedElements = new Set<Element>();
+
+      const standardInteractiveElements = Array.from(
         document.querySelectorAll("input:not([type='hidden']), textarea, button, a[href], select"),
       )
         .filter(isVisible)
         .map((element) => {
-          const role = getRole(element);
-          const href =
-            role === "link" && element instanceof HTMLAnchorElement
-              ? normalizeWhitespace(element.getAttribute("href"))
-              : "";
-
-          return {
-            role,
-            label: getLabel(element) || "Unlabeled element",
-            selector: buildSelector(element),
-            ...(href ? { href } : {}),
-            hint: getHint(element),
-            disabled: isDisabled(element),
-          };
+          capturedElements.add(element);
+          return toInteractiveElement(element);
         });
+
+      const cursorInteractiveElements = Array.from(document.querySelectorAll("*")).reduce<
+        ReturnType<typeof toInteractiveElement>[]
+      >((elements, candidate) => {
+        if (!(candidate instanceof HTMLElement) || !isVisible(candidate)) {
+          return elements;
+        }
+
+        if (window.getComputedStyle(candidate).cursor !== "pointer" || isStandardInteractiveElement(candidate)) {
+          return elements;
+        }
+
+        const rect = candidate.getBoundingClientRect();
+        if (rect.width < 10 || rect.height < 10) {
+          return elements;
+        }
+
+        const isNestedInsideCapturedElement = Array.from(capturedElements).some(
+          (capturedElement) => capturedElement !== candidate && capturedElement.contains(candidate),
+        );
+        if (isNestedInsideCapturedElement) {
+          return elements;
+        }
+
+        capturedElements.add(candidate);
+        elements.push(toInteractiveElement(candidate, "clickable"));
+        return elements;
+      }, []);
+
+      const interactiveElements = [
+        ...standardInteractiveElements,
+        ...cursorInteractiveElements,
+      ];
 
       return {
         url: window.location.href,

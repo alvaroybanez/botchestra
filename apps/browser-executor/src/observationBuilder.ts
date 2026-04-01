@@ -53,7 +53,7 @@ export type ObservationBundle = {
   truncated: boolean;
 };
 
-const DEFAULT_MAX_INTERACTIVE_ELEMENTS = 5;
+const DEFAULT_MAX_INTERACTIVE_ELEMENTS = 20;
 const DEFAULT_MAX_ACTION_HISTORY = 5;
 const DEFAULT_VISIBLE_TEXT_PLACEHOLDER = "Visible text omitted to fit the token budget.";
 
