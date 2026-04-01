@@ -3,22 +3,27 @@ import { z } from "zod";
 import type { Doc } from "../_generated/dataModel";
 
 export const RUN_SUMMARY_KEY_PREFIX = "run-summaries/inline/v1/";
+const nullableSummaryTextSchema = z
+  .string()
+  .nullable()
+  .transform((value) => value ?? "");
 
 export const runSummarySchema = z.object({
   summaryVersion: z.literal(1),
   sourceRunStatus: z.enum(["success", "hard_fail", "soft_fail", "gave_up", "timeout", "blocked_by_guardrail"]),
   outcomeClassification: z.enum(["success", "failure", "abandoned"]),
-  failureSummary: z.string(),
-  failurePoint: z.string(),
-  lastSuccessfulState: z.string(),
-  blockingText: z.string(),
+  failureSummary: nullableSummaryTextSchema,
+  failurePoint: nullableSummaryTextSchema,
+  lastSuccessfulState: nullableSummaryTextSchema,
+  blockingText: nullableSummaryTextSchema,
   frustrationMarkers: z.array(z.string()),
   selfReportedConfidence: z.number().min(0).max(1).nullable(),
-  representativeQuote: z.string(),
+  representativeQuote: nullableSummaryTextSchema,
   includeInClustering: z.boolean(),
 });
 
-export type RunSummary = z.infer<typeof runSummarySchema>;
+export type RunSummary = z.output<typeof runSummarySchema>;
+export type RunSummaryInput = z.input<typeof runSummarySchema>;
 export type SummarizableRunStatus = RunSummary["sourceRunStatus"];
 
 export type RunSummaryContext = Pick<
@@ -76,7 +81,7 @@ export function decodeRunSummaryKey(summaryKey: string | undefined) {
 }
 
 export function normalizeRunSummary(
-  summary: Omit<RunSummary, "summaryVersion" | "sourceRunStatus" | "includeInClustering">,
+  summary: Omit<RunSummaryInput, "summaryVersion" | "sourceRunStatus" | "includeInClustering">,
   status: RunSummary["sourceRunStatus"],
 ): RunSummary {
   return {
@@ -268,8 +273,8 @@ function normalizeConfidence(value: number | null | undefined) {
   return Math.min(1, Math.max(0, value));
 }
 
-function normalizeText(value: string, fallback: string) {
-  const trimmed = value.trim();
+function normalizeText(value: string | null | undefined, fallback: string) {
+  const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : fallback;
 }
 

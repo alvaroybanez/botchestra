@@ -165,18 +165,20 @@ describe("analysisPipeline.summarizeStudyRuns", () => {
 
     mockedGenerateWithModel
       .mockImplementationOnce(async () =>
-        createAiResult(
-          makeSummary({
-            outcomeClassification: "success",
-            failureSummary: "The shopper completed checkout without friction.",
-            failurePoint: "No failure observed; order confirmation rendered.",
-            lastSuccessfulState: "Order confirmation page loaded.",
-            blockingText: "No blocking text surfaced during the run.",
-            frustrationMarkers: [],
-            selfReportedConfidence: 0.92,
-            representativeQuote: "Double-checking the shipping total.",
+        ({
+          text: JSON.stringify({
+            ...makeSummary({
+              outcomeClassification: "success",
+              frustrationMarkers: [],
+              selfReportedConfidence: 0.92,
+            }),
+            failureSummary: null,
+            failurePoint: null,
+            lastSuccessfulState: null,
+            blockingText: null,
+            representativeQuote: null,
           }),
-        ),
+        }) as unknown as Awaited<ReturnType<typeof generateWithModel>>,
       )
       .mockImplementationOnce(async () =>
         createAiResult(
@@ -229,8 +231,18 @@ describe("analysisPipeline.summarizeStudyRuns", () => {
     const hardFailSummary = parseSummary(runMap.get(hardFailRunId)?.summaryKey);
     const gaveUpSummary = parseSummary(runMap.get(gaveUpRunId)?.summaryKey);
 
-    expect(successSummary.outcomeClassification).toBe("success");
-    expect(successSummary.includeInClustering).toBe(true);
+    expect(successSummary).toEqual(
+      expect.objectContaining({
+        outcomeClassification: "success",
+        includeInClustering: true,
+        failureSummary:
+          "The run completed successfully and reached its intended goal.",
+        failurePoint: "No failure point was observed.",
+        lastSuccessfulState: "The last successful state was not captured.",
+        blockingText: "No blocking text captured.",
+        representativeQuote: "No direct quote captured.",
+      }),
+    );
     expect(hardFailSummary).toEqual(
       expect.objectContaining({
         outcomeClassification: "failure",

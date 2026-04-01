@@ -22,13 +22,13 @@ import {
 
 const aiRunSummarySchema = z.object({
   outcomeClassification: z.enum(["success", "failure", "abandoned"]),
-  failureSummary: z.string(),
-  failurePoint: z.string(),
-  lastSuccessfulState: z.string(),
-  blockingText: z.string(),
+  failureSummary: z.string().nullable(),
+  failurePoint: z.string().nullable(),
+  lastSuccessfulState: z.string().nullable(),
+  blockingText: z.string().nullable(),
   frustrationMarkers: z.array(z.string()),
   selfReportedConfidence: z.number().nullable(),
-  representativeQuote: z.string(),
+  representativeQuote: z.string().nullable(),
 });
 
 export const summarizeStudyRuns = internalAction({
