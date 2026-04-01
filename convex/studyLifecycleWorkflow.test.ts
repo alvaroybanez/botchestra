@@ -84,8 +84,8 @@ describe("studyLifecycleWorkflow", () => {
   it("launches the workflow from launchStudy while leaving the study queued", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "ready", runBudget: 3 });
-    await seedAcceptedVariants(t, studyId, 3);
+    const studyId = await insertStudy(t, { status: "ready", runBudget: 50 });
+    await seedAcceptedVariants(t, studyId, 50);
     const workflowStartSpy = vi
       .spyOn(workflow, "start")
       .mockResolvedValue("workflow_1" as never);
@@ -105,7 +105,7 @@ describe("studyLifecycleWorkflow", () => {
 
   it("prepares draft studies for launch by moving them into persona review until variants are generated", async () => {
     const t = createTest();
-    const studyId = await insertStudy(t, { status: "draft", runBudget: 3 });
+    const studyId = await insertStudy(t, { status: "draft", runBudget: 50 });
 
     const preparedStudy = await t.mutation(
       internal.studyLifecycleWorkflow.prepareStudyForLaunch,
@@ -131,9 +131,9 @@ describe("studyLifecycleWorkflow", () => {
     const t = createTest();
     const studyId = await insertStudy(t, {
       status: "persona_review",
-      runBudget: 3,
+      runBudget: 50,
     });
-    await seedAcceptedVariants(t, studyId, 3);
+    await seedAcceptedVariants(t, studyId, 50);
 
     const finalizedStudy = await t.mutation(
       internal.studyLifecycleWorkflow.finalizePreparedStudyLaunch,
@@ -159,7 +159,7 @@ describe("studyLifecycleWorkflow", () => {
     vi.useFakeTimers();
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "replaying", runBudget: 3 });
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 50 });
     await seedRunCluster(t, studyId, {
       count: 2,
       status: "hard_fail",
@@ -228,7 +228,7 @@ describe("studyLifecycleWorkflow", () => {
     vi.useFakeTimers();
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "replaying", runBudget: 3 });
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 50 });
 
     await seedRunCluster(t, studyId, {
       count: 3,
@@ -272,7 +272,7 @@ describe("studyLifecycleWorkflow", () => {
     const t = createTest();
     const studyId = await insertStudy(t, {
       status: "running",
-      runBudget: 2,
+      runBudget: 50,
       activeConcurrency: 2,
     });
 
@@ -303,7 +303,7 @@ describe("studyLifecycleWorkflow", () => {
 
   it("identifies replay candidates from repeated failures and single blockers", async () => {
     const t = createTest();
-    const studyId = await insertStudy(t, { status: "running", runBudget: 5 });
+    const studyId = await insertStudy(t, { status: "running", runBudget: 50 });
 
     await seedRunCluster(t, studyId, {
       count: 3,
@@ -359,7 +359,7 @@ describe("studyLifecycleWorkflow", () => {
     const t = createTest();
     const studyId = await insertStudy(t, {
       status: "replaying",
-      runBudget: 4,
+      runBudget: 50,
       activeConcurrency: 4,
     });
 
@@ -399,7 +399,7 @@ describe("studyLifecycleWorkflow", () => {
 
   it("computes replay confidence as reproduced failures over replay attempts", async () => {
     const t = createTest();
-    const studyId = await insertStudy(t, { status: "replaying", runBudget: 6 });
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 50 });
 
     const zeroConfidenceRepresentative = await seedRunCluster(t, studyId, {
       count: 2,
@@ -492,7 +492,7 @@ describe("studyLifecycleWorkflow", () => {
   it("keeps replay-backed and unreplayed failure patterns in issue clusters", async () => {
     vi.useFakeTimers();
     const t = createTest();
-    const studyId = await insertStudy(t, { status: "replaying", runBudget: 8 });
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 50 });
 
     const repeatedFailure = await seedRunCluster(t, studyId, {
       count: 2,
@@ -602,7 +602,7 @@ describe("studyLifecycleWorkflow", () => {
     vi.useFakeTimers();
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "replaying", runBudget: 2 });
+    const studyId = await insertStudy(t, { status: "replaying", runBudget: 50 });
 
     await seedRunCluster(t, studyId, {
       count: 1,
@@ -694,7 +694,7 @@ async function insertStudy(
       personaConfigId: configId,
       name: "Checkout lifecycle study",
       taskSpec: sampleTaskSpec,
-      runBudget: overrides.runBudget ?? 3,
+      runBudget: overrides.runBudget ?? 50,
       activeConcurrency: overrides.activeConcurrency ?? 2,
       status: overrides.status,
       createdBy: researchIdentity.tokenIdentifier,

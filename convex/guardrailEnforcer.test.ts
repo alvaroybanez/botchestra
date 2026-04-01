@@ -191,14 +191,14 @@ describe("studies.launchStudy", () => {
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, {
       status: "ready",
-      runBudget: 1,
+      runBudget: 50,
       taskSpec: makeTaskSpec({
         environmentLabel: "production",
       }),
     });
 
     await seedSettings(t, ["example.com"]);
-    await seedAcceptedVariants(t, studyId, 1);
+    await seedAcceptedVariants(t, studyId, 50);
     const workflowStartSpy = vi
       .spyOn(workflow, "start")
       .mockResolvedValue("workflow_1" as never);
@@ -291,7 +291,7 @@ async function insertStudy(
       name: "Checkout study",
       description: "Study description",
       taskSpec: makeTaskSpec(overrides.taskSpec),
-      runBudget: overrides.runBudget ?? 5,
+      runBudget: overrides.runBudget ?? 50,
       activeConcurrency: overrides.activeConcurrency ?? 2,
       status: overrides.status ?? "draft",
       createdBy: researchIdentity.tokenIdentifier,

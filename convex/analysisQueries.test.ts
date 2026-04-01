@@ -492,7 +492,7 @@ async function insertStudy(
       name: "Analysis query fixture study",
       description: "Fixture study for analysis queries",
       taskSpec: sampleTaskSpec,
-      runBudget: 8,
+      runBudget: 50,
       activeConcurrency: 2,
       status: "completed",
       createdBy: orgId,

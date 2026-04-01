@@ -73,11 +73,11 @@ describe("waveDispatch.dispatchStudyWave", () => {
   it("dispatches only up to activeConcurrency in the initial wave", async () => {
     const t = createTest();
     const studyId = await insertStudy(t, {
-      runBudget: 7,
+      runBudget: 50,
       activeConcurrency: 3,
       status: "queued",
     });
-    await seedAcceptedVariants(t, studyId, 7);
+    await seedAcceptedVariants(t, studyId, 50);
 
     const result = await t.mutation(internal.waveDispatch.dispatchStudyWave, {
       studyId,
@@ -91,12 +91,12 @@ describe("waveDispatch.dispatchStudyWave", () => {
         .collect(),
     );
 
-    expect(result.createdRunCount).toBe(7);
+    expect(result.createdRunCount).toBe(50);
     expect(result.dispatchedRunCount).toBe(3);
     expect(result.workIds).toHaveLength(3);
     expect(study?.status).toBe("running");
     expect(countRunsWithStatuses(runs, ["dispatching", "running"])).toBe(3);
-    expect(countRunsWithStatuses(runs, ["queued"])).toBe(4);
+    expect(countRunsWithStatuses(runs, ["queued"])).toBe(47);
     expect(metrics).toEqual([
       expect.objectContaining({
         studyId,
@@ -110,11 +110,11 @@ describe("waveDispatch.dispatchStudyWave", () => {
   it("eventually dispatches every run without exceeding the concurrency limit", async () => {
     const t = createTest();
     const studyId = await insertStudy(t, {
-      runBudget: 7,
+      runBudget: 50,
       activeConcurrency: 3,
       status: "queued",
     });
-    await seedAcceptedVariants(t, studyId, 7);
+    await seedAcceptedVariants(t, studyId, 50);
 
     await t.mutation(internal.waveDispatch.dispatchStudyWave, { studyId });
 
@@ -128,7 +128,7 @@ describe("waveDispatch.dispatchStudyWave", () => {
 
       expect(activeRuns.length).toBeLessThanOrEqual(3);
 
-      if (terminalRuns.length === 7) {
+      if (terminalRuns.length === 50) {
         expect(queuedRuns).toHaveLength(0);
         break;
       }
@@ -178,40 +178,40 @@ describe("waveDispatch.dispatchStudyWave", () => {
     }
 
     const finalRuns = await listRuns(t, studyId);
-    expect(finalRuns).toHaveLength(7);
+    expect(finalRuns).toHaveLength(50);
     expect(finalRuns.every((run) => run.status === "success")).toBe(true);
   });
 
   it("enforces the platform hard cap of 30 even when study concurrency is higher", async () => {
     const t = createTest();
     const studyId = await insertStudy(t, {
-      runBudget: 35,
+      runBudget: 50,
       activeConcurrency: 40,
       status: "queued",
     });
-    await seedAcceptedVariants(t, studyId, 35);
+    await seedAcceptedVariants(t, studyId, 50);
 
     const result = await t.mutation(internal.waveDispatch.dispatchStudyWave, {
       studyId,
     });
     const runs = await listRuns(t, studyId);
 
-    expect(result.createdRunCount).toBe(35);
+    expect(result.createdRunCount).toBe(50);
     expect(result.dispatchedRunCount).toBe(30);
     expect(result.workIds).toHaveLength(30);
     expect(countRunsWithStatuses(runs, ["dispatching", "running"])).toBe(30);
-    expect(countRunsWithStatuses(runs, ["queued"])).toBe(5);
+    expect(countRunsWithStatuses(runs, ["queued"])).toBe(20);
   });
 
   it("dispatches queued replay runs while the study is replaying", async () => {
     const t = createTest();
     const studyId = await insertStudy(t, {
-      runBudget: 4,
+      runBudget: 50,
       activeConcurrency: 2,
       status: "replaying",
     });
-    await seedAcceptedVariants(t, studyId, 4);
-    await seedQueuedRuns(t, studyId, 4);
+    await seedAcceptedVariants(t, studyId, 50);
+    await seedQueuedRuns(t, studyId, 50);
 
     const result = await t.mutation(internal.waveDispatch.dispatchStudyWave, {
       studyId,
@@ -221,7 +221,7 @@ describe("waveDispatch.dispatchStudyWave", () => {
     expect(result.createdRunCount).toBe(0);
     expect(result.dispatchedRunCount).toBe(2);
     expect(countRunsWithStatuses(runs, ["dispatching", "running"])).toBe(2);
-    expect(countRunsWithStatuses(runs, ["queued"])).toBe(2);
+    expect(countRunsWithStatuses(runs, ["queued"])).toBe(48);
   });
 });
 

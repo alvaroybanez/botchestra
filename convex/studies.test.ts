@@ -103,7 +103,7 @@ describe("studies.createStudy", () => {
         personaConfigId: configId,
         name: "Custom question study",
         taskSpec: makeTaskSpec({ postTaskQuestions: customQuestions }),
-        runBudget: 12,
+        runBudget: 50,
         activeConcurrency: 4,
       },
     });
@@ -122,7 +122,7 @@ describe("studies.createStudy", () => {
           personaConfigId: configId,
           name: "Missing environment label",
           taskSpec: makeTaskSpec({ environmentLabel: "" }),
-          runBudget: 5,
+          runBudget: 50,
           activeConcurrency: 2,
         },
       }),
@@ -132,9 +132,21 @@ describe("studies.createStudy", () => {
       asResearcher.mutation(api.studies.createStudy, {
         study: {
           personaConfigId: configId,
-          name: "Zero budget",
+          name: "Below minimum budget",
           taskSpec: makeTaskSpec(),
-          runBudget: 0,
+          runBudget: 49,
+          activeConcurrency: 2,
+        },
+      }),
+    ).rejects.toThrow();
+
+    await expect(
+      asResearcher.mutation(api.studies.createStudy, {
+        study: {
+          personaConfigId: configId,
+          name: "Above maximum budget",
+          taskSpec: makeTaskSpec(),
+          runBudget: 101,
           activeConcurrency: 2,
         },
       }),
@@ -146,7 +158,7 @@ describe("studies.createStudy", () => {
           personaConfigId: "fake_pack_id" as Id<"personaConfigs">,
           name: "Missing config",
           taskSpec: makeTaskSpec(),
-          runBudget: 5,
+          runBudget: 50,
           activeConcurrency: 2,
         },
       }),
@@ -163,7 +175,7 @@ describe("studies.updateStudy", () => {
     const asResearcher = t.withIdentity(researchIdentity);
     const studyId = await insertStudy(t, {
       status: "draft",
-      runBudget: 6,
+      runBudget: 50,
       activeConcurrency: 2,
       taskSpec: {
         ...makeTaskSpec(),
@@ -177,7 +189,7 @@ describe("studies.updateStudy", () => {
       patch: {
         name: "Updated checkout study",
         description: "Updated description",
-        runBudget: 8,
+        runBudget: 64,
         activeConcurrency: 99,
         taskSpec: {
           scenario: "Buy a gift card instead of physical goods.",
@@ -191,7 +203,7 @@ describe("studies.updateStudy", () => {
       _id: studyId,
       name: "Updated checkout study",
       description: "Updated description",
-      runBudget: 8,
+      runBudget: 64,
       activeConcurrency: ACTIVE_CONCURRENCY_HARD_CAP,
       status: "draft",
     });
@@ -278,7 +290,7 @@ describe("studies.launchStudy", () => {
         postTaskQuestions: ["Did this feel safe?"],
       }),
     });
-    await seedAcceptedVariants(t, studyId, 5);
+    await seedAcceptedVariants(t, studyId, 50);
 
     await expect(
       asResearcher.mutation(api.studies.launchStudy, { studyId }),
@@ -290,8 +302,8 @@ describe("studies.launchStudy", () => {
   it("moves ready studies back to persona_review when accepted variants are missing", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "ready", runBudget: 5 });
-    await seedAcceptedVariants(t, studyId, 4);
+    const studyId = await insertStudy(t, { status: "ready", runBudget: 50 });
+    await seedAcceptedVariants(t, studyId, 49);
     const workflowStartSpy = vi
       .spyOn(workflow, "start")
       .mockResolvedValue("workflow_1" as never);
@@ -311,8 +323,8 @@ describe("studies.launchStudy", () => {
   it("queues ready studies and records launch metadata once variants are confirmed", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "ready", runBudget: 5 });
-    await seedAcceptedVariants(t, studyId, 5);
+    const studyId = await insertStudy(t, { status: "ready", runBudget: 50 });
+    await seedAcceptedVariants(t, studyId, 50);
     const workflowStartSpy = vi
       .spyOn(workflow, "start")
       .mockResolvedValue("workflow_1" as never);
@@ -330,23 +342,15 @@ describe("studies.launchStudy", () => {
     expect(launchedStudy.launchedAt).toBeGreaterThanOrEqual(beforeLaunch);
   });
 
-  it("rejects launch when the study has zero run budget or zero active concurrency", async () => {
+  it("still rejects launch when the study has zero active concurrency", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const zeroBudgetStudyId = await insertStudy(t, {
-      status: "ready",
-      runBudget: 0,
-    });
     const zeroConcurrencyStudyId = await insertStudy(t, {
       status: "ready",
       activeConcurrency: 0,
     });
-    await seedAcceptedVariants(t, zeroBudgetStudyId, 1);
-    await seedAcceptedVariants(t, zeroConcurrencyStudyId, 1);
+    await seedAcceptedVariants(t, zeroConcurrencyStudyId, 50);
 
-    await expect(
-      asResearcher.mutation(api.studies.launchStudy, { studyId: zeroBudgetStudyId }),
-    ).rejects.toThrow(/run budget/i);
     await expect(
       asResearcher.mutation(api.studies.launchStudy, {
         studyId: zeroConcurrencyStudyId,
@@ -357,8 +361,8 @@ describe("studies.launchStudy", () => {
   it("rejects duplicate launches after the study has already been queued", async () => {
     const t = createTest();
     const asResearcher = t.withIdentity(researchIdentity);
-    const studyId = await insertStudy(t, { status: "ready", runBudget: 5 });
-    await seedAcceptedVariants(t, studyId, 5);
+    const studyId = await insertStudy(t, { status: "ready", runBudget: 50 });
+    await seedAcceptedVariants(t, studyId, 50);
     vi.spyOn(workflow, "start").mockResolvedValue("workflow_1" as never);
 
     await asResearcher.mutation(api.studies.launchStudy, { studyId });
@@ -554,7 +558,7 @@ async function insertStudy(
         postTaskQuestions:
           overrides.taskSpec?.postTaskQuestions ?? ["How did this task feel?"],
       },
-      runBudget: overrides.runBudget ?? 5,
+      runBudget: overrides.runBudget ?? 50,
       activeConcurrency: overrides.activeConcurrency ?? 2,
       status: overrides.status ?? "draft",
       ...(overrides.launchRequestedBy !== undefined

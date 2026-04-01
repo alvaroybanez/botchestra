@@ -19,6 +19,10 @@ import {
   recordAuditEvent,
   recordMetric,
 } from "./observability";
+import {
+  MAX_RUN_BUDGET,
+  MIN_RUN_BUDGET,
+} from "./personaEngine/variantGeneration";
 import { workflow } from "./workflow";
 
 const allowedActionSchema = z.enum([
@@ -70,6 +74,10 @@ const requiredString = (label: string) =>
 const positiveInteger = (label: string) =>
   z.number().int(`${label} must be an integer.`).positive(`${label} must be greater than 0.`);
 
+const runBudgetSchema = positiveInteger("Run budget")
+  .min(MIN_RUN_BUDGET, `Run budget must be at least ${MIN_RUN_BUDGET}.`)
+  .max(MAX_RUN_BUDGET, `Run budget cannot exceed ${MAX_RUN_BUDGET}.`);
+
 const viewportSchema = z.object({
   width: positiveInteger("Viewport width"),
   height: positiveInteger("Viewport height"),
@@ -103,7 +111,7 @@ const createStudySchema = z.object({
   name: requiredString("Study name"),
   description: requiredString("Study description").optional(),
   taskSpec: taskSpecInputSchema,
-  runBudget: positiveInteger("Run budget").optional(),
+  runBudget: runBudgetSchema.optional(),
   activeConcurrency: positiveInteger("Active concurrency"),
 });
 
@@ -112,7 +120,7 @@ const updateStudyPatchSchema = z
     name: requiredString("Study name").optional(),
     description: requiredString("Study description").optional(),
     taskSpec: taskSpecPatchSchema.optional(),
-    runBudget: positiveInteger("Run budget").optional(),
+    runBudget: runBudgetSchema.optional(),
     activeConcurrency: positiveInteger("Active concurrency").optional(),
   })
   .refine(

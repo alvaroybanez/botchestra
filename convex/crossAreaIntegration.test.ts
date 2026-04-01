@@ -118,7 +118,7 @@ describe("cross-area integration", () => {
         name: "Generated cohort checkout study",
         description: "Validates a published config backed by generated synthetic users.",
         taskSpec: makeTaskSpec(),
-        runBudget: 6,
+        runBudget: 50,
         activeConcurrency: 3,
       },
     });

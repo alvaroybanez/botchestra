@@ -111,31 +111,33 @@ describe("e2e cross-area integration", () => {
         name: "Cross-area checkout study",
         description: "Exercises the full browser execution pipeline.",
         taskSpec: sampleTaskSpec,
-        runBudget: 2,
+        runBudget: 50,
         activeConcurrency: 2,
       },
     });
 
-    await seedAcceptedVariant(t, createdStudy._id, configId, {
-      syntheticUserName: "Careful shopper",
-      firstPersonBio: "I double-check every total before I continue.",
-      tensionSeed: "Unexpected fees make me slow down.",
-      axisValues: [{ key: "techSavviness", value: 0.1 }],
-      behaviorRules: [
-        "Pause to verify every total.",
-        "Read helper copy before submitting.",
-      ],
-    });
-    await seedAcceptedVariant(t, createdStudy._id, configId, {
-      syntheticUserName: "Fast shopper",
-      firstPersonBio: "I move quickly when the next step is obvious.",
-      tensionSeed: "I get impatient when the path is unclear.",
-      axisValues: [{ key: "techSavviness", value: 0.9 }],
-      behaviorRules: [
-        "Prefer the shortest path.",
-        "Skip optional explanations when possible.",
-      ],
-    });
+    for (let index = 0; index < 25; index += 1) {
+      await seedAcceptedVariant(t, createdStudy._id, configId, {
+        syntheticUserName: `Careful shopper ${index + 1}`,
+        firstPersonBio: "I double-check every total before I continue.",
+        tensionSeed: "Unexpected fees make me slow down.",
+        axisValues: [{ key: "techSavviness", value: 0.1 }],
+        behaviorRules: [
+          "Pause to verify every total.",
+          "Read helper copy before submitting.",
+        ],
+      });
+      await seedAcceptedVariant(t, createdStudy._id, configId, {
+        syntheticUserName: `Fast shopper ${index + 1}`,
+        firstPersonBio: "I move quickly when the next step is obvious.",
+        tensionSeed: "I get impatient when the path is unclear.",
+        axisValues: [{ key: "techSavviness", value: 0.9 }],
+        behaviorRules: [
+          "Prefer the shortest path.",
+          "Skip optional explanations when possible.",
+        ],
+      });
+    }
 
     const preparedStudy = await t.mutation(
       internal.studyLifecycleWorkflow.prepareStudyForLaunch,
@@ -244,18 +246,42 @@ describe("e2e cross-area integration", () => {
 
     expect(dispatchResult).toMatchObject({
       studyId: createdStudy._id,
-      createdRunCount: 2,
+      createdRunCount: 50,
       dispatchedRunCount: 2,
     });
     expect(runningStudy?.status).toBe("running");
-    expect(dispatchedRuns.map((run) => run.status)).toEqual([
-      "dispatching",
-      "dispatching",
-    ]);
+    const initialDispatchedRuns = dispatchedRuns.filter(
+      (run) => run.status === "dispatching",
+    );
+    expect(initialDispatchedRuns).toHaveLength(2);
+    expect(dispatchedRuns.filter((run) => run.status === "queued")).toHaveLength(48);
 
-    for (const run of dispatchedRuns) {
+    for (const run of initialDispatchedRuns) {
       await t.action(internal.waveDispatch.executeRun, { runId: run._id });
     }
+
+    await t.run(async (ctx) => {
+      const remainingRuns = await ctx.db
+        .query("runs")
+        .withIndex("by_studyId", (q) => q.eq("studyId", createdStudy._id))
+        .collect();
+
+      for (const run of remainingRuns) {
+        if (["success", "hard_fail", "soft_fail", "gave_up", "timeout", "blocked_by_guardrail", "infra_error", "cancelled"].includes(run.status)) {
+          continue;
+        }
+
+        await ctx.db.patch(run._id, {
+          status: "success",
+          startedAt: 1_000,
+          endedAt: 2_000,
+          durationSec: 60,
+          stepCount: 5,
+          finalOutcome: "SUCCESS",
+          frustrationCount: 0,
+        });
+      }
+    });
 
     const settledRuns = await asResearcher.query(api.runs.listRuns, {
       studyId: createdStudy._id,
@@ -266,26 +292,36 @@ describe("e2e cross-area integration", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(summary).toMatchObject({
-      totalRuns: 2,
+      totalRuns: 50,
       queuedCount: 0,
       runningCount: 0,
-      terminalCount: 2,
+      terminalCount: 50,
       outcomeCounts: expect.objectContaining({
-        success: 2,
+        success: 50,
       }),
     });
 
-    const carefulRun = settledRuns.find((run: { axisValues: Array<{ key: string; value: number }> }) =>
-      run.axisValues.some(
-        (axisValue: { key: string; value: number }) =>
-          axisValue.key === "techSavviness" && axisValue.value === 0.1,
-      ),
+    const carefulRun = settledRuns.find(
+      (run: {
+        axisValues: Array<{ key: string; value: number }>;
+        selfReport?: unknown;
+      }) =>
+        run.selfReport !== undefined &&
+        run.axisValues.some(
+          (axisValue: { key: string; value: number }) =>
+            axisValue.key === "techSavviness" && axisValue.value === 0.1,
+        ),
     );
-    const fastRun = settledRuns.find((run: { axisValues: Array<{ key: string; value: number }> }) =>
-      run.axisValues.some(
-        (axisValue: { key: string; value: number }) =>
-          axisValue.key === "techSavviness" && axisValue.value === 0.9,
-      ),
+    const fastRun = settledRuns.find(
+      (run: {
+        axisValues: Array<{ key: string; value: number }>;
+        selfReport?: unknown;
+      }) =>
+        run.selfReport !== undefined &&
+        run.axisValues.some(
+          (axisValue: { key: string; value: number }) =>
+            axisValue.key === "techSavviness" && axisValue.value === 0.9,
+        ),
     );
 
     expect(carefulRun).toEqual(
@@ -477,7 +513,7 @@ async function insertRunFixture(
       name: "Heartbeat control study",
       description: "Used for heartbeat/cost-control verification.",
       taskSpec: sampleTaskSpec,
-      runBudget: 1,
+      runBudget: 50,
       activeConcurrency: 1,
       status: overrides.studyStatus,
       createdBy: "org_1",

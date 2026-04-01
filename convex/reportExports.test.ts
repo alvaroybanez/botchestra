@@ -297,7 +297,7 @@ async function insertStudy(
       name: "Report export fixture study",
       description: "Fixture study for report export tests",
       taskSpec: sampleTaskSpec,
-      runBudget: 8,
+      runBudget: 50,
       activeConcurrency: 2,
       status: "completed",
       createdBy: orgId,

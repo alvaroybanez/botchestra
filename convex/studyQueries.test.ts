@@ -93,7 +93,7 @@ describe("study queries", () => {
       name: "Checkout baseline",
       description: "Validate the primary checkout flow.",
       status: "ready",
-      runBudget: 10,
+      runBudget: 50,
       activeConcurrency: 3,
       taskSpec: {
         ...sampleTaskSpec,
@@ -116,7 +116,7 @@ describe("study queries", () => {
       name: "Checkout baseline",
       description: "Validate the primary checkout flow.",
       status: "ready",
-      runBudget: 10,
+      runBudget: 50,
       activeConcurrency: 3,
       launchRequestedBy: researchIdentity.tokenIdentifier,
       launchedAt: 1_700_000_000_000,
@@ -424,7 +424,7 @@ async function insertStudy(
       name: "Study query fixture",
       description: "Fixture study",
       taskSpec: sampleTaskSpec,
-      runBudget: 8,
+      runBudget: 50,
       activeConcurrency: 2,
       status: "draft",
       createdBy: orgId,
@@ -447,7 +447,7 @@ async function buildRunFixtures(
     (await insertStudy(t, {
       orgId,
       status: "running",
-      runBudget: 10,
+      runBudget: 50,
       activeConcurrency: 3,
     }));
   const study = await t.run(async (ctx) => await ctx.db.get(studyId));

@@ -6,6 +6,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { listCredentialSummariesForOrg } from "./credentials";
 import { recordAuditEvent } from "./observability";
+import { MIN_RUN_BUDGET } from "./personaEngine/variantGeneration";
 import { ADMIN_ROLES, requireRole } from "./rbac";
 
 const taskCategorySchema = z.enum([
@@ -240,9 +241,12 @@ export function capStudyRunBudget(requestedRunBudget: number, runBudgetCap: numb
     return requestedRunBudget;
   }
 
-  return Math.min(
-    Math.floor(requestedRunBudget),
-    normalizeRunBudgetCap(runBudgetCap),
+  return Math.max(
+    MIN_RUN_BUDGET,
+    Math.min(
+      Math.floor(requestedRunBudget),
+      normalizeRunBudgetCap(runBudgetCap),
+    ),
   );
 }
 
@@ -437,7 +441,7 @@ function normalizeMaxConcurrency(maxConcurrency: number) {
 }
 
 function normalizeRunBudgetCap(runBudgetCap: number) {
-  return Math.floor(runBudgetCap);
+  return Math.max(MIN_RUN_BUDGET, Math.floor(runBudgetCap));
 }
 
 function normalizeSignedUrlExpirySeconds(value: number | undefined) {

@@ -183,7 +183,7 @@ async function insertIssueCluster(
       personaConfigId: configId,
       name: "Checkout analysis study",
       taskSpec: sampleTaskSpec,
-      runBudget: 6,
+      runBudget: 50,
       activeConcurrency: 2,
       status: "completed",
       createdBy: orgId,

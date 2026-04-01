@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { api } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { capStudyRunBudget } from "./settings";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
@@ -134,7 +135,7 @@ describe("settings.updateSettings", () => {
           { taskCategory: "expansion", modelId: "model-expansion" },
           { taskCategory: "action", modelId: "model-action" },
         ],
-        runBudgetCap: 8,
+        runBudgetCap: 50,
         budgetLimits: {
           maxTokensPerStudy: 1200,
           maxBrowserSecPerStudy: 900,
@@ -157,7 +158,7 @@ describe("settings.updateSettings", () => {
         { taskCategory: "expansion", modelId: "model-expansion" },
         { taskCategory: "action", modelId: "model-action" },
       ],
-      runBudgetCap: 8,
+      runBudgetCap: 50,
       budgetLimits: {
         maxTokensPerStudy: 1200,
         maxBrowserSecPerStudy: 900,
@@ -184,7 +185,7 @@ describe("settings.updateSettings", () => {
     expect(stored).toMatchObject({
       domainAllowlist: ["example.com", "staging.example.com"],
       maxConcurrency: 12,
-      runBudgetCap: 8,
+      runBudgetCap: 50,
       updatedBy: adminIdentity.tokenIdentifier,
     });
   });
@@ -207,6 +208,21 @@ describe("settings.updateSettings", () => {
         patch: { maxConcurrency: 4 },
       }),
     ).rejects.toThrowError("FORBIDDEN");
+  });
+
+  it("floors the run budget cap and capped study budgets at 50", async () => {
+    const t = createTest();
+    const asAdmin = t.withIdentity(adminIdentity);
+
+    const updated = await asAdmin.mutation((api as any).settings.updateSettings, {
+      patch: {
+        runBudgetCap: 25,
+      },
+    });
+
+    expect(updated.runBudgetCap).toBe(50);
+    expect(capStudyRunBudget(25, 25)).toBe(50);
+    expect(capStudyRunBudget(80, 25)).toBe(50);
   });
 });
 
@@ -247,7 +263,7 @@ describe("settings effects on subsequent studies", () => {
       patch: {
         domainAllowlist: ["example.com"],
         maxConcurrency: 3,
-        runBudgetCap: 7,
+        runBudgetCap: 50,
       },
     });
 
@@ -256,12 +272,12 @@ describe("settings effects on subsequent studies", () => {
         personaConfigId: configId,
         name: "Capped checkout study",
         taskSpec: makeTaskSpec(["example.com"]),
-        runBudget: 25,
+        runBudget: 50,
         activeConcurrency: 9,
       },
     });
 
-    expect(cappedStudy.runBudget).toBe(7);
+    expect(cappedStudy.runBudget).toBe(50);
     expect(cappedStudy.activeConcurrency).toBe(3);
 
     await asAdmin.mutation((api as any).settings.updateSettings, {
@@ -275,7 +291,7 @@ describe("settings effects on subsequent studies", () => {
         personaConfigId: configId,
         name: "Updated allowlist study",
         taskSpec: makeTaskSpec(["new.example"]),
-        runBudget: 6,
+        runBudget: 50,
         activeConcurrency: 2,
       },
     });

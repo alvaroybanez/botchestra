@@ -279,7 +279,7 @@ async function insertStudy(
       personaConfigId: configId,
       name: "Checkout cancellation study",
       taskSpec: sampleTaskSpec,
-      runBudget: 3,
+      runBudget: 50,
       activeConcurrency: 2,
       status: overrides.status,
       createdBy: researchIdentity.tokenIdentifier,

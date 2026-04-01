@@ -933,7 +933,7 @@ async function insertStudy(t: TestInstance) {
       personaConfigId: configId,
       name: "Checkout analysis study",
       taskSpec: sampleTaskSpec,
-      runBudget: 6,
+      runBudget: 50,
       activeConcurrency: 2,
       status: "analyzing",
       createdBy: researchIdentity.tokenIdentifier,

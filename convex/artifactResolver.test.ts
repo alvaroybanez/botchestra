@@ -140,7 +140,7 @@ async function seedArtifactFixture(t: TestInstance, orgId: string) {
       description: "Study for signed artifact URLs",
       personaConfigId: configId,
       status: "running",
-      runBudget: 1,
+      runBudget: 50,
       activeConcurrency: 1,
       taskSpec: {
         scenario: "Complete checkout.",

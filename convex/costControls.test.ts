@@ -259,7 +259,7 @@ async function insertStudy(
       personaConfigId: configId,
       name: "Checkout study",
       taskSpec: sampleTaskSpec,
-      runBudget: 10,
+      runBudget: 50,
       activeConcurrency: 3,
       createdBy: "user_1",
       createdAt: now,

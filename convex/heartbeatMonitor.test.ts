@@ -242,7 +242,7 @@ async function insertRun(
       personaConfigId: configId,
       name: "Checkout study",
       taskSpec: sampleTaskSpec,
-      runBudget: 2,
+      runBudget: 50,
       activeConcurrency: 1,
       status: studyStatus ?? "running",
       createdBy: "user_1",

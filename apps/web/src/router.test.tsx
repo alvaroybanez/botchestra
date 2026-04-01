@@ -1231,7 +1231,7 @@ describe("@botchestra/web routing", () => {
       "#study-allowed-domains",
       "example.com\ncheckout.example.com",
     );
-    await updateInput(container, "#study-run-budget", "32");
+    await updateInput(container, "#study-run-budget", "50");
     await updateInput(container, "#study-active-concurrency", "6");
     await updateSelect(container, "#study-environment-label", "qa");
     await updateTextarea(
@@ -1292,7 +1292,7 @@ describe("@botchestra/web routing", () => {
           locale: "en-US",
           viewport: { width: 1440, height: 900 },
         },
-        runBudget: 32,
+        runBudget: 50,
         activeConcurrency: 6,
       },
     });
@@ -1484,7 +1484,7 @@ describe("@botchestra/web routing", () => {
     await clickButton(container, "Edit Study");
     await updateInput(container, "#study-name", "Updated study name");
     await updateInput(container, "#study-starting-url", "https://example.com/new-start");
-    await updateInput(container, "#study-run-budget", "48");
+    await updateInput(container, "#study-run-budget", "50");
     await updateInput(container, "#study-active-concurrency", "5");
     await updateSelect(container, "#study-environment-label", "qa");
     await updateTextarea(container, "#study-post-task-questions", "Did you finish?\nWhat slowed you down?");
@@ -1519,7 +1519,7 @@ describe("@botchestra/web routing", () => {
           locale: "en-US",
           viewport: { width: 1440, height: 900 },
         },
-        runBudget: 48,
+        runBudget: 50,
         activeConcurrency: 5,
       },
     });
@@ -4164,7 +4164,7 @@ function makeDiagnosticsOverview(): DiagnosticsOverview {
         studyId: "study-returns",
         studyName: "Returns friction audit",
         status: "completed",
-        runBudget: 32,
+        runBudget: 50,
         updatedAt: 1_709_999_500_000,
         browserSecondsUsed: 110,
         tokenUsage: 0,
