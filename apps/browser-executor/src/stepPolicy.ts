@@ -2,6 +2,7 @@ import type { ExecuteRunRequest } from "@botchestra/shared";
 
 export const DEFAULT_SAME_URL_REVISIT_WINDOW = 5;
 export const DEFAULT_FRUSTRATION_ABORT_THRESHOLD = 5;
+const SAME_URL_REVISIT_ACTION_TYPES = ["click", "goto"] as const;
 
 const DEFAULT_CONFUSION_KEYWORDS = [
   "confused",
@@ -103,14 +104,26 @@ function fingerprintsMatch(currentStep: StepSnapshot, previousStep: StepSnapshot
   );
 }
 
+function isSameUrlRevisitActionType(actionType: StepSnapshot["action"]["type"]) {
+  return SAME_URL_REVISIT_ACTION_TYPES.includes(
+    actionType as (typeof SAME_URL_REVISIT_ACTION_TYPES)[number],
+  );
+}
+
 export function detectSameUrlRevisit(
   currentStep: StepSnapshot,
   history: readonly StepSnapshot[],
   policy?: Partial<FrustrationPolicy>,
 ): FrustrationEvent | null {
+  if (!isSameUrlRevisitActionType(currentStep.action.type)) {
+    return null;
+  }
+
   const { sameUrlRevisitWindow } = getPolicy(policy);
   const recentHistory = history.slice(-sameUrlRevisitWindow);
-  const matchingStep = recentHistory.find((step) => step.url === currentStep.url);
+  const matchingStep = recentHistory.find(
+    (step) => step.url === currentStep.url && isSameUrlRevisitActionType(step.action.type),
+  );
 
   if (!matchingStep) {
     return null;

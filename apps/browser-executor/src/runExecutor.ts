@@ -294,31 +294,85 @@ function getRequiredString(value: string | undefined, label: string) {
   return value;
 }
 
-async function executeAction(page: BrowserPage, action: AgentAction) {
-  switch (action.type) {
-    case "goto":
-      return page.goto(getRequiredString(action.url, "action.url"));
-    case "click":
-      return page.click(getRequiredString(action.selector, "action.selector"));
-    case "type":
-      return page.type(
-        getRequiredString(action.selector, "action.selector"),
-        getRequiredString(action.text, "action.text"),
-      );
-    case "select":
-      return page.select(
-        getRequiredString(action.selector, "action.selector"),
-        getRequiredString(action.value, "action.value"),
-      );
-    case "scroll":
-      return page.scroll(action.durationMs ?? 0);
-    case "wait":
-      return page.wait(action.durationMs ?? 0);
-    case "back":
-      return page.back();
-    default:
-      throw new Error(`Unsupported action type: ${action.type}`);
+type ActionExecutionResult =
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      recoverable: true;
+      message: string;
+    };
+
+const RECOVERABLE_SELECTOR_ERROR_MESSAGES = [
+  "no element found for selector",
+  "no node found for selector",
+  "failed to find element matching selector",
+  "failed to find element matching",
+  "no element matches selector",
+] as const;
+
+function isSelectorBasedAction(action: AgentAction) {
+  return action.type === "click" || action.type === "type" || action.type === "select";
+}
+
+function isRecoverableSelectorFailure(action: AgentAction, error: unknown) {
+  if (!isSelectorBasedAction(action)) {
+    return false;
   }
+
+  const normalizedMessage = getErrorMessage(error).toLowerCase();
+  return RECOVERABLE_SELECTOR_ERROR_MESSAGES.some((pattern) => normalizedMessage.includes(pattern));
+}
+
+async function executeAction(page: BrowserPage, action: AgentAction): Promise<ActionExecutionResult> {
+  try {
+    switch (action.type) {
+      case "goto":
+        await page.goto(getRequiredString(action.url, "action.url"));
+        break;
+      case "click":
+        await page.click(getRequiredString(action.selector, "action.selector"));
+        break;
+      case "type":
+        await page.type(
+          getRequiredString(action.selector, "action.selector"),
+          getRequiredString(action.text, "action.text"),
+        );
+        break;
+      case "select":
+        await page.select(
+          getRequiredString(action.selector, "action.selector"),
+          getRequiredString(action.value, "action.value"),
+        );
+        break;
+      case "scroll":
+        await page.scroll(action.durationMs ?? 0);
+        break;
+      case "wait":
+        await page.wait(action.durationMs ?? 0);
+        break;
+      case "back":
+        await page.back();
+        break;
+      default:
+        throw new Error(`Unsupported action type: ${action.type}`);
+    }
+  } catch (error) {
+    if (isRecoverableSelectorFailure(action, error)) {
+      return {
+        ok: false,
+        recoverable: true,
+        message: getErrorMessage(error),
+      };
+    }
+
+    throw error;
+  }
+
+  return {
+    ok: true,
+  };
 }
 
 async function maybeCaptureMilestone(
@@ -653,9 +707,12 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           }
 
           let nextPageSnapshot: BrowserPageSnapshot;
+          let recoverableActionError: string | null = null;
           try {
-            await executeAction(page, action);
-            nextPageSnapshot = await page.snapshot();
+            const actionResult = await executeAction(page, action);
+            recoverableActionError = actionResult.ok ? null : actionResult.message;
+            nextPageSnapshot =
+              (await getLatestSnapshot(page, pageSnapshot, request.runId)) ?? pageSnapshot;
           } catch (error) {
             logStructured("step.result", request.runId, {
               step: stepCount,
@@ -682,10 +739,19 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           lastPageSnapshot = nextPageSnapshot;
           logStructured("step.result", request.runId, {
             step: stepCount,
+            ...(recoverableActionError
+              ? {
+                  error: recoverableActionError,
+                  recoverable: true,
+                }
+              : {}),
             newUrl: nextPageSnapshot.url,
             newTitle: nextPageSnapshot.title,
           });
-          const stepState = toStepState(stepCount, action, nextPageSnapshot);
+          const stepState: MilestoneStepState = {
+            ...toStepState(stepCount, action, nextPageSnapshot),
+            validationError: recoverableActionError,
+          };
           await maybeCaptureMilestone(
             dependencies,
             page,
@@ -695,7 +761,13 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
             milestones,
           );
           actionHistory.push(
-            toActionHistoryEntry(stepCount, action, describeActionOutcome(pageSnapshot, nextPageSnapshot)),
+            toActionHistoryEntry(
+              stepCount,
+              action,
+              recoverableActionError
+                ? `action failed: ${recoverableActionError}`
+                : describeActionOutcome(pageSnapshot, nextPageSnapshot),
+            ),
           );
 
           const frustrationState = updateFrustrationState({

@@ -298,7 +298,6 @@ describe("stepPolicy frustration detectors", () => {
     });
 
     expect(detectFrustrationEvents(current, history).map((event) => event.type)).toEqual([
-      "same_url_revisit",
       "repeated_validation_error",
       "post_step_confusion",
       "abort_after_error",
