@@ -7,6 +7,8 @@ export type ObservationInteractiveElement = {
   label: string;
   selector?: string | null;
   href?: string | null;
+  value?: string;
+  placeholder?: string;
   hint?: string | null;
   disabled?: boolean;
 };
@@ -100,10 +102,24 @@ function summarizeInteractiveElements(
     const label = normalizeWhitespace(element.label || "Unlabeled element");
     const selector = element.selector ? ` (${normalizeWhitespace(element.selector)})` : "";
     const href = element.href ? ` → ${normalizeWhitespace(element.href)}` : "";
-    const hint = element.hint ? ` — ${normalizeWhitespace(element.hint)}` : "";
+    const placeholder = typeof element.placeholder === "string" ? normalizeWhitespace(element.placeholder) : "";
+    const value = typeof element.value === "string" ? normalizeWhitespace(element.value) : null;
+    const formState =
+      value !== null
+        ? value
+          ? ` value="${value}"`
+          : placeholder
+            ? ` [empty, placeholder: "${placeholder}"]`
+            : " [empty]"
+        : "";
+    const hintValue = element.hint ? normalizeWhitespace(element.hint) : "";
+    const hint =
+      hintValue && (!placeholder || hintValue !== placeholder)
+        ? ` — ${hintValue}`
+        : "";
     const disabled = element.disabled ? " [disabled]" : "";
 
-    return `${element.role} "${label}"${selector}${href}${disabled}${hint}`;
+    return `${element.role} "${label}"${selector}${href}${formState}${disabled}${hint}`;
   });
 
   const remainingCount = interactiveElements.length - summarizedElements.length;

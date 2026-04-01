@@ -92,6 +92,8 @@ function buildUserPrompt(input: SelectActionInput) {
     label: element.label,
     selector: element.selector ?? null,
     href: element.href ?? null,
+    value: element.value ?? null,
+    placeholder: element.placeholder ?? null,
     hint: element.hint ?? null,
     disabled: element.disabled ?? false,
   }));

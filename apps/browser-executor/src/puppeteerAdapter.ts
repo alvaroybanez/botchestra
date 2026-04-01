@@ -281,6 +281,24 @@ export class PuppeteerPageAdapter implements BrowserPage {
         return normalizeWhitespace(element.getAttribute("title")) || null;
       };
 
+      const getFormControlState = (element: Element) => {
+        if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+          return {
+            value: element.value,
+            placeholder: element.placeholder,
+          };
+        }
+
+        if (element instanceof HTMLSelectElement) {
+          return {
+            value: element.value,
+            placeholder: element.getAttribute("placeholder") ?? "",
+          };
+        }
+
+        return null;
+      };
+
       const isDisabled = (element: Element) => {
         if (
           element instanceof HTMLButtonElement ||
@@ -300,12 +318,14 @@ export class PuppeteerPageAdapter implements BrowserPage {
           element instanceof HTMLAnchorElement
             ? normalizeWhitespace(element.getAttribute("href"))
             : "";
+        const formControlState = getFormControlState(element);
 
         return {
           role,
           label: getLabel(element) || "Unlabeled element",
           selector: buildSelector(element),
           ...(href ? { href } : {}),
+          ...(formControlState ?? {}),
           hint: getHint(element),
           disabled: isDisabled(element),
         };
