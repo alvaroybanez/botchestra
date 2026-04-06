@@ -16,6 +16,9 @@ import {
   formatDuration,
   formatTimestamp,
 } from "@/routes/study-shared";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
+import { SummaryValue } from "@/components/summary-value";
 
 const auditEventOptions = [
   "study.launched",
@@ -108,30 +111,23 @@ export function AdminDiagnosticsPage() {
 
   if (overview === undefined || auditEvents === undefined) {
     return (
-      <DiagnosticsStateCard
-        description="Loading live metrics, per-study usage, infra error codes, and audit events..."
+      <EmptyState
         title="Admin diagnostics"
+        description="Loading live metrics, per-study usage, infra error codes, and audit events..."
       />
     );
   }
 
   return (
     <section className="space-y-6">
-      <div className="space-y-3">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Admin Console
-        </p>
-        <div className="space-y-2">
-          <h2 className="text-3xl font-semibold tracking-tight">Admin diagnostics</h2>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Monitor recent study throughput, browser time, token usage, infra failures,
-            and audit history from one admin-only surface.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Last refreshed {formatTimestamp(overview.generatedAt)}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Admin Console"
+        title="Admin diagnostics"
+        description="Monitor recent study throughput, browser time, token usage, infra failures, and audit history from one admin-only surface."
+      />
+      <p className="text-sm text-muted-foreground">
+        Last refreshed {formatTimestamp(overview.generatedAt)}
+      </p>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
         <Card>
@@ -142,27 +138,27 @@ export function AdminDiagnosticsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <MetricCard
+            <SummaryValue
               label="Running studies"
               value={formatNumber(overview.liveStudyCounts.running ?? 0)}
             />
-            <MetricCard
+            <SummaryValue
               label="Queued studies"
               value={formatNumber(overview.liveStudyCounts.queued ?? 0)}
             />
-            <MetricCard
+            <SummaryValue
               label="Analyzing studies"
               value={formatNumber(overview.liveStudyCounts.analyzing ?? 0)}
             />
-            <MetricCard
+            <SummaryValue
               label="Ready studies"
               value={formatNumber(overview.liveStudyCounts.ready ?? 0)}
             />
-            <MetricCard
+            <SummaryValue
               label="Completed studies"
               value={formatNumber(overview.liveStudyCounts.completed ?? 0)}
             />
-            <MetricCard
+            <SummaryValue
               label="Active studies"
               value={formatNumber(overview.liveStudyCounts.active ?? 0)}
             />
@@ -180,30 +176,37 @@ export function AdminDiagnosticsPage() {
             <SummaryValue
               label="Wave dispatched runs"
               value={formatNumber(overview.historicalMetrics.dispatchedRuns)}
+              variant="inline"
             />
             <SummaryValue
               label="Completed runs"
               value={formatNumber(overview.historicalMetrics.completedRuns)}
+              variant="inline"
             />
             <SummaryValue
               label="Completed studies"
               value={formatNumber(overview.historicalMetrics.completedStudies)}
+              variant="inline"
             />
             <SummaryValue
               label="Model token usage"
               value={formatNumber(overview.historicalMetrics.totalTokenUsage)}
+              variant="inline"
             />
             <SummaryValue
               label="Browser time"
               value={formatDuration(overview.historicalMetrics.totalBrowserSeconds)}
+              variant="inline"
             />
             <SummaryValue
               label="Infra errors"
               value={formatNumber(overview.historicalMetrics.recentInfraErrors)}
+              variant="inline"
             />
             <SummaryValue
               label="Latest metric"
               value={formatNullableTimestamp(overview.historicalMetrics.lastMetricRecordedAt)}
+              variant="inline"
             />
           </CardContent>
         </Card>
@@ -219,7 +222,7 @@ export function AdminDiagnosticsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {overview.studyUsage.length === 0 ? (
-              <EmptyState text="No study usage has been recorded yet." />
+              <EmptyState description="No study usage has been recorded yet." variant="inline" />
             ) : (
               overview.studyUsage.map((study) => (
                 <div
@@ -243,18 +246,22 @@ export function AdminDiagnosticsPage() {
                       <SummaryValue
                         label="Browser time"
                         value={formatDuration(study.browserSecondsUsed)}
+                        variant="inline"
                       />
                       <SummaryValue
                         label="Token usage"
                         value={formatNumber(study.tokenUsage)}
+                        variant="inline"
                       />
                       <SummaryValue
                         label="Completed runs"
                         value={formatNumber(study.completedRunCount)}
+                        variant="inline"
                       />
                       <SummaryValue
                         label="Infra errors"
                         value={formatNumber(study.infraErrorCount)}
+                        variant="inline"
                       />
                     </div>
                   </div>
@@ -280,7 +287,7 @@ export function AdminDiagnosticsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {overview.infraErrorCodes.length === 0 ? (
-              <EmptyState text="No infra errors were recorded in recent metrics." />
+              <EmptyState description="No infra errors were recorded in recent metrics." variant="inline" />
             ) : (
               overview.infraErrorCodes.map((errorCode) => (
                 <div
@@ -312,7 +319,7 @@ export function AdminDiagnosticsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {overview.recentMetrics.length === 0 ? (
-            <EmptyState text="No metric events have been recorded yet." />
+            <EmptyState description="No metric events have been recorded yet." variant="inline" />
           ) : (
             overview.recentMetrics.map((metric) => (
               <div
@@ -428,7 +435,7 @@ export function AdminDiagnosticsPage() {
 
           <div className="space-y-3">
             {auditEvents.length === 0 ? (
-              <EmptyState text="No audit events match the current filters." />
+              <EmptyState description="No audit events match the current filters." variant="inline" />
             ) : (
               auditEvents.map((event) => {
                 const studyName =
@@ -469,27 +476,6 @@ export function AdminDiagnosticsPage() {
   );
 }
 
-function DiagnosticsStateCard({
-  description,
-  title,
-}: {
-  description: string;
-  title: string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-    </Card>
-  );
-}
-
-function EmptyState({ text }: { text: string }) {
-  return <p className="text-sm text-muted-foreground">{text}</p>;
-}
-
 function FilterField({
   children,
   htmlFor,
@@ -503,24 +489,6 @@ function FilterField({
     <div className="space-y-2">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-    </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="font-medium">{value}</p>
     </div>
   );
 }

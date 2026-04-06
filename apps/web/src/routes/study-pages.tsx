@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
+import { motion } from "motion/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,11 @@ import {
   formatTimestamp,
   type StudyDetailSearch,
 } from "@/routes/study-shared";
+import { SummaryValue } from "@/components/summary-value";
+import { selectClassName } from "@/components/filter-bar";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { AnimatedList } from "@/components/animated-list";
 
 const DEFAULT_ALLOWED_ACTIONS = ["goto", "click", "type", "select", "scroll", "wait", "back", "finish"] as const;
 const DEFAULT_FORBIDDEN_ACTIONS = ["payment_submission", "external_download"] as const;
@@ -101,56 +107,43 @@ export function StudiesListPage() {
 
   if (studies === undefined) {
     return (
-      <StateCard
-        body="Loading studies and run progress..."
+      <EmptyState
         title="Studies"
+        description="Loading studies and run progress..."
       />
     );
   }
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Study Console
-          </p>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight">Studies</h2>
-            <p className="max-w-3xl text-base text-muted-foreground">
-              Browse every validation study, track orchestration progress, and
-              jump into the overview, personas, runs, findings, and report tabs.
-            </p>
-          </div>
-        </div>
-
-        <Button asChild>
-          <Link to="/studies/new">Create Study</Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Study Console"
+        title="Studies"
+        description="Browse every validation study, track orchestration progress, and jump into the overview, personas, runs, findings, and report tabs."
+        actions={
+          <Button asChild>
+            <Link to="/studies/new">Create Study</Link>
+          </Button>
+        }
+      />
 
       {studies.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No studies yet</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              New workspaces start empty. Create your first study to define the
-              task, persona coverage, and replay criteria for your next
-              validation run.
-            </p>
+        <EmptyState
+          title="No studies yet"
+          description="New workspaces start empty. Create your first study to define the task, persona coverage, and replay criteria for your next validation run."
+          action={
             <Button asChild>
               <Link to="/studies/new">Create your first study</Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
-        <div className="grid gap-4">
-          {studies.map((study: Doc<"studies">) => (
-            <StudyListCard key={study._id} study={study} />
-          ))}
-        </div>
+        <AnimatedList
+          items={studies}
+          keyExtractor={(study: Doc<"studies">) => study._id}
+          renderItem={(study: Doc<"studies">) => <StudyListCard study={study} />}
+          className="grid gap-4"
+        />
       )}
     </section>
   );
@@ -218,9 +211,9 @@ export function StudyCreationWizardPage() {
 
   if (personaConfigs === undefined) {
     return (
-      <StateCard
-        body="Loading persona configurations and creation controls..."
+      <EmptyState
         title="New study"
+        description="Loading persona configurations and creation controls..."
       />
     );
   }
@@ -247,11 +240,11 @@ export function StudyCreationWizardPage() {
   return (
     <section className="space-y-6">
       <div className="space-y-3">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="font-label text-xs text-muted-foreground">
           Study Setup
         </p>
         <div className="space-y-2">
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2 className="font-heading text-3xl tracking-tight">
             Create a new study
           </h2>
           <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
@@ -587,18 +580,18 @@ export function StudyOverviewPage({
 
   if (study === undefined) {
     return (
-      <StateCard
-        body="Loading study overview..."
+      <EmptyState
         title="Study overview"
+        description="Loading study overview..."
       />
     );
   }
 
   if (study === null) {
     return (
-      <StateCard
-        body="This study could not be found in the current organization."
+      <EmptyState
         title="Study not found"
+        description="This study could not be found in the current organization."
       />
     );
   }
@@ -625,23 +618,16 @@ function DemoStudyOverviewPage({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-3xl font-semibold tracking-tight">
-              {demoStudyOverview.name}
-            </h2>
-            <StudyStatusBadge status={demoStudyOverview.status} />
-          </div>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            {demoStudyOverview.description}
-          </p>
-        </div>
-
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title={demoStudyOverview.name}
+        badge={<StudyStatusBadge status={demoStudyOverview.status} />}
+        description={demoStudyOverview.description}
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        }
+      />
 
       <StudyTabsNav
         activeTab="overview"
@@ -766,7 +752,7 @@ function DemoStudyOverviewPage({
                       <p className="text-sm font-medium text-muted-foreground">
                         Completion progress
                       </p>
-                      <p className="text-2xl font-semibold tracking-tight">
+                      <p className="font-heading text-2xl tracking-tight">
                         {overallCompletion}% complete
                       </p>
                     </div>
@@ -834,7 +820,7 @@ function DemoStudyOverviewPage({
               <CardTitle>Active persona variants</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="rounded-lg border border-dashed bg-background p-4">
+              <div className="rounded-xl border border-dashed border-border/50 bg-card/30 p-6">
                 <p className="text-sm leading-6 text-muted-foreground">
                   Demo runs are complete, so there are no persona variants
                   actively dispatching or running right now.
@@ -912,7 +898,7 @@ function StudyListCard({ study }: { study: Doc<"studies"> }) {
 
   return (
     <Link
-      className="block rounded-xl border bg-card p-6 shadow-sm transition-colors hover:border-primary hover:bg-muted/30"
+      className="group block rounded-xl bg-card p-6 shadow-card transition-all hover:shadow-dropdown"
       params={{ studyId: study._id }}
       search={emptyStudyDetailSearch}
       to="/studies/$studyId/overview"
@@ -920,7 +906,7 @@ function StudyListCard({ study }: { study: Doc<"studies"> }) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-xl font-semibold tracking-tight">{study.name}</h3>
+            <h3 className="font-heading text-xl tracking-tight">{study.name}</h3>
             <StudyStatusBadge status={study.status} />
           </div>
           <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
@@ -1076,73 +1062,68 @@ function StudyOverviewResolved({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-3xl font-semibold tracking-tight">{study.name}</h2>
-            <StudyStatusBadge status={study.status} />
-          </div>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            {study.description ?? "No study description has been added yet."}
-          </p>
-        </div>
+      <PageHeader
+        title={study.name}
+        badge={<StudyStatusBadge status={study.status} />}
+        description={study.description ?? "No study description has been added yet."}
+        actions={
+          <>
+            {canEditStudy ? (
+              <Button
+                onClick={() => {
+                  setActionError(null);
+                  setFeedbackMessage(null);
+                  setForm(studyToFormValue(study));
+                  setIsEditing((current) => !current);
+                }}
+                variant={isEditing ? "secondary" : "default"}
+              >
+                {isEditing ? "Close Editor" : "Edit Study"}
+              </Button>
+            ) : null}
 
-        <div className="flex flex-wrap gap-3">
-          {canEditStudy ? (
-            <Button
-              onClick={() => {
-                setActionError(null);
-                setFeedbackMessage(null);
-                setForm(studyToFormValue(study));
-                setIsEditing((current) => !current);
-              }}
-              variant={isEditing ? "secondary" : "default"}
-            >
-              {isEditing ? "Close Editor" : "Edit Study"}
+            {canLaunchStudy ? (
+              <Button
+                onClick={() =>
+                  setConfirmationState({
+                    kind: "launch",
+                    title: "Launch study?",
+                    description:
+                      study.taskSpec.environmentLabel === "production"
+                        ? "Launching against production requires acknowledgement. Confirm to generate any missing variants, queue the study, and start execution."
+                        : "Confirm to generate any missing variants, queue the study, and start execution.",
+                    confirmLabel: "Confirm Launch",
+                    productionAck: study.taskSpec.environmentLabel === "production",
+                  })
+                }
+              >
+                Launch Study
+              </Button>
+            ) : null}
+
+            {canCancelStudy ? (
+              <Button
+                onClick={() =>
+                  setConfirmationState({
+                    kind: "cancel",
+                    title: "Cancel study?",
+                    description:
+                      "Cancel the remaining queued or active runs for this study. This cannot be undone.",
+                    confirmLabel: "Confirm Cancellation",
+                  })
+                }
+                variant="outline"
+              >
+                Cancel Study
+              </Button>
+            ) : null}
+
+            <Button asChild variant="outline">
+              <Link to="/studies">Back to Studies</Link>
             </Button>
-          ) : null}
-
-          {canLaunchStudy ? (
-            <Button
-              onClick={() =>
-                setConfirmationState({
-                  kind: "launch",
-                  title: "Launch study?",
-                  description:
-                    study.taskSpec.environmentLabel === "production"
-                      ? "Launching against production requires acknowledgement. Confirm to generate any missing variants, queue the study, and start execution."
-                      : "Confirm to generate any missing variants, queue the study, and start execution.",
-                  confirmLabel: "Confirm Launch",
-                  productionAck: study.taskSpec.environmentLabel === "production",
-                })
-              }
-            >
-              Launch Study
-            </Button>
-          ) : null}
-
-          {canCancelStudy ? (
-            <Button
-              onClick={() =>
-                setConfirmationState({
-                  kind: "cancel",
-                  title: "Cancel study?",
-                  description:
-                    "Cancel the remaining queued or active runs for this study. This cannot be undone.",
-                  confirmLabel: "Confirm Cancellation",
-                })
-              }
-              variant="outline"
-            >
-              Cancel Study
-            </Button>
-          ) : null}
-
-          <Button asChild variant="outline">
-            <Link to="/studies">Back to Studies</Link>
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {feedbackMessage ? (
         <p className="text-sm text-emerald-700">{feedbackMessage}</p>
@@ -1280,7 +1261,7 @@ function StudyOverviewResolved({
                       <p className="text-sm font-medium text-muted-foreground">
                         Completion progress
                       </p>
-                      <p className="text-2xl font-semibold tracking-tight">
+                      <p className="font-heading text-2xl tracking-tight">
                         {overallCompletion === undefined
                           ? "Loading..."
                           : `${overallCompletion}% complete`}
@@ -1379,51 +1360,68 @@ function StudyOverviewResolved({
                   Loading currently dispatching and running variants...
                 </p>
               ) : activeRuns.length === 0 ? (
-                <div className="rounded-lg border border-dashed bg-background p-4">
+                <div className="rounded-xl border border-dashed border-border/50 bg-card/30 p-6">
                   <p className="text-sm leading-6 text-muted-foreground">
                     No persona variants are actively dispatching or running for
                     this study right now.
                   </p>
                 </div>
               ) : (
-                activeRuns.map((run: ActiveRunListItem) => {
-                  const stepProgress = getCompletionPercentage(
-                    run.stepCount ?? 0,
-                    study.taskSpec.maxSteps,
-                  );
+                <AnimatedList
+                  items={activeRuns}
+                  keyExtractor={(run: ActiveRunListItem) => run._id}
+                  renderItem={(run: ActiveRunListItem) => {
+                    const stepProgress = getCompletionPercentage(
+                      run.stepCount ?? 0,
+                      study.taskSpec.maxSteps,
+                    );
 
-                  return (
-                    <div
-                      key={run._id}
-                      className="rounded-lg border bg-background p-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="font-medium">{run.syntheticUserName}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {run._id}
-                          </p>
+                    return (
+                      <div
+                        className={cn(
+                          "rounded-lg border bg-background p-4",
+                          run.status === "running" && "ring-1 ring-blue-300/50",
+                        )}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="font-medium">{run.syntheticUserName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {run._id}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {run.status === "running" && (
+                              <span className="relative flex size-2">
+                                <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                                <span className="relative inline-flex size-2 rounded-full bg-blue-500" />
+                              </span>
+                            )}
+                            <RunStatusBadge status={run.status} />
+                          </div>
                         </div>
-                        <RunStatusBadge status={run.status} />
-                      </div>
 
-                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                        {run.firstPersonBio}
-                      </p>
+                        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                          {run.firstPersonBio}
+                        </p>
 
-                      <div className="mt-3 space-y-2">
-                        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-                          <span>Step {(run.stepCount ?? 0).toString()}</span>
-                          <span>{stepProgress}% of step budget</span>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+                            <span>Step {(run.stepCount ?? 0).toString()}</span>
+                            <span>{stepProgress}% of step budget</span>
+                          </div>
+                          <ProgressBar
+                            value={stepProgress}
+                            valueText={`${stepProgress}% of step budget`}
+                          />
                         </div>
-                        <ProgressBar
-                          value={stepProgress}
-                          valueText={`${stepProgress}% of step budget`}
-                        />
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  }}
+                  staggerDelay={0.05}
+                  initialY={8}
+                  className="space-y-3"
+                />
               )}
             </CardContent>
           </Card>
@@ -1461,35 +1459,35 @@ function StudyStatusPage({
   });
 
   if (study === undefined) {
-    return <StateCard body={`Loading ${title.toLowerCase()}...`} title={title} />;
+    return (
+      <EmptyState
+        title={title}
+        description={`Loading ${title.toLowerCase()}...`}
+      />
+    );
   }
 
   if (study === null) {
     return (
-      <StateCard
-        body="This study could not be found in the current organization."
+      <EmptyState
         title="Study not found"
+        description="This study could not be found in the current organization."
       />
     );
   }
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-3xl font-semibold tracking-tight">{title}</h2>
-            <StudyStatusBadge status={study.status} />
-          </div>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            {description}
-          </p>
-        </div>
-
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title={title}
+        badge={<StudyStatusBadge status={study.status} />}
+        description={description}
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        }
+      />
 
       <StudyTabsNav
         activeTab={activeTab}
@@ -1843,30 +1841,8 @@ function StudyConfirmationDialog({
   );
 }
 
-function StateCard({ title, body }: { title: string; body: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{body}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function Field({ children }: { children: ReactNode }) {
   return <div className="grid gap-2">{children}</div>;
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
-    </div>
-  );
 }
 
 function ProgressBar({
@@ -1882,12 +1858,14 @@ function ProgressBar({
       aria-valuemax={100}
       aria-valuemin={0}
       aria-valuenow={value}
-      className="h-2 rounded-full bg-muted"
+      className="h-1.5 overflow-hidden rounded-full bg-accent"
       role="progressbar"
     >
-      <div
-        className="h-full rounded-full bg-primary transition-[width]"
-        style={{ width: `${Math.max(0, Math.min(value, 100))}%` }}
+      <motion.div
+        className="h-full rounded-full bg-foreground"
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.max(0, Math.min(value, 100))}%` }}
+        transition={{ type: "spring", visualDuration: 0.6, bounce: 0.1 }}
       />
     </div>
   );
@@ -2015,6 +1993,3 @@ function studyFormToTaskSpec(form: StudyFormValue) {
 
 const textareaClassName =
   "min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

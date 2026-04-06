@@ -19,6 +19,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfigStatusBadge } from "@/components/status-badge";
+import { EmptyState } from "@/components/empty-state";
+import { FilterBar, FilterSearch, FilterSelect, selectClassName } from "@/components/filter-bar";
+import { PageHeader } from "@/components/page-header";
+import { SummaryValue } from "@/components/summary-value";
 
 type TranscriptDoc = Doc<"transcripts">;
 type PersonaConfigDoc = Doc<"personaConfigs">;
@@ -53,9 +58,6 @@ type TranscriptMetadataFormState = {
 };
 
 const supportedTranscriptExtensions = new Set(["txt", "json"]);
-const transcriptSelectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
-
 const emptyTranscriptMetadataForm = (): TranscriptMetadataFormState => ({
   participantId: "",
   tags: "",
@@ -245,33 +247,33 @@ export function TranscriptsPage() {
   }
 
   if (isLoading) {
-    return <LoadingCard body="Loading transcript library..." title="Transcripts" />;
+    return (
+      <EmptyState
+        title="Transcripts"
+        description="Loading transcript library..."
+      />
+    );
   }
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Research Library
-          </p>
-          <h2 className="text-3xl font-semibold tracking-tight">Transcripts</h2>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Upload raw interview transcripts, review processing status, and
-            browse reusable research inputs for persona generation.
-          </p>
-        </div>
-
-        {canManageTranscripts ? (
-          <Button
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-            type="button"
-          >
-            {isUploading ? "Uploading..." : "Upload transcripts"}
-          </Button>
-        ) : null}
-      </div>
+      <PageHeader
+        className="lg:flex-row lg:items-start lg:justify-between"
+        eyebrow="Research Library"
+        title="Transcripts"
+        description="Upload raw interview transcripts, review processing status, and browse reusable research inputs for persona generation."
+        actions={
+          canManageTranscripts ? (
+            <Button
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+              type="button"
+            >
+              {isUploading ? "Uploading..." : "Upload transcripts"}
+            </Button>
+          ) : null
+        }
+      />
 
       {canManageTranscripts ? (
         <Card>
@@ -346,59 +348,40 @@ export function TranscriptsPage() {
       ) : null}
 
       {transcripts.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Browse transcripts</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_220px]">
-            <div className="grid gap-2">
-              <Label htmlFor="transcript-search">Search</Label>
-              <Input
-                id="transcript-search"
-                placeholder="Search by filename, participant, tags, or notes"
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="transcript-tag-filter">Tag filter</Label>
-              <select
-                id="transcript-tag-filter"
-                className={transcriptSelectClassName}
-                value={selectedTag}
-                onChange={(event) => setSelectedTag(event.target.value)}
-              >
-                <option value="">All tags</option>
-                {tagOptions.map((tag) => (
-                  <option key={tag} value={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="transcript-format-filter">Format filter</Label>
-              <select
-                id="transcript-format-filter"
-                className={transcriptSelectClassName}
-                value={selectedFormat}
-                onChange={(event) =>
-                  setSelectedFormat(event.target.value as "" | "txt" | "json")
-                }
-              >
-                <option value="">All formats</option>
-                <option value="txt">txt</option>
-                <option value="json">json</option>
-              </select>
-            </div>
-
-            <p className="lg:col-span-3 text-sm text-muted-foreground">
-              {filterSummary}
-            </p>
-          </CardContent>
-        </Card>
+        <FilterBar
+          title="Browse transcripts"
+          columns="lg:grid-cols-[minmax(0,1fr)_220px_220px]"
+          footer={
+            <p className="text-sm text-muted-foreground">{filterSummary}</p>
+          }
+        >
+          <FilterSearch
+            id="transcript-search"
+            label="Search"
+            placeholder="Search by filename, participant, tags, or notes"
+            value={searchText}
+            onChange={setSearchText}
+          />
+          <FilterSelect
+            id="transcript-tag-filter"
+            label="Tag filter"
+            placeholder="All tags"
+            value={selectedTag}
+            onChange={setSelectedTag}
+            options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
+          />
+          <FilterSelect
+            id="transcript-format-filter"
+            label="Format filter"
+            placeholder="All formats"
+            value={selectedFormat}
+            onChange={(value) => setSelectedFormat(value as "" | "txt" | "json")}
+            options={[
+              { value: "txt", label: "txt" },
+              { value: "json", label: "json" },
+            ]}
+          />
+        </FilterBar>
       ) : null}
 
       {transcripts.length === 0 ? (
@@ -473,6 +456,7 @@ export function TranscriptsPage() {
                     <SummaryValue
                       label="Characters"
                       value={String(transcript.characterCount)}
+                      variant="inline"
                     />
                     <SummaryValue
                       label="Tags"
@@ -481,14 +465,17 @@ export function TranscriptsPage() {
                           ? transcript.metadata.tags.join(", ")
                           : "No tags"
                       }
+                      variant="inline"
                     />
                     <SummaryValue
                       label="Created"
                       value={formatTimestamp(transcript.createdAt)}
+                      variant="inline"
                     />
                     <SummaryValue
                       label="Updated"
                       value={formatTimestamp(transcript.updatedAt)}
+                      variant="inline"
                     />
                   </dl>
 
@@ -814,7 +801,12 @@ export function TranscriptDetailPage({
   }
 
   if (isLoading) {
-    return <LoadingCard body="Loading transcript detail..." title="Transcript" />;
+    return (
+      <EmptyState
+        title="Transcript"
+        description="Loading transcript detail..."
+      />
+    );
   }
 
   if (normalizedTranscriptId === null || transcript === null) {
@@ -824,38 +816,35 @@ export function TranscriptDetailPage({
   return (
     <>
       <section className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-3xl font-semibold tracking-tight">
-                {transcript.originalFilename}
-              </h2>
+        <PageHeader
+          className="lg:flex-row lg:items-start lg:justify-between"
+          title={transcript.originalFilename}
+          badge={
+            <>
               <Badge variant="secondary">{transcript.format}</Badge>
               <Badge variant={statusBadgeVariant(transcript.processingStatus)}>
                 {formatTranscriptStatus(transcript.processingStatus)}
               </Badge>
-            </div>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review transcript content, update metadata, and connect the
-              transcript to draft persona configurations.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Button asChild type="button" variant="outline">
-              <Link to="/transcripts">Back to transcripts</Link>
-            </Button>
-            {canManageTranscripts ? (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                Delete transcript
+            </>
+          }
+          description="Review transcript content, update metadata, and connect the transcript to draft persona configurations."
+          actions={
+            <div className="flex flex-wrap gap-3">
+              <Button asChild type="button" variant="outline">
+                <Link to="/transcripts">Back to transcripts</Link>
               </Button>
-            ) : null}
-          </div>
-        </div>
+              {canManageTranscripts ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  Delete transcript
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
 
         {pageNotice ? (
           <p className="text-sm text-emerald-700" role="status">
@@ -981,6 +970,7 @@ export function TranscriptDetailPage({
                     <SummaryValue
                       label="Participant ID"
                       value={transcript.metadata.participantId ?? "Not set"}
+                      variant="inline"
                     />
                     <SummaryValue
                       label="Tags"
@@ -989,10 +979,12 @@ export function TranscriptDetailPage({
                           ? transcript.metadata.tags.join(", ")
                           : "No tags"
                       }
+                      variant="inline"
                     />
                     <SummaryValue
                       label="Notes"
                       value={transcript.metadata.notes ?? "No notes"}
+                      variant="inline"
                     />
                   </dl>
                 )}
@@ -1106,13 +1098,14 @@ export function TranscriptDetailPage({
                 <CardTitle>Transcript summary</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <SummaryValue label="Character count" value={String(transcript.characterCount)} />
-                <SummaryValue label="Created" value={formatTimestamp(transcript.createdAt)} />
-                <SummaryValue label="Updated" value={formatTimestamp(transcript.updatedAt)} />
+                <SummaryValue label="Character count" value={String(transcript.characterCount)} variant="inline" />
+                <SummaryValue label="Created" value={formatTimestamp(transcript.createdAt)} variant="inline" />
+                <SummaryValue label="Updated" value={formatTimestamp(transcript.updatedAt)} variant="inline" />
                 {transcript.processingError ? (
                   <SummaryValue
                     label="Processing error"
                     value={transcript.processingError}
+                    variant="inline"
                   />
                 ) : null}
               </CardContent>
@@ -1263,19 +1256,6 @@ export function TranscriptDetailPage({
   );
 }
 
-function LoadingCard({ body, title }: { body: string; title: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{body}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function HighlightedTranscriptText({
   highlightSnippet,
   text,
@@ -1307,32 +1287,6 @@ function HighlightedTranscriptText({
         ),
       )}
     </>
-  );
-}
-
-function ConfigStatusBadge({ status }: { status: PersonaConfigDoc["status"] }) {
-  return (
-    <span
-      className={cn(
-        "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
-        status === "draft"
-          ? "bg-amber-100 text-amber-800"
-          : status === "published"
-            ? "bg-emerald-100 text-emerald-800"
-            : "bg-slate-200 text-slate-700",
-      )}
-    >
-      {status}
-    </span>
-  );
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="text-sm leading-6">{value}</p>
-    </div>
   );
 }
 
