@@ -1108,6 +1108,8 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/studies"],
     });
 
+    expect(container.textContent).toContain("Study Console");
+    expect(container.textContent).toContain("Studies");
     expect(container.textContent).toContain("Create your first study");
     expect(container.textContent).toContain("Create Study");
 
@@ -1165,6 +1167,8 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/studies"],
     });
 
+    expect(container.textContent).toContain("Study Console");
+    expect(container.textContent).toContain("Studies");
     expect(container.textContent).toContain("Checkout baseline");
     expect(container.textContent).toContain("Returns friction audit");
     expect(container.textContent).toContain("ready");
@@ -1188,6 +1192,7 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/studies/new"],
     });
 
+    expect(container.textContent).toContain("Study Setup");
     expect(container.textContent).toContain("Create a new study");
     expect(container.textContent).toContain("Persona configuration selector");
     expect(container.textContent).toContain("Guardrail review");
