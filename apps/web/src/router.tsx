@@ -19,7 +19,7 @@ import { NotFoundPlaceholder } from "@/routes/placeholders";
 import {
   PersonaConfigDetailPage as PersonaConfigDetailRoutePage,
   PersonaConfigsPage as PersonaConfigsRoutePage,
-} from "@/routes/persona-config-pages";
+} from "@/routes/persona-config";
 import {
   StudiesListPage as StudiesRoutePage,
   StudyCreationWizardPage as StudyCreationWizardRoutePage,
