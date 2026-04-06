@@ -191,30 +191,7 @@ export function RunStatusBadge({ status }: { status: string }) {
   );
 }
 
-export function formatTimestamp(timestamp: number | undefined) {
-  if (timestamp === undefined) {
-    return "Not available";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(timestamp);
-}
-
-export function formatDuration(durationSec: number | undefined) {
-  if (durationSec === undefined) {
-    return "Not available";
-  }
-
-  if (durationSec < 60) {
-    return `${durationSec}s`;
-  }
-
-  const minutes = Math.floor(durationSec / 60);
-  const seconds = durationSec % 60;
-  return `${minutes}m ${seconds}s`;
-}
+export { formatDuration, formatTimestamp } from "@/lib/utils";
 
 function normalizeOptionalString(value: unknown) {
   if (typeof value !== "string") {

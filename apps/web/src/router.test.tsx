@@ -15,7 +15,6 @@ import {
 import { getFunctionName } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { contentRoutePlaceholders } from "@/routes/placeholders";
 import {
   createAppRouter,
   getRouterLocationHref,
@@ -957,18 +956,6 @@ beforeEach(() => {
 });
 
 describe("@botchestra/web routing", () => {
-  it("renders 10 distinct authenticated placeholders", () => {
-    expect(contentRoutePlaceholders).toHaveLength(10);
-    expect(
-      new Set(contentRoutePlaceholders.map((placeholder) => placeholder.title))
-        .size,
-    ).toBe(10);
-    expect(
-      new Set(contentRoutePlaceholders.map((placeholder) => placeholder.detail))
-        .size,
-    ).toBe(10);
-  });
-
   it("sanitizes redirect targets to local in-app paths", () => {
     expect(resolveRedirectPath("/studies/test-id-123/report")).toBe(
       "/studies/test-id-123/report",
@@ -2336,12 +2323,10 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Digital confidence");
     expect(container.textContent).toContain("Audit Trail");
 
-    await clickTab(container, "Synthetic Users");
     expect(container.textContent).toContain("Synthetic Users");
     expect(container.textContent).toContain("Anxious new customer");
     expect(container.textContent).toContain("Source: json_import");
 
-    await clickTab(container, "Review");
     expect(container.textContent).toContain("Accepted variants");
     expect(container.textContent).toContain("Linked study");
     expect(container.textContent).toContain("Open study personas page");
@@ -2377,8 +2362,6 @@ describe("@botchestra/web routing", () => {
       auth: { isAuthenticated: true, isLoading: false },
       initialEntries: ["/persona-configs/config-generation-empty"],
     });
-
-    await clickTab(container, "Synthetic Users");
 
     expect(container.textContent).toContain("Synthetic User Generation");
     expect(container.textContent).toContain("Generate Synthetic Users");
@@ -2417,8 +2400,6 @@ describe("@botchestra/web routing", () => {
       auth: { isAuthenticated: true, isLoading: false },
       initialEntries: ["/persona-configs/config-generation-start"],
     });
-
-    await clickTab(container, "Synthetic Users");
 
     await updateRadixSelect(document.body, "Support needs levels", "5 levels");
 
@@ -2524,8 +2505,6 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-generation-progress"],
     });
 
-    await clickTab(container, "Synthetic Users");
-
     expect(container.textContent).toContain("Generation Progress");
     expect(container.textContent).toContain(
       "Generated 4 synthetic users with 1 failures.",
@@ -2591,8 +2570,6 @@ describe("@botchestra/web routing", () => {
       auth: { isAuthenticated: true, isLoading: false },
       initialEntries: ["/persona-configs/config-generation-published"],
     });
-
-    await clickTab(container, "Synthetic Users");
 
     expect(container.textContent).toContain("Synthetic User Generation");
     expect(container.textContent).not.toContain("Generate Synthetic Users");
@@ -2977,8 +2954,6 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-with-transcripts"],
     });
 
-    await clickTab(container, "Transcripts");
-
     expect(container.textContent).toContain("Attached Transcripts");
     expect(container.textContent).toContain("attached-call.txt");
     expect(container.textContent).toContain("Attach transcripts");
@@ -3037,8 +3012,6 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-reviewer-transcripts"],
       viewerRole: "reviewer",
     });
-
-    await clickTab(container, "Transcripts");
 
     expect(container.textContent).toContain("Attached Transcripts");
     expect(container.textContent).toContain("reviewer-visible.txt");
@@ -3147,8 +3120,6 @@ describe("@botchestra/web routing", () => {
       auth: { isAuthenticated: true, isLoading: false },
       initialEntries: ["/persona-configs/config-transcript-extraction"],
     });
-
-    await clickTab(container, "Transcripts");
 
     expect(container.textContent).toContain("Extract from Transcripts");
 
@@ -3285,8 +3256,6 @@ describe("@botchestra/web routing", () => {
       auth: { isAuthenticated: true, isLoading: false },
       initialEntries: ["/persona-configs/config-guided-extraction"],
     });
-
-    await clickTab(container, "Transcripts");
 
     await clickButton(container, "Extract from Transcripts");
     await clickButtonContaining(container, "Guided");
@@ -3467,7 +3436,7 @@ describe("@botchestra/web routing", () => {
 
     expect(getButton(container, "Publish")?.hasAttribute("disabled")).toBe(true);
     expect(container.textContent).toContain(
-      "Batch generation is in progress.",
+      "Cannot publish while batch generation is in progress.",
     );
   });
 
@@ -3903,26 +3872,6 @@ async function clickButton(root: ParentNode, text: string) {
 
   await act(async () => {
     button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-  });
-}
-
-async function clickTab(root: ParentNode, text: string) {
-  const tab = [...root.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (candidate) => candidate.textContent?.includes(text),
-  );
-
-  expect(tab).toBeDefined();
-
-  await act(async () => {
-    tab!.dispatchEvent(
-      new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }),
-    );
-    tab!.dispatchEvent(
-      new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0 }),
-    );
-    tab!.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
-    );
   });
 }
 

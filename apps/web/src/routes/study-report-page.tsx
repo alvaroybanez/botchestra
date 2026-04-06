@@ -5,8 +5,8 @@ import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
 import {
+  DEMO_STUDY_ID,
   demoFindings,
   demoRuns,
   demoStudyReport,

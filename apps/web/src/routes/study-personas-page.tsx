@@ -9,7 +9,7 @@ import {
 } from "@/components/persona-variant-review-grid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
+import { DEMO_STUDY_ID } from "@/routes/study-demo-data";
 import {
   StudyTabsNav,
   type StudyDetailSearch,
