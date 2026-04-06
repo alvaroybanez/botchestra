@@ -12,6 +12,7 @@ describe("buildObservation input value summaries", () => {
           {
             role: "textbox",
             label: "Full name",
+            ref: "@e1",
             selector: "#full-name",
             value: "",
             placeholder: "Jane Smith",
@@ -19,6 +20,7 @@ describe("buildObservation input value summaries", () => {
           {
             role: "textbox",
             label: "Email",
+            ref: "@e2",
             selector: "#email",
             value: "alex@example.com",
             placeholder: "jane@example.com",
@@ -26,6 +28,7 @@ describe("buildObservation input value summaries", () => {
           {
             role: "select",
             label: "Topic",
+            ref: "@e3",
             selector: "#topic",
             value: "",
             placeholder: "",
@@ -42,13 +45,13 @@ describe("buildObservation input value summaries", () => {
     );
 
     expect(observation.interactiveElementSummary).toContain(
-      'textbox "Full name" (#full-name) [empty, placeholder: "Jane Smith"]',
+      'textbox "Full name" [@e1] (#full-name) [empty, placeholder: "Jane Smith"]',
     );
     expect(observation.interactiveElementSummary).toContain(
-      'textbox "Email" (#email) value="alex@example.com"',
+      'textbox "Email" [@e2] (#email) value="alex@example.com"',
     );
     expect(observation.interactiveElementSummary).toContain(
-      'select "Topic" (#topic) [empty]',
+      'select "Topic" [@e3] (#topic) [empty]',
     );
   });
 });

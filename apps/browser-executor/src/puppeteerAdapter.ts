@@ -43,6 +43,15 @@ type PuppeteerPageLike = {
   waitForTimeout?: (durationMs: number) => Promise<unknown>;
 };
 
+type SnapshotInteractiveElement = BrowserPageSnapshot["interactiveElements"][number];
+type RawSnapshotInteractiveElement = SnapshotInteractiveElement & {
+  refIdentity: string;
+};
+
+type RawBrowserPageSnapshot = Omit<BrowserPageSnapshot, "interactiveElements"> & {
+  interactiveElements: RawSnapshotInteractiveElement[];
+};
+
 type _BrowserCompatibility = CloudflarePuppeteerBrowser extends PuppeteerBrowserLike ? true : never;
 type _PageCompatibility = CloudflarePuppeteerPage extends PuppeteerPageLike ? true : never;
 
@@ -74,6 +83,14 @@ function isModernPuppeteerBrowser(browser: PuppeteerBrowserSource): browser is P
   return "newPage" in browser && typeof browser.newPage === "function";
 }
 
+function getRefIdentityKey(element: RawSnapshotInteractiveElement) {
+  return element.refIdentity;
+}
+
+function createRef(index: number) {
+  return `@e${index}`;
+}
+
 async function waitForTimeout(page: PuppeteerPageLike, durationMs: number) {
   if (typeof page.waitForTimeout === "function") {
     await page.waitForTimeout(durationMs);
@@ -103,10 +120,47 @@ async function waitForActionToSettle(page: PuppeteerPageLike) {
 }
 
 export class PuppeteerPageAdapter implements BrowserPage {
+  private refCounter = 1;
+  private previousRefsByIdentity = new Map<string, string[]>();
+
   constructor(private readonly page: PuppeteerPageLike) {}
 
+  private assignRefs(snapshot: RawBrowserPageSnapshot): BrowserPageSnapshot {
+    const availableRefsByIdentity = new Map(
+      [...this.previousRefsByIdentity.entries()].map(([identity, refs]) => [identity, [...refs]]),
+    );
+    const nextRefsByIdentity = new Map<string, string[]>();
+    const interactiveElements = snapshot.interactiveElements.map(({ refIdentity, ...element }) => {
+      const identity = getRefIdentityKey({ ...element, refIdentity });
+      const availableRefs = availableRefsByIdentity.get(identity) ?? [];
+      const ref = availableRefs.shift() ?? createRef(this.refCounter++);
+
+      if (availableRefs.length === 0) {
+        availableRefsByIdentity.delete(identity);
+      } else {
+        availableRefsByIdentity.set(identity, availableRefs);
+      }
+
+      const assignedRefs = nextRefsByIdentity.get(identity) ?? [];
+      assignedRefs.push(ref);
+      nextRefsByIdentity.set(identity, assignedRefs);
+
+      return {
+        ...element,
+        ref,
+      };
+    });
+
+    this.previousRefsByIdentity = nextRefsByIdentity;
+
+    return {
+      ...snapshot,
+      interactiveElements,
+    };
+  }
+
   async snapshot(): Promise<BrowserPageSnapshot> {
-    return this.page.evaluate(() => {
+    const snapshot = await this.page.evaluate(() => {
       const normalizeWhitespace = (value: string | null | undefined) => value?.replace(/\s+/g, " ").trim() ?? "";
       const cssEscape =
         typeof CSS !== "undefined" && typeof CSS.escape === "function"
@@ -281,6 +335,22 @@ export class PuppeteerPageAdapter implements BrowserPage {
         return normalizeWhitespace(element.getAttribute("title")) || null;
       };
 
+      const getRefIdentity = (element: Element, role: string, selector: string | null, href: string) => {
+        const parts = [
+          role,
+          normalizeWhitespace(element.getAttribute("aria-label")),
+          normalizeWhitespace(element.getAttribute("name")),
+          normalizeWhitespace(element.getAttribute("data-testid")),
+          normalizeWhitespace(element.getAttribute("placeholder")),
+          normalizeWhitespace(element.id),
+          selector ?? "",
+          href,
+          normalizeWhitespace(element.textContent),
+        ];
+
+        return parts.join("|");
+      };
+
       const getFormControlState = (element: Element) => {
         if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
           return {
@@ -319,15 +389,17 @@ export class PuppeteerPageAdapter implements BrowserPage {
             ? normalizeWhitespace(element.getAttribute("href"))
             : "";
         const formControlState = getFormControlState(element);
+        const selector = buildSelector(element);
 
         return {
           role,
           label: getLabel(element) || "Unlabeled element",
-          selector: buildSelector(element),
+          selector,
           ...(href ? { href } : {}),
           ...(formControlState ?? {}),
           hint: getHint(element),
           disabled: isDisabled(element),
+          refIdentity: getRefIdentity(element, role, selector, href),
         };
       };
 
@@ -394,8 +466,10 @@ export class PuppeteerPageAdapter implements BrowserPage {
         httpStatus: null,
         deadEnd: false,
         agentNotes: null,
-      };
+      } satisfies RawBrowserPageSnapshot;
     });
+
+    return this.assignRefs(snapshot);
   }
 
   async screenshot(options: BrowserScreenshotOptions = DEFAULT_SCREENSHOT_OPTIONS): Promise<Uint8Array> {

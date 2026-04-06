@@ -1,4 +1,3 @@
-import puppeteer from "@cloudflare/puppeteer";
 import { generateWithModel } from "@botchestra/ai";
 import type { ExecuteRunRequest } from "@botchestra/shared";
 import { createAiActionSelectorWithFallback } from "./aiActionSelector";
@@ -190,6 +189,11 @@ function toResolvedBrowser(browser: unknown): ResolvedBrowser | null {
   return null;
 }
 
+async function launchCloudflareBrowser(browserBinding: CloudflareBrowserWorkerLike) {
+  const module = await import("@cloudflare/puppeteer");
+  return module.default.launch(browserBinding);
+}
+
 async function resolveBrowser(
   runId: string,
   env: ExecuteRunHandlerEnv,
@@ -219,7 +223,7 @@ async function resolveBrowser(
       branch: "cloudflare-binding",
       detail: "CF browser binding detected, launching puppeteer",
     });
-    const launchedBrowser = await puppeteer.launch(env.BROWSER);
+    const launchedBrowser = await launchCloudflareBrowser(env.BROWSER);
     const resolvedBrowser = toResolvedBrowser(launchedBrowser);
     logStructured("handler.browser", runId, {
       branch: "cloudflare-binding",

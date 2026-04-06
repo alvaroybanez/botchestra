@@ -27,13 +27,16 @@ export function createFallbackActionSelector() {
   return async (input: SelectActionInput): Promise<AgentAction> => {
     if (input.stepIndex === 0) {
       const primaryElement = input.page.interactiveElements.find(
-        (element) => typeof element.selector === "string" && element.selector.trim().length > 0,
+        (element) =>
+          (typeof element.ref === "string" && element.ref.trim().length > 0) ||
+          (typeof element.selector === "string" && element.selector.trim().length > 0),
       );
 
-      if (primaryElement?.selector && input.request.taskSpec.allowedActions.includes("click")) {
+      if (primaryElement && input.request.taskSpec.allowedActions.includes("click")) {
         return {
           type: "click",
-          selector: primaryElement.selector,
+          ...(primaryElement.ref ? { ref: primaryElement.ref } : {}),
+          ...(primaryElement.selector ? { selector: primaryElement.selector } : {}),
           rationale: `Try the prominent "${primaryElement.label}" control first.`,
         };
       }

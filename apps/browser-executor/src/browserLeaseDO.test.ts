@@ -4,7 +4,7 @@ import { Miniflare } from "miniflare";
 import { describe, expect, it, vi } from "vitest";
 import { BrowserLeaseDO } from "./browserLeaseDO";
 
-const workerEntrypointPath = fileURLToPath(new URL("./index.ts", import.meta.url));
+const workerSourceDir = fileURLToPath(new URL(".", import.meta.url));
 const MINIFLARE_TEST_TIMEOUT_MS = 120_000;
 let bundledWorkerScript: string | undefined;
 
@@ -35,10 +35,21 @@ async function createLeaseMiniflare(options?: {
 }) {
   if (!bundledWorkerScript) {
     const result = await build({
-      entryPoints: [workerEntrypointPath],
       bundle: true,
       format: "esm",
       platform: "browser",
+      stdin: {
+        contents: `
+          export { BrowserLeaseDO } from "./browserLeaseDO";
+          export default {
+            async fetch() {
+              return new Response("not_found", { status: 404 });
+            },
+          };
+        `,
+        resolveDir: workerSourceDir,
+        sourcefile: "browserLeaseDO.worker.ts",
+      },
       target: "es2022",
       write: false,
     });

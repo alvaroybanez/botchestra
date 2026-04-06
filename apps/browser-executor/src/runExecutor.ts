@@ -32,6 +32,7 @@ type AllowedAction = ExecuteRunRequest["taskSpec"]["allowedActions"][number];
 
 export type AgentAction = {
   type: AllowedAction | (string & {});
+  ref?: string;
   url?: string;
   selector?: string;
   text?: string;
@@ -261,9 +262,29 @@ function toActionHistoryEntry(
   return {
     stepIndex,
     actionType: action.type,
-    target: action.url ?? action.selector ?? action.value ?? null,
+    target: getActionTarget(action),
     outcome,
   };
+}
+
+function getActionTarget(action: AgentAction) {
+  if (action.url) {
+    return action.url;
+  }
+
+  if (action.ref && action.selector) {
+    return `${action.ref} (${action.selector})`;
+  }
+
+  if (action.ref) {
+    return action.ref;
+  }
+
+  if (action.selector) {
+    return action.selector;
+  }
+
+  return action.value ?? null;
 }
 
 function toStepState(stepIndex: number, action: AgentAction, page: BrowserPageSnapshot): MilestoneStepState {
@@ -314,6 +335,43 @@ const RECOVERABLE_SELECTOR_ERROR_MESSAGES = [
 
 function isSelectorBasedAction(action: AgentAction) {
   return action.type === "click" || action.type === "type" || action.type === "select";
+}
+
+function resolveActionRef(
+  action: AgentAction,
+  pageSnapshot: BrowserPageSnapshot,
+): { ok: true; action: AgentAction } | { ok: false; recoverable: true; message: string } {
+  if (!isSelectorBasedAction(action) || !action.ref) {
+    return {
+      ok: true,
+      action,
+    };
+  }
+
+  const matchingElement = pageSnapshot.interactiveElements.find((element) => element.ref === action.ref);
+  if (!matchingElement) {
+    return {
+      ok: false,
+      recoverable: true,
+      message: `No element found for ref: ${action.ref}`,
+    };
+  }
+
+  if (!matchingElement.selector) {
+    return {
+      ok: false,
+      recoverable: true,
+      message: `No selector found for ref: ${action.ref}`,
+    };
+  }
+
+  return {
+    ok: true,
+    action: {
+      ...action,
+      selector: matchingElement.selector,
+    },
+  };
 }
 
 function isRecoverableSelectorFailure(action: AgentAction, error: unknown) {
@@ -660,6 +718,7 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           logStructured("step.action", request.runId, {
             step: stepCount,
             actionType: action.type,
+            ref: action.ref,
             selector: action.selector,
             url: action.url,
             text: action.text,
@@ -709,10 +768,16 @@ export function createRunExecutor(dependencies: RunExecutorDependencies) {
           let nextPageSnapshot: BrowserPageSnapshot;
           let recoverableActionError: string | null = null;
           try {
-            const actionResult = await executeAction(page, action);
-            recoverableActionError = actionResult.ok ? null : actionResult.message;
-            nextPageSnapshot =
-              (await getLatestSnapshot(page, pageSnapshot, request.runId)) ?? pageSnapshot;
+            const resolvedAction = resolveActionRef(action, pageSnapshot);
+            if (!resolvedAction.ok) {
+              recoverableActionError = resolvedAction.message;
+              nextPageSnapshot = pageSnapshot;
+            } else {
+              const actionResult = await executeAction(page, resolvedAction.action);
+              recoverableActionError = actionResult.ok ? null : actionResult.message;
+              nextPageSnapshot =
+                (await getLatestSnapshot(page, pageSnapshot, request.runId)) ?? pageSnapshot;
+            }
           } catch (error) {
             logStructured("step.result", request.runId, {
               step: stepCount,

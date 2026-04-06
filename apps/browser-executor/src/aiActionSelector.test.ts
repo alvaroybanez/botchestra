@@ -79,11 +79,13 @@ function createPage(
       {
         role: "button",
         label: "Continue to checkout",
+        ref: "@e1",
         selector: "#checkout",
       },
       {
         role: "link",
         label: "View help",
+        ref: "@e2",
         selector: "a[href='/help']",
       },
     ],
@@ -106,7 +108,7 @@ function createObservation(
     pageTitle: "Your Cart",
     visibleTextExcerpt: "Your cart is ready. Continue to checkout to enter shipping details.",
     interactiveElementSummary:
-      'button "Continue to checkout" (#checkout); link "View help" (a[href="/help"])',
+      'button "Continue to checkout" [@e1] (#checkout); link "View help" [@e2] (a[href="/help"])',
     recentActionHistory: "No prior actions recorded.",
     taskProgressSummary:
       "Step 1 of 8. Goal: Advance through checkout without making mistakes. No milestones completed yet.",
@@ -114,7 +116,7 @@ function createObservation(
       "URL: https://shop.example.com/cart",
       "Title: Your Cart",
       "Visible text: Your cart is ready. Continue to checkout to enter shipping details.",
-      'Interactive elements: button "Continue to checkout" (#checkout); link "View help" (a[href="/help"])',
+      'Interactive elements: button "Continue to checkout" [@e1] (#checkout); link "View help" [@e2] (a[href="/help"])',
       "Recent actions: No prior actions recorded.",
       "Task progress: Step 1 of 8. Goal: Advance through checkout without making mistakes.",
     ].join("\n"),
@@ -165,7 +167,7 @@ describe("aiActionSelector", () => {
     mockedGenerateWithModel.mockResolvedValue({
       text: JSON.stringify({
         type: "click",
-        selector: "#checkout",
+        ref: "@e1",
         rationale: "The checkout button is the clearest way to advance toward the shipping step.",
       }),
     } as unknown as Awaited<ReturnType<typeof generateWithModel>>);
@@ -175,7 +177,7 @@ describe("aiActionSelector", () => {
 
     expect(action).toEqual({
       type: "click",
-      selector: "#checkout",
+      ref: "@e1",
       rationale: "The checkout button is the clearest way to advance toward the shipping step.",
     });
     expect(mockedGenerateWithModel).toHaveBeenCalledWith(
@@ -193,6 +195,8 @@ describe("aiActionSelector", () => {
     expect(options.prompt).toContain("Recent actions");
     expect(options.prompt).toContain("#1 click #cart");
     expect(options.prompt).toContain("Step 3 of 8");
+    expect(options.prompt).toContain('"ref": "@e1"');
+    expect(options.system).toContain("prefer returning ref instead of selector");
   });
 
   it("returns a form-filling action with persona-authentic text", async () => {
@@ -213,6 +217,7 @@ describe("aiActionSelector", () => {
           {
             role: "textbox",
             label: "Full name",
+            ref: "@e3",
             selector: "#shipping-name",
           },
         ],
@@ -264,7 +269,7 @@ describe("aiActionSelector", () => {
         return {
           text: JSON.stringify({
             type: "click",
-            selector: "#express-checkout",
+            ref: "@e2",
             rationale: "A highly tech-savvy shopper will use the express checkout shortcut.",
           }),
         } as unknown as Awaited<ReturnType<typeof generateWithModel>>;
@@ -273,7 +278,7 @@ describe("aiActionSelector", () => {
       return {
         text: JSON.stringify({
           type: "click",
-          selector: "#checkout",
+          ref: "@e1",
           rationale: "A less tech-savvy shopper prefers the clearly labeled standard checkout path.",
         }),
       } as unknown as Awaited<ReturnType<typeof generateWithModel>>;
@@ -290,8 +295,8 @@ describe("aiActionSelector", () => {
       }),
       page: createPage({
         interactiveElements: [
-          { role: "button", label: "Standard checkout", selector: "#checkout" },
-          { role: "button", label: "Express checkout", selector: "#express-checkout" },
+          { role: "button", label: "Standard checkout", ref: "@e1", selector: "#checkout" },
+          { role: "button", label: "Express checkout", ref: "@e2", selector: "#express-checkout" },
         ],
       }),
     }));
@@ -304,14 +309,14 @@ describe("aiActionSelector", () => {
       }),
       page: createPage({
         interactiveElements: [
-          { role: "button", label: "Standard checkout", selector: "#checkout" },
-          { role: "button", label: "Express checkout", selector: "#express-checkout" },
+          { role: "button", label: "Standard checkout", ref: "@e1", selector: "#checkout" },
+          { role: "button", label: "Express checkout", ref: "@e2", selector: "#express-checkout" },
         ],
       }),
     }));
 
-    expect(cautiousAction.selector).toBe("#checkout");
-    expect(savvyAction.selector).toBe("#express-checkout");
+    expect(cautiousAction.ref).toBe("@e1");
+    expect(savvyAction.ref).toBe("@e2");
     expect(cautiousAction.rationale).not.toEqual(savvyAction.rationale);
   });
 

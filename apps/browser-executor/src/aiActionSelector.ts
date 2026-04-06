@@ -20,14 +20,14 @@ export type CreateAiActionSelectorOptions = {
   timeoutMs?: number;
 };
 
-type ParsedAction = Pick<AgentAction, "type" | "url" | "selector" | "text" | "value" | "rationale">;
+type ParsedAction = Pick<AgentAction, "type" | "ref" | "url" | "selector" | "text" | "value" | "rationale">;
 type AllowedActionResult = {
   action: AgentAction;
   recoveryReason?: string;
 };
 
 const ACTION_RESPONSE_SHAPE =
-  "{type, url?, selector?, text?, value?, rationale}";
+  "{type, ref?, url?, selector?, text?, value?, rationale}";
 const ACTION_MODEL_CATEGORY = "action";
 
 function stringify(value: unknown) {
@@ -67,6 +67,8 @@ function buildSystemPrompt(input: SelectActionInput) {
   return [
     "You are selecting the next browser action for a synthetic persona navigating a web flow.",
     "Stay persona-authentic, goal-directed, and safe.",
+    "When interactive elements include a ref like @e1, prefer returning ref instead of selector.",
+    "Only return one targeting field for element actions: prefer ref; otherwise use selector.",
     "IMPORTANT: If your action history shows you tried the same action and the outcome was no visible change, you MUST try a completely different action or selector. Never repeat a failed action.",
     `Return only valid JSON matching exactly ${ACTION_RESPONSE_SHAPE}.`,
     `Allowed actions: ${taskSpec.allowedActions.join(", ")}.`,
@@ -88,6 +90,7 @@ function buildSystemPrompt(input: SelectActionInput) {
 function buildUserPrompt(input: SelectActionInput) {
   const { page, observation, actionHistory, request, stepIndex } = input;
   const interactiveElements = page.interactiveElements.map((element) => ({
+    ref: element.ref ?? null,
     role: element.role,
     label: element.label,
     selector: element.selector ?? null,
@@ -116,6 +119,8 @@ function buildUserPrompt(input: SelectActionInput) {
     "",
     "Step progress:",
     observation.taskProgressSummary,
+    "",
+    "Prefer refs like @e1 when available in the current snapshot.",
     "",
     "Respond with JSON only.",
   ].join("\n");
@@ -153,6 +158,7 @@ function parseActionResponse(text: string): ParsedAction {
 
       return {
         type,
+        ref: normalizeOptionalString(parsed.ref),
         url: normalizeOptionalString(parsed.url),
         selector: normalizeOptionalString(parsed.selector),
         text: normalizeOptionalString(parsed.text),
@@ -170,6 +176,7 @@ function parseActionResponse(text: string): ParsedAction {
 function buildAction(parsed: ParsedAction): AgentAction {
   return {
     type: parsed.type,
+    ...(parsed.ref ? { ref: parsed.ref } : {}),
     ...(parsed.url ? { url: parsed.url } : {}),
     ...(parsed.selector ? { selector: parsed.selector } : {}),
     ...(parsed.text ? { text: parsed.text } : {}),
@@ -222,16 +229,18 @@ function getStructuralValidationError(parsed: ParsedAction) {
     case "goto":
       return parsed.url ? null : 'Model suggested "goto" but the required "url" field was missing';
     case "click":
-      return parsed.selector ? null : 'Model suggested "click" but the required "selector" field was missing';
+      return parsed.ref || parsed.selector
+        ? null
+        : 'Model suggested "click" but the required "ref" or "selector" field was missing';
     case "type":
-      if (!parsed.selector) {
-        return 'Model suggested "type" but the required "selector" field was missing';
+      if (!parsed.ref && !parsed.selector) {
+        return 'Model suggested "type" but the required "ref" or "selector" field was missing';
       }
 
       return parsed.text ? null : 'Model suggested "type" but the required "text" field was missing';
     case "select":
-      if (!parsed.selector) {
-        return 'Model suggested "select" but the required "selector" field was missing';
+      if (!parsed.ref && !parsed.selector) {
+        return 'Model suggested "select" but the required "ref" or "selector" field was missing';
       }
 
       return parsed.value ? null : 'Model suggested "select" but the required "value" field was missing';
@@ -275,6 +284,7 @@ function isTimeoutError(error: unknown, timeoutMs: number) {
 function toLoggedAction(action: AgentAction) {
   return {
     type: action.type,
+    ref: action.ref,
     selector: action.selector,
     rationale: action.rationale,
   };

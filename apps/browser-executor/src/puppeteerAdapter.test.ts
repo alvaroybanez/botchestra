@@ -16,15 +16,32 @@ class MockPuppeteerPage {
   readonly waitForTimeout = vi.fn(async () => undefined);
   readonly screenshot = vi.fn(async () => Buffer.from([1, 2, 3]));
   readonly evaluateCalls: Array<{ fn: unknown; args: unknown[] }> = [];
+  private snapshotIndex = 0;
 
-  constructor(private readonly snapshotResult: SnapshotPayload) {}
+  constructor(private readonly snapshotResult: SnapshotPayload | SnapshotPayload[]) {}
 
   async evaluate<T>(fn: unknown, ...args: unknown[]) {
     this.evaluateCalls.push({ fn, args });
 
     if (args.length === 0) {
+      const snapshotResult = Array.isArray(this.snapshotResult)
+        ? (this.snapshotResult.at(this.snapshotIndex) ?? this.snapshotResult.at(-1))
+        : this.snapshotResult;
+      this.snapshotIndex += 1;
+
+      if (!snapshotResult) {
+        throw new Error("No snapshot result configured");
+      }
+
       return {
-        ...this.snapshotResult,
+        ...snapshotResult,
+        interactiveElements: snapshotResult.interactiveElements.map((element) => ({
+          ...element,
+          refIdentity:
+            "refIdentity" in element && typeof element.refIdentity === "string"
+              ? element.refIdentity
+              : `${element.role}|${element.label}|${element.selector ?? ""}`,
+        })),
         pageFingerprint: null,
         branchOptions: null,
         isMajorBranchDecision: false,
@@ -64,11 +81,13 @@ function createSnapshotResult(): SnapshotPayload {
       {
         role: "button",
         label: "Checkout",
+        ref: "@e1",
         selector: "#checkout",
       },
       {
         role: "textbox",
         label: "Email",
+        ref: "@e2",
         selector: "#email",
       },
     ],
@@ -125,11 +144,13 @@ describe("puppeteerAdapter", () => {
         {
           role: "button",
           label: "Checkout",
+          ref: "@e1",
           selector: "#checkout",
         },
         {
           role: "textbox",
           label: "Email",
+          ref: "@e2",
           selector: "#email",
         },
       ],
@@ -168,5 +189,38 @@ describe("puppeteerAdapter", () => {
     const scrollCall = puppeteerPage.evaluateCalls.at(-1);
     expect(scrollCall?.args).toEqual([320]);
     expect(String(scrollCall?.fn)).toContain("window.scrollBy");
+  });
+
+  it("keeps refs stable across snapshots for the same elements", async () => {
+    const firstSnapshot = createSnapshotResult();
+    const secondSnapshot: SnapshotPayload = {
+      ...createSnapshotResult(),
+      interactiveElements: [
+        {
+          role: "textbox",
+          label: "Email",
+          selector: "#email",
+        },
+        {
+          role: "button",
+          label: "Checkout",
+          selector: "#checkout",
+        },
+      ],
+    };
+    const puppeteerPage = new MockPuppeteerPage([firstSnapshot, secondSnapshot]);
+    const adapter = new PuppeteerPageAdapter(puppeteerPage);
+
+    const initial = await adapter.snapshot();
+    const next = await adapter.snapshot();
+
+    expect(initial.interactiveElements).toEqual([
+      expect.objectContaining({ ref: "@e1", label: "Checkout", selector: "#checkout" }),
+      expect.objectContaining({ ref: "@e2", label: "Email", selector: "#email" }),
+    ]);
+    expect(next.interactiveElements).toEqual([
+      expect.objectContaining({ ref: "@e2", label: "Email", selector: "#email" }),
+      expect.objectContaining({ ref: "@e1", label: "Checkout", selector: "#checkout" }),
+    ]);
   });
 });

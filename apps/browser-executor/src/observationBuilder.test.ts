@@ -8,9 +8,9 @@ function createPageState() {
     visibleText:
       "Checkout Shipping address Contact information Continue to payment Review your cart Shipping options Standard delivery arrives tomorrow.",
     interactiveElements: [
-      { role: "button", label: "Continue to payment", selector: "#continue" },
-      { role: "link", label: "Return to cart", selector: "a[href='/cart']" },
-      { role: "textbox", label: "Address line 1", selector: "#address-line-1" },
+      { role: "button", label: "Continue to payment", ref: "@e1", selector: "#continue" },
+      { role: "link", label: "Return to cart", ref: "@e2", selector: "a[href='/cart']" },
+      { role: "textbox", label: "Address line 1", ref: "@e3", selector: "#address-line-1" },
     ],
     actionHistory: [
       {
@@ -100,14 +100,22 @@ describe("buildObservation", () => {
         interactiveElements: Array.from({ length: 8 }, (_, index) => ({
           role: index < 2 ? "button" : "clickable",
           label: `Option ${index + 1}`,
+          ref: `@e${index + 1}`,
           selector: `#option-${index + 1}`,
         })),
       },
       { tokenBudget: 300 },
     );
 
-    expect(observation.interactiveElementSummary).toContain('button "Option 1" (#option-1)');
-    expect(observation.interactiveElementSummary).toContain('clickable "Option 8" (#option-8)');
+    expect(observation.interactiveElementSummary).toContain('button "Option 1" [@e1] (#option-1)');
+    expect(observation.interactiveElementSummary).toContain('clickable "Option 8" [@e8] (#option-8)');
     expect(observation.interactiveElementSummary).not.toContain("+3 more");
+  });
+
+  it("surfaces refs ahead of selectors when available", () => {
+    const observation = buildObservation(createPageState(), { tokenBudget: 200 });
+
+    expect(observation.interactiveElementSummary).toContain('button "Continue to payment" [@e1] (#continue)');
+    expect(observation.interactiveElementSummary).toContain('link "Return to cart" [@e2] (a[href=\'/cart\'])');
   });
 });

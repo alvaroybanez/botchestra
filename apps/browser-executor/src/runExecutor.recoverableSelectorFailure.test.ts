@@ -121,6 +121,7 @@ function createPageState(overrides: Partial<BrowserPageSnapshot> = {}): BrowserP
       {
         role: "button",
         label: "Submit",
+        ref: "@e1",
         selector: "#submit",
       },
     ],
@@ -178,6 +179,53 @@ describe("runExecutor recoverable selector failures", () => {
     });
     expect(page.gotoCalls).toEqual(["https://shop.example.com/contact"]);
     expect(page.clickCalls).toEqual(["#missing"]);
+    expect(selectAction).toHaveBeenCalledTimes(2);
+    expect(context.close).toHaveBeenCalledTimes(1);
+    expect(leaseClient.release).toHaveBeenCalledWith("lease-1");
+  });
+
+  it("lets the run continue after an unresolved ref and surfaces the failure in action history", async () => {
+    const page = new MockBrowserPage(createPageState());
+    const { browser, context } = createMockBrowser(page);
+    const leaseClient = createLeaseClient();
+    const selectAction = vi.fn(async ({ actionHistory }) => {
+      if (actionHistory.length === 0) {
+        return {
+          type: "click",
+          ref: "@missing",
+          rationale: "Try the primary submit button first.",
+        } satisfies AgentAction;
+      }
+
+      expect(actionHistory).toEqual([
+        {
+          stepIndex: 0,
+          actionType: "click",
+          target: "@missing",
+          outcome: "action failed: No element found for ref: @missing",
+        },
+      ]);
+
+      return {
+        type: "finish",
+        rationale: "The previous ref failed, so stop and let the agent choose a different action next.",
+      } satisfies AgentAction;
+    });
+    const runExecutor = createRunExecutor({
+      browser,
+      leaseClient,
+      selectAction,
+    });
+
+    const result = await runExecutor.execute(createExecuteRunRequest());
+
+    expect(result).toMatchObject({
+      ok: true,
+      finalOutcome: "SUCCESS",
+      stepCount: 2,
+    });
+    expect(page.gotoCalls).toEqual(["https://shop.example.com/contact"]);
+    expect(page.clickCalls).toEqual([]);
     expect(selectAction).toHaveBeenCalledTimes(2);
     expect(context.close).toHaveBeenCalledTimes(1);
     expect(leaseClient.release).toHaveBeenCalledWith("lease-1");

@@ -67,6 +67,7 @@ function createPage(overrides: Partial<BrowserPageSnapshot> = {}): BrowserPageSn
       {
         role: "button",
         label: "Continue to checkout",
+        ref: "@e1",
         selector: "#checkout",
       },
     ],
@@ -86,7 +87,7 @@ function createObservation(overrides: Partial<ObservationBundle> = {}): Observat
     currentUrl: "https://shop.example.com/cart",
     pageTitle: "Cart",
     visibleTextExcerpt: "Continue to checkout when you are ready.",
-    interactiveElementSummary: 'button "Continue to checkout" (#checkout)',
+    interactiveElementSummary: 'button "Continue to checkout" [@e1] (#checkout)',
     recentActionHistory: "No prior actions recorded.",
     taskProgressSummary: "Step 1 of 6. Goal: Make safe progress.",
     text: "URL: https://shop.example.com/cart",
@@ -112,6 +113,22 @@ describe("aiActionSelector action validation", () => {
     mockedGenerateWithModel.mockReset();
   });
 
+  it("accepts ref-based targeting without requiring a selector", async () => {
+    mockedGenerateWithModel.mockResolvedValue(mockTextResult(JSON.stringify({
+      type: "click",
+      ref: "@e1",
+      rationale: "Use the primary checkout control.",
+    })));
+
+    const selectAction = createAiActionSelector();
+
+    await expect(selectAction(createInput())).resolves.toEqual({
+      type: "click",
+      ref: "@e1",
+      rationale: "Use the primary checkout control.",
+    });
+  });
+
   it("returns a safe wait action when the model response is malformed JSON", async () => {
     mockedGenerateWithModel.mockResolvedValue(mockTextResult("{type: click, selector: #checkout}"));
 
@@ -127,9 +144,12 @@ describe("aiActionSelector action validation", () => {
   it.each([
     ["goto", { type: "goto" }],
     ["click", { type: "click" }],
+    ["click_missing_target", { type: "click" }],
     ["type_missing_selector", { type: "type", text: "Maya Torres" }],
+    ["type_missing_target", { type: "type", text: "Maya Torres" }],
     ["type_missing_text", { type: "type", selector: "#name" }],
     ["select_missing_selector", { type: "select", value: "express" }],
+    ["select_missing_target", { type: "select", value: "express" }],
     ["select_missing_value", { type: "select", selector: "#shipping-speed" }],
   ])("falls back safely when %s is missing required fields", async (_caseName, payload) => {
     mockedGenerateWithModel.mockResolvedValue(mockTextResult(JSON.stringify({

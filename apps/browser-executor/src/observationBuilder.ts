@@ -3,6 +3,7 @@ import type { ExecuteRunRequest } from "@botchestra/shared";
 type AllowedAction = ExecuteRunRequest["taskSpec"]["allowedActions"][number];
 
 export type ObservationInteractiveElement = {
+  ref?: string;
   role: string;
   label: string;
   selector?: string | null;
@@ -100,6 +101,7 @@ function summarizeInteractiveElements(
 
   const summarizedElements = interactiveElements.slice(0, maxInteractiveElements).map((element) => {
     const label = normalizeWhitespace(element.label || "Unlabeled element");
+    const ref = element.ref ? ` [${normalizeWhitespace(element.ref)}]` : "";
     const selector = element.selector ? ` (${normalizeWhitespace(element.selector)})` : "";
     const href = element.href ? ` → ${normalizeWhitespace(element.href)}` : "";
     const placeholder = typeof element.placeholder === "string" ? normalizeWhitespace(element.placeholder) : "";
@@ -119,7 +121,7 @@ function summarizeInteractiveElements(
         : "";
     const disabled = element.disabled ? " [disabled]" : "";
 
-    return `${element.role} "${label}"${selector}${href}${formState}${disabled}${hint}`;
+    return `${element.role} "${label}"${ref}${selector}${href}${formState}${disabled}${hint}`;
   });
 
   const remainingCount = interactiveElements.length - summarizedElements.length;

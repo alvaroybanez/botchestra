@@ -99,6 +99,7 @@ describe("fallbackActionSelector", () => {
               {
                 role: "button",
                 label: "Continue to checkout",
+                ref: "@e1",
                 selector: "#checkout",
               },
             ],
@@ -107,6 +108,7 @@ describe("fallbackActionSelector", () => {
       ),
     ).resolves.toEqual({
       type: "click",
+      ref: "@e1",
       selector: "#checkout",
       rationale: 'Try the prominent "Continue to checkout" control first.',
     });

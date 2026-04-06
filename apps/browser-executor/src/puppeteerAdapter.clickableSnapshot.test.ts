@@ -373,6 +373,7 @@ describe("PuppeteerPageAdapter clickable snapshot detection", () => {
     expect(snapshot.visibleText).toContain("Premium plan");
     expect(snapshot.interactiveElements).toEqual([
       {
+        ref: "@e1",
         role: "button",
         label: "Checkout Now",
         selector: "#checkout",
@@ -380,6 +381,7 @@ describe("PuppeteerPageAdapter clickable snapshot detection", () => {
         disabled: false,
       },
       {
+        ref: "@e2",
         role: "link",
         label: "Help",
         selector: "#help-link",
@@ -388,6 +390,7 @@ describe("PuppeteerPageAdapter clickable snapshot detection", () => {
         disabled: false,
       },
       {
+        ref: "@e3",
         role: "clickable",
         label: "Premium plan View details",
         selector: "#product-card",
