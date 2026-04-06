@@ -7,12 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AnimatedList } from "@/components/animated-list";
-import { EmptyState } from "@/components/empty-state";
-import { FilterBar, FilterSelect } from "@/components/filter-bar";
-import { PageHeader } from "@/components/page-header";
-import { SeverityBadge } from "@/components/status-badge";
-import { SummaryValue } from "@/components/summary-value";
 import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
 import {
   demoFindings,
@@ -84,7 +78,7 @@ export function StudyFindingsPage({
 
   if (study === undefined || findings === undefined) {
     return (
-      <EmptyState
+      <FindingsStateCard
         description="Loading analysis findings, filters, and representative evidence..."
         title="Findings"
       />
@@ -93,7 +87,7 @@ export function StudyFindingsPage({
 
   if (study === null) {
     return (
-      <EmptyState
+      <FindingsStateCard
         description="This study could not be found in the current organization."
         title="Study not found"
       />
@@ -133,7 +127,7 @@ function LiveStudyFindingsContent({
 
   if (resolvedArtifactUrls === undefined) {
     return (
-      <EmptyState
+      <FindingsStateCard
         description="Resolving evidence artifact URLs for this study..."
         title="Findings"
       />
@@ -226,23 +220,34 @@ function ResolvedStudyFindingsPage({
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        eyebrow="Findings Explorer"
-        title="Findings"
-        badge={<StudyStatusBadge status={study.status} />}
-        description="Filter issue clusters by severity, synthetic user, axis range, outcome, and URL prefix. Drill into representative runs and open evidence links for each cluster."
-        actions={
-          <>
-            <StudyOverviewLinkButton
-              detailSearch={detailSearch}
-              studyId={study._id}
-            />
-            <Button asChild variant="outline">
-              <Link to="/studies">Back to Studies</Link>
-            </Button>
-          </>
-        }
-      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-3">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Findings Explorer
+          </p>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-3xl font-semibold tracking-tight">Findings</h2>
+              <StudyStatusBadge status={study.status} />
+            </div>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              Filter issue clusters by severity, synthetic user, axis range,
+              outcome, and URL prefix. Drill into representative runs and open
+              evidence links for each cluster.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <StudyOverviewLinkButton
+            detailSearch={detailSearch}
+            studyId={study._id}
+          />
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        </div>
+      </div>
 
       <StudyTabsNav
         activeTab="findings"
@@ -252,173 +257,202 @@ function ResolvedStudyFindingsPage({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <div className="space-y-6">
-          <FilterBar
-            title="Filter findings"
-            columns="lg:grid-cols-2"
-            footer={
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {filteredFindings.length} of {findings.length} clusters
-                  </p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Filter findings</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="finding-severity-filter">Severity</Label>
+                <select
+                  aria-label="Severity filter"
+                  className={selectClassName}
+                  id="finding-severity-filter"
+                  value={detailSearch.severity ?? ""}
+                  onChange={(event) =>
+                    onSearchChange({
+                      severity: event.target.value || undefined,
+                    })
+                  }
+                >
+                  <option value="">All severities</option>
+                  {severityOptions.map((severity) => (
+                    <option key={severity} value={severity}>
+                      {formatStatusLabel(severity)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  <Button
-                    onClick={() =>
+              <div className="grid gap-2">
+                <Label htmlFor="finding-persona-filter">Synthetic user</Label>
+                <select
+                  aria-label="Synthetic user filter"
+                  className={selectClassName}
+                  id="finding-persona-filter"
+                  value={detailSearch.syntheticUserId ?? ""}
+                  onChange={(event) =>
+                    onSearchChange({
+                      syntheticUserId: event.target.value || undefined,
+                    })
+                  }
+                >
+                  <option value="">All synthetic users</option>
+                  {syntheticUserOptions.map((persona) => (
+                    <option key={persona.id} value={persona.id}>
+                      {persona.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="finding-axis-key-filter">Axis key</Label>
+                <select
+                  aria-label="Axis key filter"
+                  className={selectClassName}
+                  id="finding-axis-key-filter"
+                  value={detailSearch.axisKey ?? ""}
+                  onChange={(event) =>
+                    onSearchChange({
+                      axisKey: event.target.value || undefined,
+                    })
+                  }
+                >
+                  <option value="">Any axis</option>
+                  {axisKeys.map((axisKey) => (
+                    <option key={axisKey} value={axisKey}>
+                      {axisKey}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="finding-axis-min-filter">Axis min</Label>
+                  <Input
+                    aria-label="Axis min filter"
+                    id="finding-axis-min-filter"
+                    max="1"
+                    min="-1"
+                    placeholder="-1"
+                    step="0.1"
+                    type="number"
+                    value={detailSearch.axisMin ?? ""}
+                    onChange={(event) =>
                       onSearchChange({
-                        ...emptyStudyDetailSearch,
+                        axisMin: toOptionalNumber(event.target.value),
                       })
                     }
-                    type="button"
-                    variant="outline"
-                  >
-                    Clear filters
-                  </Button>
+                  />
                 </div>
 
-                {axisRangeIsInvalid ? (
-                  <p className="mt-3 text-sm text-destructive">
-                    Axis min cannot be greater than axis max.
-                  </p>
-                ) : null}
+                <div className="grid gap-2">
+                  <Label htmlFor="finding-axis-max-filter">Axis max</Label>
+                  <Input
+                    aria-label="Axis max filter"
+                    id="finding-axis-max-filter"
+                    max="1"
+                    min="-1"
+                    placeholder="1"
+                    step="0.1"
+                    type="number"
+                    value={detailSearch.axisMax ?? ""}
+                    onChange={(event) =>
+                      onSearchChange({
+                        axisMax: toOptionalNumber(event.target.value),
+                      })
+                    }
+                  />
+                </div>
               </div>
-            }
-          >
-            <FilterSelect
-              id="finding-severity-filter"
-              label="Severity"
-              options={severityOptions.map((severity) => ({
-                value: severity,
-                label: formatStatusLabel(severity),
-              }))}
-              placeholder="All severities"
-              value={detailSearch.severity ?? ""}
-              onChange={(value) =>
-                onSearchChange({ severity: value || undefined })
-              }
-            />
 
-            <FilterSelect
-              id="finding-persona-filter"
-              label="Synthetic user"
-              options={syntheticUserOptions.map((persona) => ({
-                value: persona.id,
-                label: persona.name,
-              }))}
-              placeholder="All synthetic users"
-              value={detailSearch.syntheticUserId ?? ""}
-              onChange={(value) =>
-                onSearchChange({ syntheticUserId: value || undefined })
-              }
-            />
-
-            <FilterSelect
-              id="finding-axis-key-filter"
-              label="Axis key"
-              options={axisKeys.map((axisKey) => ({
-                value: axisKey,
-                label: axisKey,
-              }))}
-              placeholder="Any axis"
-              value={detailSearch.axisKey ?? ""}
-              onChange={(value) =>
-                onSearchChange({ axisKey: value || undefined })
-              }
-            />
-
-            <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="finding-axis-min-filter">Axis min</Label>
-                <Input
-                  aria-label="Axis min filter"
-                  id="finding-axis-min-filter"
-                  max="1"
-                  min="-1"
-                  placeholder="-1"
-                  step="0.1"
-                  type="number"
-                  value={detailSearch.axisMin ?? ""}
+                <Label htmlFor="finding-outcome-filter">Outcome</Label>
+                <select
+                  aria-label="Outcome filter"
+                  className={selectClassName}
+                  id="finding-outcome-filter"
+                  value={detailSearch.outcome ?? ""}
                   onChange={(event) =>
                     onSearchChange({
-                      axisMin: toOptionalNumber(event.target.value),
+                      outcome: event.target.value || undefined,
+                    })
+                  }
+                >
+                  <option value="">All outcomes</option>
+                  {outcomeOptions.map((outcome) => (
+                    <option key={outcome} value={outcome}>
+                      {formatStatusLabel(outcome)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="finding-url-prefix-filter">URL prefix</Label>
+                <Input
+                  aria-label="URL prefix filter"
+                  id="finding-url-prefix-filter"
+                  placeholder="https://example.com/checkout"
+                  value={detailSearch.urlPrefix ?? ""}
+                  onChange={(event) =>
+                    onSearchChange({
+                      urlPrefix: event.target.value || undefined,
                     })
                   }
                 />
               </div>
+            </CardContent>
+            <CardContent className="pt-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {filteredFindings.length} of {findings.length} clusters
+                </p>
 
-              <div className="grid gap-2">
-                <Label htmlFor="finding-axis-max-filter">Axis max</Label>
-                <Input
-                  aria-label="Axis max filter"
-                  id="finding-axis-max-filter"
-                  max="1"
-                  min="-1"
-                  placeholder="1"
-                  step="0.1"
-                  type="number"
-                  value={detailSearch.axisMax ?? ""}
-                  onChange={(event) =>
+                <Button
+                  onClick={() =>
                     onSearchChange({
-                      axisMax: toOptionalNumber(event.target.value),
+                      ...emptyStudyDetailSearch,
                     })
                   }
-                />
+                  type="button"
+                  variant="outline"
+                >
+                  Clear filters
+                </Button>
               </div>
-            </div>
 
-            <FilterSelect
-              id="finding-outcome-filter"
-              label="Outcome"
-              options={outcomeOptions.map((outcome) => ({
-                value: outcome,
-                label: formatStatusLabel(outcome),
-              }))}
-              placeholder="All outcomes"
-              value={detailSearch.outcome ?? ""}
-              onChange={(value) =>
-                onSearchChange({ outcome: value || undefined })
-              }
-            />
-
-            <div className="grid gap-2">
-              <Label htmlFor="finding-url-prefix-filter">URL prefix</Label>
-              <Input
-                aria-label="URL prefix filter"
-                id="finding-url-prefix-filter"
-                placeholder="https://example.com/checkout"
-                value={detailSearch.urlPrefix ?? ""}
-                onChange={(event) =>
-                  onSearchChange({
-                    urlPrefix: event.target.value || undefined,
-                  })
-                }
-              />
-            </div>
-          </FilterBar>
+              {axisRangeIsInvalid ? (
+                <p className="mt-3 text-sm text-destructive">
+                  Axis min cannot be greater than axis max.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
 
           {findings.length === 0 ? (
-            <EmptyState
+            <FindingsStateCard
               description="No issue clusters are available yet. Findings will appear after the analysis pipeline completes."
               title="No findings yet"
             />
           ) : filteredFindings.length === 0 ? (
-            <EmptyState
+            <FindingsStateCard
               description="No findings match the current filter combination. Clear or adjust a filter to broaden the result set."
               title="No matching findings"
             />
           ) : (
-            <AnimatedList
-              items={filteredFindings}
-              keyExtractor={(finding) => finding._id}
-              renderItem={(finding) => (
+            <div className="space-y-4">
+              {filteredFindings.map((finding) => (
                 <FindingCard
+                  key={finding._id}
                   finding={finding}
                   resolvedArtifactUrls={resolvedArtifactUrls}
                   studyId={study._id}
                 />
-              )}
-              staggerDelay={0.05}
-              initialY={12}
-            />
+              ))}
+            </div>
           )}
         </div>
 
@@ -482,7 +516,7 @@ function FindingCard({
                 {Math.round(finding.affectedRunRate * 100)}% affected rate
               </span>
             </div>
-            <CardTitle className="font-heading text-xl">{finding.title}</CardTitle>
+            <CardTitle className="text-xl">{finding.title}</CardTitle>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
               {finding.summary}
             </p>
@@ -623,6 +657,54 @@ function FindingCard({
   );
 }
 
+function SummaryValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background p-4">
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function SeverityBadge({
+  severity,
+}: {
+  severity: DemoFinding["severity"];
+}) {
+  return (
+    <span
+      className={[
+        "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
+        severity === "blocker" ? "bg-rose-100 text-rose-800" : "",
+        severity === "major" ? "bg-amber-100 text-amber-800" : "",
+        severity === "minor" ? "bg-sky-100 text-sky-800" : "",
+        severity === "cosmetic" ? "bg-slate-200 text-slate-700" : "",
+      ].join(" ")}
+    >
+      {severity}
+    </span>
+  );
+}
+
+function FindingsStateCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function filterFindings(findings: DemoFinding[], search: StudyDetailSearch) {
   return findings.filter((finding) => {
     if (search.severity && finding.severity !== search.severity) {
@@ -708,3 +790,6 @@ function formatFindingCount(count: number) {
 function formatStatusLabel(value: string) {
   return value.replaceAll("_", " ");
 }
+
+const selectClassName =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

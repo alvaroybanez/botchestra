@@ -7,9 +7,6 @@ import {
   PersonaVariantReviewGrid,
   type VariantReviewData,
 } from "@/components/persona-variant-review-grid";
-import { EmptyState } from "@/components/empty-state";
-import { PageHeader } from "@/components/page-header";
-import { SummaryValue } from "@/components/summary-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
@@ -204,18 +201,18 @@ function LiveStudyPersonasPage({
 
   if (reviewData === undefined) {
     return (
-      <EmptyState
-        title="Persona Variant Review"
+      <ReviewStateCard
         description="Loading accepted variants and review controls..."
+        title="Persona Variant Review"
       />
     );
   }
 
   if (reviewData === null) {
     return (
-      <EmptyState
-        title="Study not found"
+      <ReviewStateCard
         description="This study could not be found in your organization."
+        title="Study not found"
       />
     );
   }
@@ -255,16 +252,26 @@ function VariantReviewContent({
 }) {
   return (
     <section className="space-y-6">
-      <PageHeader
-        eyebrow="Variant Review"
-        title="Persona Variant Review"
-        description="Review accepted variants for this study, filter by synthetic user or axis range, and inspect the score distribution before launch."
-        actions={
-          <Button asChild variant="outline">
-            <Link to="/studies">Back to Studies</Link>
-          </Button>
-        }
-      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-3">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Variant Review
+          </p>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-semibold tracking-tight">
+              Persona Variant Review
+            </h2>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              Review accepted variants for this study, filter by synthetic user or
+              axis range, and inspect the score distribution before launch.
+            </p>
+          </div>
+        </div>
+
+        <Button asChild variant="outline">
+          <Link to="/studies">Back to Studies</Link>
+        </Button>
+      </div>
 
       <StudyTabsNav
         activeTab="personas"
@@ -326,6 +333,34 @@ function VariantReviewContent({
         </div>
       </div>
     </section>
+  );
+}
+
+function SummaryValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background p-4">
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function ReviewStateCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
   );
 }
 

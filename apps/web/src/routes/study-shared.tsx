@@ -1,13 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import {
-  StudyStatusBadge,
-  RunStatusBadge,
-} from "@/components/status-badge";
 import { cn } from "@/lib/utils";
-
-export { StudyStatusBadge, RunStatusBadge };
 
 export type StudyDetailSearch = {
   outcome: string | undefined;
@@ -98,7 +91,7 @@ export function StudyTabsNav({
   studyId: string;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-card">
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
       <div className="space-y-4">
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">
@@ -115,23 +108,16 @@ export function StudyTabsNav({
             <Link
               key={tab.key}
               className={cn(
-                "relative rounded-md px-3 py-2 font-label text-xs transition-colors",
+                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 activeTab === tab.key
-                  ? "text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
               params={{ studyId }}
               search={detailSearch}
               to={tab.to}
             >
-              {activeTab === tab.key && (
-                <motion.span
-                  layoutId="study-tab-indicator"
-                  className="absolute inset-0 rounded-md bg-primary shadow-card"
-                  transition={{ type: "spring", visualDuration: 0.25, bounce: 0.15 }}
-                />
-              )}
-              <span className="relative z-10">{tab.label}</span>
+              {tab.label}
             </Link>
           ))}
         </div>
@@ -157,6 +143,51 @@ export function StudyOverviewLinkButton({
         Go to Overview
       </Link>
     </Button>
+  );
+}
+
+export function StudyStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
+        status === "draft" && "bg-slate-200 text-slate-700",
+        status === "persona_review" && "bg-violet-100 text-violet-800",
+        status === "ready" && "bg-sky-100 text-sky-800",
+        status === "queued" && "bg-amber-100 text-amber-800",
+        status === "running" && "bg-blue-100 text-blue-800",
+        status === "replaying" && "bg-indigo-100 text-indigo-800",
+        status === "analyzing" && "bg-fuchsia-100 text-fuchsia-800",
+        status === "completed" && "bg-emerald-100 text-emerald-800",
+        status === "failed" && "bg-rose-100 text-rose-800",
+        status === "cancelled" && "bg-zinc-200 text-zinc-700",
+      )}
+    >
+      {status.replaceAll("_", " ")}
+    </span>
+  );
+}
+
+export function RunStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
+        status === "queued" && "bg-amber-100 text-amber-800",
+        status === "dispatching" && "bg-orange-100 text-orange-800",
+        status === "running" && "bg-blue-100 text-blue-800",
+        status === "success" && "bg-emerald-100 text-emerald-800",
+        status === "hard_fail" && "bg-rose-100 text-rose-800",
+        status === "soft_fail" && "bg-pink-100 text-pink-800",
+        status === "gave_up" && "bg-violet-100 text-violet-800",
+        status === "timeout" && "bg-yellow-100 text-yellow-800",
+        status === "blocked_by_guardrail" && "bg-red-100 text-red-800",
+        status === "infra_error" && "bg-slate-300 text-slate-800",
+        status === "cancelled" && "bg-zinc-200 text-zinc-700",
+      )}
+    >
+      {status.replaceAll("_", " ")}
+    </span>
   );
 }
 

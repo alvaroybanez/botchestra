@@ -11,9 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EmptyState } from "@/components/empty-state";
-import { PageHeader } from "@/components/page-header";
-import { selectClassName } from "@/components/filter-bar";
 
 const taskCategories = [
   "expansion",
@@ -185,9 +182,9 @@ export function SettingsPage() {
 
   if (settings === undefined) {
     return (
-      <EmptyState
-        title="Workspace settings"
+      <LoadingCard
         description="Loading workspace configuration, guardrails, and credentials..."
+        title="Workspace settings"
       />
     );
   }
@@ -374,11 +371,20 @@ export function SettingsPage() {
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        eyebrow="Admin Console"
-        title="Workspace settings"
-        description="Configure workspace guardrails, AI models, study limits, browser defaults, and encrypted credentials from one admin-only page."
-      />
+      <div className="space-y-3">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          Admin Console
+        </p>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-semibold tracking-tight">
+            Workspace settings
+          </h2>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            Configure workspace guardrails, AI models, study limits, browser
+            defaults, and encrypted credentials from one admin-only page.
+          </p>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <SummaryCard label="Allowlisted domains" value={String(settingsSummary.domainCount)} />
@@ -930,6 +936,23 @@ export function SettingsPage() {
   );
 }
 
+function LoadingCard({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
+
 function FieldGroup({ children }: { children: ReactNode }) {
   return <div className="grid gap-2">{children}</div>;
 }
@@ -1106,3 +1129,5 @@ function formatTimestamp(timestamp: number) {
 export const textareaClassName =
   "min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
+export const selectClassName =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

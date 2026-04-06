@@ -24,8 +24,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { FilterBar, FilterSearch, FilterSelect } from "@/components/filter-bar";
-import { PageHeader } from "@/components/page-header";
 
 type AxisDefinition = Doc<"axisDefinitions">;
 
@@ -285,43 +283,62 @@ export function AxisLibraryPage() {
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        className="lg:flex-row lg:items-start lg:justify-between"
-        eyebrow="Persona Library"
-        title="Axis Library"
-        description="Reuse shared persona axes across configs, search by metadata, and manage org-specific definitions in one place."
-        actions={
-          canManageAxes ? (
-            <Button onClick={() => setDialogState({ mode: "create" })}>
-              Create axis
-            </Button>
-          ) : null
-        }
-      />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Persona Library
+          </p>
+          <h2 className="text-3xl font-semibold tracking-tight">Axis Library</h2>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            Reuse shared persona axes across configs, search by metadata, and manage
+            org-specific definitions in one place.
+          </p>
+        </div>
 
-      <FilterBar
-        title="Browse axes"
-        columns="md:grid-cols-[minmax(0,1fr)_220px]"
-        footer={
-          <p className="text-sm text-muted-foreground">{filterSummary}</p>
-        }
-      >
-        <FilterSearch
-          id="axis-library-search"
-          label="Search"
-          placeholder="Search by key, label, or description"
-          value={searchText}
-          onChange={setSearchText}
-        />
-        <FilterSelect
-          id="axis-library-tag-filter"
-          label="Tag filter"
-          placeholder="All tags"
-          value={selectedTag}
-          onChange={setSelectedTag}
-          options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
-        />
-      </FilterBar>
+        {canManageAxes ? (
+          <Button onClick={() => setDialogState({ mode: "create" })}>
+            Create axis
+          </Button>
+        ) : null}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Browse axes</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="grid gap-2">
+            <Label htmlFor="axis-library-search">Search</Label>
+            <Input
+              id="axis-library-search"
+              placeholder="Search by key, label, or description"
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="axis-library-tag-filter">Tag filter</Label>
+            <select
+              className={selectClassName}
+              id="axis-library-tag-filter"
+              value={selectedTag}
+              onChange={(event) => setSelectedTag(event.target.value)}
+            >
+              <option value="">All tags</option>
+              {tagOptions.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <p className="md:col-span-2 text-sm text-muted-foreground">
+            {filterSummary}
+          </p>
+        </CardContent>
+      </Card>
 
       {axisDefinitions.length === 0 ? (
         <Card>
@@ -949,3 +966,5 @@ function formatAxisFilterSummary({
   } matching ${filters.join(" and ")}.`;
 }
 
+const selectClassName =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

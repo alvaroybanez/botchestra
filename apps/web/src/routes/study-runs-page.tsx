@@ -1,15 +1,12 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { motion } from "motion/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SummaryValue, SummaryGrid } from "@/components/summary-value";
-import { FilterBar, FilterSelect, FilterSearch } from "@/components/filter-bar";
-import { PageHeader } from "@/components/page-header";
-import { EmptyState } from "@/components/empty-state";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
 import {
   demoRunDetailsById,
@@ -82,8 +79,8 @@ export function StudyRunsPage({
 
   if (filteredRuns === undefined || allRuns === undefined) {
     return (
-      <EmptyState
-        description="Loading study runs and filters..."
+      <StateCard
+        body="Loading study runs and filters..."
         title="Runs"
       />
     );
@@ -129,22 +126,31 @@ function ResolvedStudyRunsPage({
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        eyebrow="Run inspection"
-        title="Runs"
-        description="Filter runs by outcome, persona, or URL, then inspect the selected run's persona summary, milestone timeline, self-report, and artifact links."
-        actions={
-          <>
-            <StudyOverviewLinkButton
-              detailSearch={detailSearch}
-              studyId={studyId}
-            />
-            <Button asChild variant="outline">
-              <Link to="/studies">Back to Studies</Link>
-            </Button>
-          </>
-        }
-      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-3">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Run inspection
+          </p>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-semibold tracking-tight">Runs</h2>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              Filter runs by outcome, persona, or URL, then inspect the selected
+              run&apos;s persona summary, milestone timeline, self-report, and
+              artifact links.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <StudyOverviewLinkButton
+            detailSearch={detailSearch}
+            studyId={studyId}
+          />
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        </div>
+      </div>
 
       <StudyTabsNav
         activeTab="runs"
@@ -152,42 +158,71 @@ function ResolvedStudyRunsPage({
         studyId={studyId}
       />
 
-      <FilterBar title="Filter runs" columns="lg:grid-cols-4">
-        <FilterSelect
-          id="run-outcome-filter"
-          label="Outcome"
-          placeholder="All outcomes"
-          value={detailSearch.outcome ?? ""}
-          options={outcomeOptions.map((status) => ({
-            value: status,
-            label: status.replaceAll("_", " "),
-          }))}
-          onChange={(value) => onSearchChange({ outcome: value || undefined })}
-        />
-        <FilterSelect
-          id="run-persona-filter"
-          label="Persona"
-          placeholder="All synthetic users"
-          value={detailSearch.syntheticUserId ?? ""}
-          options={personaOptions.map((persona) => ({
-            value: persona.id,
-            label: persona.name,
-          }))}
-          onChange={(value) =>
-            onSearchChange({ syntheticUserId: value || undefined })
-          }
-        />
-        <FilterSearch
-          id="run-url-filter"
-          label="URL contains"
-          placeholder="checkout/address"
-          value={detailSearch.finalUrlContains ?? ""}
-          onChange={(value) =>
-            onSearchChange({ finalUrlContains: value || undefined })
-          }
-          className="lg:col-span-2"
-        />
-      </FilterBar>
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter runs</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-4">
+          <div className="grid gap-2">
+            <Label htmlFor="run-outcome-filter">Outcome</Label>
+            <select
+              aria-label="Outcome filter"
+              className={selectClassName}
+              id="run-outcome-filter"
+              value={detailSearch.outcome ?? ""}
+              onChange={(event) =>
+                onSearchChange({
+                  outcome: event.target.value || undefined,
+                })
+              }
+            >
+              <option value="">All outcomes</option>
+              {outcomeOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status.replaceAll("_", " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="run-persona-filter">Persona</Label>
+            <select
+              aria-label="Persona filter"
+              className={selectClassName}
+              id="run-persona-filter"
+              value={detailSearch.syntheticUserId ?? ""}
+              onChange={(event) =>
+                onSearchChange({
+                  syntheticUserId: event.target.value || undefined,
+                })
+              }
+            >
+              <option value="">All synthetic users</option>
+              {personaOptions.map((persona) => (
+                <option key={persona.id} value={persona.id}>
+                  {persona.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2 lg:col-span-2">
+            <Label htmlFor="run-url-filter">URL contains</Label>
+            <Input
+              aria-label="URL contains filter"
+              id="run-url-filter"
+              placeholder="checkout/address"
+              value={detailSearch.finalUrlContains ?? ""}
+              onChange={(event) =>
+                onSearchChange({
+                  finalUrlContains: event.target.value || undefined,
+                })
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
         <Card>
@@ -203,60 +238,47 @@ function ResolvedStudyRunsPage({
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredRuns.map((run, index) => (
-                  <motion.button
-                    key={run._id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.04, type: "spring", visualDuration: 0.25, bounce: 0.1 }}
-                    className={
-                      run._id === selectedRunId
-                        ? selectedRunClassName
-                        : runClassName
-                    }
-                    type="button"
-                    onClick={() => onSearchChange({ runId: run._id })}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="space-y-1 text-left">
-                        <p className="font-medium">{run.syntheticUserName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {run.firstPersonBio}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {(run.status === "running" || run.status === "dispatching") && (
-                          <span className="relative flex size-2">
-                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
-                            <span className="relative inline-flex size-2 rounded-full bg-blue-500" />
-                          </span>
-                        )}
-                        <RunStatusBadge status={run.status} />
-                      </div>
+              filteredRuns.map((run) => (
+                <button
+                  key={run._id}
+                  className={
+                    run._id === selectedRunId
+                      ? selectedRunClassName
+                      : runClassName
+                  }
+                  type="button"
+                  onClick={() => onSearchChange({ runId: run._id })}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="space-y-1 text-left">
+                      <p className="font-medium">{run.syntheticUserName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {run.firstPersonBio}
+                      </p>
                     </div>
+                    <RunStatusBadge status={run.status} />
+                  </div>
 
-                    <div className="mt-4 grid gap-3 text-left sm:grid-cols-2">
-                      <SummaryValue
-                        label="Final URL"
-                        value={run.finalUrl ?? "Not available"}
-                      />
-                      <SummaryValue
-                        label="Duration"
-                        value={formatDuration(run.durationSec)}
-                      />
-                      <SummaryValue
-                        label="Steps"
-                        value={String(run.stepCount ?? 0)}
-                      />
-                      <SummaryValue
-                        label="Outcome"
-                        value={run.finalOutcome ?? run.status}
-                      />
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
+                  <div className="mt-4 grid gap-3 text-left sm:grid-cols-2">
+                    <SummaryValue
+                      label="Final URL"
+                      value={run.finalUrl ?? "Not available"}
+                    />
+                    <SummaryValue
+                      label="Duration"
+                      value={formatDuration(run.durationSec)}
+                    />
+                    <SummaryValue
+                      label="Steps"
+                      value={String(run.stepCount ?? 0)}
+                    />
+                    <SummaryValue
+                      label="Outcome"
+                      value={run.finalOutcome ?? run.status}
+                    />
+                  </div>
+                </button>
+              ))
             )}
           </CardContent>
         </Card>
@@ -264,9 +286,9 @@ function ResolvedStudyRunsPage({
         {selectedRunId ? (
           <RunDetail runId={selectedRunId} />
         ) : (
-          <EmptyState
+          <StateCard
+            body="Select a run to inspect persona details, milestones, self-report answers, and artifacts."
             title="Run detail"
-            description="Select a run to inspect persona details, milestones, self-report answers, and artifacts."
           />
         )}
       </div>
@@ -284,16 +306,14 @@ function RunDetail({ runId }: { runId: string }) {
   });
 
   if (runDetail === undefined) {
-    return (
-      <EmptyState title="Run detail" description="Loading run detail..." />
-    );
+    return <StateCard body="Loading run detail..." title="Run detail" />;
   }
 
   if (runDetail === null) {
     return (
-      <EmptyState
+      <StateCard
+        body="The selected run could not be found."
         title="Run detail"
-        description="The selected run could not be found."
       />
     );
   }
@@ -357,7 +377,7 @@ function ResolvedRunDetail({
                       {formatTimestamp(milestone.timestamp)}
                     </span>
                   </div>
-                  <SummaryGrid columns="sm:grid-cols-2" className="mt-3">
+                  <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                     <SummaryValue label="URL" value={milestone.url} />
                     <SummaryValue label="Action" value={milestone.actionType} />
                     <SummaryValue
@@ -368,7 +388,7 @@ function ResolvedRunDetail({
                       label="Screenshot"
                       value={milestone.screenshotKey ?? "Not available"}
                     />
-                  </SummaryGrid>
+                  </dl>
                   {milestone.screenshotKey ? (
                     <a
                       className="mt-3 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -534,8 +554,33 @@ function ArtifactLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+function SummaryValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background p-4">
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function StateCard({ title, body }: { title: string; body: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{body}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 const runClassName =
-  "w-full rounded-xl bg-card p-4 text-left shadow-card transition-colors hover:border-primary hover:bg-muted/30";
+  "w-full rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary hover:bg-muted/30";
 
 const selectedRunClassName =
-  "w-full rounded-xl border border-primary bg-primary/5 p-4 text-left shadow-card";
+  "w-full rounded-xl border border-primary bg-primary/5 p-4 text-left shadow-sm";
+
+const selectClassName =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

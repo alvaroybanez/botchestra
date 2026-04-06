@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FilterBar, FilterSearch, FilterSelect, selectClassName } from "@/components/filter-bar";
-import { SummaryValue } from "@/components/summary-value";
 
 export type VariantReviewData = {
   study: {
@@ -129,69 +128,77 @@ export function PersonaVariantReviewGrid({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
       <div className="space-y-6">
-        <FilterBar
-          title="Filter accepted variants"
-          columns="lg:grid-cols-4"
-        >
-          <div className="grid gap-2">
-            <Label htmlFor="synthetic-user-filter">Synthetic user filter</Label>
-            <select
-              aria-label="Synthetic user filter"
-              className={selectClassName}
-              id="synthetic-user-filter"
-              value={selectedSyntheticUserId}
-              onChange={(event) => setSelectedSyntheticUserId(event.target.value)}
-            >
-              <option value="all">All synthetic users</option>
-              {reviewData.syntheticUsers.map((syntheticUser) => (
-                <option key={syntheticUser._id} value={syntheticUser._id}>
-                  {syntheticUser.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Filter accepted variants</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-4">
+            <div className="grid gap-2">
+              <Label htmlFor="synthetic-user-filter">Synthetic user filter</Label>
+              <select
+                aria-label="Synthetic user filter"
+                className={selectClassName}
+                id="synthetic-user-filter"
+                value={selectedSyntheticUserId}
+                onChange={(event) => setSelectedSyntheticUserId(event.target.value)}
+              >
+                <option value="all">All synthetic users</option>
+                {reviewData.syntheticUsers.map((syntheticUser) => (
+                  <option key={syntheticUser._id} value={syntheticUser._id}>
+                    {syntheticUser.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="axis-filter">Axis filter</Label>
-            <select
-              aria-label="Axis filter"
-              className={selectClassName}
-              id="axis-filter"
-              value={selectedAxisKey}
-              onChange={(event) => setSelectedAxisKey(event.target.value)}
-            >
-              {reviewData.config.sharedAxes.map((axis) => (
-                <option key={axis.key} value={axis.key}>
-                  {axis.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="grid gap-2">
+              <Label htmlFor="axis-filter">Axis filter</Label>
+              <select
+                aria-label="Axis filter"
+                className={selectClassName}
+                id="axis-filter"
+                value={selectedAxisKey}
+                onChange={(event) => setSelectedAxisKey(event.target.value)}
+              >
+                {reviewData.config.sharedAxes.map((axis) => (
+                  <option key={axis.key} value={axis.key}>
+                    {axis.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <FilterSearch
-            id="minimum-axis-value"
-            label="Minimum axis value"
-            placeholder="-1.00"
-            type="number"
-            min="-1"
-            max="1"
-            step="0.01"
-            value={minimumAxisValue}
-            onChange={setMinimumAxisValue}
-          />
+            <div className="grid gap-2">
+              <Label htmlFor="minimum-axis-value">Minimum axis value</Label>
+              <Input
+                aria-label="Minimum axis value"
+                id="minimum-axis-value"
+                max="1"
+                min="-1"
+                placeholder="-1.00"
+                step="0.01"
+                type="number"
+                value={minimumAxisValue}
+                onChange={(event) => setMinimumAxisValue(event.target.value)}
+              />
+            </div>
 
-          <FilterSearch
-            id="maximum-axis-value"
-            label="Maximum axis value"
-            placeholder="1.00"
-            type="number"
-            min="-1"
-            max="1"
-            step="0.01"
-            value={maximumAxisValue}
-            onChange={setMaximumAxisValue}
-          />
-        </FilterBar>
+            <div className="grid gap-2">
+              <Label htmlFor="maximum-axis-value">Maximum axis value</Label>
+              <Input
+                aria-label="Maximum axis value"
+                id="maximum-axis-value"
+                max="1"
+                min="-1"
+                placeholder="1.00"
+                step="0.01"
+                type="number"
+                value={maximumAxisValue}
+                onChange={(event) => setMaximumAxisValue(event.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -302,9 +309,9 @@ export function PersonaVariantReviewGrid({
                   <p className="font-medium">{axis.label}</p>
                   <p className="text-muted-foreground">{axis.description}</p>
                   <div className="grid gap-3">
-                    <SummaryValue label="Low anchor" value={axis.lowAnchor} variant="bordered" />
-                    <SummaryValue label="Mid anchor" value={axis.midAnchor} variant="bordered" />
-                    <SummaryValue label="High anchor" value={axis.highAnchor} variant="bordered" />
+                    <SummaryValue label="Low anchor" value={axis.lowAnchor} />
+                    <SummaryValue label="Mid anchor" value={axis.midAnchor} />
+                    <SummaryValue label="High anchor" value={axis.highAnchor} />
                   </div>
                 </div>
               ))}
@@ -368,6 +375,15 @@ function BodyCell({
   return <td className={`px-4 py-4 ${className}`}>{children}</td>;
 }
 
+function SummaryValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background p-4">
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+
 function getAxisValue(
   axisValues: { key: string; value: number }[],
   axisKey: string,
@@ -402,3 +418,5 @@ function truncateBio(value: string) {
   return `${normalizedValue.slice(0, 117)}...`;
 }
 
+const selectClassName =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
