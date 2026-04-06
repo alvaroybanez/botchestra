@@ -35,7 +35,7 @@ import { SignupPage } from "@/routes/signup";
 import {
   TranscriptDetailPage as TranscriptDetailRoutePage,
   TranscriptsPage as TranscriptsRoutePage,
-} from "@/routes/transcript-pages";
+} from "@/routes/transcript";
 
 export type AppAuthState = {
   isAuthenticated: boolean;
