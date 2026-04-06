@@ -11,16 +11,20 @@ import {
 } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { AppSidebar, SidebarProvider } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { AdminDiagnosticsPage as AdminDiagnosticsRoutePage } from "@/routes/admin-diagnostics-page";
 import { AxisLibraryPage as AxisLibraryRoutePage } from "@/routes/axis-library-page";
 import { LoginPage } from "@/routes/login";
 import { NotFoundPlaceholder } from "@/routes/placeholders";
-import { PersonaConfigDetailPage as PersonaConfigDetailRoutePage } from "@/routes/persona-config-detail";
-import { PersonaConfigsPage as PersonaConfigsRoutePage } from "@/routes/persona-configs-list";
-import { StudiesListPage as StudiesRoutePage } from "@/routes/studies-list";
-import { StudyCreationWizardPage as StudyCreationWizardRoutePage } from "@/routes/study-new";
-import { StudyOverviewPage as StudyOverviewRoutePage } from "@/routes/study-overview";
+import {
+  PersonaConfigDetailPage as PersonaConfigDetailRoutePage,
+  PersonaConfigsPage as PersonaConfigsRoutePage,
+} from "@/routes/persona-config-pages";
+import {
+  StudiesListPage as StudiesRoutePage,
+  StudyCreationWizardPage as StudyCreationWizardRoutePage,
+  StudyOverviewPage as StudyOverviewRoutePage,
+} from "@/routes/study-pages";
 import { StudyFindingsPage as StudyFindingsRoutePage } from "@/routes/study-findings-page";
 import { StudyPersonasPage as StudyPersonasRoutePage } from "@/routes/study-personas-page";
 import { StudyReportPage as StudyReportRoutePage } from "@/routes/study-report-page";
@@ -31,8 +35,10 @@ import {
   validateStudyReportSearch,
 } from "@/routes/study-shared";
 import { SignupPage } from "@/routes/signup";
-import { TranscriptsPage as TranscriptsRoutePage } from "@/routes/transcripts-list";
-import { TranscriptDetailPage as TranscriptDetailRoutePage } from "@/routes/transcript-detail";
+import {
+  TranscriptDetailPage as TranscriptDetailRoutePage,
+  TranscriptsPage as TranscriptsRoutePage,
+} from "@/routes/transcript-pages";
 
 export type AppAuthState = {
   isAuthenticated: boolean;
@@ -404,16 +410,14 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-background">
-        <AppSidebar />
-        <main className="min-w-0 flex-1 p-8">
-          <div className="mx-auto max-w-5xl">
-            <Outlet />
-          </div>
-        </main>
-      </div>
-    </SidebarProvider>
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar />
+      <main className="flex-1 p-8">
+        <div className="mx-auto max-w-5xl">
+          <Outlet />
+        </div>
+      </main>
+    </div>
   );
 }
 

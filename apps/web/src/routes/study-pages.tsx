@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { motion } from "motion/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { StudyDraftEditor, type StudyFormValue } from "@/routes/study-draft-editor";
 import { DEMO_STUDY_ID } from "@/routes/skeleton-pages";
 import {
   demoRunSummary,
@@ -23,6 +24,7 @@ import {
   type StudyDetailSearch,
 } from "@/routes/study-shared";
 import { SummaryValue } from "@/components/summary-value";
+import { selectClassName } from "@/components/filter-bar";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { AnimatedList } from "@/components/animated-list";
@@ -48,6 +50,24 @@ type ActiveRunListItem = {
   stepCount?: number;
   syntheticUserName: string;
   firstPersonBio: string;
+};
+
+type StudyFormValue = {
+  personaConfigId: string;
+  name: string;
+  description: string;
+  scenario: string;
+  goal: string;
+  startingUrl: string;
+  allowedDomains: string;
+  successCriteria: string;
+  stopConditions: string;
+  postTaskQuestions: string;
+  runBudget: string;
+  activeConcurrency: string;
+  environmentLabel: string;
+  maxSteps: string;
+  maxDurationSec: string;
 };
 
 type StudyActionConfirmationState = {
@@ -81,6 +101,467 @@ const emptyStudyForm = (): StudyFormValue => ({
   maxSteps: "25",
   maxDurationSec: "420",
 });
+
+export function StudiesListPage() {
+  const studies = useQuery(api.studies.listStudies, {});
+
+  if (studies === undefined) {
+    return (
+      <EmptyState
+        title="Studies"
+        description="Loading studies and run progress..."
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-6">
+      <PageHeader
+        eyebrow="Study Console"
+        title="Studies"
+        description="Browse every validation study, track orchestration progress, and jump into the overview, personas, runs, findings, and report tabs."
+        actions={
+          <Button asChild>
+            <Link to="/studies/new">Create Study</Link>
+          </Button>
+        }
+      />
+
+      {studies.length === 0 ? (
+        <EmptyState
+          title="No studies yet"
+          description="New workspaces start empty. Create your first study to define the task, persona coverage, and replay criteria for your next validation run."
+          action={
+            <Button asChild>
+              <Link to="/studies/new">Create your first study</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <AnimatedList
+          items={studies}
+          keyExtractor={(study: Doc<"studies">) => study._id}
+          renderItem={(study: Doc<"studies">) => <StudyListCard study={study} />}
+          className="grid gap-4"
+        />
+      )}
+    </section>
+  );
+}
+
+export function StudyCreationWizardPage() {
+  const personaConfigs = useQuery(api.personaConfigs.list, {});
+  const createStudy = useMutation(api.studies.createStudy);
+  const navigate = useNavigate({ from: "/studies/new" });
+  const [form, setForm] = useState<StudyFormValue>(emptyStudyForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const availablePacks = useMemo<PersonaConfigListItem[]>(
+    () =>
+      (personaConfigs ?? []).filter(
+        (config: PersonaConfigListItem) => config.status !== "archived",
+      ),
+    [personaConfigs],
+  );
+
+  useEffect(() => {
+    if (availablePacks.length === 0) {
+      return;
+    }
+
+    setForm((current) =>
+      current.personaConfigId
+        ? current
+        : { ...current, personaConfigId: availablePacks[0]!._id },
+    );
+  }, [availablePacks]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setErrorMessage(null);
+    setIsSubmitting(true);
+
+    try {
+      const createdStudy = await createStudy({
+        study: {
+          personaConfigId: form.personaConfigId as Id<"personaConfigs">,
+          name: form.name,
+          ...(form.description.trim()
+            ? { description: form.description.trim() }
+            : {}),
+          taskSpec: studyFormToTaskSpec(form),
+          runBudget: Number(form.runBudget),
+          activeConcurrency: Number(form.activeConcurrency),
+        },
+      });
+
+      await navigate({
+        params: { studyId: createdStudy._id },
+        search: emptyStudyDetailSearch,
+        to: "/studies/$studyId/overview",
+      });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Could not create study."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (personaConfigs === undefined) {
+    return (
+      <EmptyState
+        title="New study"
+        description="Loading persona configurations and creation controls..."
+      />
+    );
+  }
+
+  if (availablePacks.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No persona configurations available</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            Create or publish a persona configuration before launching a new study. The
+            creation wizard needs a persona configuration to supply persona coverage.
+          </p>
+          <Button asChild variant="outline">
+            <Link to="/persona-configs">Open Persona Configurations</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="space-y-3">
+        <p className="font-label text-xs text-muted-foreground">
+          Study Setup
+        </p>
+        <div className="space-y-2">
+          <h2 className="font-heading text-3xl tracking-tight">
+            Create a new study
+          </h2>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            Configure the persona configuration, task specification, run budget,
+            concurrency, and guardrails for the study launch workflow.
+          </p>
+        </div>
+      </div>
+
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Creation wizard</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field>
+                <Label htmlFor="study-persona-config">Persona configuration selector</Label>
+                <select
+                  id="study-persona-config"
+                  className={selectClassName}
+                  value={form.personaConfigId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      personaConfigId: event.target.value,
+                    }))
+                  }
+                >
+                  {availablePacks.map((config: PersonaConfigListItem) => (
+                    <option key={config._id} value={config._id}>
+                      {config.name} ({config.status})
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-name">Study name</Label>
+                <Input
+                  id="study-name"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+
+            <Field>
+              <Label htmlFor="study-description">Description</Label>
+              <textarea
+                id="study-description"
+                className={textareaClassName}
+                value={form.description}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+              />
+            </Field>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field>
+                <Label htmlFor="study-scenario">Scenario</Label>
+                <textarea
+                  id="study-scenario"
+                  className={textareaClassName}
+                  value={form.scenario}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      scenario: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-goal">Goal</Label>
+                <textarea
+                  id="study-goal"
+                  className={textareaClassName}
+                  value={form.goal}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, goal: event.target.value }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field>
+                <Label htmlFor="study-starting-url">Starting URL</Label>
+                <Input
+                  id="study-starting-url"
+                  type="url"
+                  value={form.startingUrl}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      startingUrl: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-allowed-domains">Allowed domains</Label>
+                <textarea
+                  id="study-allowed-domains"
+                  className={textareaClassName}
+                  value={form.allowedDomains}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      allowedDomains: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field>
+                <Label htmlFor="study-run-budget">Run budget</Label>
+                <Input
+                  id="study-run-budget"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.runBudget}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      runBudget: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-active-concurrency">Active concurrency</Label>
+                <Input
+                  id="study-active-concurrency"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.activeConcurrency}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      activeConcurrency: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field>
+                <Label htmlFor="study-environment-label">Environment label</Label>
+                <select
+                  id="study-environment-label"
+                  className={selectClassName}
+                  value={form.environmentLabel}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      environmentLabel: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="staging">staging</option>
+                  <option value="qa">qa</option>
+                  <option value="production">production</option>
+                </select>
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-max-steps">Max steps</Label>
+                <Input
+                  id="study-max-steps"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.maxSteps}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      maxSteps: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field>
+                <Label htmlFor="study-success-criteria">Success criteria</Label>
+                <textarea
+                  id="study-success-criteria"
+                  className={textareaClassName}
+                  value={form.successCriteria}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      successCriteria: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-stop-conditions">Stop conditions</Label>
+                <textarea
+                  id="study-stop-conditions"
+                  className={textareaClassName}
+                  value={form.stopConditions}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      stopConditions: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field>
+                <Label htmlFor="study-post-task-questions">
+                  Post-task questions
+                </Label>
+                <textarea
+                  id="study-post-task-questions"
+                  className={textareaClassName}
+                  value={form.postTaskQuestions}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      postTaskQuestions: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-max-duration">
+                  Max duration (seconds)
+                </Label>
+                <Input
+                  id="study-max-duration"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.maxDurationSec}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      maxDurationSec: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Guardrail review</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <SummaryValue
+              label="Allowed actions"
+              value={DEFAULT_ALLOWED_ACTIONS.join(", ")}
+            />
+            <SummaryValue
+              label="Forbidden actions"
+              value={DEFAULT_FORBIDDEN_ACTIONS.join(", ")}
+            />
+            <SummaryValue label="Locale" value="en-US" />
+            <SummaryValue label="Viewport" value="1440 × 900" />
+          </CardContent>
+        </Card>
+
+        {errorMessage ? (
+          <p className="text-sm text-destructive">{errorMessage}</p>
+        ) : null}
+
+        <div className="flex flex-wrap gap-3">
+          <Button disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Saving study..." : "Save study draft"}
+          </Button>
+          <Button asChild type="button" variant="outline">
+            <Link to="/studies">Cancel</Link>
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
 
 export function StudyOverviewPage({
   detailSearch,
@@ -373,6 +854,90 @@ function DemoStudyOverviewPage({
         </div>
       </div>
     </section>
+  );
+}
+
+export function StudyFindingsPage({
+  detailSearch,
+  studyId,
+}: {
+  detailSearch: StudyDetailSearch;
+  studyId: string;
+}) {
+  return (
+    <StudyStatusPage
+      activeTab="findings"
+      detailSearch={detailSearch}
+      studyId={studyId}
+      title="Findings"
+      description="Finding clusters appear here after replay verification and analysis complete for the selected study."
+    />
+  );
+}
+
+export function StudyReportPage({
+  detailSearch,
+  studyId,
+}: {
+  detailSearch: StudyDetailSearch;
+  studyId: string;
+}) {
+  return (
+    <StudyStatusPage
+      activeTab="report"
+      detailSearch={detailSearch}
+      studyId={studyId}
+      title="Report"
+      description="The ranked report appears here once the analysis pipeline produces a study report artifact."
+    />
+  );
+}
+
+function StudyListCard({ study }: { study: Doc<"studies"> }) {
+  const runSummary = useQuery(api.runs.getRunSummary, { studyId: study._id });
+
+  return (
+    <Link
+      className="group block rounded-xl bg-card p-6 shadow-card transition-all hover:shadow-dropdown"
+      params={{ studyId: study._id }}
+      search={emptyStudyDetailSearch}
+      to="/studies/$studyId/overview"
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="font-heading text-xl tracking-tight">{study.name}</h3>
+            <StudyStatusBadge status={study.status} />
+          </div>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            {study.description ?? "No description provided yet."}
+          </p>
+        </div>
+
+        <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:min-w-80">
+          <SummaryValue
+            label="Run progress"
+            value={
+              runSummary === undefined
+                ? "Loading..."
+                : `${runSummary.terminalCount}/${runSummary.totalRuns} terminal · ${runSummary.runningCount} running · ${runSummary.queuedCount} queued`
+            }
+          />
+          <SummaryValue
+            label="Run budget"
+            value={String(study.runBudget ?? 0)}
+          />
+          <SummaryValue
+            label="Environment"
+            value={study.taskSpec.environmentLabel}
+          />
+          <SummaryValue
+            label="Last updated"
+            value={formatTimestamp(study.updatedAt)}
+          />
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -876,6 +1441,360 @@ function StudyOverviewResolved({
   );
 }
 
+function StudyStatusPage({
+  activeTab,
+  detailSearch,
+  studyId,
+  title,
+  description,
+}: {
+  activeTab: "findings" | "report";
+  detailSearch: StudyDetailSearch;
+  studyId: string;
+  title: string;
+  description: string;
+}) {
+  const study = useQuery(api.studies.getStudy, {
+    studyId: studyId as Id<"studies">,
+  });
+
+  if (study === undefined) {
+    return (
+      <EmptyState
+        title={title}
+        description={`Loading ${title.toLowerCase()}...`}
+      />
+    );
+  }
+
+  if (study === null) {
+    return (
+      <EmptyState
+        title="Study not found"
+        description="This study could not be found in the current organization."
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-6">
+      <PageHeader
+        title={title}
+        badge={<StudyStatusBadge status={study.status} />}
+        description={description}
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        }
+      />
+
+      <StudyTabsNav
+        activeTab={activeTab}
+        detailSearch={detailSearch}
+        studyId={study._id}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{title} status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm leading-6 text-muted-foreground">
+            {study.status === "completed" || study.status === "analyzing"
+              ? `The study is ${study.status}. This tab is ready for analysis outputs once the dedicated findings and report surfaces land.`
+              : `The study is currently ${study.status}. Findings and report artifacts will populate after the orchestration pipeline reaches analysis.`}
+          </p>
+          <SummaryValue label="Study ID" value={study._id} />
+          <SummaryValue
+            label="Last updated"
+            value={formatTimestamp(study.updatedAt)}
+          />
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function StudyDraftEditor({
+  form,
+  isSubmitting,
+  onCancel,
+  onChange,
+  onSubmit,
+}: {
+  form: StudyFormValue;
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onChange: React.Dispatch<React.SetStateAction<StudyFormValue>>;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="space-y-6" onSubmit={onSubmit}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Edit study draft</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-name">Study name</Label>
+              <Input
+                id="study-name"
+                value={form.name}
+                onChange={(event) =>
+                  onChange((current) => ({ ...current, name: event.target.value }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-starting-url">Starting URL</Label>
+              <Input
+                id="study-starting-url"
+                type="url"
+                value={form.startingUrl}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    startingUrl: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <Field>
+            <Label htmlFor="study-description">Description</Label>
+            <textarea
+              id="study-description"
+              className={textareaClassName}
+              value={form.description}
+              onChange={(event) =>
+                onChange((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+            />
+          </Field>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-scenario">Scenario</Label>
+              <textarea
+                id="study-scenario"
+                className={textareaClassName}
+                value={form.scenario}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    scenario: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-goal">Goal</Label>
+              <textarea
+                id="study-goal"
+                className={textareaClassName}
+                value={form.goal}
+                onChange={(event) =>
+                  onChange((current) => ({ ...current, goal: event.target.value }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-allowed-domains">Allowed domains</Label>
+              <textarea
+                id="study-allowed-domains"
+                className={textareaClassName}
+                value={form.allowedDomains}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    allowedDomains: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-environment-label">Environment label</Label>
+              <select
+                id="study-environment-label"
+                className={selectClassName}
+                value={form.environmentLabel}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    environmentLabel: event.target.value,
+                  }))
+                }
+              >
+                <option value="staging">staging</option>
+                <option value="qa">qa</option>
+                <option value="production">production</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-run-budget">Run budget</Label>
+              <Input
+                id="study-run-budget"
+                min="1"
+                step="1"
+                type="number"
+                value={form.runBudget}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    runBudget: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-active-concurrency">Active concurrency</Label>
+              <Input
+                id="study-active-concurrency"
+                min="1"
+                step="1"
+                type="number"
+                value={form.activeConcurrency}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    activeConcurrency: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-success-criteria">Success criteria</Label>
+              <textarea
+                id="study-success-criteria"
+                className={textareaClassName}
+                value={form.successCriteria}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    successCriteria: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="study-stop-conditions">Stop conditions</Label>
+              <textarea
+                id="study-stop-conditions"
+                className={textareaClassName}
+                value={form.stopConditions}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    stopConditions: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <Label htmlFor="study-post-task-questions">
+                Post-task questions
+              </Label>
+              <textarea
+                id="study-post-task-questions"
+                className={textareaClassName}
+                value={form.postTaskQuestions}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    postTaskQuestions: event.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+
+            <div className="grid gap-4">
+              <Field>
+                <Label htmlFor="study-max-steps">Max steps</Label>
+                <Input
+                  id="study-max-steps"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.maxSteps}
+                  onChange={(event) =>
+                    onChange((current) => ({
+                      ...current,
+                      maxSteps: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+
+              <Field>
+                <Label htmlFor="study-max-duration">
+                  Max duration (seconds)
+                </Label>
+                <Input
+                  id="study-max-duration"
+                  min="1"
+                  step="1"
+                  type="number"
+                  value={form.maxDurationSec}
+                  onChange={(event) =>
+                    onChange((current) => ({
+                      ...current,
+                      maxDurationSec: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </Field>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-wrap gap-3">
+        <Button disabled={isSubmitting} type="submit">
+          {isSubmitting ? "Saving study..." : "Save Study"}
+        </Button>
+        <Button onClick={onCancel} type="button" variant="outline">
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function StudyConfirmationDialog({
   confirmLabel,
   description,
@@ -920,6 +1839,10 @@ function StudyConfirmationDialog({
       </Card>
     </div>
   );
+}
+
+function Field({ children }: { children: ReactNode }) {
+  return <div className="grid gap-2">{children}</div>;
 }
 
 function ProgressBar({
@@ -1067,3 +1990,6 @@ function studyFormToTaskSpec(form: StudyFormValue) {
     viewport: { width: 1440, height: 900 },
   };
 }
+
+const textareaClassName =
+  "min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
