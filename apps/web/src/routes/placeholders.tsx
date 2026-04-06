@@ -1,3 +1,11 @@
+type RoutePlaceholderProps = {
+  title: string;
+  routePath: string;
+  description: string;
+  detail: string;
+  params?: Record<string, string>;
+};
+
 export const contentRoutePlaceholders = [
   {
     key: "studies",
@@ -71,13 +79,63 @@ export const contentRoutePlaceholders = [
   },
 ] as const;
 
+export function RoutePlaceholder({
+  title,
+  routePath,
+  description,
+  detail,
+  params,
+}: RoutePlaceholderProps) {
+  return (
+    <section className="space-y-6">
+      <div className="space-y-3">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          Placeholder Route
+        </p>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-semibold tracking-tight">{title}</h2>
+          <p className="max-w-2xl text-base text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-6 shadow-sm">
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Current route
+            </p>
+            <p className="font-mono text-sm">{routePath}</p>
+          </div>
+
+          {params ? (
+            <dl className="grid gap-4 sm:grid-cols-2">
+              {Object.entries(params).map(([label, value]) => (
+                <div key={label} className="rounded-lg border bg-background p-4">
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    {label}
+                  </dt>
+                  <dd className="mt-1 font-mono text-sm">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+
+          <p className="text-sm leading-6 text-muted-foreground">{detail}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function NotFoundPlaceholder() {
   return (
     <section className="space-y-3">
-      <p className="font-label text-xs text-muted-foreground">
+      <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
         Route Fallback
       </p>
-      <h2 className="font-heading text-3xl tracking-tight">Page not found</h2>
+      <h2 className="text-3xl font-semibold tracking-tight">Page not found</h2>
       <p className="max-w-2xl text-muted-foreground">
         The route you requested is not defined in the Botchestra app shell yet.
       </p>
