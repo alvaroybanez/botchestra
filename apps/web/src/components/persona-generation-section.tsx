@@ -423,12 +423,13 @@ export function PersonaGenerationSection({
               />
             </div>
 
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Axis values</TableHead>
-                  <TableHead>Bio preview</TableHead>
+                  <TableHead className="min-w-[140px]">Name</TableHead>
+                  <TableHead className="min-w-[180px]">Axis values</TableHead>
+                  <TableHead className="min-w-[200px]">Bio preview</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -452,23 +453,18 @@ export function PersonaGenerationSection({
                     return (
                       <TableRow key={syntheticUser._id}>
                         <TableCell>
-                          <div className="space-y-1">
-                            <p className="font-medium">{syntheticUser.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {syntheticUser._id}
-                            </p>
-                          </div>
+                          <p className="font-medium">{syntheticUser.name}</p>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1">
                             {renderAxisValueBadges(
                               syntheticUser.axisValues,
                               axisLabelByKey,
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-md">
-                          <p className="line-clamp-3 text-sm text-muted-foreground">
+                        <TableCell className="max-w-xs">
+                          <p className="line-clamp-2 text-sm text-muted-foreground">
                             {syntheticUser.firstPersonBio ?? syntheticUser.summary}
                           </p>
                         </TableCell>
@@ -506,6 +502,7 @@ export function PersonaGenerationSection({
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
         )}
       </CardContent>
@@ -630,16 +627,21 @@ function renderAxisValueBadges(
     );
   }
 
-  return axisValues.map((axisValue) => (
-    <Badge
-      key={`${axisValue.key}-${axisValue.value}`}
-      className="whitespace-nowrap"
-      variant="secondary"
-    >
-      {axisLabelByKey.get(axisValue.key) ?? axisValue.key}:{" "}
-      {axisValue.value.toFixed(2)}
-    </Badge>
-  ));
+  return axisValues.map((axisValue) => {
+    const fullLabel = axisLabelByKey.get(axisValue.key) ?? axisValue.key;
+    const shortLabel = abbreviateAxisLabel(fullLabel);
+
+    return (
+      <Badge
+        key={`${axisValue.key}-${axisValue.value}`}
+        className="max-w-[160px] truncate"
+        title={`${fullLabel}: ${axisValue.value.toFixed(2)}`}
+        variant="secondary"
+      >
+        {shortLabel}: {axisValue.value.toFixed(2)}
+      </Badge>
+    );
+  });
 }
 
 function resolveSyntheticUserStatus(syntheticUser: SyntheticUserDoc) {
@@ -673,6 +675,20 @@ function resolveSyntheticUserStatus(syntheticUser: SyntheticUserDoc) {
         variant: "default" as const,
       };
   }
+}
+
+function abbreviateAxisLabel(label: string) {
+  if (label.length <= 20) {
+    return label;
+  }
+
+  const words = label.split(/\s+/);
+
+  if (words.length <= 2) {
+    return label.slice(0, 18) + "...";
+  }
+
+  return words.map((word) => word[0]?.toUpperCase() ?? "").join("");
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string) {
