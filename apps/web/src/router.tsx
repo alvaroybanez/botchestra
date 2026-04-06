@@ -30,10 +30,7 @@ import { StudyPersonasPage as StudyPersonasRoutePage } from "@/routes/study-pers
 import { StudyReportPage as StudyReportRoutePage } from "@/routes/study-report-page";
 import { StudyRunsPage as StudyRunsRoutePage } from "@/routes/study-runs-page";
 import { SettingsPage as SettingsRoutePage } from "@/routes/settings-page";
-import {
-  validateStudyDetailSearch,
-  validateStudyReportSearch,
-} from "@/routes/study-shared";
+import { validateStudyDetailSearch } from "@/routes/study-shared";
 import { SignupPage } from "@/routes/signup";
 import {
   TranscriptDetailPage as TranscriptDetailRoutePage,
@@ -78,11 +75,6 @@ export function getRedirectPathFromLocation(location: RedirectLocation) {
         continue;
       }
 
-      if (key === "shared" && value === true) {
-        searchParams.set(key, "1");
-        continue;
-      }
-
       searchParams.set(key, String(value));
     }
 
@@ -118,33 +110,6 @@ function validatePersonaConfigDetailSearch(search: Record<string, unknown>) {
     search.forceSuggestAxesError === "1";
 
   return forceSuggestAxesError ? { forceSuggestAxesError } : {};
-}
-
-function isSharedReportLocation(location: {
-  href?: string;
-  pathname: string;
-  search: unknown;
-}) {
-  if (
-    !location.pathname.startsWith("/studies/")
-    || !location.pathname.endsWith("/report")
-  ) {
-    return false;
-  }
-
-  if (location.search === null || typeof location.search !== "object") {
-    if (typeof location.href !== "string") {
-      return false;
-    }
-
-    const sharedValue = new URL(location.href, "http://localhost")
-      .searchParams
-      .get("shared");
-
-    return sharedValue === "1" || sharedValue === "true";
-  }
-
-  return (location.search as Record<string, unknown>).shared === true;
 }
 
 const rootRoute = createRootRouteWithContext<AppRouterContext>()({
@@ -264,7 +229,7 @@ const studyFindingsRoute = createRoute({
 const studyReportRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "studies/$studyId/report",
-  validateSearch: validateStudyReportSearch,
+  validateSearch: validateStudyDetailSearch,
   component: StudyReportPage,
 });
 
@@ -379,7 +344,6 @@ function RootComponent() {
 function AuthenticatedLayout() {
   const { auth } = authenticatedRoute.useRouteContext();
   const location = useLocation();
-  const isSharedReportView = isSharedReportLocation(location);
 
   if (auth.isLoading) {
     return (
@@ -396,16 +360,6 @@ function AuthenticatedLayout() {
         search={{ redirect: getRedirectPathFromLocation(location) }}
         to="/login"
       />
-    );
-  }
-
-  if (isSharedReportView) {
-    return (
-      <div className="min-h-screen bg-background">
-        <main className="mx-auto w-full max-w-6xl px-6 py-8">
-          <Outlet />
-        </main>
-      </div>
     );
   }
 
@@ -500,21 +454,10 @@ function StudyFindingsPage() {
 
 function StudyReportPage() {
   const { studyId } = studyReportRoute.useParams();
-  const reportSearch = studyReportRoute.useSearch();
+  const detailSearch = studyReportRoute.useSearch();
   return (
     <StudyReportRoutePage
-      detailSearch={{
-        outcome: reportSearch.outcome,
-        syntheticUserId: reportSearch.syntheticUserId,
-        finalUrlContains: reportSearch.finalUrlContains,
-        severity: reportSearch.severity,
-        axisKey: reportSearch.axisKey,
-        axisMin: reportSearch.axisMin,
-        axisMax: reportSearch.axisMax,
-        urlPrefix: reportSearch.urlPrefix,
-        runId: reportSearch.runId,
-      }}
-      isSharedView={reportSearch.shared}
+      detailSearch={detailSearch}
       studyId={studyId}
     />
   );

@@ -990,14 +990,14 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).not.toContain("Validation Console");
   });
 
-  it("redirects unauthenticated shared report links to login while preserving the shared query", async () => {
+  it("redirects unauthenticated report links to login while preserving the report path", async () => {
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: false, isLoading: false },
-      initialEntries: ["/studies/test-id-123/report?shared=1"],
+      initialEntries: ["/studies/test-id-123/report"],
     });
 
     expect(getRouterLocationHref(router)).toBe(
-      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport%3Fshared%3D1",
+      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport",
     );
     expect(container.querySelector("#login-email")).not.toBeNull();
     expect(container.textContent).not.toContain("Validation Console");
@@ -2016,7 +2016,7 @@ describe("@botchestra/web routing", () => {
     );
   });
 
-  it("exports JSON and HTML artifacts and copies the internal shared report link", async () => {
+  it("exports JSON and HTML report artifacts", async () => {
     mockedStudyById = {
       "study-live": makeStudy({
         _id: "study-live" as Id<"studies">,
@@ -2067,13 +2067,6 @@ describe("@botchestra/web routing", () => {
     expect(await downloadedBlobs.get("blob:mock-2")!.text()).toContain(
       "<!DOCTYPE html>",
     );
-
-    await clickButton(container, "Copy Link");
-
-    expect(clipboardWriteTextMock).toHaveBeenCalledWith(
-      "/studies/study-live/report?shared=1",
-    );
-    expect(container.textContent).toContain("Shared link copied.");
   });
 
   it("exports demo study artifacts locally without calling Convex report exports", async () => {
@@ -2106,44 +2099,6 @@ describe("@botchestra/web routing", () => {
     expect(await downloadedBlobs.get("blob:mock-2")!.text()).toContain(
       "Checkout continue button hidden on the address step",
     );
-  });
-
-  it("renders the shared report with minimal chrome after authentication", async () => {
-    mockedStudyById = {
-      "study-live": makeStudy({
-        _id: "study-live" as Id<"studies">,
-        status: "completed",
-      }),
-    };
-    mockedRunSummariesByStudyId = {
-      "study-live": makeRunSummary("study-live", {
-        totalRuns: 12,
-        terminalCount: 12,
-        runningCount: 0,
-        queuedCount: 0,
-      }),
-    };
-    mockedFindingsByStudyId = {
-      "study-live": makeFindings(),
-    };
-    mockedReportsByStudyId = {
-      "study-live": makeStudyReport({
-        issueClusterIds: ["finding-payment", "finding-address"],
-      }),
-    };
-
-    const { container } = await renderRoute({
-      auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/studies/study-live/report?shared=1"],
-    });
-
-    expect(container.textContent).toContain("Shared report");
-    expect(container.textContent).toContain("Study report");
-    expect(container.textContent).toContain("Open full report");
-    expect(container.textContent).not.toContain("Validation Console");
-    expect(container.textContent).not.toContain("Study detail tabs");
-    expect(container.textContent).not.toContain("Go to Overview");
-    expect(container.textContent).not.toContain("Back to Studies");
   });
 
   it("renders working Go to Overview links across demo runs, findings, and report tabs", async () => {
