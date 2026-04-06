@@ -1,27 +1,99 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.205 0 0);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.965 0 0);
-  --color-secondary-foreground: oklch(0.205 0 0);
-  --color-muted: oklch(0.965 0 0);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-accent: oklch(0.965 0 0);
-  --color-accent-foreground: oklch(0.205 0 0);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-destructive-foreground: oklch(0.577 0.245 27.325);
-  --color-border: oklch(0.922 0 0);
-  --color-input: oklch(0.922 0 0);
-  --color-ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  /* ─── Neutrals (from Figma N100–N900) ─── */
+  --color-background: #F7F7F7;
+  --color-foreground: #191919;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #191919;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #191919;
+  --color-primary: #191919;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #F7F7F7;
+  --color-secondary-foreground: #191919;
+  --color-muted: #F7F7F7;
+  --color-muted-foreground: #707070;
+  --color-accent: #E5E5E5;
+  --color-accent-foreground: #191919;
+  --color-destructive: #F0202D;
+  --color-destructive-foreground: #FFFFFF;
+  --color-border: #E5E5E5;
+  --color-input: #E5E5E5;
+  --color-ring: #4D93FC;
+
+  /* ─── Status semantics ─── */
+  --color-success: #4CE160;
+  --color-success-foreground: #0C3100;
+  --color-warning: #FF8606;
+  --color-warning-foreground: #2F1604;
+  --color-info: #4D93FC;
+  --color-info-foreground: #19133A;
+
+  /* ─── Severity ─── */
+  --color-severity-blocker: #F0202D;
+  --color-severity-blocker-foreground: #FFFFFF;
+  --color-severity-blocker-muted: #FFE4E6;
+  --color-severity-major: #FF8606;
+  --color-severity-major-foreground: #FFFFFF;
+  --color-severity-major-muted: #FEF3C7;
+  --color-severity-minor: #4D93FC;
+  --color-severity-minor-foreground: #FFFFFF;
+  --color-severity-minor-muted: #DBEAFE;
+  --color-severity-cosmetic: #707070;
+  --color-severity-cosmetic-foreground: #FFFFFF;
+  --color-severity-cosmetic-muted: #E5E5E5;
+
+  /* ─── Radius ─── */
+  --radius: 0.75rem;
+
+  /* ─── Typography ─── */
+  --font-heading: "Geist", system-ui, sans-serif;
+  --font-body: "Geist", system-ui, sans-serif;
+  --font-label: "Geist Mono", "SFMono-Regular", monospace;
+
+  /* ─── Elevation shadows ─── */
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-drawer: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
 }
+
+/* ─── Font utilities ─── */
+
+@utility font-heading {
+  font-family: var(--font-heading);
+}
+
+@utility font-body {
+  font-family: var(--font-body);
+}
+
+@utility font-label {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Shadow utilities ─── */
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@utility shadow-dropdown {
+  box-shadow: var(--shadow-dropdown);
+}
+
+@utility shadow-drawer {
+  box-shadow: var(--shadow-drawer);
+}
+
+@utility shadow-modal {
+  box-shadow: var(--shadow-modal);
+}
+
+/* ─── Base layer ─── */
 
 @layer base {
   *,
@@ -32,6 +104,7 @@
     border-color: var(--color-border);
   }
   body {
+    font-family: var(--font-body);
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
