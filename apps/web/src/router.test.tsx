@@ -1412,7 +1412,16 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Checkout usability benchmark");
     expect(container.textContent).toContain("Task specification");
     expect(container.textContent).toContain("A shopper wants to complete checkout.");
+    expect(container.textContent).toContain("Overview summary");
+    expect(container.textContent).toContain("Total runs");
+    expect(container.textContent).toContain("Success rate");
+    expect(container.textContent).toContain("Active runs");
+    expect(container.textContent).toContain("Created date");
+    expect(container.textContent).toContain("Run configuration");
     expect(container.textContent).toContain("Live monitor");
+    expect(
+      container.querySelector('[data-testid="study-tabs-active-indicator"]'),
+    ).not.toBeNull();
 
     const links = [...container.querySelectorAll("a")].map((link) => ({
       href: link.getAttribute("href"),
@@ -1442,6 +1451,48 @@ describe("@botchestra/web routing", () => {
           text: "Report",
         }),
       ]),
+    );
+  });
+
+  it("preserves detail search params when navigating study tabs from overview", async () => {
+    mockedStudyById = {
+      "study-live": makeStudy({
+        _id: "study-live" as Id<"studies">,
+        status: "persona_review",
+      }),
+    };
+    mockedRunSummariesByStudyId = {
+      "study-live": makeRunSummary("study-live"),
+    };
+
+    const { container, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: [
+        "/studies/study-live/overview?outcome=hard_fail&syntheticUserId=proto-careful",
+      ],
+    });
+
+    const personasLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
+      (link) => link.textContent?.trim() === "Personas",
+    );
+
+    expect(personasLink).not.toBeNull();
+    expect(personasLink?.getAttribute("href")).toContain(
+      "/studies/study-live/personas",
+    );
+    expect(personasLink?.getAttribute("href")).toContain("outcome=hard_fail");
+    expect(personasLink?.getAttribute("href")).toContain(
+      "syntheticUserId=proto-careful",
+    );
+
+    await act(async () => {
+      personasLink!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(getRouterLocationHref(router)).toContain("/studies/study-live/personas");
+    expect(getRouterLocationHref(router)).toContain("outcome=hard_fail");
+    expect(getRouterLocationHref(router)).toContain(
+      "syntheticUserId=proto-careful",
     );
   });
 

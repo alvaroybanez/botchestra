@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { StudyTabs, type StudyTabKey } from "@/routes/study/study-tabs";
 
 export type StudyDetailSearch = {
   outcome: string | undefined;
@@ -26,33 +27,7 @@ export const emptyStudyDetailSearch: StudyDetailSearch = {
   runId: undefined,
 };
 
-export const studyTabs = [
-  {
-    key: "overview",
-    label: "Overview",
-    to: "/studies/$studyId/overview" as const,
-  },
-  {
-    key: "personas",
-    label: "Personas",
-    to: "/studies/$studyId/personas" as const,
-  },
-  {
-    key: "runs",
-    label: "Runs",
-    to: "/studies/$studyId/runs" as const,
-  },
-  {
-    key: "findings",
-    label: "Findings",
-    to: "/studies/$studyId/findings" as const,
-  },
-  {
-    key: "report",
-    label: "Report",
-    to: "/studies/$studyId/report" as const,
-  },
-] as const;
+export { studyTabs } from "@/routes/study/study-tabs";
 
 export function validateStudyDetailSearch(search: Record<string, unknown>) {
   return {
@@ -74,43 +49,16 @@ export function StudyTabsNav({
   detailSearch,
   studyId,
 }: {
-  activeTab: (typeof studyTabs)[number]["key"];
+  activeTab: StudyTabKey;
   detailSearch: StudyDetailSearch;
   studyId: string;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm">
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">
-            Study detail tabs
-          </p>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Move between Overview, Personas, Runs, Findings, and Report without
-            losing your current run filters.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {studyTabs.map((tab) => (
-            <Link
-              key={tab.key}
-              className={cn(
-                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                activeTab === tab.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-              params={{ studyId }}
-              search={detailSearch}
-              to={tab.to}
-            >
-              {tab.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
+    <StudyTabs
+      activeTab={activeTab}
+      detailSearch={detailSearch}
+      studyId={studyId}
+    />
   );
 }
 

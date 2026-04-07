@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  SummaryGrid,
+  SummaryValue as DomainSummaryValue,
+} from "@/components/domain/summary-value";
 import { cn } from "@/lib/utils";
 import {
   DEMO_STUDY_ID,
@@ -124,6 +128,11 @@ function DemoStudyOverviewPage({
   );
   const replayStatus = getReplayChipStatus(demoStudyOverview.status);
   const analysisStatus = getAnalysisChipStatus(demoStudyOverview.status);
+  const demoSuccessRate = formatSuccessRate(
+    demoRunSummary.outcomeCounts.success,
+    demoRunSummary.totalRuns,
+  );
+  const demoActiveRuns = demoRunSummary.runningCount + demoRunSummary.queuedCount;
 
   return (
     <section className="space-y-6">
@@ -221,7 +230,37 @@ function DemoStudyOverviewPage({
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Study summary</CardTitle>
+              <CardTitle>Overview summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SummaryGrid columns="sm:grid-cols-2">
+                <DomainSummaryValue
+                  label="Total runs"
+                  value={String(demoRunSummary.totalRuns)}
+                  variant="bordered"
+                />
+                <DomainSummaryValue
+                  label="Success rate"
+                  value={demoSuccessRate}
+                  variant="bordered"
+                />
+                <DomainSummaryValue
+                  label="Active runs"
+                  value={String(demoActiveRuns)}
+                  variant="bordered"
+                />
+                <DomainSummaryValue
+                  label="Created date"
+                  value={formatTimestamp(demoStudyOverview.updatedAt)}
+                  variant="bordered"
+                />
+              </SummaryGrid>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Run configuration</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               <SummaryValue
@@ -235,6 +274,14 @@ function DemoStudyOverviewPage({
               <SummaryValue
                 label="Environment"
                 value={demoStudyOverview.taskSpec.environmentLabel}
+              />
+              <SummaryValue
+                label="Max steps"
+                value={String(demoStudyOverview.taskSpec.maxSteps)}
+              />
+              <SummaryValue
+                label="Max duration (seconds)"
+                value={String(demoStudyOverview.taskSpec.maxDurationSec)}
               />
               <SummaryValue
                 label="Last updated"
@@ -452,6 +499,15 @@ function StudyOverviewResolved({
     runSummary === undefined
       ? undefined
       : getCompletionPercentage(runSummary.terminalCount, runSummary.totalRuns);
+  const totalRuns = runSummary?.totalRuns ?? 0;
+  const successRate =
+    runSummary === undefined
+      ? "Loading..."
+      : formatSuccessRate(runSummary.outcomeCounts.success, runSummary.totalRuns);
+  const activeRunCount =
+    runSummary === undefined
+      ? "Loading..."
+      : String(runSummary.runningCount + runSummary.queuedCount);
   const replayStatus = getReplayChipStatus(study.status);
   const analysisStatus = getAnalysisChipStatus(study.status);
   const canManageStudies = viewerAccess?.permissions.canManageStudies === true;
@@ -687,7 +743,37 @@ function StudyOverviewResolved({
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Study summary</CardTitle>
+              <CardTitle>Overview summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SummaryGrid columns="sm:grid-cols-2">
+                <DomainSummaryValue
+                  label="Total runs"
+                  value={runSummary === undefined ? "Loading..." : String(totalRuns)}
+                  variant="bordered"
+                />
+                <DomainSummaryValue
+                  label="Success rate"
+                  value={successRate}
+                  variant="bordered"
+                />
+                <DomainSummaryValue
+                  label="Active runs"
+                  value={activeRunCount}
+                  variant="bordered"
+                />
+                <DomainSummaryValue
+                  label="Created date"
+                  value={formatTimestamp(study.createdAt)}
+                  variant="bordered"
+                />
+              </SummaryGrid>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Run configuration</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               <SummaryValue
@@ -701,6 +787,14 @@ function StudyOverviewResolved({
               <SummaryValue
                 label="Environment"
                 value={study.taskSpec.environmentLabel}
+              />
+              <SummaryValue
+                label="Max steps"
+                value={String(study.taskSpec.maxSteps)}
+              />
+              <SummaryValue
+                label="Max duration (seconds)"
+                value={String(study.taskSpec.maxDurationSec)}
               />
               <SummaryValue
                 label="Last updated"
@@ -1378,6 +1472,14 @@ function getCompletionPercentage(count: number, total: number) {
   }
 
   return Math.round((count / total) * 100);
+}
+
+function formatSuccessRate(successCount: number, totalRuns: number) {
+  if (totalRuns <= 0) {
+    return "N/A";
+  }
+
+  return `${Math.round((successCount / totalRuns) * 100)}%`;
 }
 
 function getReplayChipStatus(studyStatus: Doc<"studies">["status"]) {
