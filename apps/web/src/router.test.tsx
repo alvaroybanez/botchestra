@@ -1294,7 +1294,7 @@ describe("@botchestra/web routing", () => {
     expect(getRouterLocationHref(router)).toBe("/studies/study-created/overview");
   });
 
-  it("renders accepted variants with required review columns", async () => {
+  it("renders persona variant cards with axis value distributions and coherence scores", async () => {
     mockedVariantReview = makeVariantReview();
 
     const { container } = await renderRoute({
@@ -1303,17 +1303,19 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("Persona Variant Review");
-    expect(container.textContent).toContain("Accepted variants");
-    expect(container.textContent).toContain("Synthetic user");
+    expect(container.textContent).toContain("Persona variants");
+    expect(container.textContent).toContain("Axis value distribution");
     expect(container.textContent).toContain("Digital confidence");
-    expect(container.textContent).toContain("Edge score");
+    expect(container.textContent).toContain("Support needs");
     expect(container.textContent).toContain("Coherence score");
     expect(container.textContent).toContain("Distinctness score");
     expect(container.textContent).toContain("Bio preview");
-    expect(getVariantRows(container)).toHaveLength(3);
+    expect(
+      container.querySelectorAll('[data-testid="persona-variant-card"]'),
+    ).toHaveLength(3);
   });
 
-  it("filters variants by synthetic user and axis range", async () => {
+  it("ranks persona variants by coherence score", async () => {
     mockedVariantReview = makeVariantReview();
 
     const { container } = await renderRoute({
@@ -1321,37 +1323,12 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/studies/study-live/personas"],
     });
 
-    await updateSelect(container, "#synthetic-user-filter", "proto-cautious");
-    expect(getVariantRows(container)).toHaveLength(2);
-    expect(getVariantRows(container).every((row) => row.includes("Cautious checkout shopper"))).toBe(true);
-
-    await updateInput(container, "#minimum-axis-value", "0.5");
-    expect(getVariantRows(container)).toHaveLength(0);
-
-    await updateSelect(container, "#synthetic-user-filter", "all");
-    expect(getVariantRows(container)).toHaveLength(1);
-    expect(firstVariantRowText(container)).toContain("Fast-moving repeat buyer");
-  });
-
-  it("sorts variants by each score column", async () => {
-    mockedVariantReview = makeVariantReview();
-
-    const { container } = await renderRoute({
-      auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/studies/study-live/personas"],
-    });
-
-    expect(firstVariantRowText(container)).toContain("Budget-minded parent");
-
-    await clickButton(container, "Coherence score");
-    expect(firstVariantRowText(container)).toContain("Fast-moving repeat buyer");
-
-    await clickButton(container, "Distinctness score");
-    expect(firstVariantRowText(container)).toContain("Budget-minded parent");
-
-    await clickButton(container, "Edge score");
-    await clickButton(container, "Edge score");
-    expect(firstVariantRowText(container)).toContain("Fast-moving repeat buyer");
+    const cards = [
+      ...container.querySelectorAll<HTMLElement>('[data-testid="persona-variant-card"]'),
+    ];
+    expect(cards).toHaveLength(3);
+    expect(cards[0]?.textContent).toContain("Goal-driven power user");
+    expect(cards[0]?.textContent).toContain("0.96");
   });
 
   it("shows a loading indicator and disables generation while variants are generating", async () => {
@@ -2049,6 +2026,8 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("Study report");
+    expect(container.textContent).toContain("Summary metrics");
+    expect(container.textContent).toContain("Ranked findings");
     expect(container.textContent).toContain("Completion rate");
     expect(container.textContent).toContain("68%");
     expect(container.textContent).toContain("Abandonment rate");
@@ -4061,10 +4040,6 @@ function getAuditRows(container: HTMLDivElement) {
   return [...container.querySelectorAll<HTMLElement>('[data-testid="audit-row"]')].map(
     (row) => row.textContent ?? "",
   );
-}
-
-function firstVariantRowText(container: HTMLDivElement) {
-  return getVariantRows(container)[0] ?? "";
 }
 
 function makeStudy(overrides: Partial<Doc<"studies">> = {}): Doc<"studies"> {

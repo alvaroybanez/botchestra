@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useAction, useQuery } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
+import { SummaryGrid } from "@/components/domain/summary-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -372,25 +373,27 @@ function ResolvedStudyReportPage({
     >
       <Card>
         <CardHeader>
-          <CardTitle>Headline metrics</CardTitle>
+          <CardTitle>Summary metrics</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Completion rate"
-            value={formatPercent(report.headlineMetrics.completionRate)}
-          />
-          <MetricCard
-            label="Abandonment rate"
-            value={formatPercent(report.headlineMetrics.abandonmentRate)}
-          />
-          <MetricCard
-            label="Median steps"
-            value={formatNumber(report.headlineMetrics.medianSteps)}
-          />
-          <MetricCard
-            label="Median duration"
-            value={`${formatNumber(report.headlineMetrics.medianDurationSec)} sec`}
-          />
+        <CardContent>
+          <SummaryGrid columns="sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Completion rate"
+              value={formatPercent(report.headlineMetrics.completionRate)}
+            />
+            <MetricCard
+              label="Abandonment rate"
+              value={formatPercent(report.headlineMetrics.abandonmentRate)}
+            />
+            <MetricCard
+              label="Median steps"
+              value={formatNumber(report.headlineMetrics.medianSteps)}
+            />
+            <MetricCard
+              label="Median duration"
+              value={`${formatNumber(report.headlineMetrics.medianDurationSec)} sec`}
+            />
+          </SummaryGrid>
         </CardContent>
       </Card>
 
@@ -400,16 +403,20 @@ function ResolvedStudyReportPage({
           title="No ranked issue clusters"
         />
       ) : (
-        <div className="space-y-4">
-          {orderedFindings.map((finding, index) => (
-            <IssueCard
-              finding={finding}
-              index={index}
-              key={finding._id}
-              resolvedArtifactUrls={resolvedArtifactUrls}
-            />
-          ))}
-        </div>
+        <section className="space-y-4">
+          <h3 className="text-lg font-semibold">Ranked findings</h3>
+          <ol className="space-y-4">
+            {orderedFindings.map((finding, index) => (
+              <li key={finding._id}>
+                <IssueCard
+                  finding={finding}
+                  index={index}
+                  resolvedArtifactUrls={resolvedArtifactUrls}
+                />
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
     </ReportShell>
   );

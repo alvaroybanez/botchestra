@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAction, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
-import {
-  PersonaVariantReviewGrid,
-  type VariantReviewData,
-} from "@/components/persona-variant-review-grid";
+import type { VariantReviewData } from "@/components/persona-variant-review-grid";
+import { SummaryGrid, SummaryValue } from "@/components/domain/summary-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEMO_STUDY_ID } from "@/routes/study-demo-data";
@@ -250,6 +248,14 @@ function VariantReviewContent({
   detailSearch: StudyDetailSearch;
   onGenerate: () => void;
 }) {
+  const rankedVariants = useMemo(
+    () =>
+      [...reviewData.variants].sort(
+        (left, right) => right.coherenceScore - left.coherenceScore,
+      ),
+    [reviewData.variants],
+  );
+
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -262,8 +268,8 @@ function VariantReviewContent({
               Persona Variant Review
             </h2>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review accepted variants for this study, filter by synthetic user or
-              axis range, and inspect the score distribution before launch.
+              Review accepted variants for this study with card-level axis value
+              distributions and coherence scores before launch.
             </p>
           </div>
         </div>
@@ -279,70 +285,226 @@ function VariantReviewContent({
         studyId={reviewData.study._id}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <div className="space-y-6 xl:col-span-2">
-          <Card>
-            <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-1">
-                <CardTitle>{reviewData.study?.name ?? "Persona review"}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Config: {reviewData.config.name} · {reviewData.variants.length} accepted
-                  variants visible
-                </p>
-              </div>
+      <Card>
+        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle>{reviewData.study.name}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Config: {reviewData.config.name} · {reviewData.variants.length} accepted
+              variants visible
+            </p>
+          </div>
 
-              <div className="flex flex-col items-start gap-2">
-                <Button disabled={isGenerating} onClick={onGenerate}>
-                  {isGenerating ? "Generating variants..." : "Generate variants"}
-                </Button>
-                {isGenerating ? (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    Generating variants...
-                  </p>
-                ) : null}
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-3">
-              <SummaryValue
-                label="Study status"
-                value={reviewData.study?.status ?? "unknown"}
-              />
-              <SummaryValue
-                label="Run budget"
-                value={String(reviewData.study?.runBudget ?? 0)}
-              />
-              <SummaryValue
-                label="Last updated"
-                value={
-                  reviewData.study
-                    ? formatTimestamp(reviewData.study.updatedAt)
-                    : "Unknown"
-                }
-              />
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-start gap-2">
+            <Button disabled={isGenerating} onClick={onGenerate}>
+              {isGenerating ? "Generating variants..." : "Generate variants"}
+            </Button>
+            {isGenerating ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                Generating variants...
+              </p>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <SummaryGrid columns="sm:grid-cols-3">
+            <SummaryValue
+              label="Study status"
+              value={reviewData.study.status}
+              variant="bordered"
+            />
+            <SummaryValue
+              label="Run budget"
+              value={String(reviewData.study.runBudget)}
+              variant="bordered"
+            />
+            <SummaryValue
+              label="Last updated"
+              value={formatTimestamp(reviewData.study.updatedAt)}
+              variant="bordered"
+            />
+          </SummaryGrid>
+        </CardContent>
+      </Card>
 
-          {actionError ? (
-            <p className="text-sm text-destructive">{actionError}</p>
-          ) : null}
-          {statusMessage ? (
-            <p className="text-sm text-emerald-700">{statusMessage}</p>
-          ) : null}
+      {actionError ? (
+        <p className="text-sm text-destructive">{actionError}</p>
+      ) : null}
+      {statusMessage ? (
+        <p className="text-sm text-emerald-700">{statusMessage}</p>
+      ) : null}
 
-          <PersonaVariantReviewGrid reviewData={reviewData} />
-        </div>
-      </div>
+      {rankedVariants.length === 0 ? (
+        <ReviewStateCard
+          description="No accepted variants are available for this study yet."
+          title="Persona variants"
+        />
+      ) : (
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold tracking-tight">Persona variants</h3>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Cards are ranked by coherence score and show axis value distributions
+              for each accepted persona variant.
+            </p>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {rankedVariants.map((variant, index) => (
+              <PersonaVariantCard
+                configAxes={reviewData.config.sharedAxes}
+                index={index}
+                key={variant._id}
+                syntheticUsers={reviewData.syntheticUsers}
+                variant={variant}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </section>
   );
 }
 
-function SummaryValue({ label, value }: { label: string; value: string }) {
+function PersonaVariantCard({
+  variant,
+  syntheticUsers,
+  configAxes,
+  index,
+}: {
+  variant: VariantReviewData["variants"][number];
+  syntheticUsers: VariantReviewData["syntheticUsers"];
+  configAxes: VariantReviewData["config"]["sharedAxes"];
+  index: number;
+}) {
+  const syntheticUserSummary =
+    syntheticUsers.find((syntheticUser) => syntheticUser._id === variant.syntheticUserId)
+      ?.summary ?? "Synthetic persona variant";
+
   return (
-    <div className="rounded-lg border bg-background p-4">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
+    <Card data-testid="persona-variant-card">
+      <CardHeader className="gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Rank #{index + 1}
+            </p>
+            <CardTitle>{variant.syntheticUserName}</CardTitle>
+            <p className="text-sm text-muted-foreground">{syntheticUserSummary}</p>
+          </div>
+          <div className="rounded-lg border bg-background px-4 py-3 text-right">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Coherence score
+            </p>
+            <p className="text-2xl font-semibold">
+              {formatScore(variant.coherenceScore)}
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <SummaryGrid columns="sm:grid-cols-3">
+          <SummaryValue
+            label="Coherence score"
+            value={formatScore(variant.coherenceScore)}
+            variant="bordered"
+          />
+          <SummaryValue
+            label="Distinctness score"
+            value={formatScore(variant.distinctnessScore)}
+            variant="bordered"
+          />
+          <SummaryValue
+            label="Edge score"
+            value={formatScore(variant.edgeScore)}
+            variant="bordered"
+          />
+        </SummaryGrid>
+
+        <section className="space-y-3">
+          <h4 className="text-sm font-semibold">Axis value distribution</h4>
+          <div className="space-y-3">
+            {configAxes.map((axis) => (
+              <AxisDistributionRow
+                axis={axis}
+                key={`${variant._id}-${axis.key}`}
+                value={getAxisValue(variant.axisValues, axis.key)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-2">
+          <h4 className="text-sm font-semibold">Bio preview</h4>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {variant.firstPersonBio}
+          </p>
+        </section>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AxisDistributionRow({
+  axis,
+  value,
+}: {
+  axis: VariantReviewData["config"]["sharedAxes"][number];
+  value: number;
+}) {
+  const clampedValue = clampAxisValue(value);
+  const distributionPercent = ((clampedValue + 1) / 2) * 100;
+
+  return (
+    <div className="space-y-2 rounded-lg border bg-background p-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <p className="font-medium">{axis.label}</p>
+        <p className="font-mono text-muted-foreground">
+          {formatAxisValue(clampedValue)}
+        </p>
+      </div>
+      <div className="h-2 rounded-full bg-muted">
+        <div
+          className="h-2 rounded-full bg-primary"
+          style={{ width: `${distributionPercent}%` }}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>{axis.lowAnchor}</span>
+        <span>{axis.highAnchor}</span>
+      </div>
     </div>
   );
+}
+
+function getAxisValue(
+  axisValues: { key: string; value: number }[],
+  axisKey: string,
+) {
+  return axisValues.find((axisValue) => axisValue.key === axisKey)?.value ?? 0;
+}
+
+function clampAxisValue(value: number) {
+  if (Number.isNaN(value)) {
+    return 0;
+  }
+
+  if (value > 1) {
+    return 1;
+  }
+
+  if (value < -1) {
+    return -1;
+  }
+
+  return value;
+}
+
+function formatAxisValue(value: number) {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
+}
+
+function formatScore(value: number) {
+  return value.toFixed(2);
 }
 
 function ReviewStateCard({
