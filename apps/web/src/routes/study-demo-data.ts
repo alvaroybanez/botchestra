@@ -125,6 +125,7 @@ export type DemoFinding = {
   title: string;
   summary: string;
   severity: "blocker" | "major" | "minor" | "cosmetic";
+  score: number;
   affectedRunCount: number;
   affectedRunRate: number;
   affectedAxisRanges: Array<{ key: string; min: number; max: number }>;
@@ -428,6 +429,7 @@ export const demoFindings: DemoFinding[] = [
     summary:
       "A blocker cluster where the primary continue action disappears after the address form validates.",
     severity: "blocker",
+    score: 0.92,
     affectedRunCount: 3,
     affectedRunRate: 0.5,
     affectedAxisRanges: [
@@ -488,6 +490,7 @@ export const demoFindings: DemoFinding[] = [
     summary:
       "A minor cluster where last-minute tax and shipping changes create hesitation on the payment step.",
     severity: "minor",
+    score: 0.27,
     affectedRunCount: 2,
     affectedRunRate: 0.33,
     affectedAxisRanges: [

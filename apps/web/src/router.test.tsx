@@ -192,6 +192,7 @@ type FindingView = {
   title: string;
   summary: string;
   severity: "blocker" | "major" | "minor" | "cosmetic";
+  score: number;
   affectedRunCount: number;
   affectedRunRate: number;
   affectedAxisRanges: Array<{ key: string; min: number; max: number }>;
@@ -1911,6 +1912,11 @@ describe("@botchestra/web routing", () => {
     );
     expect(container.textContent).toContain(
       "Replay evidence confirms the continue button is clipped below the fold.",
+    );
+    expect(container.textContent).toContain("Impact score");
+    expect(container.textContent).toContain("0.92");
+    expect(container.textContent).toContain(
+      "I could not figure out how to continue from the address step.",
     );
 
     const evidenceLinks = [...container.querySelectorAll<HTMLAnchorElement>("a")]
@@ -4379,6 +4385,7 @@ function makeFindings(): FindingView[] {
       summary:
         "A blocker cluster where the primary continue action disappears after address validation.",
       severity: "blocker",
+      score: 0.92,
       affectedRunCount: 3,
       affectedRunRate: 0.5,
       affectedAxisRanges: [
@@ -4432,6 +4439,7 @@ function makeFindings(): FindingView[] {
       summary:
         "A minor cluster where the total changes at payment and creates hesitation.",
       severity: "minor",
+      score: 0.27,
       affectedRunCount: 2,
       affectedRunRate: 0.33,
       affectedAxisRanges: [

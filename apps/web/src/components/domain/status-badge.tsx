@@ -88,10 +88,10 @@ interface SeverityBadgeProps {
 }
 
 const severityMap: Record<Severity, string> = {
-  blocker: "bg-rose-100 text-rose-800",
-  major: "bg-amber-100 text-amber-800",
-  minor: "bg-sky-100 text-sky-800",
-  cosmetic: "bg-slate-200 text-slate-700",
+  blocker: "bg-severity-blocker-muted text-severity-blocker",
+  major: "bg-severity-major-muted text-severity-major",
+  minor: "bg-severity-minor-muted text-severity-minor",
+  cosmetic: "bg-severity-cosmetic-muted text-severity-cosmetic",
 };
 
 function SeverityBadge({ severity, className }: SeverityBadgeProps) {

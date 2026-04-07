@@ -95,12 +95,26 @@ describe("RunStatusBadge", () => {
 
 describe("SeverityBadge", () => {
   const severities = ["blocker", "major", "minor", "cosmetic"] as const;
+  const severityClassExpectations: Record<(typeof severities)[number], string> = {
+    blocker: "bg-severity-blocker-muted",
+    major: "bg-severity-major-muted",
+    minor: "bg-severity-minor-muted",
+    cosmetic: "bg-severity-cosmetic-muted",
+  };
 
   for (const severity of severities) {
     it(`renders "${severity}" severity`, () => {
       const container = render(<SeverityBadge severity={severity} />);
 
       expect(container.textContent).toContain(severity);
+    });
+
+    it(`uses semantic severity tokens for "${severity}"`, () => {
+      const container = render(<SeverityBadge severity={severity} />);
+      const span = container.querySelector("span");
+
+      expect(span).not.toBeNull();
+      expect(span!.className).toContain(severityClassExpectations[severity]);
     });
   }
 });

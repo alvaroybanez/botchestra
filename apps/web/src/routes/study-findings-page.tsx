@@ -3,10 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
+import {
+  FilterBar,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/domain/filter-bar";
+import { SeverityBadge } from "@/components/domain/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   DEMO_STUDY_ID,
   demoFindings,
@@ -48,6 +52,10 @@ type FindingsStudySummary = Pick<
   Doc<"studies">,
   "_id" | "name" | "status" | "runBudget" | "updatedAt"
 > | DemoStudySummary;
+
+type FindingsView = DemoFinding & {
+  score?: number;
+};
 
 export function StudyFindingsPage({
   detailSearch,
@@ -97,7 +105,7 @@ export function StudyFindingsPage({
   return (
     <LiveStudyFindingsContent
       detailSearch={detailSearch}
-      findings={findings as DemoFinding[]}
+      findings={findings as FindingsView[]}
       onSearchChange={onSearchChange}
       study={study}
     />
@@ -111,7 +119,7 @@ function LiveStudyFindingsContent({
   onSearchChange,
 }: {
   study: FindingsStudySummary;
-  findings: DemoFinding[];
+  findings: FindingsView[];
   detailSearch: StudyDetailSearch;
   onSearchChange: (patch: Partial<StudyDetailSearch>) => void;
 }) {
@@ -153,7 +161,7 @@ function ResolvedStudyFindingsPage({
   resolvedArtifactUrls = {},
 }: {
   study: FindingsStudySummary;
-  findings: DemoFinding[];
+  findings: FindingsView[];
   detailSearch: StudyDetailSearch;
   onSearchChange: (patch: Partial<StudyDetailSearch>) => void;
   resolvedArtifactUrls?: Record<string, string>;
@@ -257,180 +265,145 @@ function ResolvedStudyFindingsPage({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Filter findings</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="finding-severity-filter">Severity</Label>
-                <select
-                  aria-label="Severity filter"
-                  className={selectClassName}
-                  id="finding-severity-filter"
-                  value={detailSearch.severity ?? ""}
-                  onChange={(event) =>
-                    onSearchChange({
-                      severity: event.target.value || undefined,
-                    })
-                  }
-                >
-                  <option value="">All severities</option>
-                  {severityOptions.map((severity) => (
-                    <option key={severity} value={severity}>
-                      {formatStatusLabel(severity)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="finding-persona-filter">Synthetic user</Label>
-                <select
-                  aria-label="Synthetic user filter"
-                  className={selectClassName}
-                  id="finding-persona-filter"
-                  value={detailSearch.syntheticUserId ?? ""}
-                  onChange={(event) =>
-                    onSearchChange({
-                      syntheticUserId: event.target.value || undefined,
-                    })
-                  }
-                >
-                  <option value="">All synthetic users</option>
-                  {syntheticUserOptions.map((persona) => (
-                    <option key={persona.id} value={persona.id}>
-                      {persona.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="finding-axis-key-filter">Axis key</Label>
-                <select
-                  aria-label="Axis key filter"
-                  className={selectClassName}
-                  id="finding-axis-key-filter"
-                  value={detailSearch.axisKey ?? ""}
-                  onChange={(event) =>
-                    onSearchChange({
-                      axisKey: event.target.value || undefined,
-                    })
-                  }
-                >
-                  <option value="">Any axis</option>
-                  {axisKeys.map((axisKey) => (
-                    <option key={axisKey} value={axisKey}>
-                      {axisKey}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="finding-axis-min-filter">Axis min</Label>
-                  <Input
-                    aria-label="Axis min filter"
-                    id="finding-axis-min-filter"
-                    max="1"
-                    min="-1"
-                    placeholder="-1"
-                    step="0.1"
-                    type="number"
-                    value={detailSearch.axisMin ?? ""}
-                    onChange={(event) =>
+          <FilterBar
+            title="Filter findings"
+            columns="lg:grid-cols-2"
+            footer={(
+              <div className="mt-4 space-y-3 border-t pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {filteredFindings.length} of {findings.length} clusters
+                  </p>
+                  <Button
+                    onClick={() =>
                       onSearchChange({
-                        axisMin: toOptionalNumber(event.target.value),
+                        ...emptyStudyDetailSearch,
                       })
                     }
-                  />
+                    type="button"
+                    variant="outline"
+                  >
+                    Clear filters
+                  </Button>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="finding-axis-max-filter">Axis max</Label>
-                  <Input
-                    aria-label="Axis max filter"
-                    id="finding-axis-max-filter"
-                    max="1"
-                    min="-1"
-                    placeholder="1"
-                    step="0.1"
-                    type="number"
-                    value={detailSearch.axisMax ?? ""}
-                    onChange={(event) =>
-                      onSearchChange({
-                        axisMax: toOptionalNumber(event.target.value),
-                      })
-                    }
-                  />
-                </div>
+                {axisRangeIsInvalid ? (
+                  <p className="text-sm text-destructive">
+                    Axis min cannot be greater than axis max.
+                  </p>
+                ) : null}
               </div>
+            )}
+          >
+            <FilterSelect
+              id="finding-severity-filter"
+              label="Severity"
+              placeholder="All severities"
+              value={detailSearch.severity ?? ""}
+              options={severityOptions.map((severity) => ({
+                label: formatStatusLabel(severity),
+                value: severity,
+              }))}
+              onChange={(value) =>
+                onSearchChange({
+                  severity: value || undefined,
+                })
+              }
+            />
 
-              <div className="grid gap-2">
-                <Label htmlFor="finding-outcome-filter">Outcome</Label>
-                <select
-                  aria-label="Outcome filter"
-                  className={selectClassName}
-                  id="finding-outcome-filter"
-                  value={detailSearch.outcome ?? ""}
-                  onChange={(event) =>
-                    onSearchChange({
-                      outcome: event.target.value || undefined,
-                    })
-                  }
-                >
-                  <option value="">All outcomes</option>
-                  {outcomeOptions.map((outcome) => (
-                    <option key={outcome} value={outcome}>
-                      {formatStatusLabel(outcome)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <FilterSelect
+              id="finding-persona-filter"
+              label="Synthetic user"
+              placeholder="All synthetic users"
+              value={detailSearch.syntheticUserId ?? ""}
+              options={syntheticUserOptions.map((persona) => ({
+                label: persona.name,
+                value: persona.id,
+              }))}
+              onChange={(value) =>
+                onSearchChange({
+                  syntheticUserId: value || undefined,
+                })
+              }
+            />
 
-              <div className="grid gap-2">
-                <Label htmlFor="finding-url-prefix-filter">URL prefix</Label>
-                <Input
-                  aria-label="URL prefix filter"
-                  id="finding-url-prefix-filter"
-                  placeholder="https://example.com/checkout"
-                  value={detailSearch.urlPrefix ?? ""}
-                  onChange={(event) =>
-                    onSearchChange({
-                      urlPrefix: event.target.value || undefined,
-                    })
-                  }
-                />
-              </div>
-            </CardContent>
-            <CardContent className="pt-0">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing {filteredFindings.length} of {findings.length} clusters
-                </p>
+            <FilterSelect
+              id="finding-axis-key-filter"
+              label="Axis key"
+              placeholder="Any axis"
+              value={detailSearch.axisKey ?? ""}
+              options={axisKeys.map((axisKey) => ({
+                label: axisKey,
+                value: axisKey,
+              }))}
+              onChange={(value) =>
+                onSearchChange({
+                  axisKey: value || undefined,
+                })
+              }
+            />
 
-                <Button
-                  onClick={() =>
-                    onSearchChange({
-                      ...emptyStudyDetailSearch,
-                    })
-                  }
-                  type="button"
-                  variant="outline"
-                >
-                  Clear filters
-                </Button>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FilterSearch
+                id="finding-axis-min-filter"
+                label="Axis min"
+                max="1"
+                min="-1"
+                placeholder="-1"
+                step="0.1"
+                type="number"
+                value={detailSearch.axisMin?.toString() ?? ""}
+                onChange={(value) =>
+                  onSearchChange({
+                    axisMin: toOptionalNumber(value),
+                  })
+                }
+              />
+              <FilterSearch
+                id="finding-axis-max-filter"
+                label="Axis max"
+                max="1"
+                min="-1"
+                placeholder="1"
+                step="0.1"
+                type="number"
+                value={detailSearch.axisMax?.toString() ?? ""}
+                onChange={(value) =>
+                  onSearchChange({
+                    axisMax: toOptionalNumber(value),
+                  })
+                }
+              />
+            </div>
 
-              {axisRangeIsInvalid ? (
-                <p className="mt-3 text-sm text-destructive">
-                  Axis min cannot be greater than axis max.
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
+            <FilterSelect
+              id="finding-outcome-filter"
+              label="Outcome"
+              placeholder="All outcomes"
+              value={detailSearch.outcome ?? ""}
+              options={outcomeOptions.map((outcome) => ({
+                label: formatStatusLabel(outcome),
+                value: outcome,
+              }))}
+              onChange={(value) =>
+                onSearchChange({
+                  outcome: value || undefined,
+                })
+              }
+            />
+
+            <FilterSearch
+              id="finding-url-prefix-filter"
+              label="URL prefix"
+              placeholder="https://example.com/checkout"
+              value={detailSearch.urlPrefix ?? ""}
+              onChange={(value) =>
+                onSearchChange({
+                  urlPrefix: value || undefined,
+                })
+              }
+            />
+          </FilterBar>
 
           {findings.length === 0 ? (
             <FindingsStateCard
@@ -500,10 +473,16 @@ function FindingCard({
   studyId,
   resolvedArtifactUrls,
 }: {
-  finding: DemoFinding;
+  finding: FindingsView;
   studyId: string;
   resolvedArtifactUrls: Record<string, string>;
 }) {
+  const representativeQuotes = unique(
+    finding.representativeRuns
+      .map((run) => run.representativeQuote)
+      .filter((quote): quote is string => Boolean(quote)),
+  );
+
   return (
     <Card data-testid="finding-card">
       <CardHeader className="gap-4">
@@ -522,13 +501,23 @@ function FindingCard({
             </p>
           </div>
 
-          <div className="rounded-lg border bg-background px-3 py-2 text-right">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Replay confidence
-            </p>
-            <p className="text-lg font-semibold">
-              {Math.round(finding.replayConfidence * 100)}%
-            </p>
+          <div className="grid min-w-[180px] gap-2">
+            <div className="rounded-lg border bg-background px-3 py-2 text-right">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Replay confidence
+              </p>
+              <p className="text-lg font-semibold">
+                {Math.round(finding.replayConfidence * 100)}%
+              </p>
+            </div>
+            <div className="rounded-lg border bg-background px-3 py-2 text-right">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Impact score
+              </p>
+              <p className="text-lg font-semibold">
+                {formatImpactScore(finding.score)}
+              </p>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -552,6 +541,26 @@ function FindingCard({
             value={finding.confidenceNote}
           />
         </div>
+
+        <section className="space-y-3">
+          <h3 className="text-base font-semibold">Representative quotes</h3>
+          {representativeQuotes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No representative quotes were captured for this issue cluster.
+            </p>
+          ) : (
+            <div className="grid gap-3">
+              {representativeQuotes.map((quote) => (
+                <blockquote
+                  className="rounded-lg border bg-background px-4 py-3 text-sm italic text-muted-foreground"
+                  key={quote}
+                >
+                  “{quote}”
+                </blockquote>
+              ))}
+            </div>
+          )}
+        </section>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <section className="space-y-3">
@@ -666,26 +675,6 @@ function SummaryValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SeverityBadge({
-  severity,
-}: {
-  severity: DemoFinding["severity"];
-}) {
-  return (
-    <span
-      className={[
-        "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
-        severity === "blocker" ? "bg-rose-100 text-rose-800" : "",
-        severity === "major" ? "bg-amber-100 text-amber-800" : "",
-        severity === "minor" ? "bg-sky-100 text-sky-800" : "",
-        severity === "cosmetic" ? "bg-slate-200 text-slate-700" : "",
-      ].join(" ")}
-    >
-      {severity}
-    </span>
-  );
-}
-
 function FindingsStateCard({
   title,
   description,
@@ -705,7 +694,7 @@ function FindingsStateCard({
   );
 }
 
-function filterFindings(findings: DemoFinding[], search: StudyDetailSearch) {
+function filterFindings(findings: FindingsView[], search: StudyDetailSearch) {
   return findings.filter((finding) => {
     if (search.severity && finding.severity !== search.severity) {
       return false;
@@ -787,9 +776,15 @@ function formatFindingCount(count: number) {
   return `${count} ${count === 1 ? "cluster" : "clusters"}`;
 }
 
+function formatImpactScore(value: number | undefined) {
+  const score = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return score.toFixed(2);
+}
+
 function formatStatusLabel(value: string) {
   return value.replaceAll("_", " ");
 }
 
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+function unique(values: string[]) {
+  return [...new Set(values)];
+}
