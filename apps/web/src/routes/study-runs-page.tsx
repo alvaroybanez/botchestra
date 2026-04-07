@@ -7,7 +7,10 @@ import {
   FilterSearch,
   FilterSelect,
 } from "@/components/domain/filter-bar";
+import { PageHeader } from "@/components/domain/page-header";
 import { RunStatusBadge } from "@/components/domain/status-badge";
+import { StateCard } from "@/components/domain/state-card";
+import { SummaryValue } from "@/components/domain/summary-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -72,7 +75,7 @@ export function StudyRunsPage({
   if (runsForSelectedOutcome === undefined) {
     return (
       <StateCard
-        body="Loading study runs and filters..."
+        description="Loading study runs and filters..."
         title="Runs"
       />
     );
@@ -105,31 +108,22 @@ function ResolvedStudyRunsPage({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Run inspection
-          </p>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight">Runs</h2>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Filter runs by outcome and persona name, then inspect the selected
-              run&apos;s persona summary, milestones, self-report, and artifact
-              links.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <StudyOverviewLinkButton
-            detailSearch={detailSearch}
-            studyId={studyId}
-          />
-          <Button asChild variant="outline">
-            <Link to="/studies">Back to Studies</Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Run inspection"
+        title="Runs"
+        description="Filter runs by outcome and persona name, then inspect the selected run's persona summary, milestones, self-report, and artifact links."
+        actions={(
+          <>
+            <StudyOverviewLinkButton
+              detailSearch={detailSearch}
+              studyId={studyId}
+            />
+            <Button asChild variant="outline">
+              <Link to="/studies">Back to Studies</Link>
+            </Button>
+          </>
+        )}
+      />
 
       <StudyTabsNav
         activeTab="runs"
@@ -251,7 +245,7 @@ function ResolvedStudyRunsPage({
           <RunDetail runId={selectedRunId} />
         ) : (
           <StateCard
-            body="Select a run to inspect persona details, milestones, self-report answers, and artifacts."
+            description="Select a run to inspect persona details, milestones, self-report answers, and artifacts."
             title="Run detail"
           />
         )}
@@ -270,13 +264,18 @@ function RunDetail({ runId }: { runId: string }) {
   });
 
   if (runDetail === undefined) {
-    return <StateCard body="Loading run detail..." title="Run detail" />;
+    return (
+      <StateCard
+        description="Loading run detail..."
+        title="Run detail"
+      />
+    );
   }
 
   if (runDetail === null) {
     return (
       <StateCard
-        body="The selected run could not be found."
+        description="The selected run could not be found."
         title="Run detail"
       />
     );
@@ -514,28 +513,6 @@ function ArtifactLink({ href, label }: { href: string; label: string }) {
     >
       {label}
     </a>
-  );
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
-    </div>
-  );
-}
-
-function StateCard({ title, body }: { title: string; body: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{body}</p>
-      </CardContent>
-    </Card>
   );
 }
 

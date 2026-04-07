@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { SummaryValue } from "@/components/domain/summary-value";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -309,9 +310,21 @@ export function PersonaVariantReviewGrid({
                   <p className="font-medium">{axis.label}</p>
                   <p className="text-muted-foreground">{axis.description}</p>
                   <div className="grid gap-3">
-                    <SummaryValue label="Low anchor" value={axis.lowAnchor} />
-                    <SummaryValue label="Mid anchor" value={axis.midAnchor} />
-                    <SummaryValue label="High anchor" value={axis.highAnchor} />
+                    <SummaryValue
+                      label="Low anchor"
+                      value={axis.lowAnchor}
+                      variant="bordered"
+                    />
+                    <SummaryValue
+                      label="Mid anchor"
+                      value={axis.midAnchor}
+                      variant="bordered"
+                    />
+                    <SummaryValue
+                      label="High anchor"
+                      value={axis.highAnchor}
+                      variant="bordered"
+                    />
                   </div>
                 </div>
               ))}
@@ -373,15 +386,6 @@ function BodyCell({
   className?: string;
 }) {
   return <td className={`px-4 py-4 ${className}`}>{children}</td>;
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
-    </div>
-  );
 }
 
 function getAxisValue(

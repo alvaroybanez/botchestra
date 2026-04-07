@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar, SidebarProvider } from "@/components/app-sidebar";
 import { AdminDiagnosticsPage as AdminDiagnosticsRoutePage } from "@/routes/admin-diagnostics-page";
 import { AxisLibraryPage as AxisLibraryRoutePage } from "@/routes/axis-library-page";
 import { LoginPage } from "@/routes/login";
@@ -364,14 +364,16 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-      <main className="flex-1 p-8">
-        <div className="mx-auto max-w-5xl">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-background">
+        <AppSidebar />
+        <main className="flex-1 p-8">
+          <div className="mx-auto max-w-5xl">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </SidebarProvider>
   );
 }
 

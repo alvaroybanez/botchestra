@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/domain/page-header";
 import {
   SummaryGrid,
+  SummaryValue,
   SummaryValue as DomainSummaryValue,
 } from "@/components/domain/summary-value";
+import { StateCard } from "@/components/domain/state-card";
 import { cn } from "@/lib/utils";
 import {
   DEMO_STUDY_ID,
@@ -94,7 +97,7 @@ export function StudyOverviewPage({
   if (study === undefined) {
     return (
       <StateCard
-        body="Loading study overview..."
+        description="Loading study overview..."
         title="Study overview"
       />
     );
@@ -103,7 +106,7 @@ export function StudyOverviewPage({
   if (study === null) {
     return (
       <StateCard
-        body="This study could not be found in the current organization."
+        description="This study could not be found in the current organization."
         title="Study not found"
       />
     );
@@ -136,23 +139,16 @@ function DemoStudyOverviewPage({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-3xl font-semibold tracking-tight">
-              {demoStudyOverview.name}
-            </h2>
-            <StudyStatusBadge status={demoStudyOverview.status} />
-          </div>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            {demoStudyOverview.description}
-          </p>
-        </div>
-
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title={demoStudyOverview.name}
+        badge={<StudyStatusBadge status={demoStudyOverview.status} />}
+        description={demoStudyOverview.description}
+        actions={(
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        )}
+      />
 
       <StudyTabsNav
         activeTab="overview"
@@ -586,73 +582,68 @@ function StudyOverviewResolved({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-3xl font-semibold tracking-tight">{study.name}</h2>
-            <StudyStatusBadge status={study.status} />
-          </div>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            {study.description ?? "No study description has been added yet."}
-          </p>
-        </div>
+      <PageHeader
+        title={study.name}
+        badge={<StudyStatusBadge status={study.status} />}
+        description={study.description ?? "No study description has been added yet."}
+        actions={(
+          <>
+            {canEditStudy ? (
+              <Button
+                onClick={() => {
+                  setActionError(null);
+                  setFeedbackMessage(null);
+                  setForm(studyToFormValue(study));
+                  setIsEditing((current) => !current);
+                }}
+                variant={isEditing ? "secondary" : "default"}
+              >
+                {isEditing ? "Close Editor" : "Edit Study"}
+              </Button>
+            ) : null}
 
-        <div className="flex flex-wrap gap-3">
-          {canEditStudy ? (
-            <Button
-              onClick={() => {
-                setActionError(null);
-                setFeedbackMessage(null);
-                setForm(studyToFormValue(study));
-                setIsEditing((current) => !current);
-              }}
-              variant={isEditing ? "secondary" : "default"}
-            >
-              {isEditing ? "Close Editor" : "Edit Study"}
+            {canLaunchStudy ? (
+              <Button
+                onClick={() =>
+                  setConfirmationState({
+                    kind: "launch",
+                    title: "Launch study?",
+                    description:
+                      study.taskSpec.environmentLabel === "production"
+                        ? "Launching against production requires acknowledgement. Confirm to generate any missing variants, queue the study, and start execution."
+                        : "Confirm to generate any missing variants, queue the study, and start execution.",
+                    confirmLabel: "Confirm Launch",
+                    productionAck: study.taskSpec.environmentLabel === "production",
+                  })
+                }
+              >
+                Launch Study
+              </Button>
+            ) : null}
+
+            {canCancelStudy ? (
+              <Button
+                onClick={() =>
+                  setConfirmationState({
+                    kind: "cancel",
+                    title: "Cancel study?",
+                    description:
+                      "Cancel the remaining queued or active runs for this study. This cannot be undone.",
+                    confirmLabel: "Confirm Cancellation",
+                  })
+                }
+                variant="outline"
+              >
+                Cancel Study
+              </Button>
+            ) : null}
+
+            <Button asChild variant="outline">
+              <Link to="/studies">Back to Studies</Link>
             </Button>
-          ) : null}
-
-          {canLaunchStudy ? (
-            <Button
-              onClick={() =>
-                setConfirmationState({
-                  kind: "launch",
-                  title: "Launch study?",
-                  description:
-                    study.taskSpec.environmentLabel === "production"
-                      ? "Launching against production requires acknowledgement. Confirm to generate any missing variants, queue the study, and start execution."
-                      : "Confirm to generate any missing variants, queue the study, and start execution.",
-                  confirmLabel: "Confirm Launch",
-                  productionAck: study.taskSpec.environmentLabel === "production",
-                })
-              }
-            >
-              Launch Study
-            </Button>
-          ) : null}
-
-          {canCancelStudy ? (
-            <Button
-              onClick={() =>
-                setConfirmationState({
-                  kind: "cancel",
-                  title: "Cancel study?",
-                  description:
-                    "Cancel the remaining queued or active runs for this study. This cannot be undone.",
-                  confirmLabel: "Confirm Cancellation",
-                })
-              }
-              variant="outline"
-            >
-              Cancel Study
-            </Button>
-          ) : null}
-
-          <Button asChild variant="outline">
-            <Link to="/studies">Back to Studies</Link>
-          </Button>
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       {feedbackMessage ? (
         <p className="text-sm text-emerald-700">{feedbackMessage}</p>
@@ -1009,13 +1000,18 @@ function StudyStatusPage({
   });
 
   if (study === undefined) {
-    return <StateCard body={`Loading ${title.toLowerCase()}...`} title={title} />;
+    return (
+      <StateCard
+        description={`Loading ${title.toLowerCase()}...`}
+        title={title}
+      />
+    );
   }
 
   if (study === null) {
     return (
       <StateCard
-        body="This study could not be found in the current organization."
+        description="This study could not be found in the current organization."
         title="Study not found"
       />
     );
@@ -1023,21 +1019,16 @@ function StudyStatusPage({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-3xl font-semibold tracking-tight">{title}</h2>
-            <StudyStatusBadge status={study.status} />
-          </div>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            {description}
-          </p>
-        </div>
-
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title={title}
+        badge={<StudyStatusBadge status={study.status} />}
+        description={description}
+        actions={(
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        )}
+      />
 
       <StudyTabsNav
         activeTab={activeTab}
@@ -1391,30 +1382,8 @@ function StudyConfirmationDialog({
   );
 }
 
-function StateCard({ title, body }: { title: string; body: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{body}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function Field({ children }: { children: ReactNode }) {
   return <div className="grid gap-2">{children}</div>;
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
-    </div>
-  );
 }
 
 function ProgressBar({

@@ -3,7 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { useAction, useQuery } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
-import { SummaryGrid } from "@/components/domain/summary-value";
+import { PageHeader } from "@/components/domain/page-header";
+import { SeverityBadge } from "@/components/domain/status-badge";
+import { StateCard } from "@/components/domain/state-card";
+import { SummaryGrid, SummaryValue } from "@/components/domain/summary-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -133,7 +136,7 @@ function LiveStudyReportPage({
 
   if (study === undefined || report === undefined || findings === undefined) {
     return (
-      <ReportStateCard
+      <StateCard
         description="Loading headline metrics, ranked issues, evidence, and analyst notes..."
         title="Study report"
       />
@@ -142,7 +145,7 @@ function LiveStudyReportPage({
 
   if (study === null) {
     return (
-      <ReportStateCard
+      <StateCard
         description="This study could not be found in the current organization."
         title="Study not found"
       />
@@ -170,7 +173,7 @@ function LiveStudyReportPage({
         }
         study={study}
       >
-        <ReportStateCard
+        <StateCard
           description="The analysis pipeline has not produced a report for this study yet. Headline metrics and ranked issues will appear here once report generation completes."
           title="Report not ready"
         />
@@ -223,7 +226,7 @@ function LiveStudyReportContent({
 
   if (resolvedArtifactUrls === undefined) {
     return (
-      <ReportStateCard
+      <StateCard
         description="Resolving evidence thumbnails and artifact links..."
         title="Study report"
       />
@@ -398,7 +401,7 @@ function ResolvedStudyReportPage({
       </Card>
 
       {orderedFindings.length === 0 ? (
-        <ReportStateCard
+        <StateCard
           description="This study produced no replay-backed issue clusters. Headline metrics and limitations are still available for review."
           title="No ranked issue clusters"
         />
@@ -437,41 +440,29 @@ function ReportShell({
 }) {
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Ranked report
-          </p>
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-3xl font-semibold tracking-tight">
-                Study report
-              </h2>
-              <StudyStatusBadge status={study.status} />
-            </div>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review the final headline metrics, ranked issue clusters, replay
-              evidence, and analyst notes for this study in one place.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-start gap-3 sm:items-end">
-          <ReportActionButtons
-            localExportArtifacts={localExportArtifacts}
-            studyId={study._id}
-          />
-          <div className="flex flex-wrap gap-3">
-            <StudyOverviewLinkButton
-              detailSearch={detailSearch}
+      <PageHeader
+        eyebrow="Ranked report"
+        title="Study report"
+        badge={<StudyStatusBadge status={study.status} />}
+        description="Review the final headline metrics, ranked issue clusters, replay evidence, and analyst notes for this study in one place."
+        actions={(
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <ReportActionButtons
+              localExportArtifacts={localExportArtifacts}
               studyId={study._id}
             />
-            <Button asChild variant="outline">
-              <Link to="/studies">Back to Studies</Link>
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <StudyOverviewLinkButton
+                detailSearch={detailSearch}
+                studyId={study._id}
+              />
+              <Button asChild variant="outline">
+                <Link to="/studies">Back to Studies</Link>
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
+        )}
+      />
 
       <StudyTabsNav
         activeTab="report"
@@ -740,50 +731,6 @@ function MetricCard({ label, value }: { label: string; value: string }) {
       <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
       <dd className="mt-2 text-3xl font-semibold tracking-tight">{value}</dd>
     </div>
-  );
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium leading-6">{value}</dd>
-    </div>
-  );
-}
-
-function ReportStateCard({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SeverityBadge({ severity }: { severity: DemoFinding["severity"] }) {
-  return (
-    <span
-      className={[
-        "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
-        severity === "blocker" ? "bg-rose-100 text-rose-800" : "",
-        severity === "major" ? "bg-amber-100 text-amber-800" : "",
-        severity === "minor" ? "bg-sky-100 text-sky-800" : "",
-        severity === "cosmetic" ? "bg-slate-200 text-slate-700" : "",
-      ].join(" ")}
-    >
-      {severity}
-    </span>
   );
 }
 

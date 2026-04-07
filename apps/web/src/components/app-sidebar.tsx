@@ -32,13 +32,13 @@ import { cn } from "@/lib/utils";
  *  300ms   settled
  * ───────────────────────────────────────────────────────── */
 
-const TIMING = {
+export const SIDEBAR_ANIMATION_TIMING = {
   sidebarSpring: { type: "spring" as const, visualDuration: 0.3, bounce: 0.15 },
   labelFade: { duration: 0.15 },
 };
 
-const SIDEBAR_EXPANDED_WIDTH = 256; // 16rem
-const SIDEBAR_COLLAPSED_WIDTH = 68; // icon + padding
+export const SIDEBAR_EXPANDED_WIDTH = 256; // 16rem
+export const SIDEBAR_COLLAPSED_WIDTH = 68; // icon + padding
 
 // ── Context ──────────────────────────────────────────────
 
@@ -124,7 +124,7 @@ export function AppSidebar() {
     <TooltipProvider delayDuration={0}>
       <motion.aside
         animate={{ width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH }}
-        transition={TIMING.sidebarSpring}
+        transition={SIDEBAR_ANIMATION_TIMING.sidebarSpring}
         className="flex flex-col border-r border-border/50 bg-card"
         style={{ minHeight: "100vh", overflow: "hidden" }}
       >
@@ -137,7 +137,7 @@ export function AppSidebar() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={TIMING.labelFade}
+                transition={SIDEBAR_ANIMATION_TIMING.labelFade}
                 className="flex w-full justify-center"
               >
                 <Compass className="size-5 text-foreground" />
@@ -148,7 +148,7 @@ export function AppSidebar() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={TIMING.labelFade}
+                transition={SIDEBAR_ANIMATION_TIMING.labelFade}
                 className="font-label text-sm tracking-widest"
               >
                 Botchestra
@@ -177,7 +177,7 @@ export function AppSidebar() {
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={TIMING.labelFade}
+                  transition={SIDEBAR_ANIMATION_TIMING.labelFade}
                   className="mb-2 px-3 font-label text-[10px] text-muted-foreground"
                 >
                   {group.section}
@@ -279,7 +279,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
         <motion.span
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={TIMING.labelFade}
+          transition={SIDEBAR_ANIMATION_TIMING.labelFade}
           className="truncate"
         >
           {item.label}

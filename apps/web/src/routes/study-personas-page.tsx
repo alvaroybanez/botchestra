@@ -4,12 +4,15 @@ import { useAction, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import type { VariantReviewData } from "@/components/persona-variant-review-grid";
+import { PageHeader } from "@/components/domain/page-header";
+import { StateCard } from "@/components/domain/state-card";
 import { SummaryGrid, SummaryValue } from "@/components/domain/summary-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEMO_STUDY_ID } from "@/routes/study-demo-data";
 import {
   StudyTabsNav,
+  formatTimestamp,
   type StudyDetailSearch,
 } from "@/routes/study-shared";
 
@@ -199,7 +202,7 @@ function LiveStudyPersonasPage({
 
   if (reviewData === undefined) {
     return (
-      <ReviewStateCard
+      <StateCard
         description="Loading accepted variants and review controls..."
         title="Persona Variant Review"
       />
@@ -208,7 +211,7 @@ function LiveStudyPersonasPage({
 
   if (reviewData === null) {
     return (
-      <ReviewStateCard
+      <StateCard
         description="This study could not be found in your organization."
         title="Study not found"
       />
@@ -258,26 +261,16 @@ function VariantReviewContent({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Variant Review
-          </p>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight">
-              Persona Variant Review
-            </h2>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review accepted variants for this study with card-level axis value
-              distributions and coherence scores before launch.
-            </p>
-          </div>
-        </div>
-
-        <Button asChild variant="outline">
-          <Link to="/studies">Back to Studies</Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Variant Review"
+        title="Persona Variant Review"
+        description="Review accepted variants for this study with card-level axis value distributions and coherence scores before launch."
+        actions={(
+          <Button asChild variant="outline">
+            <Link to="/studies">Back to Studies</Link>
+          </Button>
+        )}
+      />
 
       <StudyTabsNav
         activeTab="personas"
@@ -335,7 +328,7 @@ function VariantReviewContent({
       ) : null}
 
       {rankedVariants.length === 0 ? (
-        <ReviewStateCard
+        <StateCard
           description="No accepted variants are available for this study yet."
           title="Persona variants"
         />
@@ -505,32 +498,6 @@ function formatAxisValue(value: number) {
 
 function formatScore(value: number) {
   return value.toFixed(2);
-}
-
-function ReviewStateCard({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function formatTimestamp(timestamp: number) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(timestamp);
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

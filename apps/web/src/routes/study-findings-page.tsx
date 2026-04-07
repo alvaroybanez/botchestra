@@ -8,7 +8,10 @@ import {
   FilterSearch,
   FilterSelect,
 } from "@/components/domain/filter-bar";
+import { PageHeader } from "@/components/domain/page-header";
 import { SeverityBadge } from "@/components/domain/status-badge";
+import { StateCard } from "@/components/domain/state-card";
+import { SummaryValue } from "@/components/domain/summary-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -86,7 +89,7 @@ export function StudyFindingsPage({
 
   if (study === undefined || findings === undefined) {
     return (
-      <FindingsStateCard
+      <StateCard
         description="Loading analysis findings, filters, and representative evidence..."
         title="Findings"
       />
@@ -95,7 +98,7 @@ export function StudyFindingsPage({
 
   if (study === null) {
     return (
-      <FindingsStateCard
+      <StateCard
         description="This study could not be found in the current organization."
         title="Study not found"
       />
@@ -135,7 +138,7 @@ function LiveStudyFindingsContent({
 
   if (resolvedArtifactUrls === undefined) {
     return (
-      <FindingsStateCard
+      <StateCard
         description="Resolving evidence artifact URLs for this study..."
         title="Findings"
       />
@@ -228,34 +231,23 @@ function ResolvedStudyFindingsPage({
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Findings Explorer
-          </p>
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-3xl font-semibold tracking-tight">Findings</h2>
-              <StudyStatusBadge status={study.status} />
-            </div>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Filter issue clusters by severity, synthetic user, axis range,
-              outcome, and URL prefix. Drill into representative runs and open
-              evidence links for each cluster.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <StudyOverviewLinkButton
-            detailSearch={detailSearch}
-            studyId={study._id}
-          />
-          <Button asChild variant="outline">
-            <Link to="/studies">Back to Studies</Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Findings Explorer"
+        title="Findings"
+        badge={<StudyStatusBadge status={study.status} />}
+        description="Filter issue clusters by severity, synthetic user, axis range, outcome, and URL prefix. Drill into representative runs and open evidence links for each cluster."
+        actions={(
+          <>
+            <StudyOverviewLinkButton
+              detailSearch={detailSearch}
+              studyId={study._id}
+            />
+            <Button asChild variant="outline">
+              <Link to="/studies">Back to Studies</Link>
+            </Button>
+          </>
+        )}
+      />
 
       <StudyTabsNav
         activeTab="findings"
@@ -406,12 +398,12 @@ function ResolvedStudyFindingsPage({
           </FilterBar>
 
           {findings.length === 0 ? (
-            <FindingsStateCard
+            <StateCard
               description="No issue clusters are available yet. Findings will appear after the analysis pipeline completes."
               title="No findings yet"
             />
           ) : filteredFindings.length === 0 ? (
-            <FindingsStateCard
+            <StateCard
               description="No findings match the current filter combination. Clear or adjust a filter to broaden the result set."
               title="No matching findings"
             />
@@ -710,34 +702,6 @@ function FindingCard({
             </div>
           )}
         </section>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
-    </div>
-  );
-}
-
-function FindingsStateCard({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{description}</p>
       </CardContent>
     </Card>
   );

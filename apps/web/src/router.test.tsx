@@ -21,6 +21,11 @@ import {
   resolveRedirectPath,
   type AppAuthState,
 } from "@/router";
+import {
+  SIDEBAR_ANIMATION_TIMING,
+  SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_EXPANDED_WIDTH,
+} from "@/components/app-sidebar";
 
 let mockedAuthState: AppAuthState = {
   isAuthenticated: false,
@@ -975,6 +980,69 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Botchestra");
     expect(container.textContent).toContain("Studies");
     expect(container.textContent).toContain("Browse every validation study");
+  });
+
+  it("uses the prototype sidebar animation timing and width constants", () => {
+    expect(SIDEBAR_EXPANDED_WIDTH).toBe(256);
+    expect(SIDEBAR_COLLAPSED_WIDTH).toBe(68);
+    expect(SIDEBAR_ANIMATION_TIMING.sidebarSpring).toEqual({
+      bounce: 0.15,
+      type: "spring",
+      visualDuration: 0.3,
+    });
+    expect(SIDEBAR_ANIMATION_TIMING.labelFade).toEqual({
+      duration: 0.15,
+    });
+  });
+
+  it("renders grouped sidebar navigation and supports collapse/expand icon-only mode", async () => {
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/studies"],
+      viewerRole: "admin",
+    });
+
+    const initialGroupLabels = [...container.querySelectorAll("nav p")]
+      .map((label) => label.textContent?.trim())
+      .filter((label): label is string => Boolean(label));
+
+    expect(initialGroupLabels).toEqual([
+      "Orchestrate",
+      "Configure",
+      "Analyze",
+    ]);
+
+    const collapseButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Collapse sidebar"]',
+    );
+    expect(collapseButton).not.toBeNull();
+
+    await act(async () => {
+      collapseButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(
+      container.querySelector('button[aria-label="Expand sidebar"]'),
+    ).not.toBeNull();
+
+    const collapsedGroupLabels = [...container.querySelectorAll("nav p")]
+      .map((label) => label.textContent?.trim())
+      .filter((label): label is string => Boolean(label));
+    expect(collapsedGroupLabels).toHaveLength(0);
+
+    const studiesNavLink = container.querySelector('a[href="/studies"]');
+    expect(studiesNavLink?.textContent?.trim()).toBe("");
+
+    const expandButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Expand sidebar"]',
+    );
+    await act(async () => {
+      expandButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(
+      container.querySelector('button[aria-label="Collapse sidebar"]'),
+    ).not.toBeNull();
   });
 
   it("redirects unauthenticated deep links to login while preserving the target route", async () => {
