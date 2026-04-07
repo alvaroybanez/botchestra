@@ -503,8 +503,11 @@ function FindingCard({
             </p>
           </div>
 
-          <div className="grid min-w-[180px] gap-2">
-            <div className="rounded-lg border bg-background px-3 py-2 text-right">
+          <div
+            className="flex min-w-[260px] flex-row gap-2 sm:min-w-[320px]"
+            data-testid="finding-metric-pills"
+          >
+            <div className="flex-1 rounded-lg border bg-background px-3 py-2 text-right">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Replay confidence
               </p>
@@ -512,7 +515,7 @@ function FindingCard({
                 {Math.round(finding.replayConfidence * 100)}%
               </p>
             </div>
-            <div className="rounded-lg border bg-background px-3 py-2 text-right">
+            <div className="flex-1 rounded-lg border bg-background px-3 py-2 text-right">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Impact score
               </p>
@@ -526,14 +529,58 @@ function FindingCard({
 
       <CardContent className="space-y-6">
         <div className="grid gap-4 lg:grid-cols-2">
-          <SummaryValue
-            label="Affected segments"
-            value={finding.affectedSyntheticUsers.map((syntheticUser) => syntheticUser.name).join(", ")}
-          />
-          <SummaryValue
-            label="Axis coverage"
-            value={finding.affectedAxisRanges.map(formatAxisRange).join(", ")}
-          />
+          <div className="rounded-lg border bg-background p-4">
+            <dt className="text-sm font-medium text-muted-foreground">
+              Affected segments
+            </dt>
+            <dd className="mt-2">
+              {finding.affectedSyntheticUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No affected segments were recorded for this cluster.
+                </p>
+              ) : (
+                <ul className="flex flex-wrap gap-2">
+                  {finding.affectedSyntheticUsers.map((syntheticUser) => (
+                    <li
+                      className="rounded-full border bg-muted/30 px-3 py-1 text-xs font-medium"
+                      key={syntheticUser._id}
+                    >
+                      {syntheticUser.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </dd>
+          </div>
+
+          <div className="rounded-lg border bg-background p-4">
+            <dt className="text-sm font-medium text-muted-foreground">
+              Axis coverage
+            </dt>
+            <dd className="mt-2">
+              {finding.affectedAxisRanges.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No axis ranges were captured for this cluster.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {finding.affectedAxisRanges.map((axisRange) => (
+                    <li
+                      className="rounded-md border bg-muted/20 px-3 py-2"
+                      key={`${finding._id}-${axisRange.key}-${axisRange.min}-${axisRange.max}`}
+                    >
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground break-words">
+                        {formatStatusLabel(axisRange.key)}
+                      </p>
+                      <p className="mt-1 text-sm font-medium">
+                        {formatAxisValueRange(axisRange)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </dd>
+          </div>
           <SummaryValue
             label="Recommendation"
             value={formatGeneratedText(finding.recommendation)}
@@ -770,8 +817,10 @@ function toOptionalNumber(value: string) {
   return Number.isFinite(numericValue) ? numericValue : undefined;
 }
 
-function formatAxisRange(axisRange: DemoFinding["affectedAxisRanges"][number]) {
-  return `${axisRange.key}: ${axisRange.min.toFixed(1)} to ${axisRange.max.toFixed(1)}`;
+function formatAxisValueRange(
+  axisRange: DemoFinding["affectedAxisRanges"][number],
+) {
+  return `${axisRange.min.toFixed(1)} to ${axisRange.max.toFixed(1)}`;
 }
 
 function formatFindingCount(count: number) {

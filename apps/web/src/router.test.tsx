@@ -1916,6 +1916,8 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain(
       "linked to contact flow felt repetitive and not clearly tied to the numbers monthly payment around after.",
     );
+    expect(container.textContent).toContain("digital confidence");
+    expect(container.textContent).toContain("-0.9 to -0.3");
     expect(container.textContent).not.toContain(
       "CONTACT_FLOW_FELT_REPETITIVE_AND_NOT_CLEARLY_TIED_TO_THE_NUMBERS_MONTHLY_PAYMENT_AROUND_AFTER",
     );
@@ -1931,6 +1933,12 @@ describe("@botchestra/web routing", () => {
     expect(evidenceLinks[0]?.getAttribute("href")).toBe(
       "http://localhost:8787/artifacts/runs%2Frun-hard-fail%2Fmilestones%2F2.jpg",
     );
+
+    const findingMetricPills = container.querySelectorAll(
+      '[data-testid="finding-metric-pills"]',
+    );
+    expect(findingMetricPills).toHaveLength(2);
+    expect(findingMetricPills[0]?.children).toHaveLength(2);
 
     await updateSelect(container, "#finding-severity-filter", "blocker");
     expect(container.textContent).toContain("Showing 1 of 2 clusters");
