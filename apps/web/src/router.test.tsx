@@ -1913,6 +1913,12 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain(
       "Replay evidence confirms the continue button is clipped below the fold.",
     );
+    expect(container.textContent).toContain(
+      "linked to contact flow felt repetitive and not clearly tied to the numbers monthly payment around after.",
+    );
+    expect(container.textContent).not.toContain(
+      "CONTACT_FLOW_FELT_REPETITIVE_AND_NOT_CLEARLY_TIED_TO_THE_NUMBERS_MONTHLY_PAYMENT_AROUND_AFTER",
+    );
     expect(container.textContent).toContain("Impact score");
     expect(container.textContent).toContain("0.92");
     expect(container.textContent).toContain(
@@ -4383,7 +4389,7 @@ function makeFindings(): FindingView[] {
       _id: "finding-address",
       title: "Checkout continue button hidden on the address step",
       summary:
-        "A blocker cluster where the primary continue action disappears after address validation.",
+        "A blocker cluster where the primary continue action disappears after address validation linked to CONTACT_FLOW_FELT_REPETITIVE_AND_NOT_CLEARLY_TIED_TO_THE_NUMBERS_MONTHLY_PAYMENT_AROUND_AFTER.",
       severity: "blocker",
       score: 0.92,
       affectedRunCount: 3,

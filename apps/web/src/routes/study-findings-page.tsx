@@ -495,9 +495,11 @@ function FindingCard({
                 {Math.round(finding.affectedRunRate * 100)}% affected rate
               </span>
             </div>
-            <CardTitle className="text-xl">{finding.title}</CardTitle>
+            <CardTitle className="text-xl break-words">
+              {formatGeneratedText(finding.title)}
+            </CardTitle>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              {finding.summary}
+              {formatGeneratedText(finding.summary)}
             </p>
           </div>
 
@@ -534,11 +536,11 @@ function FindingCard({
           />
           <SummaryValue
             label="Recommendation"
-            value={finding.recommendation}
+            value={formatGeneratedText(finding.recommendation)}
           />
           <SummaryValue
             label="Confidence note"
-            value={finding.confidenceNote}
+            value={formatGeneratedText(finding.confidenceNote)}
           />
         </div>
 
@@ -555,7 +557,7 @@ function FindingCard({
                   className="rounded-lg border bg-background px-4 py-3 text-sm italic text-muted-foreground"
                   key={quote}
                 >
-                  “{quote}”
+                  “{formatGeneratedText(quote)}”
                 </blockquote>
               ))}
             </div>
@@ -602,7 +604,7 @@ function FindingCard({
 
                   {run.representativeQuote ? (
                     <blockquote className="mt-3 border-l-2 pl-3 text-sm italic text-muted-foreground">
-                      “{run.representativeQuote}”
+                      “{formatGeneratedText(run.representativeQuote)}”
                     </blockquote>
                   ) : null}
                 </div>
@@ -783,6 +785,15 @@ function formatImpactScore(value: number | undefined) {
 
 function formatStatusLabel(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function formatGeneratedText(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b[A-Z0-9_]{18,}\b/g, (token) =>
+      token.toLowerCase().replaceAll("_", " "),
+    );
 }
 
 function unique(values: string[]) {
