@@ -5,6 +5,7 @@ import { StudyTabs, type StudyTabKey } from "@/routes/study/study-tabs";
 
 export type StudyDetailSearch = {
   outcome: string | undefined;
+  personaName: string | undefined;
   syntheticUserId: string | undefined;
   finalUrlContains: string | undefined;
   severity: string | undefined;
@@ -17,6 +18,7 @@ export type StudyDetailSearch = {
 
 export const emptyStudyDetailSearch: StudyDetailSearch = {
   outcome: undefined,
+  personaName: undefined,
   syntheticUserId: undefined,
   finalUrlContains: undefined,
   severity: undefined,
@@ -32,6 +34,7 @@ export { studyTabs } from "@/routes/study/study-tabs";
 export function validateStudyDetailSearch(search: Record<string, unknown>) {
   return {
     outcome: normalizeOptionalString(search.outcome),
+    personaName: normalizeOptionalString(search.personaName),
     syntheticUserId: normalizeOptionalString(search.syntheticUserId),
     finalUrlContains: normalizeOptionalString(search.finalUrlContains),
     severity: normalizeOptionalString(search.severity),

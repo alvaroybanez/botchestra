@@ -1,12 +1,15 @@
-import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
+import {
+  FilterBar,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/domain/filter-bar";
+import { RunStatusBadge } from "@/components/domain/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   DEMO_STUDY_ID,
   demoRunDetailsById,
@@ -15,7 +18,6 @@ import {
   type DemoRunListItem,
 } from "@/routes/study-demo-data";
 import {
-  RunStatusBadge,
   StudyOverviewLinkButton,
   StudyTabsNav,
   formatDuration,
@@ -54,7 +56,6 @@ export function StudyRunsPage({
 
     return (
       <ResolvedStudyRunsPage
-        allRuns={demoRuns}
         detailSearch={detailSearch}
         filteredRuns={filteredDemoRuns}
         onSearchChange={onSearchChange}
@@ -63,21 +64,12 @@ export function StudyRunsPage({
     );
   }
 
-  const allRuns = useQuery(api.runs.listRuns, {
-    studyId: studyId as Id<"studies">,
-  });
-  const filteredRuns = useQuery(api.runs.listRuns, {
+  const runsForSelectedOutcome = useQuery(api.runs.listRuns, {
     studyId: studyId as Id<"studies">,
     ...(detailSearch.outcome ? { outcome: detailSearch.outcome as never } : {}),
-    ...(detailSearch.syntheticUserId
-      ? { syntheticUserId: detailSearch.syntheticUserId as Id<"syntheticUsers"> }
-      : {}),
-    ...(detailSearch.finalUrlContains
-      ? { finalUrlContains: detailSearch.finalUrlContains }
-      : {}),
   });
 
-  if (filteredRuns === undefined || allRuns === undefined) {
+  if (runsForSelectedOutcome === undefined) {
     return (
       <StateCard
         body="Loading study runs and filters..."
@@ -86,9 +78,10 @@ export function StudyRunsPage({
     );
   }
 
+  const filteredRuns = filterRuns(runsForSelectedOutcome, detailSearch);
+
   return (
     <ResolvedStudyRunsPage
-      allRuns={allRuns}
       detailSearch={detailSearch}
       filteredRuns={filteredRuns}
       onSearchChange={onSearchChange}
@@ -98,30 +91,16 @@ export function StudyRunsPage({
 }
 
 function ResolvedStudyRunsPage({
-  allRuns,
   filteredRuns,
   detailSearch,
   onSearchChange,
   studyId,
 }: {
-  allRuns: RunListItem[] | DemoRunListItem[];
   filteredRuns: RunListItem[] | DemoRunListItem[];
   detailSearch: StudyDetailSearch;
   onSearchChange: (patch: Partial<StudyDetailSearch>) => void;
   studyId: string;
 }) {
-  const personaOptions = useMemo(() => {
-    const personaMap = new Map<string, string>();
-
-    for (const run of allRuns) {
-      if (!personaMap.has(run.syntheticUserId)) {
-        personaMap.set(run.syntheticUserId, run.syntheticUserName);
-      }
-    }
-
-    return [...personaMap.entries()].map(([id, name]) => ({ id, name }));
-  }, [allRuns]);
-
   const selectedRunId = getSelectedRunId(filteredRuns, detailSearch.runId);
 
   return (
@@ -134,9 +113,9 @@ function ResolvedStudyRunsPage({
           <div className="space-y-2">
             <h2 className="text-3xl font-semibold tracking-tight">Runs</h2>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Filter runs by outcome, persona, or URL, then inspect the selected
-              run&apos;s persona summary, milestone timeline, self-report, and
-              artifact links.
+              Filter runs by outcome and persona name, then inspect the selected
+              run&apos;s persona summary, milestones, self-report, and artifact
+              links.
             </p>
           </div>
         </div>
@@ -158,71 +137,56 @@ function ResolvedStudyRunsPage({
         studyId={studyId}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter runs</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-4">
-          <div className="grid gap-2">
-            <Label htmlFor="run-outcome-filter">Outcome</Label>
-            <select
-              aria-label="Outcome filter"
-              className={selectClassName}
-              id="run-outcome-filter"
-              value={detailSearch.outcome ?? ""}
-              onChange={(event) =>
+      <FilterBar
+        title="Filter runs"
+        columns="md:grid-cols-[220px_minmax(0,1fr)]"
+        footer={(
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredRuns.length} run{filteredRuns.length === 1 ? "" : "s"}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
                 onSearchChange({
-                  outcome: event.target.value || undefined,
+                  outcome: undefined,
+                  personaName: undefined,
                 })
               }
             >
-              <option value="">All outcomes</option>
-              {outcomeOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status.replaceAll("_", " ")}
-                </option>
-              ))}
-            </select>
+              Clear filters
+            </Button>
           </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="run-persona-filter">Persona</Label>
-            <select
-              aria-label="Persona filter"
-              className={selectClassName}
-              id="run-persona-filter"
-              value={detailSearch.syntheticUserId ?? ""}
-              onChange={(event) =>
-                onSearchChange({
-                  syntheticUserId: event.target.value || undefined,
-                })
-              }
-            >
-              <option value="">All synthetic users</option>
-              {personaOptions.map((persona) => (
-                <option key={persona.id} value={persona.id}>
-                  {persona.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid gap-2 lg:col-span-2">
-            <Label htmlFor="run-url-filter">URL contains</Label>
-            <Input
-              aria-label="URL contains filter"
-              id="run-url-filter"
-              placeholder="checkout/address"
-              value={detailSearch.finalUrlContains ?? ""}
-              onChange={(event) =>
-                onSearchChange({
-                  finalUrlContains: event.target.value || undefined,
-                })
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
+        )}
+      >
+        <FilterSelect
+          id="run-outcome-filter"
+          label="Outcome"
+          placeholder="All outcomes"
+          value={detailSearch.outcome ?? ""}
+          options={outcomeOptions.map((status) => ({
+            label: status.replaceAll("_", " "),
+            value: status,
+          }))}
+          onChange={(value) =>
+            onSearchChange({
+              outcome: value || undefined,
+            })
+          }
+        />
+        <FilterSearch
+          id="run-persona-name-filter"
+          label="Persona name search"
+          placeholder="Search persona names"
+          value={detailSearch.personaName ?? ""}
+          onChange={(value) =>
+            onSearchChange({
+              personaName: value || undefined,
+            })
+          }
+        />
+      </FilterBar>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
         <Card>
@@ -489,7 +453,10 @@ function getSelectedRunId(
   filteredRuns: readonly { _id: string }[],
   requestedRunId: string | undefined,
 ) {
-  if (requestedRunId) {
+  if (
+    requestedRunId &&
+    filteredRuns.some((run) => run._id === requestedRunId)
+  ) {
     return requestedRunId;
   }
 
@@ -512,9 +479,11 @@ function resolveArtifactHref(
 }
 
 function filterRuns(
-  runs: readonly DemoRunListItem[],
+  runs: readonly DemoRunListItem[] | readonly RunListItem[],
   detailSearch: StudyDetailSearch,
 ) {
+  const normalizedPersonaName = detailSearch.personaName?.trim().toLowerCase();
+
   return runs.filter((run) => {
     if (
       detailSearch.outcome !== undefined &&
@@ -524,15 +493,9 @@ function filterRuns(
     }
 
     if (
-      detailSearch.syntheticUserId !== undefined &&
-      run.syntheticUserId !== detailSearch.syntheticUserId
-    ) {
-      return false;
-    }
-
-    if (
-      detailSearch.finalUrlContains !== undefined &&
-      !(run.finalUrl?.includes(detailSearch.finalUrlContains) ?? false)
+      normalizedPersonaName !== undefined &&
+      normalizedPersonaName.length > 0 &&
+      !run.syntheticUserName.toLowerCase().includes(normalizedPersonaName)
     ) {
       return false;
     }
@@ -581,6 +544,3 @@ const runClassName =
 
 const selectedRunClassName =
   "w-full rounded-xl border border-primary bg-primary/5 p-4 text-left shadow-sm";
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

@@ -1791,7 +1791,7 @@ describe("@botchestra/web routing", () => {
     ).not.toBeNull();
   });
 
-  it("renders run detail content and filters runs by outcome, persona, and URL", async () => {
+  it("renders run detail content and filters runs by outcome and persona name", async () => {
     mockedRunsByStudyId = {
       "study-live": makeRunList(),
     };
@@ -1823,10 +1823,12 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Filtered runs (1)");
     expect(container.textContent).toContain("Checkout failed at address");
 
-    await updateSelect(container, "#run-persona-filter", "proto-careful");
+    await updateSelect(container, "#run-outcome-filter", "");
+    await updateInput(container, "#run-persona-name-filter", "speedy");
     expect(container.textContent).toContain("Filtered runs (1)");
+    expect(container.textContent).toContain("Fast repeat buyer who completed the flow without friction.");
 
-    await updateInput(container, "#run-url-filter", "confirmation");
+    await updateSelect(container, "#run-outcome-filter", "hard_fail");
     expect(container.textContent).toContain("Filtered runs (0)");
   });
 
@@ -1850,8 +1852,7 @@ describe("@botchestra/web routing", () => {
     });
 
     await updateSelect(container, "#run-outcome-filter", "hard_fail");
-    await updateSelect(container, "#run-persona-filter", "proto-careful");
-    await updateInput(container, "#run-url-filter", "address");
+    await updateInput(container, "#run-persona-name-filter", "careful");
 
     const findingsLink = [...container.querySelectorAll("a")].find(
       (link) => link.textContent === "Findings",
@@ -1866,8 +1867,7 @@ describe("@botchestra/web routing", () => {
       "/studies/study-live/findings",
     );
     expect(getRouterLocationHref(router)).toContain("outcome=hard_fail");
-    expect(getRouterLocationHref(router)).toContain("syntheticUserId=proto-careful");
-    expect(getRouterLocationHref(router)).toContain("finalUrlContains=address");
+    expect(getRouterLocationHref(router)).toContain("personaName=careful");
 
     const runsLink = [...container.querySelectorAll("a")].find(
       (link) => link.textContent === "Runs",
@@ -1881,14 +1881,12 @@ describe("@botchestra/web routing", () => {
     const outcomeSelect = container.querySelector<HTMLSelectElement>(
       "#run-outcome-filter",
     );
-    const personaSelect = container.querySelector<HTMLSelectElement>(
-      "#run-persona-filter",
+    const personaNameInput = container.querySelector<HTMLInputElement>(
+      "#run-persona-name-filter",
     );
-    const urlInput = container.querySelector<HTMLInputElement>("#run-url-filter");
 
     expect(outcomeSelect?.value).toBe("hard_fail");
-    expect(personaSelect?.value).toBe("proto-careful");
-    expect(urlInput?.value).toBe("address");
+    expect(personaNameInput?.value).toBe("careful");
   });
 
   it("renders findings cards with filters, evidence links, and analyst notes", async () => {
