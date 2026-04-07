@@ -4,6 +4,13 @@ import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedList } from "@/components/domain/animated-list";
+import {
+  FilterBar,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/domain/filter-bar";
+import { PageHeader } from "@/components/domain/page-header";
 import {
   Dialog,
   DialogContent,
@@ -15,14 +22,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
 type AxisDefinition = Doc<"axisDefinitions">;
@@ -283,62 +282,41 @@ export function AxisLibraryPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Persona Library
-          </p>
-          <h2 className="text-3xl font-semibold tracking-tight">Axis Library</h2>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Reuse shared persona axes across configs, search by metadata, and manage
-            org-specific definitions in one place.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Persona Library"
+        title="Axis Library"
+        description="Reuse shared persona axes across configs, search by metadata, and manage org-specific definitions in one place."
+        actions={
+          canManageAxes ? (
+            <Button onClick={() => setDialogState({ mode: "create" })}>
+              Create axis
+            </Button>
+          ) : undefined
+        }
+      />
 
-        {canManageAxes ? (
-          <Button onClick={() => setDialogState({ mode: "create" })}>
-            Create axis
-          </Button>
-        ) : null}
-      </div>
+      <FilterBar
+        title="Browse axes"
+        columns="md:grid-cols-[minmax(0,1fr)_220px]"
+        footer={<p className="mt-4 text-sm text-muted-foreground">{filterSummary}</p>}
+      >
+        <FilterSearch
+          id="axis-library-search"
+          label="Search"
+          placeholder="Search by key, label, or description"
+          value={searchText}
+          onChange={setSearchText}
+        />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Browse axes</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="grid gap-2">
-            <Label htmlFor="axis-library-search">Search</Label>
-            <Input
-              id="axis-library-search"
-              placeholder="Search by key, label, or description"
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="axis-library-tag-filter">Tag filter</Label>
-            <select
-              className={selectClassName}
-              id="axis-library-tag-filter"
-              value={selectedTag}
-              onChange={(event) => setSelectedTag(event.target.value)}
-            >
-              <option value="">All tags</option>
-              {tagOptions.map((tag) => (
-                <option key={tag} value={tag}>
-                  {tag}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <p className="md:col-span-2 text-sm text-muted-foreground">
-            {filterSummary}
-          </p>
-        </CardContent>
-      </Card>
+        <FilterSelect
+          id="axis-library-tag-filter"
+          label="Tag filter"
+          value={selectedTag}
+          options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
+          placeholder="All tags"
+          onChange={setSelectedTag}
+        />
+      </FilterBar>
 
       {axisDefinitions.length === 0 ? (
         <Card>
@@ -378,93 +356,99 @@ export function AxisLibraryPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Saved definitions ({filteredAxisDefinitions.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Key</TableHead>
-                  <TableHead>Label</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Low Anchor</TableHead>
-                  <TableHead>Mid Anchor</TableHead>
-                  <TableHead>High Anchor</TableHead>
-                  <TableHead>Weight</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Usage Count</TableHead>
-                  <TableHead>Creation Source</TableHead>
-                  {canManageAxes ? <TableHead className="text-right">Actions</TableHead> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAxisDefinitions.map((axisDefinition) => (
-                  <TableRow key={axisDefinition._id}>
-                    <TableCell className="font-medium">{axisDefinition.key}</TableCell>
-                    <TableCell>{axisDefinition.label}</TableCell>
-                    <TableCell title={axisDefinition.description}>
-                      {truncateText(axisDefinition.description)}
-                    </TableCell>
-                    <TableCell>{axisDefinition.lowAnchor}</TableCell>
-                    <TableCell>{axisDefinition.midAnchor}</TableCell>
-                    <TableCell>{axisDefinition.highAnchor}</TableCell>
-                    <TableCell>{formatWeight(axisDefinition.weight)}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        {axisDefinition.tags.length === 0 ? (
-                          <span className="text-sm text-muted-foreground">No tags</span>
-                        ) : (
-                          axisDefinition.tags.map((tag) => (
-                            <Badge key={`${axisDefinition._id}-${tag}`} variant="outline">
-                              {tag}
-                            </Badge>
-                          ))
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{axisDefinition.usageCount}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          axisDefinition.creationSource === "manual"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {formatCreationSource(axisDefinition.creationSource)}
-                      </Badge>
-                    </TableCell>
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold">
+            Saved definitions ({filteredAxisDefinitions.length})
+          </h3>
+          <AnimatedList
+            items={filteredAxisDefinitions}
+            keyExtractor={(axisDefinition) => axisDefinition._id}
+            renderItem={(axisDefinition) => (
+              <Card>
+                <CardHeader className="space-y-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <h4 className="text-lg font-semibold">{axisDefinition.label}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {axisDefinition.key}
+                      </p>
+                    </div>
                     {canManageAxes ? (
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              setDialogState({
-                                mode: "edit",
-                                axis: axisDefinition,
-                              })
-                            }
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={() => setDeleteCandidate(axisDefinition)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            setDialogState({
+                              mode: "edit",
+                              axis: axisDefinition,
+                            })
+                          }
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => setDeleteCandidate(axisDefinition)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     ) : null}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <AxisMetadata label="Key" value={axisDefinition.key} />
+                    <AxisMetadata label="Label" value={axisDefinition.label} />
+                    <AxisMetadata
+                      label="Description"
+                      value={axisDefinition.description}
+                    />
+                    <AxisMetadata
+                      label="Low Anchor"
+                      value={axisDefinition.lowAnchor}
+                    />
+                    <AxisMetadata
+                      label="Mid Anchor"
+                      value={axisDefinition.midAnchor}
+                    />
+                    <AxisMetadata
+                      label="High Anchor"
+                      value={axisDefinition.highAnchor}
+                    />
+                    <AxisMetadata
+                      label="Weight"
+                      value={formatWeight(axisDefinition.weight)}
+                    />
+                    <AxisMetadata
+                      label="Usage Count"
+                      value={String(axisDefinition.usageCount)}
+                    />
+                    <AxisMetadata
+                      label="Creation Source"
+                      value={formatCreationSource(axisDefinition.creationSource)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Tags</p>
+                    <div className="flex flex-wrap gap-2">
+                      {axisDefinition.tags.length === 0 ? (
+                        <span className="text-sm text-muted-foreground">No tags</span>
+                      ) : (
+                        axisDefinition.tags.map((tag) => (
+                          <Badge key={`${axisDefinition._id}-${tag}`} variant="outline">
+                            {tag}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          />
+        </div>
       )}
 
       <Dialog open={dialogState !== null} onOpenChange={(open) => !open && setDialogState(null)}>
@@ -730,6 +714,15 @@ function AxisField({
   );
 }
 
+function AxisMetadata({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-card/50 p-3">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm leading-6">{value}</p>
+    </div>
+  );
+}
+
 function AxisLibraryLoadingState() {
   return (
     <section aria-live="polite" className="space-y-6">
@@ -890,10 +883,6 @@ function formatWeight(weight: number) {
   return Number.isInteger(weight) ? String(weight) : weight.toFixed(2);
 }
 
-function truncateText(value: string) {
-  return value.length > 96 ? `${value.slice(0, 93)}...` : value;
-}
-
 function getErrorMessage(error: unknown, fallback: string) {
   const rawMessage = extractErrorMessage(error);
 
@@ -966,5 +955,3 @@ function formatAxisFilterSummary({
   } matching ${filters.join(" and ")}.`;
 }
 
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

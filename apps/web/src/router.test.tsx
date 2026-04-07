@@ -1039,6 +1039,7 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("Workspace settings");
+    expect(container.textContent).toContain("Configure workspace guardrails");
     expect(container.textContent).toContain("Domain allowlist");
     expect(container.textContent).toContain("Credentials");
 
@@ -1075,6 +1076,7 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("Admin diagnostics");
+    expect(container.textContent).toContain("Last refreshed");
     expect(container.textContent).toContain("Live study health");
     expect(container.textContent).toContain("Running studies");
     expect(container.textContent).toContain("Recent historical metrics");
@@ -2179,6 +2181,7 @@ describe("@botchestra/web routing", () => {
     expect(getRouterLocationHref(router)).toBe("/axis-library");
     expect(container.textContent).toContain("Axis Library");
     expect(container.textContent).toContain("Browse axes");
+    expect(container.textContent).toContain("Tag filter");
     expect(container.textContent).toContain("digital_confidence");
   });
 

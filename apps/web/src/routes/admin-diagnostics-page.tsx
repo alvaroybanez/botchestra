@@ -2,6 +2,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/domain/page-header";
+import { SummaryGrid, SummaryValue } from "@/components/domain/summary-value";
 import {
   Card,
   CardContent,
@@ -117,21 +119,16 @@ export function AdminDiagnosticsPage() {
 
   return (
     <section className="space-y-6">
-      <div className="space-y-3">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Admin Console
-        </p>
-        <div className="space-y-2">
-          <h2 className="text-3xl font-semibold tracking-tight">Admin diagnostics</h2>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Monitor recent study throughput, browser time, token usage, infra failures,
-            and audit history from one admin-only surface.
-          </p>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        eyebrow="Admin Console"
+        title="Admin diagnostics"
+        description="Monitor recent study throughput, browser time, token usage, infra failures, and audit history from one admin-only surface."
+        badge={
+          <span className="text-sm text-muted-foreground">
             Last refreshed {formatTimestamp(overview.generatedAt)}
-          </p>
-        </div>
-      </div>
+          </span>
+        }
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
         <Card>
@@ -141,31 +138,39 @@ export function AdminDiagnosticsPage() {
               Current status counts across the most recently updated studies in this workspace.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <MetricCard
-              label="Running studies"
-              value={formatNumber(overview.liveStudyCounts.running ?? 0)}
-            />
-            <MetricCard
-              label="Queued studies"
-              value={formatNumber(overview.liveStudyCounts.queued ?? 0)}
-            />
-            <MetricCard
-              label="Analyzing studies"
-              value={formatNumber(overview.liveStudyCounts.analyzing ?? 0)}
-            />
-            <MetricCard
-              label="Ready studies"
-              value={formatNumber(overview.liveStudyCounts.ready ?? 0)}
-            />
-            <MetricCard
-              label="Completed studies"
-              value={formatNumber(overview.liveStudyCounts.completed ?? 0)}
-            />
-            <MetricCard
-              label="Active studies"
-              value={formatNumber(overview.liveStudyCounts.active ?? 0)}
-            />
+          <CardContent>
+            <SummaryGrid columns="sm:grid-cols-2 xl:grid-cols-3">
+              <SummaryValue
+                label="Running studies"
+                value={formatNumber(overview.liveStudyCounts.running ?? 0)}
+                variant="bordered"
+              />
+              <SummaryValue
+                label="Queued studies"
+                value={formatNumber(overview.liveStudyCounts.queued ?? 0)}
+                variant="bordered"
+              />
+              <SummaryValue
+                label="Analyzing studies"
+                value={formatNumber(overview.liveStudyCounts.analyzing ?? 0)}
+                variant="bordered"
+              />
+              <SummaryValue
+                label="Ready studies"
+                value={formatNumber(overview.liveStudyCounts.ready ?? 0)}
+                variant="bordered"
+              />
+              <SummaryValue
+                label="Completed studies"
+                value={formatNumber(overview.liveStudyCounts.completed ?? 0)}
+                variant="bordered"
+              />
+              <SummaryValue
+                label="Active studies"
+                value={formatNumber(overview.liveStudyCounts.active ?? 0)}
+                variant="bordered"
+              />
+            </SummaryGrid>
           </CardContent>
         </Card>
 
@@ -176,35 +181,44 @@ export function AdminDiagnosticsPage() {
               Recent aggregate counts pulled from observability metrics and run completions.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <SummaryValue
-              label="Wave dispatched runs"
-              value={formatNumber(overview.historicalMetrics.dispatchedRuns)}
-            />
-            <SummaryValue
-              label="Completed runs"
-              value={formatNumber(overview.historicalMetrics.completedRuns)}
-            />
-            <SummaryValue
-              label="Completed studies"
-              value={formatNumber(overview.historicalMetrics.completedStudies)}
-            />
-            <SummaryValue
-              label="Model token usage"
-              value={formatNumber(overview.historicalMetrics.totalTokenUsage)}
-            />
-            <SummaryValue
-              label="Browser time"
-              value={formatDuration(overview.historicalMetrics.totalBrowserSeconds)}
-            />
-            <SummaryValue
-              label="Infra errors"
-              value={formatNumber(overview.historicalMetrics.recentInfraErrors)}
-            />
-            <SummaryValue
-              label="Latest metric"
-              value={formatNullableTimestamp(overview.historicalMetrics.lastMetricRecordedAt)}
-            />
+          <CardContent>
+            <SummaryGrid columns="sm:grid-cols-2">
+              <SummaryValue
+                label="Wave dispatched runs"
+                value={formatNumber(overview.historicalMetrics.dispatchedRuns)}
+                variant="inline"
+              />
+              <SummaryValue
+                label="Completed runs"
+                value={formatNumber(overview.historicalMetrics.completedRuns)}
+                variant="inline"
+              />
+              <SummaryValue
+                label="Completed studies"
+                value={formatNumber(overview.historicalMetrics.completedStudies)}
+                variant="inline"
+              />
+              <SummaryValue
+                label="Model token usage"
+                value={formatNumber(overview.historicalMetrics.totalTokenUsage)}
+                variant="inline"
+              />
+              <SummaryValue
+                label="Browser time"
+                value={formatDuration(overview.historicalMetrics.totalBrowserSeconds)}
+                variant="inline"
+              />
+              <SummaryValue
+                label="Infra errors"
+                value={formatNumber(overview.historicalMetrics.recentInfraErrors)}
+                variant="inline"
+              />
+              <SummaryValue
+                label="Latest metric"
+                value={formatNullableTimestamp(overview.historicalMetrics.lastMetricRecordedAt)}
+                variant="inline"
+              />
+            </SummaryGrid>
           </CardContent>
         </Card>
       </div>
@@ -239,24 +253,28 @@ export function AdminDiagnosticsPage() {
                       </p>
                     </div>
 
-                    <div className="grid gap-3 text-sm sm:grid-cols-2">
+                    <SummaryGrid className="text-sm" columns="sm:grid-cols-2">
                       <SummaryValue
                         label="Browser time"
                         value={formatDuration(study.browserSecondsUsed)}
+                        variant="inline"
                       />
                       <SummaryValue
                         label="Token usage"
                         value={formatNumber(study.tokenUsage)}
+                        variant="inline"
                       />
                       <SummaryValue
                         label="Completed runs"
                         value={formatNumber(study.completedRunCount)}
+                        variant="inline"
                       />
                       <SummaryValue
                         label="Infra errors"
                         value={formatNumber(study.infraErrorCount)}
+                        variant="inline"
                       />
-                    </div>
+                    </SummaryGrid>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
@@ -503,24 +521,6 @@ function FilterField({
     <div className="space-y-2">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-    </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function SummaryValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="font-medium">{value}</p>
     </div>
   );
 }
