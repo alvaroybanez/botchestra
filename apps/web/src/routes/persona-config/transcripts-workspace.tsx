@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PersonaConfigDetailSearch } from "@/router";
 import { TranscriptExtractionPanel } from "./extraction-panel";
+import { LoadingCard } from "./shared-ui";
 import type {
   AxisFormValue,
   ConfigTranscriptAttachment,
@@ -225,7 +226,7 @@ interface TranscriptsWorkspaceProps {
   config: PersonaConfigDoc;
   isDraft: boolean;
   canManageConfigTranscripts: boolean;
-  configTranscripts: ConfigTranscriptAttachment[];
+  configTranscripts: ConfigTranscriptAttachment[] | undefined;
   extractionStatus: ExtractionStatus | null | undefined;
   extractionButtonLabel: string;
   canOpenExtraction: boolean;
@@ -286,7 +287,28 @@ interface TranscriptsWorkspaceProps {
   onSearchChange: (patch: Partial<PersonaConfigDetailSearch>) => void;
 }
 
-function TranscriptsWorkspace({
+function TranscriptsWorkspace(props: TranscriptsWorkspaceProps) {
+  if (props.configTranscripts === undefined) {
+    return (
+      <LoadingCard
+        title="Transcripts"
+        body="Loading attached transcripts..."
+      />
+    );
+  }
+
+  return (
+    <TranscriptsWorkspaceInner
+      {...props as TranscriptsWorkspaceInnerProps}
+    />
+  );
+}
+
+type TranscriptsWorkspaceInnerProps = Omit<TranscriptsWorkspaceProps, "configTranscripts"> & {
+  configTranscripts: ConfigTranscriptAttachment[];
+};
+
+function TranscriptsWorkspaceInner({
   config,
   isDraft,
   canManageConfigTranscripts,
@@ -334,7 +356,7 @@ function TranscriptsWorkspace({
   onProposedAxisToggleRemoved,
   onApplyExtractionResults,
   onSearchChange,
-}: TranscriptsWorkspaceProps) {
+}: TranscriptsWorkspaceInnerProps) {
   const [searchText, setSearchText] = useState("");
   const [formatFilter, setFormatFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("attached");

@@ -15,6 +15,7 @@ import type {
   TranscriptId,
 } from "./types";
 import { emptySyntheticUserForm, parseEvidenceSnippets, textareaClassName } from "./helpers";
+import { LoadingCard } from "./shared-ui";
 
 // ---------------------------------------------------------------------------
 // Source-type metadata
@@ -496,7 +497,7 @@ function InlineEditForm({
 interface UsersWorkspaceProps {
   config: PersonaConfigDoc;
   isDraft: boolean;
-  syntheticUserList: SyntheticUserDoc[];
+  syntheticUserList: SyntheticUserDoc[] | undefined;
   syntheticUserForm: SyntheticUserFormValue;
   isProtoFormOpen: boolean;
   isSavingSyntheticUser: boolean;
@@ -530,6 +531,49 @@ function UsersWorkspace({
   onSyntheticUserFormChange,
   onSearchChange,
 }: UsersWorkspaceProps) {
+  if (syntheticUserList === undefined) {
+    return (
+      <LoadingCard
+        title="Synthetic Users"
+        body="Loading synthetic users..."
+      />
+    );
+  }
+
+  return (
+    <UsersWorkspaceInner
+      config={config}
+      isDraft={isDraft}
+      syntheticUserList={syntheticUserList}
+      syntheticUserForm={syntheticUserForm}
+      isProtoFormOpen={isProtoFormOpen}
+      isSavingSyntheticUser={isSavingSyntheticUser}
+      selectedUserId={selectedUserId}
+      onToggleProtoForm={onToggleProtoForm}
+      onCreateSyntheticUser={onCreateSyntheticUser}
+      onUpdateSyntheticUser={onUpdateSyntheticUser}
+      onRequestDeleteSyntheticUser={onRequestDeleteSyntheticUser}
+      onSyntheticUserFormChange={onSyntheticUserFormChange}
+      onSearchChange={onSearchChange}
+    />
+  );
+}
+
+function UsersWorkspaceInner({
+  config,
+  isDraft,
+  syntheticUserList,
+  syntheticUserForm,
+  isProtoFormOpen,
+  isSavingSyntheticUser,
+  selectedUserId,
+  onToggleProtoForm,
+  onCreateSyntheticUser,
+  onUpdateSyntheticUser,
+  onRequestDeleteSyntheticUser,
+  onSyntheticUserFormChange,
+  onSearchChange,
+}: Omit<UsersWorkspaceProps, "syntheticUserList"> & { syntheticUserList: SyntheticUserDoc[] }) {
   const [searchText, setSearchText] = useState("");
   const [sourceFilter, setSourceFilter] = useState<
     SyntheticUserDoc["sourceType"] | ""

@@ -1067,16 +1067,12 @@ export function PersonaConfigDetailPage({
 
   if (
     config === undefined
-    || syntheticUsers === undefined
-    || axisDefinitions === undefined
-    || transcriptLibrary === undefined
-    || configTranscripts === undefined
     || viewerAccess === undefined
   ) {
     return (
       <LoadingCard
         title="Persona Configuration"
-        body="Loading persona configuration details and synthetic users..."
+        body="Loading persona configuration details..."
       />
     );
   }
@@ -1108,7 +1104,7 @@ export function PersonaConfigDetailPage({
         config={config}
         resolvedStatus={resolvedStatus ?? config.status}
         syntheticUserCount={syntheticUserList.length}
-        transcriptCount={configTranscripts.length}
+        transcriptCount={(configTranscripts ?? []).length}
         activeTab={activeTab}
         hasActiveBatchRun={hasActiveBatchGenerationRun}
         actionError={actionError}
@@ -1140,7 +1136,7 @@ export function PersonaConfigDetailPage({
             isDraft={isDraft}
             resolvedStatus={resolvedStatus ?? config.status}
             syntheticUserCount={syntheticUserList.length}
-            transcriptCount={configTranscripts.length}
+            transcriptCount={(configTranscripts ?? []).length}
             batchGenerationRun={batchGenerationRun ?? null}
             draftForm={draftForm}
             isSavingDraft={isSavingDraft}
@@ -1171,7 +1167,7 @@ export function PersonaConfigDetailPage({
           <UsersWorkspace
             config={config}
             isDraft={isDraft}
-            syntheticUserList={syntheticUserList}
+            syntheticUserList={syntheticUsers}
             syntheticUserForm={syntheticUserForm}
             isProtoFormOpen={isProtoFormOpen}
             isSavingSyntheticUser={isSavingSyntheticUser}
@@ -1190,7 +1186,7 @@ export function PersonaConfigDetailPage({
             config={config}
             isDraft={isDraft}
             canManageConfigTranscripts={canManageConfigTranscripts}
-            configTranscripts={configTranscripts}
+            configTranscripts={configTranscripts ?? undefined}
             extractionStatus={extractionStatus}
             extractionButtonLabel={extractionButtonLabel}
             canOpenExtraction={canOpenExtraction}
@@ -1245,7 +1241,7 @@ export function PersonaConfigDetailPage({
             isDraft={isDraft}
             canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
             batchGenerationRun={batchGenerationRun ?? null}
-            syntheticUsers={syntheticUserList}
+            syntheticUsers={syntheticUsers}
             selectedGenerationUserId={detailSearch.selectedGenerationUserId}
             onRegenerateUser={(syntheticUserId) =>
               regenerateSyntheticUser({ syntheticUserId })

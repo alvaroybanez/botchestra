@@ -1619,16 +1619,14 @@ describe("persona config detail workspaces", () => {
   // Workspace-scoped loading and error boundaries
   // -----------------------------------------------------------------------
   describe("workspace-scoped loading and error states", () => {
-    it("shows loading indicator when config data is undefined", async () => {
+    it("shows shell loading card when config data is undefined", async () => {
       mockedPackDetail = undefined;
 
       const { container } = await renderRoute([
         "/persona-configs/config-loading?tab=overview",
       ]);
 
-      // The detail page should show a loading state or be empty
-      // (not crash), since config is undefined
-      expect(container).toBeDefined();
+      expect(container.textContent).toContain("Loading persona configuration details...");
     });
 
     it("shows not found when config data is null", async () => {
@@ -1641,6 +1639,69 @@ describe("persona config detail workspaces", () => {
       expect(container.textContent).toContain(
         "Persona configuration not found",
       );
+    });
+
+    it("renders shell and tabs while users workspace data is still loading", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = undefined; // still loading
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=users",
+      ]);
+
+      // Shell renders: config name visible
+      expect(container.textContent).toContain("Test Config");
+      // Tabs render
+      const tabs = container.querySelectorAll('[role="tab"]');
+      expect(tabs).toHaveLength(5);
+      // Workspace shows its own loading card
+      expect(container.textContent).toContain("Loading synthetic users...");
+    });
+
+    it("renders shell and tabs while transcripts workspace data is still loading", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = [makeSyntheticUser()];
+      // configTranscripts left as default (empty {} in mockedConfigTranscriptsByPackId)
+      // The mock returns [] for unknown keys, so we need to make it return undefined
+      mockedConfigTranscriptsByPackId = {};
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=transcripts",
+      ]);
+
+      // Shell renders: config name and tabs visible
+      expect(container.textContent).toContain("Test Config");
+      const tabs = container.querySelectorAll('[role="tab"]');
+      expect(tabs).toHaveLength(5);
+    });
+
+    it("renders shell and tabs while generation workspace data is still loading", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = undefined; // still loading
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=generation",
+      ]);
+
+      // Shell renders
+      expect(container.textContent).toContain("Test Config");
+      const tabs = container.querySelectorAll('[role="tab"]');
+      expect(tabs).toHaveLength(5);
+      // Generation workspace shows its own loading card
+      expect(container.textContent).toContain("Loading synthetic users for generation...");
+    });
+
+    it("does not crash overview workspace when workspace data is still loading", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = undefined;
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=overview",
+      ]);
+
+      // Shell and overview render (overview uses counts from config, not syntheticUsers directly)
+      expect(container.textContent).toContain("Test Config");
+      expect(container.textContent).toContain("Orientation");
     });
   });
 });

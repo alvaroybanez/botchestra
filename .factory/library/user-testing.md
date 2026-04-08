@@ -33,6 +33,7 @@ Testing surface, required tools, and resource cost classification.
 - The dev server is usually already running on port 5180. Check before starting a new one.
 - LLM-powered features (axis generation, transcript extraction) require OPENAI_API_KEY set in Convex env. init.sh handles this.
 - For transcript extraction testing, use small test transcripts (< 1000 chars each) to minimize LLM cost during validation.
+- For transcript-store `VAL-TSTORE-021`, the `Pending` status flips quickly. A large plain-text upload (~900k chars) plus a list snapshot around 400ms after dispatch was enough to capture `Pending` before it changed to `Processed` around 800ms.
 - Cross-area flows (VAL-CROSS-*) test the full pipeline and should be validated last, after all individual area flows pass.
 - Browser-executor package-local Vitest coverage should be run from `apps/browser-executor/`; invoking `bunx vitest run --config apps/browser-executor/vitest.config.ts` from the repo root can resolve includes incorrectly and report `No test files found`.
 - If `tuistory` is not available on `PATH` during terminal-surface validation, use `bunx tuistory` from the repo root instead.
@@ -60,6 +61,7 @@ Testing surface, required tools, and resource cost classification.
   - Headers: `Content-Type: application/json`, `Authorization: Bearer <jwt>`
   - Body: `{"path":"module:function","format":"convex_encoded_json","args":[{...}]}`.
 - Observed during axis-library validation: data visible immediately after creation in one authenticated session was not reliably visible after logging out and back into the same account later. Treat cross-session persistence checks cautiously and avoid depending on re-login within the same flow unless the assertion explicitly requires it.
+- Transcript-store validation also showed that logout preserves the previous deep-link redirect target. When switching accounts for unrelated assertions, reopen the exact route you want after login instead of relying on the carried redirect.
 
 ## Flow Validator Guidance: web
 

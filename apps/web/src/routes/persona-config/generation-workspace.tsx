@@ -30,6 +30,7 @@ import {
 import { MAX_SYNTHETIC_USERS_PER_CONFIG } from "../../../../../convex/personaConfig.constants";
 import type { PersonaConfigDetailSearch } from "@/router";
 import type { BatchGenerationRunView, PersonaConfigDoc, SyntheticUserDoc } from "./types";
+import { LoadingCard } from "./shared-ui";
 
 type SyntheticUserId = Id<"syntheticUsers">;
 type SharedAxis = Doc<"personaConfigs">["sharedAxes"][number];
@@ -610,7 +611,7 @@ interface GenerationWorkspaceProps {
   isDraft: boolean;
   canManageGeneration: boolean;
   batchGenerationRun: BatchGenerationRunView | null;
-  syntheticUsers: SyntheticUserDoc[];
+  syntheticUsers: SyntheticUserDoc[] | undefined;
   selectedGenerationUserId: string | undefined;
   onRegenerateUser: (syntheticUserId: SyntheticUserId) => Promise<unknown>;
   onStartGeneration: (
@@ -619,7 +620,28 @@ interface GenerationWorkspaceProps {
   onSearchChange: (patch: Partial<PersonaConfigDetailSearch>) => void;
 }
 
-function GenerationWorkspace({
+function GenerationWorkspace(props: GenerationWorkspaceProps) {
+  if (props.syntheticUsers === undefined) {
+    return (
+      <LoadingCard
+        title="Generation"
+        body="Loading synthetic users for generation..."
+      />
+    );
+  }
+
+  return (
+    <GenerationWorkspaceInner
+      {...props as GenerationWorkspaceInnerProps}
+    />
+  );
+}
+
+type GenerationWorkspaceInnerProps = Omit<GenerationWorkspaceProps, "syntheticUsers"> & {
+  syntheticUsers: SyntheticUserDoc[];
+};
+
+function GenerationWorkspaceInner({
   config,
   isDraft,
   canManageGeneration,
@@ -629,7 +651,7 @@ function GenerationWorkspace({
   onRegenerateUser,
   onStartGeneration,
   onSearchChange,
-}: GenerationWorkspaceProps) {
+}: GenerationWorkspaceInnerProps) {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationNotice, setGenerationNotice] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
