@@ -28,9 +28,8 @@ import {
   validateGenerationConfig,
 } from "../../../../../convex/batchGeneration/gridAnchors";
 import { MAX_SYNTHETIC_USERS_PER_CONFIG } from "../../../../../convex/personaConfig.constants";
-import type { BatchGenerationRunView } from "@/components/persona-generation-section";
 import type { PersonaConfigDetailSearch } from "@/router";
-import type { PersonaConfigDoc, SyntheticUserDoc } from "./types";
+import type { BatchGenerationRunView, PersonaConfigDoc, SyntheticUserDoc } from "./types";
 
 type SyntheticUserId = Id<"syntheticUsers">;
 type SharedAxis = Doc<"personaConfigs">["sharedAxes"][number];

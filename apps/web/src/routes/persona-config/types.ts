@@ -1,7 +1,50 @@
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
-import type { VariantReviewData } from "@/components/persona-variant-review-grid";
 
 export type PersonaConfigDoc = Doc<"personaConfigs">;
+
+export type BatchGenerationRunView = Doc<"batchGenerationRuns"> & {
+  remainingCount: number;
+  progressPercent: number;
+};
+
+export type VariantReviewData = {
+  study: {
+    _id: string;
+    name: string;
+    status: string;
+    runBudget: number;
+    updatedAt: number;
+  } | null;
+  config: {
+    _id: string;
+    name: string;
+    status: string;
+    sharedAxes: {
+      key: string;
+      label: string;
+      description: string;
+      lowAnchor: string;
+      midAnchor: string;
+      highAnchor: string;
+      weight: number;
+    }[];
+  };
+  syntheticUsers: {
+    _id: string;
+    name: string;
+    summary: string;
+  }[];
+  variants: {
+    _id: string;
+    syntheticUserId: string;
+    syntheticUserName: string;
+    axisValues: { key: string; value: number }[];
+    edgeScore: number;
+    coherenceScore: number;
+    distinctnessScore: number;
+    firstPersonBio: string;
+  }[];
+};
 export type SyntheticUserDoc = Doc<"syntheticUsers">;
 export type AxisDefinition = Doc<"axisDefinitions">;
 export type PersonaConfigId = Id<"personaConfigs">;

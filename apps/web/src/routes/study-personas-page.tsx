@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useAction, useQuery } from "convex/react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
-import type { VariantReviewData } from "@/components/persona-variant-review-grid";
+import type { VariantReviewData } from "@/routes/persona-config/types";
 import { PageHeader } from "@/components/domain/page-header";
 import { StateCard } from "@/components/domain/state-card";
 import { SummaryGrid, SummaryValue } from "@/components/domain/summary-value";
