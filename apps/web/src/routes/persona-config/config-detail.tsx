@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
@@ -7,18 +7,13 @@ import {
   PersonaGenerationSection,
   type BatchGenerationRunView,
 } from "@/components/persona-generation-section";
-import {
-  PersonaVariantReviewGrid,
-  type VariantReviewData,
-} from "@/components/persona-variant-review-grid";
-import { PageHeader } from "@/components/domain/page-header";
-import { ConfigStatusBadge } from "@/components/domain/status-badge";
-import { cn } from "@/lib/utils";
+import { PersonaVariantReviewGrid } from "@/components/persona-variant-review-grid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { emptyStudyDetailSearch } from "@/routes/study-shared";
+import type { PersonaConfigDetailSearch } from "@/router";
 import type {
   AxisFormValue,
   ConfigFormValue,
@@ -77,14 +72,18 @@ import {
   TranscriptAttachmentDialog,
   TranscriptExtractionPanel,
 } from "./extraction-panel";
+import { ConfigShell } from "./config-shell";
 
 export function PersonaConfigDetailPage({
   configId,
-  forceSuggestAxesError = false,
+  detailSearch,
+  onSearchChange,
 }: {
   configId: string;
-  forceSuggestAxesError?: boolean;
+  detailSearch: PersonaConfigDetailSearch;
+  onSearchChange: (patch: Partial<PersonaConfigDetailSearch>) => void;
 }) {
+  const forceSuggestAxesError = detailSearch.forceSuggestAxesError ?? false;
   const typedConfigId = configId as PersonaConfigId;
   const config = useQuery(api.personaConfigs.get, { configId: typedConfigId });
   const syntheticUsers = useQuery(api.personaConfigs.listSyntheticUsers, {
@@ -1056,695 +1055,164 @@ export function PersonaConfigDetailPage({
     );
   }
 
+  const activeTab = detailSearch.tab;
+
   return (
     <>
       {inlineToast ? <InlineToast toast={inlineToast} /> : null}
-      <section className="space-y-6">
-        <PageHeader
-          title={config.name}
-          badge={<ConfigStatusBadge status={resolvedStatus ?? config.status} />}
-          description="Review persona configuration metadata, shared axes, and synthetic users before publishing. Published persona configurations are frozen and archived persona configurations remain read-only."
-          actions={
-            <>
-              <Button asChild variant="outline">
-                <Link to="/persona-configs">Back to list</Link>
-              </Button>
-              {isDraft ? (
-                <Button
-                  disabled={syntheticUserList.length === 0 || hasActiveBatchGenerationRun}
-                  onClick={() =>
-                    setConfirmationState({
-                      kind: "publish",
-                      title: "Publish persona configuration?",
-                      description:
-                        "Publishing freezes this persona configuration and its synthetic users so studies can rely on a stable definition.",
-                      confirmLabel: "Publish persona configuration",
-                    })
-                  }
-                >
-                  Publish
-                </Button>
-              ) : null}
-              {resolvedStatus === "published" ? (
-                <Button
-                  variant="destructive"
-                  onClick={() =>
-                    setConfirmationState({
-                      kind: "archive",
-                      title: "Archive persona configuration?",
-                      description:
-                        "Archiving hides this persona configuration from active work while preserving its history for audit and reference.",
-                      confirmLabel: "Archive persona configuration",
-                    })
-                  }
-                >
-                  Archive
-                </Button>
-              ) : null}
-            </>
-          }
-        />
-
-        {actionError ? (
-          <p className="text-sm text-destructive">{actionError}</p>
+      <ConfigShell
+        config={config}
+        resolvedStatus={resolvedStatus ?? config.status}
+        syntheticUserCount={syntheticUserList.length}
+        transcriptCount={configTranscripts.length}
+        activeTab={activeTab}
+        hasActiveBatchRun={hasActiveBatchGenerationRun}
+        actionError={actionError}
+        saveMessage={saveMessage}
+        publishedStatusHelp={publishedStatusHelp}
+        onTabChange={onSearchChange}
+        onPublish={() =>
+          setConfirmationState({
+            kind: "publish",
+            title: "Publish persona configuration?",
+            description:
+              "Publishing freezes this persona configuration and its synthetic users so studies can rely on a stable definition.",
+            confirmLabel: "Publish persona configuration",
+          })
+        }
+        onArchive={() =>
+          setConfirmationState({
+            kind: "archive",
+            title: "Archive persona configuration?",
+            description:
+              "Archiving hides this persona configuration from active work while preserving its history for audit and reference.",
+            confirmLabel: "Archive persona configuration",
+          })
+        }
+      >
+        {activeTab === "overview" ? (
+          <OverviewWorkspace
+            config={config}
+            isDraft={isDraft}
+            draftForm={draftForm}
+            isSavingDraft={isSavingDraft}
+            resolvedAxes={resolvedAxes}
+            canSuggestAxes={canSuggestAxes}
+            isSuggestingAxes={isSuggestingAxes}
+            suggestionError={suggestionError}
+            isSuggestionPanelOpen={isSuggestionPanelOpen}
+            suggestedAxes={suggestedAxes}
+            selectedSuggestionCount={selectedSuggestionCount}
+            onSaveDraft={handleSaveDraft}
+            onDraftFormChange={setDraftForm}
+            onSuggestAxes={() => void handleSuggestAxes()}
+            onOpenAxisLibrary={() => {
+              setSelectedLibraryAxisIds([]);
+              setIsAxisLibraryOpen(true);
+            }}
+            onSuggestionSelectionToggle={handleSuggestionSelectionToggle}
+            onSuggestionEditToggle={handleSuggestionEditToggle}
+            onSuggestionAxisChange={handleSuggestionAxisChange}
+            onDismissSuggestions={handleDismissSuggestions}
+            onApplySuggestedAxes={handleApplySuggestedAxes}
+            formatTimestamp={formatTimestamp}
+          />
         ) : null}
-        {saveMessage ? (
-          <p className="text-sm text-emerald-700">{saveMessage}</p>
+
+        {activeTab === "users" ? (
+          <UsersWorkspace
+            config={config}
+            isDraft={isDraft}
+            syntheticUserList={syntheticUserList}
+            syntheticUserForm={syntheticUserForm}
+            isProtoFormOpen={isProtoFormOpen}
+            isSavingSyntheticUser={isSavingSyntheticUser}
+            onToggleProtoForm={() => setIsProtoFormOpen((current) => !current)}
+            onCreateSyntheticUser={handleCreateSyntheticUser}
+            onSyntheticUserFormChange={setSyntheticUserForm}
+          />
         ) : null}
-        {publishedStatusHelp ? (
-          <p className="text-sm text-muted-foreground">{publishedStatusHelp}</p>
+
+        {activeTab === "transcripts" ? (
+          <TranscriptsWorkspace
+            config={config}
+            isDraft={isDraft}
+            canManageConfigTranscripts={canManageConfigTranscripts}
+            configTranscripts={configTranscripts}
+            extractionStatus={extractionStatus}
+            extractionButtonLabel={extractionButtonLabel}
+            canOpenExtraction={canOpenExtraction}
+            detachingTranscriptId={detachingTranscriptId}
+            isExtractionPanelOpen={isExtractionPanelOpen}
+            extractionMode={extractionMode}
+            extractionStep={extractionStep}
+            extractionError={extractionError}
+            extractionNotice={extractionNotice}
+            extractionCostEstimate={extractionCostEstimate}
+            isStartingExtraction={isStartingExtraction}
+            isApplyingExtractionResults={isApplyingExtractionResults}
+            guidedExtractionAxes={guidedExtractionAxes}
+            reviewArchetypes={reviewArchetypes}
+            activeReviewProposedAxes={activeReviewProposedAxes}
+            extractionSharedAxes={extractionSharedAxes}
+            selectedExtractionArchetypeCount={selectedExtractionArchetypeCount}
+            transcriptFilenameById={transcriptFilenameById}
+            discardingArchetypeId={discardingArchetypeId}
+            onOpenTranscriptPicker={() => setIsTranscriptPickerOpen(true)}
+            onOpenExtractionPanel={handleOpenExtractionPanel}
+            onDetachTranscript={handleDetachTranscript}
+            onCloseExtractionPanel={() => setIsExtractionPanelOpen(false)}
+            onSelectExtractionMode={handleSelectExtractionMode}
+            onContinueToExtractionCost={handleContinueToExtractionCost}
+            onBackFromExtractionCost={handleBackFromExtractionCost}
+            onStartExtraction={handleStartExtraction}
+            onResetExtractionWizard={handleResetExtractionWizard}
+            onGuidedAxisChange={handleGuidedAxisChange}
+            onRemoveGuidedAxis={handleRemoveGuidedAxis}
+            onAddGuidedAxis={() =>
+              setGuidedExtractionAxes((current) => [...current, emptyAxis()])
+            }
+            onToggleArchetypeSelected={handleToggleReviewArchetypeSelection}
+            onToggleArchetypeEdit={handleToggleReviewArchetypeEdit}
+            onUpdateArchetype={handleReviewArchetypeChange}
+            onMergeSelectedArchetypes={handleMergeSelectedArchetypes}
+            onDiscardArchetype={setDiscardingArchetypeId}
+            onConfirmDiscardArchetype={handleConfirmDiscardArchetype}
+            onProposedAxisChange={handleReviewAxisChange}
+            onProposedAxisToggleEdit={handleToggleReviewAxisEdit}
+            onProposedAxisToggleRemoved={handleReviewAxisRemovalToggle}
+            onApplyExtractionResults={handleApplyTranscriptExtractionResults}
+          />
         ) : null}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Metadata</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isDraft ? (
-                  <ConfigFormCard
-                    form={draftForm}
-                    formPrefix="edit-config"
-                    submitLabel={isSavingDraft ? "Saving..." : "Save draft changes"}
-                    title={null}
-                    description={null}
-                    error={null}
-                    disabled={isSavingDraft}
-                    onSubmit={handleSaveDraft}
-                    onChange={setDraftForm}
-                  />
-                ) : (
-                  <dl className="grid gap-4 sm:grid-cols-2">
-                    <LocalSummaryValue label="Name" value={config.name} />
-                    <LocalSummaryValue label="Version" value={`v${config.version}`} />
-                    <LocalSummaryValue label="Description" value={config.description} />
-                    <LocalSummaryValue label="Context" value={config.context} />
-                  </dl>
-                )}
-              </CardContent>
-            </Card>
+        {activeTab === "generation" ? (
+          <PersonaGenerationSection
+            axes={config.sharedAxes}
+            batchGenerationRun={batchGenerationRun ?? null}
+            canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
+            configStatus={resolvedStatus ?? config.status}
+            syntheticUsers={syntheticUserList}
+            onRegenerateUser={(syntheticUserId) =>
+              regenerateSyntheticUser({ syntheticUserId })
+            }
+            onStartGeneration={(levelsPerAxis) =>
+              startBatchGeneration({
+                configId: config._id,
+                levelsPerAxis,
+              })
+            }
+          />
+        ) : null}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Shared Axes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isDraft ? (
-                  <div className="space-y-4 rounded-xl border bg-background p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Axis generation</p>
-                        <p className="text-sm text-muted-foreground">
-                          Generate new axes from persona configuration metadata or import reusable
-                          ones from the shared library.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        <Button
-                          disabled={!canSuggestAxes || isSuggestingAxes}
-                          onClick={() => void handleSuggestAxes()}
-                          type="button"
-                        >
-                          {isSuggestingAxes ? (
-                            <span className="inline-flex items-center gap-2">
-                              <LoadingSpinner />
-                              Suggesting...
-                            </span>
-                          ) : (
-                            "Suggest axes"
-                          )}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedLibraryAxisIds([]);
-                            setIsAxisLibraryOpen(true);
-                          }}
-                        >
-                          Browse library
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div aria-live="polite" className="space-y-2">
-                      {isSuggestingAxes ? (
-                        <p className="text-sm text-muted-foreground" role="status">
-                          Generating axis suggestions from the current persona configuration
-                          metadata...
-                        </p>
-                      ) : null}
-                      {suggestionError ? (
-                        <p className="text-sm text-destructive" role="alert">
-                          {suggestionError}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {isSuggestionPanelOpen ? (
-                      <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
-                        <div className="space-y-1">
-                          <h4 className="text-lg font-semibold">
-                            Review suggested axes
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Select the axes you want to add, edit any field inline,
-                            then apply the selected suggestions.
-                          </p>
-                        </div>
-
-                        <div className="grid gap-4">
-                          {suggestedAxes.map((suggestion, index) => (
-                            <SuggestedAxisCard
-                              key={suggestion.id}
-                              index={index}
-                              suggestion={suggestion}
-                              onChange={(nextAxis) =>
-                                handleSuggestionAxisChange(suggestion.id, nextAxis)
-                              }
-                              onToggleEdit={() =>
-                                handleSuggestionEditToggle(suggestion.id)
-                              }
-                              onToggleSelected={() =>
-                                handleSuggestionSelectionToggle(suggestion.id)
-                              }
-                            />
-                          ))}
-                        </div>
-
-                        <div className="flex flex-wrap justify-end gap-3">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleDismissSuggestions}
-                          >
-                            Dismiss
-                          </Button>
-                          <Button
-                            disabled={selectedSuggestionCount === 0}
-                            type="button"
-                            onClick={handleApplySuggestedAxes}
-                          >
-                            Apply selected
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {resolvedAxes.map((axis, index) => (
-                  <div
-                    key={`${axis.key}-${index}`}
-                    className="rounded-lg border bg-background p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{axis.label}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {axis.key} · weight {axis.weight}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {axis.description}
-                    </p>
-                    <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <LocalSummaryValue label="Low anchor" value={axis.lowAnchor} />
-                      <LocalSummaryValue label="Mid anchor" value={axis.midAnchor} />
-                      <LocalSummaryValue label="High anchor" value={axis.highAnchor} />
-                    </dl>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <PersonaGenerationSection
-              axes={config.sharedAxes}
-              batchGenerationRun={batchGenerationRun ?? null}
-              canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
-              configStatus={resolvedStatus ?? config.status}
-              syntheticUsers={syntheticUserList}
-              onRegenerateUser={(syntheticUserId) =>
-                regenerateSyntheticUser({ syntheticUserId })
-              }
-              onStartGeneration={(levelsPerAxis) =>
-                startBatchGeneration({
-                  configId: config._id,
-                  levelsPerAxis,
-                })
-              }
-            />
-
-            <Card>
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1">
-                  <CardTitle>Synthetic Users</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Review the persona configuration&apos;s source synthetic users and the evidence
-                    used to anchor them.
-                  </p>
-                </div>
-                {isDraft ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsProtoFormOpen((current) => !current)}
-                  >
-                    {isProtoFormOpen ? "Close form" : "Add synthetic user"}
-                  </Button>
-                ) : null}
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isProtoFormOpen ? (
-                  <form
-                    className="space-y-4 rounded-xl border bg-background p-4"
-                    onSubmit={handleCreateSyntheticUser}
-                  >
-                    <div className="grid gap-2">
-                      <Label htmlFor="create-proto-name">Name</Label>
-                      <Input
-                        id="create-proto-name"
-                        value={syntheticUserForm.name}
-                        onChange={(event) =>
-                          setSyntheticUserForm((current) => ({
-                            ...current,
-                            name: event.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="create-proto-summary">Summary</Label>
-                      <textarea
-                        id="create-proto-summary"
-                        className={textareaClassName}
-                        value={syntheticUserForm.summary}
-                        onChange={(event) =>
-                          setSyntheticUserForm((current) => ({
-                            ...current,
-                            summary: event.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="create-proto-evidence">
-                        Evidence snippets
-                      </Label>
-                      <textarea
-                        id="create-proto-evidence"
-                        className={textareaClassName}
-                        value={syntheticUserForm.evidenceText}
-                        onChange={(event) =>
-                          setSyntheticUserForm((current) => ({
-                            ...current,
-                            evidenceText: event.target.value,
-                          }))
-                        }
-                        placeholder="One snippet per line"
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="create-proto-notes">Notes</Label>
-                      <textarea
-                        id="create-proto-notes"
-                        className={textareaClassName}
-                        value={syntheticUserForm.notes}
-                        onChange={(event) =>
-                          setSyntheticUserForm((current) => ({
-                            ...current,
-                            notes: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      New synthetic users inherit the current shared axes so you
-                      can quickly draft content before publishing.
-                    </p>
-
-                    <Button disabled={isSavingSyntheticUser} type="submit">
-                      {isSavingSyntheticUser ? "Saving..." : "Save synthetic user"}
-                    </Button>
-                  </form>
-                ) : null}
-
-                {syntheticUserList.length === 0 ? (
-                  <div className="rounded-xl border border-dashed bg-background p-6">
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      No synthetic users yet. Add the first synthetic user to make
-                      this draft persona configuration publishable.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {syntheticUserList.map((syntheticUser) => (
-                      <SyntheticUserCard
-                        key={syntheticUser._id}
-                        syntheticUser={syntheticUser}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Persona Configuration Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <LocalSummaryValue label="Persona Configuration ID" value={config._id} />
-                <LocalSummaryValue label="Status" value={resolvedStatus ?? config.status} />
-                <LocalSummaryValue label="Version" value={`v${config.version}`} />
-                <LocalSummaryValue
-                  label="Synthetic users"
-                  value={String(syntheticUserList.length)}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1">
-                  <CardTitle>Attached Transcripts</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Review transcript research linked to this persona configuration and open each
-                    transcript in the library.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {canOpenExtraction ? (
-                    <Button
-                      disabled={extractionStatus?.status === "processing"}
-                      type="button"
-                      variant="outline"
-                      onClick={handleOpenExtractionPanel}
-                    >
-                      {extractionButtonLabel}
-                    </Button>
-                  ) : null}
-                  {isDraft && canManageConfigTranscripts ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsTranscriptPickerOpen(true)}
-                    >
-                      Attach transcripts
-                    </Button>
-                  ) : null}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!isDraft ? (
-                  <p className="text-sm text-muted-foreground">
-                    Transcript attachments become read-only once the persona configuration is no
-                    longer a draft.
-                  </p>
-                ) : null}
-                {!canManageConfigTranscripts ? (
-                  <p className="text-sm text-muted-foreground">
-                    Reviewers can inspect attached transcripts but cannot attach
-                    or detach them.
-                  </p>
-                ) : null}
-
-                {configTranscripts.length === 0 ? (
-                  <div className="rounded-xl border border-dashed bg-background p-6">
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      No transcripts are attached to this persona configuration yet.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-3">
-                    {configTranscripts.map((configTranscript) => (
-                      <div
-                        key={configTranscript._id}
-                        className="rounded-xl border bg-background p-4"
-                      >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Link
-                                className="font-medium text-primary underline-offset-4 hover:underline"
-                                params={{
-                                  transcriptId: configTranscript.transcript._id,
-                                }}
-                                to="/transcripts/$transcriptId"
-                              >
-                                {configTranscript.transcript.originalFilename}
-                              </Link>
-                              <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                {configTranscript.transcript.format}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {configTranscript.transcript.metadata.participantId
-                                ? `Participant ${configTranscript.transcript.metadata.participantId}`
-                                : "No participant ID"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Attached {formatTimestamp(configTranscript.createdAt)}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <Button asChild type="button" variant="outline">
-                              <Link
-                                params={{
-                                  transcriptId: configTranscript.transcript._id,
-                                }}
-                                to="/transcripts/$transcriptId"
-                              >
-                                Open transcript
-                              </Link>
-                            </Button>
-                            {isDraft && canManageConfigTranscripts ? (
-                              <Button
-                                disabled={
-                                  detachingTranscriptId
-                                  === String(configTranscript.transcriptId)
-                                }
-                                type="button"
-                                variant="outline"
-                                onClick={() =>
-                                  void handleDetachTranscript(
-                                    configTranscript.transcriptId,
-                                  )
-                                }
-                              >
-                                {detachingTranscriptId
-                                === String(configTranscript.transcriptId)
-                                  ? "Detaching..."
-                                  : "Detach"}
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {isDraft && canManageConfigTranscripts ? (
-                  <TranscriptExtractionPanel
-                    activeProposedAxes={activeReviewProposedAxes}
-                    archetypes={reviewArchetypes}
-                    attachedTranscripts={configTranscripts}
-                    costEstimate={extractionCostEstimate}
-                    extractionError={extractionError}
-                    extractionMode={extractionMode}
-                    extractionNotice={extractionNotice}
-                    extractionStatus={extractionStatus}
-                    isApplying={isApplyingExtractionResults}
-                    isOpen={isExtractionPanelOpen}
-                    isStarting={isStartingExtraction}
-                    guidedAxes={guidedExtractionAxes}
-                    step={extractionStep}
-                    transcriptFilenameById={transcriptFilenameById}
-                    onAddGuidedAxis={() =>
-                      setGuidedExtractionAxes((current) => [...current, emptyAxis()])
-                    }
-                    onApply={handleApplyTranscriptExtractionResults}
-                    onClose={() => setIsExtractionPanelOpen(false)}
-                    onConfirmDiscardArchetype={handleConfirmDiscardArchetype}
-                    onBackFromCost={handleBackFromExtractionCost}
-                    onContinueToCost={handleContinueToExtractionCost}
-                    onDiscardArchetype={setDiscardingArchetypeId}
-                    onGuidedAxisChange={handleGuidedAxisChange}
-                    onMergeSelected={handleMergeSelectedArchetypes}
-                    onModeSelect={handleSelectExtractionMode}
-                    onProposedAxisChange={handleReviewAxisChange}
-                    onProposedAxisToggleEdit={handleToggleReviewAxisEdit}
-                    onProposedAxisToggleRemoved={handleReviewAxisRemovalToggle}
-                    onRemoveGuidedAxis={handleRemoveGuidedAxis}
-                    onResetWizard={handleResetExtractionWizard}
-                    onStartExtraction={handleStartExtraction}
-                    onToggleArchetypeEdit={handleToggleReviewArchetypeEdit}
-                    onToggleArchetypeSelected={handleToggleReviewArchetypeSelection}
-                    onUpdateArchetype={handleReviewArchetypeChange}
-                    selectedArchetypeCount={selectedExtractionArchetypeCount}
-                    sharedAxes={extractionSharedAxes}
-                    transcriptSignals={extractionStatus?.transcriptSignals ?? []}
-                    discardArchetypeId={discardingArchetypeId}
-                  />
-                ) : null}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Audit Trail</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <LocalSummaryValue label="Created by" value={config.createdBy} />
-                <LocalSummaryValue
-                  label="Last modified by"
-                  value={config.updatedBy ?? config.createdBy}
-                />
-                <LocalSummaryValue
-                  label="Created at"
-                  value={formatTimestamp(config.createdAt)}
-                />
-                <LocalSummaryValue
-                  label="Last updated"
-                  value={formatTimestamp(config.updatedAt)}
-                />
-                <p className="text-xs leading-5 text-muted-foreground">
-                  Config access is scoped to the current authenticated
-                  organization. Reads and mutations outside your org return no
-                  data or fail authorization checks.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <section className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="text-2xl font-semibold tracking-tight">
-              Variant Review
-            </h3>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review accepted variants generated for studies that use this persona configuration.
-              Use the study selector to inspect the latest published persona configuration cohorts.
-            </p>
-          </div>
-
-          {configVariantReview === undefined ? (
-            <LoadingCard
-              title="Variant Review"
-              body="Loading linked studies and accepted variants..."
-            />
-          ) : configVariantReview === null ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Variant review unavailable</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  This persona configuration&apos;s variant review data could not be loaded for the
-                  current organization.
-                </p>
-              </CardContent>
-            </Card>
-          ) : configVariantReview.studies.length === 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>No studies linked to this persona configuration</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Generate variants from a study that uses this published persona configuration,
-                  then return here to review the accepted cohort.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <CardTitle>
-                      {selectedStudySummary?.name ?? "Select a linked study"}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedStudySummary
-                        ? `${configVariantReview.variants.length} accepted variants available for review.`
-                        : "Choose a linked study to review its accepted variants."}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:min-w-72">
-                    <div className="grid gap-2">
-                      <Label htmlFor="config-variant-study-filter">
-                        Linked study
-                      </Label>
-                      <select
-                        className={selectClassName}
-                        id="config-variant-study-filter"
-                        value={selectedStudyId ?? ""}
-                        onChange={(event) =>
-                          setSelectedStudyId(event.target.value || null)
-                        }
-                      >
-                        {configVariantReview.studies.map((study) => (
-                          <option key={study._id} value={study._id}>
-                            {study.name} ({study.acceptedVariantCount} accepted)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {selectedStudySummary ? (
-                      <Button asChild variant="outline">
-                        <Link
-                          params={{ studyId: selectedStudySummary._id }}
-                          search={emptyStudyDetailSearch}
-                          to="/studies/$studyId/personas"
-                        >
-                          Open study personas page
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                </CardHeader>
-                {selectedStudySummary ? (
-                  <CardContent className="grid gap-4 sm:grid-cols-3">
-                    <LocalSummaryValue
-                      label="Study status"
-                      value={selectedStudySummary.status}
-                    />
-                    <LocalSummaryValue
-                      label="Run budget"
-                      value={String(selectedStudySummary.runBudget)}
-                    />
-                    <LocalSummaryValue
-                      label="Last updated"
-                      value={formatTimestamp(selectedStudySummary.updatedAt)}
-                    />
-                  </CardContent>
-                ) : null}
-              </Card>
-
-              <PersonaVariantReviewGrid
-                emptyMessage="No accepted variants are available for the selected study yet. Generate variants from the study personas page first."
-                reviewData={configVariantReview}
-              />
-            </div>
-          )}
-        </section>
-      </section>
+        {activeTab === "review" ? (
+          <ReviewWorkspace
+            configVariantReview={configVariantReview}
+            selectedStudyId={selectedStudyId}
+            selectedStudySummary={selectedStudySummary}
+            onStudyChange={setSelectedStudyId}
+          />
+        ) : null}
+      </ConfigShell>
 
       <ConfirmationDialog
         confirmLabel={confirmationState?.confirmLabel ?? "Confirm"}
@@ -1842,6 +1310,770 @@ function SyntheticUserCard({ syntheticUser }: { syntheticUser: SyntheticUserDoc 
           </p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function OverviewWorkspace({
+  config,
+  isDraft,
+  draftForm,
+  isSavingDraft,
+  resolvedAxes,
+  canSuggestAxes,
+  isSuggestingAxes,
+  suggestionError,
+  isSuggestionPanelOpen,
+  suggestedAxes,
+  selectedSuggestionCount,
+  onSaveDraft,
+  onDraftFormChange,
+  onSuggestAxes,
+  onOpenAxisLibrary,
+  onSuggestionSelectionToggle,
+  onSuggestionEditToggle,
+  onSuggestionAxisChange,
+  onDismissSuggestions,
+  onApplySuggestedAxes,
+  formatTimestamp: formatTs,
+}: {
+  config: PersonaConfigDoc;
+  isDraft: boolean;
+  draftForm: ConfigFormValue;
+  isSavingDraft: boolean;
+  resolvedAxes: PersonaConfigDoc["sharedAxes"];
+  canSuggestAxes: boolean;
+  isSuggestingAxes: boolean;
+  suggestionError: string | null;
+  isSuggestionPanelOpen: boolean;
+  suggestedAxes: SuggestedAxisState[];
+  selectedSuggestionCount: number;
+  onSaveDraft: (event: React.FormEvent<HTMLFormElement>) => void;
+  onDraftFormChange: (form: ConfigFormValue) => void;
+  onSuggestAxes: () => void;
+  onOpenAxisLibrary: () => void;
+  onSuggestionSelectionToggle: (id: string) => void;
+  onSuggestionEditToggle: (id: string) => void;
+  onSuggestionAxisChange: (id: string, axis: AxisFormValue) => void;
+  onDismissSuggestions: () => void;
+  onApplySuggestedAxes: () => void;
+  formatTimestamp: (ts: number) => string;
+}) {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Metadata</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isDraft ? (
+            <ConfigFormCard
+              form={draftForm}
+              formPrefix="edit-config"
+              submitLabel={isSavingDraft ? "Saving..." : "Save draft changes"}
+              title={null}
+              description={null}
+              error={null}
+              disabled={isSavingDraft}
+              onSubmit={onSaveDraft}
+              onChange={onDraftFormChange}
+            />
+          ) : (
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <LocalSummaryValue label="Name" value={config.name} />
+              <LocalSummaryValue label="Version" value={`v${config.version}`} />
+              <LocalSummaryValue label="Description" value={config.description} />
+              <LocalSummaryValue label="Context" value={config.context} />
+            </dl>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Shared Axes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isDraft ? (
+            <div className="space-y-4 rounded-xl border bg-background p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Axis generation</p>
+                  <p className="text-sm text-muted-foreground">
+                    Generate new axes from persona configuration metadata or import reusable
+                    ones from the shared library.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    disabled={!canSuggestAxes || isSuggestingAxes}
+                    onClick={onSuggestAxes}
+                    type="button"
+                  >
+                    {isSuggestingAxes ? (
+                      <span className="inline-flex items-center gap-2">
+                        <LoadingSpinner />
+                        Suggesting...
+                      </span>
+                    ) : (
+                      "Suggest axes"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onOpenAxisLibrary}
+                  >
+                    Browse library
+                  </Button>
+                </div>
+              </div>
+
+              <div aria-live="polite" className="space-y-2">
+                {isSuggestingAxes ? (
+                  <p className="text-sm text-muted-foreground" role="status">
+                    Generating axis suggestions from the current persona configuration
+                    metadata...
+                  </p>
+                ) : null}
+                {suggestionError ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {suggestionError}
+                  </p>
+                ) : null}
+              </div>
+
+              {isSuggestionPanelOpen ? (
+                <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-semibold">
+                      Review suggested axes
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Select the axes you want to add, edit any field inline,
+                      then apply the selected suggestions.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4">
+                    {suggestedAxes.map((suggestion, index) => (
+                      <SuggestedAxisCard
+                        key={suggestion.id}
+                        index={index}
+                        suggestion={suggestion}
+                        onChange={(nextAxis) =>
+                          onSuggestionAxisChange(suggestion.id, nextAxis)
+                        }
+                        onToggleEdit={() =>
+                          onSuggestionEditToggle(suggestion.id)
+                        }
+                        onToggleSelected={() =>
+                          onSuggestionSelectionToggle(suggestion.id)
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onDismissSuggestions}
+                    >
+                      Dismiss
+                    </Button>
+                    <Button
+                      disabled={selectedSuggestionCount === 0}
+                      type="button"
+                      onClick={onApplySuggestedAxes}
+                    >
+                      Apply selected
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {resolvedAxes.map((axis, index) => (
+            <div
+              key={`${axis.key}-${index}`}
+              className="rounded-lg border bg-background p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">{axis.label}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {axis.key} · weight {axis.weight}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                {axis.description}
+              </p>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+                <LocalSummaryValue label="Low anchor" value={axis.lowAnchor} />
+                <LocalSummaryValue label="Mid anchor" value={axis.midAnchor} />
+                <LocalSummaryValue label="High anchor" value={axis.highAnchor} />
+              </dl>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Audit Trail</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <LocalSummaryValue label="Created by" value={config.createdBy} />
+          <LocalSummaryValue
+            label="Last modified by"
+            value={config.updatedBy ?? config.createdBy}
+          />
+          <LocalSummaryValue
+            label="Created at"
+            value={formatTs(config.createdAt)}
+          />
+          <LocalSummaryValue
+            label="Last updated"
+            value={formatTs(config.updatedAt)}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function UsersWorkspace({
+  config,
+  isDraft,
+  syntheticUserList,
+  syntheticUserForm,
+  isProtoFormOpen,
+  isSavingSyntheticUser,
+  onToggleProtoForm,
+  onCreateSyntheticUser,
+  onSyntheticUserFormChange,
+}: {
+  config: PersonaConfigDoc;
+  isDraft: boolean;
+  syntheticUserList: SyntheticUserDoc[];
+  syntheticUserForm: SyntheticUserFormValue;
+  isProtoFormOpen: boolean;
+  isSavingSyntheticUser: boolean;
+  onToggleProtoForm: () => void;
+  onCreateSyntheticUser: (event: React.FormEvent<HTMLFormElement>) => void;
+  onSyntheticUserFormChange: (form: SyntheticUserFormValue) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <CardTitle>Synthetic Users</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Review the persona configuration&apos;s source synthetic users and the evidence
+            used to anchor them.
+          </p>
+        </div>
+        {isDraft ? (
+          <Button
+            variant="outline"
+            onClick={onToggleProtoForm}
+          >
+            {isProtoFormOpen ? "Close form" : "Add synthetic user"}
+          </Button>
+        ) : null}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isProtoFormOpen ? (
+          <form
+            className="space-y-4 rounded-xl border bg-background p-4"
+            onSubmit={onCreateSyntheticUser}
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="create-proto-name">Name</Label>
+              <Input
+                id="create-proto-name"
+                value={syntheticUserForm.name}
+                onChange={(event) =>
+                  onSyntheticUserFormChange({
+                    ...syntheticUserForm,
+                    name: event.target.value,
+                  })
+                }
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-proto-summary">Summary</Label>
+              <textarea
+                id="create-proto-summary"
+                className={textareaClassName}
+                value={syntheticUserForm.summary}
+                onChange={(event) =>
+                  onSyntheticUserFormChange({
+                    ...syntheticUserForm,
+                    summary: event.target.value,
+                  })
+                }
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-proto-evidence">
+                Evidence snippets
+              </Label>
+              <textarea
+                id="create-proto-evidence"
+                className={textareaClassName}
+                value={syntheticUserForm.evidenceText}
+                onChange={(event) =>
+                  onSyntheticUserFormChange({
+                    ...syntheticUserForm,
+                    evidenceText: event.target.value,
+                  })
+                }
+                placeholder="One snippet per line"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-proto-notes">Notes</Label>
+              <textarea
+                id="create-proto-notes"
+                className={textareaClassName}
+                value={syntheticUserForm.notes}
+                onChange={(event) =>
+                  onSyntheticUserFormChange({
+                    ...syntheticUserForm,
+                    notes: event.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <p className="text-xs leading-5 text-muted-foreground">
+              New synthetic users inherit the current shared axes so you
+              can quickly draft content before publishing.
+            </p>
+
+            <Button disabled={isSavingSyntheticUser} type="submit">
+              {isSavingSyntheticUser ? "Saving..." : "Save synthetic user"}
+            </Button>
+          </form>
+        ) : null}
+
+        {syntheticUserList.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-background p-6">
+            <p className="text-sm leading-6 text-muted-foreground">
+              No synthetic users yet. Add the first synthetic user to make
+              this draft persona configuration publishable.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {syntheticUserList.map((syntheticUser) => (
+              <SyntheticUserCard
+                key={syntheticUser._id}
+                syntheticUser={syntheticUser}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TranscriptsWorkspace({
+  config,
+  isDraft,
+  canManageConfigTranscripts,
+  configTranscripts,
+  extractionStatus,
+  extractionButtonLabel,
+  canOpenExtraction,
+  detachingTranscriptId,
+  isExtractionPanelOpen,
+  extractionMode,
+  extractionStep,
+  extractionError,
+  extractionNotice,
+  extractionCostEstimate,
+  isStartingExtraction,
+  isApplyingExtractionResults,
+  guidedExtractionAxes,
+  reviewArchetypes,
+  activeReviewProposedAxes,
+  extractionSharedAxes,
+  selectedExtractionArchetypeCount,
+  transcriptFilenameById,
+  discardingArchetypeId,
+  onOpenTranscriptPicker,
+  onOpenExtractionPanel,
+  onDetachTranscript,
+  onCloseExtractionPanel,
+  onSelectExtractionMode,
+  onContinueToExtractionCost,
+  onBackFromExtractionCost,
+  onStartExtraction,
+  onResetExtractionWizard,
+  onGuidedAxisChange,
+  onRemoveGuidedAxis,
+  onAddGuidedAxis,
+  onToggleArchetypeSelected,
+  onToggleArchetypeEdit,
+  onUpdateArchetype,
+  onMergeSelectedArchetypes,
+  onDiscardArchetype,
+  onConfirmDiscardArchetype,
+  onProposedAxisChange,
+  onProposedAxisToggleEdit,
+  onProposedAxisToggleRemoved,
+  onApplyExtractionResults,
+}: {
+  config: PersonaConfigDoc;
+  isDraft: boolean;
+  canManageConfigTranscripts: boolean;
+  configTranscripts: ConfigTranscriptAttachment[];
+  extractionStatus: ExtractionStatus | null | undefined;
+  extractionButtonLabel: string;
+  canOpenExtraction: boolean;
+  detachingTranscriptId: string | null;
+  isExtractionPanelOpen: boolean;
+  extractionMode: ExtractionMode | null;
+  extractionStep: "mode" | "guided" | "cost" | "processing" | "failed" | "results";
+  extractionError: string | null;
+  extractionNotice: string | null;
+  extractionCostEstimate: { totalCharacters: number; estimatedTokens: number; estimatedCostUsd: number } | undefined;
+  isStartingExtraction: boolean;
+  isApplyingExtractionResults: boolean;
+  guidedExtractionAxes: AxisFormValue[];
+  reviewArchetypes: ExtractionArchetypeState[];
+  activeReviewProposedAxes: ExtractionReviewAxisState[];
+  extractionSharedAxes: AxisFormValue[];
+  selectedExtractionArchetypeCount: number;
+  transcriptFilenameById: Map<string, string>;
+  discardingArchetypeId: string | null;
+  onOpenTranscriptPicker: () => void;
+  onOpenExtractionPanel: () => void;
+  onDetachTranscript: (transcriptId: TranscriptId) => void;
+  onCloseExtractionPanel: () => void;
+  onSelectExtractionMode: (mode: ExtractionMode) => void;
+  onContinueToExtractionCost: () => void;
+  onBackFromExtractionCost: () => void;
+  onStartExtraction: () => void;
+  onResetExtractionWizard: () => void;
+  onGuidedAxisChange: (index: number, axis: AxisFormValue) => void;
+  onRemoveGuidedAxis: (index: number) => void;
+  onAddGuidedAxis: () => void;
+  onToggleArchetypeSelected: (id: string) => void;
+  onToggleArchetypeEdit: (id: string) => void;
+  onUpdateArchetype: (id: string, patch: Partial<ExtractionArchetypeState>) => void;
+  onMergeSelectedArchetypes: () => void;
+  onDiscardArchetype: (id: string | null) => void;
+  onConfirmDiscardArchetype: () => void;
+  onProposedAxisChange: (id: string, axis: AxisFormValue) => void;
+  onProposedAxisToggleEdit: (id: string) => void;
+  onProposedAxisToggleRemoved: (id: string) => void;
+  onApplyExtractionResults: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <CardTitle>Attached Transcripts</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Review transcript research linked to this persona configuration and open each
+            transcript in the library.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {canOpenExtraction ? (
+            <Button
+              disabled={extractionStatus?.status === "processing"}
+              type="button"
+              variant="outline"
+              onClick={onOpenExtractionPanel}
+            >
+              {extractionButtonLabel}
+            </Button>
+          ) : null}
+          {isDraft && canManageConfigTranscripts ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onOpenTranscriptPicker}
+            >
+              Attach transcripts
+            </Button>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!isDraft ? (
+          <p className="text-sm text-muted-foreground">
+            Transcript attachments become read-only once the persona configuration is no
+            longer a draft.
+          </p>
+        ) : null}
+        {!canManageConfigTranscripts ? (
+          <p className="text-sm text-muted-foreground">
+            Reviewers can inspect attached transcripts but cannot attach
+            or detach them.
+          </p>
+        ) : null}
+
+        {configTranscripts.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-background p-6">
+            <p className="text-sm leading-6 text-muted-foreground">
+              No transcripts are attached to this persona configuration yet.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {configTranscripts.map((configTranscript) => (
+              <div
+                key={configTranscript._id}
+                className="rounded-xl border bg-background p-4"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                        params={{
+                          transcriptId: configTranscript.transcript._id,
+                        }}
+                        to="/transcripts/$transcriptId"
+                      >
+                        {configTranscript.transcript.originalFilename}
+                      </Link>
+                      <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {configTranscript.transcript.format}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {configTranscript.transcript.metadata.participantId
+                        ? `Participant ${configTranscript.transcript.metadata.participantId}`
+                        : "No participant ID"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Attached {formatTimestamp(configTranscript.createdAt)}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild type="button" variant="outline">
+                      <Link
+                        params={{
+                          transcriptId: configTranscript.transcript._id,
+                        }}
+                        to="/transcripts/$transcriptId"
+                      >
+                        Open transcript
+                      </Link>
+                    </Button>
+                    {isDraft && canManageConfigTranscripts ? (
+                      <Button
+                        disabled={
+                          detachingTranscriptId
+                          === String(configTranscript.transcriptId)
+                        }
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          void onDetachTranscript(
+                            configTranscript.transcriptId,
+                          )
+                        }
+                      >
+                        {detachingTranscriptId
+                        === String(configTranscript.transcriptId)
+                          ? "Detaching..."
+                          : "Detach"}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isDraft && canManageConfigTranscripts ? (
+          <TranscriptExtractionPanel
+            activeProposedAxes={activeReviewProposedAxes}
+            archetypes={reviewArchetypes}
+            attachedTranscripts={configTranscripts}
+            costEstimate={extractionCostEstimate}
+            extractionError={extractionError}
+            extractionMode={extractionMode}
+            extractionNotice={extractionNotice}
+            extractionStatus={extractionStatus}
+            isApplying={isApplyingExtractionResults}
+            isOpen={isExtractionPanelOpen}
+            isStarting={isStartingExtraction}
+            guidedAxes={guidedExtractionAxes}
+            step={extractionStep}
+            transcriptFilenameById={transcriptFilenameById}
+            onAddGuidedAxis={onAddGuidedAxis}
+            onApply={onApplyExtractionResults}
+            onClose={onCloseExtractionPanel}
+            onConfirmDiscardArchetype={onConfirmDiscardArchetype}
+            onBackFromCost={onBackFromExtractionCost}
+            onContinueToCost={onContinueToExtractionCost}
+            onDiscardArchetype={onDiscardArchetype}
+            onGuidedAxisChange={onGuidedAxisChange}
+            onMergeSelected={onMergeSelectedArchetypes}
+            onModeSelect={onSelectExtractionMode}
+            onProposedAxisChange={onProposedAxisChange}
+            onProposedAxisToggleEdit={onProposedAxisToggleEdit}
+            onProposedAxisToggleRemoved={onProposedAxisToggleRemoved}
+            onRemoveGuidedAxis={onRemoveGuidedAxis}
+            onResetWizard={onResetExtractionWizard}
+            onStartExtraction={onStartExtraction}
+            onToggleArchetypeEdit={onToggleArchetypeEdit}
+            onToggleArchetypeSelected={onToggleArchetypeSelected}
+            onUpdateArchetype={onUpdateArchetype}
+            selectedArchetypeCount={selectedExtractionArchetypeCount}
+            sharedAxes={extractionSharedAxes}
+            transcriptSignals={extractionStatus?.transcriptSignals ?? []}
+            discardArchetypeId={discardingArchetypeId}
+          />
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewWorkspace({
+  configVariantReview,
+  selectedStudyId,
+  selectedStudySummary,
+  onStudyChange,
+}: {
+  configVariantReview: ConfigVariantReviewData | null | undefined;
+  selectedStudyId: string | null;
+  selectedStudySummary: NonNullable<ConfigVariantReviewData["selectedStudy"]> | null;
+  onStudyChange: (studyId: string | null) => void;
+}) {
+  if (configVariantReview === undefined) {
+    return (
+      <LoadingCard
+        title="Variant Review"
+        body="Loading linked studies and accepted variants..."
+      />
+    );
+  }
+
+  if (configVariantReview === null) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Variant review unavailable</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            This persona configuration&apos;s variant review data could not be loaded for the
+            current organization.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (configVariantReview.studies.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No studies linked to this persona configuration</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Generate variants from a study that uses this published persona configuration,
+            then return here to review the accepted cohort.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle>
+              {selectedStudySummary?.name ?? "Select a linked study"}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {selectedStudySummary
+                ? `${configVariantReview.variants.length} accepted variants available for review.`
+                : "Choose a linked study to review its accepted variants."}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:min-w-72">
+            <div className="grid gap-2">
+              <Label htmlFor="config-variant-study-filter">
+                Linked study
+              </Label>
+              <select
+                className={selectClassName}
+                id="config-variant-study-filter"
+                value={selectedStudyId ?? ""}
+                onChange={(event) =>
+                  onStudyChange(event.target.value || null)
+                }
+              >
+                {configVariantReview.studies.map((study) => (
+                  <option key={study._id} value={study._id}>
+                    {study.name} ({study.acceptedVariantCount} accepted)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedStudySummary ? (
+              <Button asChild variant="outline">
+                <Link
+                  params={{ studyId: selectedStudySummary._id }}
+                  search={emptyStudyDetailSearch}
+                  to="/studies/$studyId/personas"
+                >
+                  Open study personas page
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        </CardHeader>
+        {selectedStudySummary ? (
+          <CardContent className="grid gap-4 sm:grid-cols-3">
+            <LocalSummaryValue
+              label="Study status"
+              value={selectedStudySummary.status}
+            />
+            <LocalSummaryValue
+              label="Run budget"
+              value={String(selectedStudySummary.runBudget)}
+            />
+            <LocalSummaryValue
+              label="Last updated"
+              value={formatTimestamp(selectedStudySummary.updatedAt)}
+            />
+          </CardContent>
+        ) : null}
+      </Card>
+
+      <PersonaVariantReviewGrid
+        emptyMessage="No accepted variants are available for the selected study yet. Generate variants from the study personas page first."
+        reviewData={configVariantReview}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
+import { defaultPersonaConfigDetailSearch } from "@/router";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { AnimatedList } from "@/components/domain/animated-list";
@@ -265,6 +266,7 @@ export function PersonaConfigsPage() {
       setIsCreateFormOpen(false);
       await navigate({
         params: { configId },
+        search: defaultPersonaConfigDetailSearch,
         to: "/persona-configs/$configId",
       });
     } catch (error) {
@@ -285,6 +287,7 @@ export function PersonaConfigsPage() {
       setIsImportDialogOpen(false);
       await navigate({
         params: { configId },
+        search: defaultPersonaConfigDetailSearch,
         to: "/persona-configs/$configId",
       });
     } catch (error) {
@@ -518,6 +521,7 @@ function ConfigCard({ config }: { config: PersonaConfigDoc }) {
     <Link
       className="block rounded-xl border bg-card p-6 shadow-sm transition-colors hover:border-primary hover:bg-muted/30"
       params={{ configId: config._id }}
+      search={defaultPersonaConfigDetailSearch}
       to="/persona-configs/$configId"
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

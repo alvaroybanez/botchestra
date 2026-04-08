@@ -2344,9 +2344,9 @@ describe("@botchestra/web routing", () => {
     );
     expect(links).toEqual(
       expect.arrayContaining([
-        "/persona-configs/config-draft",
-        "/persona-configs/config-published",
-        "/persona-configs/config-archived",
+        "/persona-configs/config-draft?tab=overview",
+        "/persona-configs/config-published?tab=overview",
+        "/persona-configs/config-archived?tab=overview",
       ]),
     );
   });
@@ -2394,7 +2394,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-detail"],
+      initialEntries: ["/persona-configs/config-detail?tab=overview"],
     });
 
     expect(container.textContent).toContain("Account Recovery Config");
@@ -2402,14 +2402,24 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Digital confidence");
     expect(container.textContent).toContain("Audit Trail");
 
-    expect(container.textContent).toContain("Synthetic Users");
-    expect(container.textContent).toContain("Anxious new customer");
-    expect(container.textContent).toContain("Source: json_import");
+    const { container: usersContainer } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-detail?tab=users"],
+    });
 
-    expect(container.textContent).toContain("Accepted variants");
-    expect(container.textContent).toContain("Linked study");
-    expect(container.textContent).toContain("Open study personas page");
-    expect(getVariantRows(container)).toHaveLength(3);
+    expect(usersContainer.textContent).toContain("Synthetic Users");
+    expect(usersContainer.textContent).toContain("Anxious new customer");
+    expect(usersContainer.textContent).toContain("Source: json_import");
+
+    const { container: reviewContainer } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-detail?tab=review"],
+    });
+
+    expect(reviewContainer.textContent).toContain("Accepted variants");
+    expect(reviewContainer.textContent).toContain("Linked study");
+    expect(reviewContainer.textContent).toContain("Open study personas page");
+    expect(getVariantRows(reviewContainer)).toHaveLength(3);
   });
 
   it("renders batch generation controls, estimates, and the empty state on draft configs", async () => {
@@ -2439,7 +2449,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-empty"],
+      initialEntries: ["/persona-configs/config-generation-empty?tab=generation"],
     });
 
     expect(container.textContent).toContain("Synthetic User Generation");
@@ -2477,7 +2487,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-start"],
+      initialEntries: ["/persona-configs/config-generation-start?tab=generation"],
     });
 
     await updateRadixSelect(document.body, "Support needs levels", "5 levels");
@@ -2581,7 +2591,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-progress"],
+      initialEntries: ["/persona-configs/config-generation-progress?tab=generation"],
     });
 
     expect(container.textContent).toContain("Generation Progress");
@@ -2647,7 +2657,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-published"],
+      initialEntries: ["/persona-configs/config-generation-published?tab=generation"],
     });
 
     expect(container.textContent).toContain("Synthetic User Generation");
@@ -3030,7 +3040,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-with-transcripts"],
+      initialEntries: ["/persona-configs/config-with-transcripts?tab=transcripts"],
     });
 
     expect(container.textContent).toContain("Attached Transcripts");
@@ -3088,7 +3098,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-reviewer-transcripts"],
+      initialEntries: ["/persona-configs/config-reviewer-transcripts?tab=transcripts"],
       viewerRole: "reviewer",
     });
 
@@ -3197,7 +3207,7 @@ describe("@botchestra/web routing", () => {
 
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-transcript-extraction"],
+      initialEntries: ["/persona-configs/config-transcript-extraction?tab=transcripts"],
     });
 
     expect(container.textContent).toContain("Extract from Transcripts");
@@ -3333,7 +3343,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-guided-extraction"],
+      initialEntries: ["/persona-configs/config-guided-extraction?tab=transcripts"],
     });
 
     await clickButton(container, "Extract from Transcripts");
@@ -3404,7 +3414,7 @@ describe("@botchestra/web routing", () => {
     expect(importJsonMock).toHaveBeenCalledWith({
       json: '{"name":"Imported Config","description":"Loaded from JSON"}',
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-configs/imported-config-id");
+    expect(getRouterLocationHref(router)).toBe("/persona-configs/imported-config-id?tab=overview");
   });
 
   it("creates a new config from the list page and redirects to the detail route", async () => {
@@ -3462,7 +3472,7 @@ describe("@botchestra/web routing", () => {
         ],
       },
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-configs/new-config-id");
+    expect(getRouterLocationHref(router)).toBe("/persona-configs/new-config-id?tab=overview");
   });
 
   it("shows publish confirmation and only mutates after confirmation", async () => {
