@@ -4216,6 +4216,61 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Page not found");
     expect(container.textContent).toContain("Botchestra");
   });
+
+  it("pushes history for tab switches and replaces for in-tab selections on persona config detail", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-history" as Id<"personaConfigs">,
+      name: "History Test Config",
+    });
+    mockedSyntheticUsers = [
+      makeSyntheticUser({
+        _id: "user-hist-1" as Id<"syntheticUsers">,
+        name: "History User",
+        summary: "A user for testing history behavior.",
+      }),
+    ];
+    mockedPackVariantReview = makePackVariantReview();
+
+    const { container, history, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-history?tab=overview"],
+    });
+
+    expect(getRouterLocationHref(router)).toContain("tab=overview");
+    const initialLength = history.length;
+
+    // Switch tab to Users — should push (new history entry)
+    await clickButton(container, "Users");
+    expect(getRouterLocationHref(router)).toContain("tab=users");
+    expect(history.length).toBe(initialLength + 1);
+
+    // Click a user row within the Users tab — should replace (no new entry)
+    const userOption = container.querySelector("[role='option']");
+    expect(userOption).not.toBeNull();
+    const lengthBeforeSelection = history.length;
+    await act(async () => {
+      userOption!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(getRouterLocationHref(router)).toContain("selectedUserId=user-hist-1");
+    expect(history.length).toBe(lengthBeforeSelection);
+
+    // Switch tab to Generation — should push again
+    await clickButton(container, "Generation");
+    expect(getRouterLocationHref(router)).toContain("tab=generation");
+    expect(history.length).toBe(lengthBeforeSelection + 1);
+
+    // Go back — should return to Users tab
+    await act(async () => {
+      history.back();
+    });
+    expect(getRouterLocationHref(router)).toContain("tab=users");
+
+    // Go back again — should return to Overview tab
+    await act(async () => {
+      history.back();
+    });
+    expect(getRouterLocationHref(router)).toContain("tab=overview");
+  });
 });
 
 async function renderRoute({
@@ -4246,7 +4301,7 @@ async function renderRoute({
     await router.load();
   });
 
-  return { container, router };
+  return { container, history, router };
 }
 
 async function clickButton(root: ParentNode, text: string) {

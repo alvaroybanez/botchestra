@@ -551,15 +551,17 @@ function PersonaConfigDetailPage() {
     <PersonaConfigDetailRoutePage
       configId={configId}
       detailSearch={detailSearch}
-      onSearchChange={(patch) =>
+      onSearchChange={(patch) => {
+        const isTabSwitch =
+          "tab" in patch && patch.tab !== detailSearch.tab;
         void navigate({
-          replace: true,
+          ...(isTabSwitch ? {} : { replace: true }),
           search: (previous) => ({
             ...previous,
             ...patch,
           }),
-        })
-      }
+        });
+      }}
     />
   );
 }
