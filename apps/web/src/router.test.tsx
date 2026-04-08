@@ -3043,11 +3043,10 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-with-transcripts?tab=transcripts"],
     });
 
-    expect(container.textContent).toContain("Attached Transcripts");
     expect(container.textContent).toContain("attached-call.txt");
-    expect(container.textContent).toContain("Attach transcripts");
+    expect(container.textContent).toContain("Attach");
 
-    await clickButton(container, "Attach transcripts");
+    await clickButton(container, "Attach");
     expect(document.body.textContent).toContain("Attach selected transcripts");
     const configAttachmentDialog = document.body.querySelector(
       'div[role="dialog"]',
@@ -3102,10 +3101,14 @@ describe("@botchestra/web routing", () => {
       viewerRole: "reviewer",
     });
 
-    expect(container.textContent).toContain("Attached Transcripts");
     expect(container.textContent).toContain("reviewer-visible.txt");
-    expect(container.textContent).not.toContain("Attach transcripts");
-    expect(container.textContent).not.toContain("Detach");
+    // Reviewer should not see Attach/Detach action buttons (only the contextual notice)
+    expect(container.querySelector('button')).toBeDefined();
+    const buttonTexts = Array.from(container.querySelectorAll('button')).map(
+      (b) => b.textContent?.trim(),
+    );
+    expect(buttonTexts).not.toContain("Attach");
+    expect(buttonTexts).not.toContain("Detach");
   });
 
   it("runs auto-discover transcript extraction, shows results, applies personas, and links evidence snippets", async () => {

@@ -68,11 +68,9 @@ import {
   SuggestedAxisCard,
 } from "./axis-components";
 import { ConfigFormCard } from "./config-form-card";
-import {
-  TranscriptAttachmentDialog,
-  TranscriptExtractionPanel,
-} from "./extraction-panel";
+import { TranscriptAttachmentDialog } from "./extraction-panel";
 import { ConfigShell } from "./config-shell";
+import { TranscriptsWorkspace } from "./transcripts-workspace";
 import { UsersWorkspace } from "./users-workspace";
 
 export function PersonaConfigDetailPage({
@@ -1165,6 +1163,7 @@ export function PersonaConfigDetailPage({
             selectedExtractionArchetypeCount={selectedExtractionArchetypeCount}
             transcriptFilenameById={transcriptFilenameById}
             discardingArchetypeId={discardingArchetypeId}
+            selectedTranscriptId={detailSearch.selectedTranscriptId}
             onOpenTranscriptPicker={() => setIsTranscriptPickerOpen(true)}
             onOpenExtractionPanel={handleOpenExtractionPanel}
             onDetachTranscript={handleDetachTranscript}
@@ -1189,6 +1188,7 @@ export function PersonaConfigDetailPage({
             onProposedAxisToggleEdit={handleToggleReviewAxisEdit}
             onProposedAxisToggleRemoved={handleReviewAxisRemovalToggle}
             onApplyExtractionResults={handleApplyTranscriptExtractionResults}
+            onSearchChange={onSearchChange}
           />
         ) : null}
 
@@ -1574,268 +1574,6 @@ function OverviewWorkspace({
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function TranscriptsWorkspace({
-  config,
-  isDraft,
-  canManageConfigTranscripts,
-  configTranscripts,
-  extractionStatus,
-  extractionButtonLabel,
-  canOpenExtraction,
-  detachingTranscriptId,
-  isExtractionPanelOpen,
-  extractionMode,
-  extractionStep,
-  extractionError,
-  extractionNotice,
-  extractionCostEstimate,
-  isStartingExtraction,
-  isApplyingExtractionResults,
-  guidedExtractionAxes,
-  reviewArchetypes,
-  activeReviewProposedAxes,
-  extractionSharedAxes,
-  selectedExtractionArchetypeCount,
-  transcriptFilenameById,
-  discardingArchetypeId,
-  onOpenTranscriptPicker,
-  onOpenExtractionPanel,
-  onDetachTranscript,
-  onCloseExtractionPanel,
-  onSelectExtractionMode,
-  onContinueToExtractionCost,
-  onBackFromExtractionCost,
-  onStartExtraction,
-  onResetExtractionWizard,
-  onGuidedAxisChange,
-  onRemoveGuidedAxis,
-  onAddGuidedAxis,
-  onToggleArchetypeSelected,
-  onToggleArchetypeEdit,
-  onUpdateArchetype,
-  onMergeSelectedArchetypes,
-  onDiscardArchetype,
-  onConfirmDiscardArchetype,
-  onProposedAxisChange,
-  onProposedAxisToggleEdit,
-  onProposedAxisToggleRemoved,
-  onApplyExtractionResults,
-}: {
-  config: PersonaConfigDoc;
-  isDraft: boolean;
-  canManageConfigTranscripts: boolean;
-  configTranscripts: ConfigTranscriptAttachment[];
-  extractionStatus: ExtractionStatus | null | undefined;
-  extractionButtonLabel: string;
-  canOpenExtraction: boolean;
-  detachingTranscriptId: string | null;
-  isExtractionPanelOpen: boolean;
-  extractionMode: ExtractionMode | null;
-  extractionStep: "mode" | "guided" | "cost" | "processing" | "failed" | "results";
-  extractionError: string | null;
-  extractionNotice: string | null;
-  extractionCostEstimate: { totalCharacters: number; estimatedTokens: number; estimatedCostUsd: number } | undefined;
-  isStartingExtraction: boolean;
-  isApplyingExtractionResults: boolean;
-  guidedExtractionAxes: AxisFormValue[];
-  reviewArchetypes: ExtractionArchetypeState[];
-  activeReviewProposedAxes: ExtractionReviewAxisState[];
-  extractionSharedAxes: AxisFormValue[];
-  selectedExtractionArchetypeCount: number;
-  transcriptFilenameById: Map<string, string>;
-  discardingArchetypeId: string | null;
-  onOpenTranscriptPicker: () => void;
-  onOpenExtractionPanel: () => void;
-  onDetachTranscript: (transcriptId: TranscriptId) => void;
-  onCloseExtractionPanel: () => void;
-  onSelectExtractionMode: (mode: ExtractionMode) => void;
-  onContinueToExtractionCost: () => void;
-  onBackFromExtractionCost: () => void;
-  onStartExtraction: () => void;
-  onResetExtractionWizard: () => void;
-  onGuidedAxisChange: (index: number, axis: AxisFormValue) => void;
-  onRemoveGuidedAxis: (index: number) => void;
-  onAddGuidedAxis: () => void;
-  onToggleArchetypeSelected: (id: string) => void;
-  onToggleArchetypeEdit: (id: string) => void;
-  onUpdateArchetype: (id: string, patch: Partial<ExtractionArchetypeState>) => void;
-  onMergeSelectedArchetypes: () => void;
-  onDiscardArchetype: (id: string | null) => void;
-  onConfirmDiscardArchetype: () => void;
-  onProposedAxisChange: (id: string, axis: AxisFormValue) => void;
-  onProposedAxisToggleEdit: (id: string) => void;
-  onProposedAxisToggleRemoved: (id: string) => void;
-  onApplyExtractionResults: () => void;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <CardTitle>Attached Transcripts</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Review transcript research linked to this persona configuration and open each
-            transcript in the library.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canOpenExtraction ? (
-            <Button
-              disabled={extractionStatus?.status === "processing"}
-              type="button"
-              variant="outline"
-              onClick={onOpenExtractionPanel}
-            >
-              {extractionButtonLabel}
-            </Button>
-          ) : null}
-          {isDraft && canManageConfigTranscripts ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onOpenTranscriptPicker}
-            >
-              Attach transcripts
-            </Button>
-          ) : null}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!isDraft ? (
-          <p className="text-sm text-muted-foreground">
-            Transcript attachments become read-only once the persona configuration is no
-            longer a draft.
-          </p>
-        ) : null}
-        {!canManageConfigTranscripts ? (
-          <p className="text-sm text-muted-foreground">
-            Reviewers can inspect attached transcripts but cannot attach
-            or detach them.
-          </p>
-        ) : null}
-
-        {configTranscripts.length === 0 ? (
-          <div className="rounded-xl border border-dashed bg-background p-6">
-            <p className="text-sm leading-6 text-muted-foreground">
-              No transcripts are attached to this persona configuration yet.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {configTranscripts.map((configTranscript) => (
-              <div
-                key={configTranscript._id}
-                className="rounded-xl border bg-background p-4"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        className="font-medium text-primary underline-offset-4 hover:underline"
-                        params={{
-                          transcriptId: configTranscript.transcript._id,
-                        }}
-                        to="/transcripts/$transcriptId"
-                      >
-                        {configTranscript.transcript.originalFilename}
-                      </Link>
-                      <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {configTranscript.transcript.format}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {configTranscript.transcript.metadata.participantId
-                        ? `Participant ${configTranscript.transcript.metadata.participantId}`
-                        : "No participant ID"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Attached {formatTimestamp(configTranscript.createdAt)}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button asChild type="button" variant="outline">
-                      <Link
-                        params={{
-                          transcriptId: configTranscript.transcript._id,
-                        }}
-                        to="/transcripts/$transcriptId"
-                      >
-                        Open transcript
-                      </Link>
-                    </Button>
-                    {isDraft && canManageConfigTranscripts ? (
-                      <Button
-                        disabled={
-                          detachingTranscriptId
-                          === String(configTranscript.transcriptId)
-                        }
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          void onDetachTranscript(
-                            configTranscript.transcriptId,
-                          )
-                        }
-                      >
-                        {detachingTranscriptId
-                        === String(configTranscript.transcriptId)
-                          ? "Detaching..."
-                          : "Detach"}
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {isDraft && canManageConfigTranscripts ? (
-          <TranscriptExtractionPanel
-            activeProposedAxes={activeReviewProposedAxes}
-            archetypes={reviewArchetypes}
-            attachedTranscripts={configTranscripts}
-            costEstimate={extractionCostEstimate}
-            extractionError={extractionError}
-            extractionMode={extractionMode}
-            extractionNotice={extractionNotice}
-            extractionStatus={extractionStatus}
-            isApplying={isApplyingExtractionResults}
-            isOpen={isExtractionPanelOpen}
-            isStarting={isStartingExtraction}
-            guidedAxes={guidedExtractionAxes}
-            step={extractionStep}
-            transcriptFilenameById={transcriptFilenameById}
-            onAddGuidedAxis={onAddGuidedAxis}
-            onApply={onApplyExtractionResults}
-            onClose={onCloseExtractionPanel}
-            onConfirmDiscardArchetype={onConfirmDiscardArchetype}
-            onBackFromCost={onBackFromExtractionCost}
-            onContinueToCost={onContinueToExtractionCost}
-            onDiscardArchetype={onDiscardArchetype}
-            onGuidedAxisChange={onGuidedAxisChange}
-            onMergeSelected={onMergeSelectedArchetypes}
-            onModeSelect={onSelectExtractionMode}
-            onProposedAxisChange={onProposedAxisChange}
-            onProposedAxisToggleEdit={onProposedAxisToggleEdit}
-            onProposedAxisToggleRemoved={onProposedAxisToggleRemoved}
-            onRemoveGuidedAxis={onRemoveGuidedAxis}
-            onResetWizard={onResetExtractionWizard}
-            onStartExtraction={onStartExtraction}
-            onToggleArchetypeEdit={onToggleArchetypeEdit}
-            onToggleArchetypeSelected={onToggleArchetypeSelected}
-            onUpdateArchetype={onUpdateArchetype}
-            selectedArchetypeCount={selectedExtractionArchetypeCount}
-            sharedAxes={extractionSharedAxes}
-            transcriptSignals={extractionStatus?.transcriptSignals ?? []}
-            discardArchetypeId={discardingArchetypeId}
-          />
-        ) : null}
-      </CardContent>
-    </Card>
   );
 }
 
