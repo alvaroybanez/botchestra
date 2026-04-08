@@ -2452,12 +2452,11 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-generation-empty?tab=generation"],
     });
 
-    expect(container.textContent).toContain("Synthetic User Generation");
-    expect(container.textContent).toContain("Generate Synthetic Users");
+    expect(container.textContent).toContain("Generation Controls");
     expect(container.textContent).toContain("2 axes x 3 levels = 9 synthetic users");
     expect(container.textContent).toContain("7,200 tokens");
     expect(container.textContent).toContain("$0.07");
-    expect(container.textContent).toContain("No generated synthetic users yet.");
+    expect(container.textContent).toContain("No synthetic users yet.");
   });
 
   it("updates batch generation granularity and starts generation with per-axis levels", async () => {
@@ -2594,22 +2593,24 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-generation-progress?tab=generation"],
     });
 
-    expect(container.textContent).toContain("Generation Progress");
+    expect(container.textContent).toContain("Run Progress");
     expect(container.textContent).toContain(
       "Generated 4 synthetic users with 1 failures.",
     );
-    expect(container.textContent).toContain("Generated Users Grid");
-    expect(container.textContent).toContain("Retry Failed");
+    expect(container.textContent).toContain("User Status");
+    expect(container.textContent).toContain("Retry 1 failed");
+    // Default view shows generated-only; expand to all sources to verify mixed badges
+    await clickButton(container, "Show all sources");
     expect(getTableCellText(container, "Alpha Profile", 3)).toBe("Generated");
     expect(getTableCellText(container, "Gamma Profile", 3)).toBe("Manual");
-    expect(getTableCellText(container, "Delta Profile", 3)).toBe("Transcript-derived");
+    expect(getTableCellText(container, "Delta Profile", 3)).toBe("Transcript");
 
-    await updateInput(container, 'input[aria-label="Search synthetic users"]', "Gamma");
+    await updateInput(container, 'input[aria-label="Search users"]', "Gamma");
     const generationGridTable = getGenerationGridTable(container);
     expect(generationGridTable.textContent).toContain("Gamma Profile");
     expect(generationGridTable.textContent).not.toContain("Alpha Profile");
 
-    await updateInput(container, 'input[aria-label="Search synthetic users"]', "");
+    await updateInput(container, 'input[aria-label="Search users"]', "");
 
     const completedRow = getTableRow(container, "Alpha Profile");
     await clickButton(completedRow, "Regenerate");
@@ -2624,7 +2625,7 @@ describe("@botchestra/web routing", () => {
       await rowDeferred.promise;
     });
 
-    await clickButton(container, "Retry Failed");
+    await clickButton(container, "Retry 1 failed");
 
     expect(regenerateSyntheticUserMock).toHaveBeenNthCalledWith(2, {
       syntheticUserId: "generated-failed",
@@ -2660,9 +2661,10 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-generation-published?tab=generation"],
     });
 
-    expect(container.textContent).toContain("Synthetic User Generation");
-    expect(container.textContent).not.toContain("Generate Synthetic Users");
-    expect(container.textContent).not.toContain("Retry Failed");
+    expect(container.textContent).toContain("Run Progress");
+    expect(container.textContent).toContain("User Status");
+    expect(container.textContent).not.toContain("Generation Controls");
+    expect(container.textContent).not.toContain("Retry");
     expect(getButton(container, "Regenerate")).toBeUndefined();
   });
 

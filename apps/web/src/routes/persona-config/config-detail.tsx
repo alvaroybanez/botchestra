@@ -3,10 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
-import {
-  PersonaGenerationSection,
-  type BatchGenerationRunView,
-} from "@/components/persona-generation-section";
+import { type BatchGenerationRunView } from "@/components/persona-generation-section";
 import { PersonaVariantReviewGrid } from "@/components/persona-variant-review-grid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,6 +67,7 @@ import {
 import { ConfigFormCard } from "./config-form-card";
 import { TranscriptAttachmentDialog } from "./extraction-panel";
 import { ConfigShell } from "./config-shell";
+import { GenerationWorkspace } from "./generation-workspace";
 import { TranscriptsWorkspace } from "./transcripts-workspace";
 import { UsersWorkspace } from "./users-workspace";
 
@@ -1193,12 +1191,13 @@ export function PersonaConfigDetailPage({
         ) : null}
 
         {activeTab === "generation" ? (
-          <PersonaGenerationSection
-            axes={config.sharedAxes}
-            batchGenerationRun={batchGenerationRun ?? null}
+          <GenerationWorkspace
+            config={config}
+            isDraft={isDraft}
             canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
-            configStatus={resolvedStatus ?? config.status}
+            batchGenerationRun={batchGenerationRun ?? null}
             syntheticUsers={syntheticUserList}
+            selectedGenerationUserId={detailSearch.selectedGenerationUserId}
             onRegenerateUser={(syntheticUserId) =>
               regenerateSyntheticUser({ syntheticUserId })
             }
@@ -1208,6 +1207,7 @@ export function PersonaConfigDetailPage({
                 levelsPerAxis,
               })
             }
+            onSearchChange={onSearchChange}
           />
         ) : null}
 

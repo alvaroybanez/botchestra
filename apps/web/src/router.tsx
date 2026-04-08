@@ -124,6 +124,7 @@ export type PersonaConfigDetailSearch = {
   tab: PersonaConfigTabKey;
   selectedUserId?: string;
   selectedTranscriptId?: string;
+  selectedGenerationUserId?: string;
   forceSuggestAxesError?: boolean;
 };
 
@@ -149,10 +150,16 @@ function validatePersonaConfigDetailSearch(
       ? search.selectedTranscriptId
       : undefined;
 
+  const selectedGenerationUserId =
+    typeof search.selectedGenerationUserId === "string" && search.selectedGenerationUserId.length > 0
+      ? search.selectedGenerationUserId
+      : undefined;
+
   return {
     tab: isPersonaConfigTabKey(search.tab) ? search.tab : "overview",
     ...(selectedUserId ? { selectedUserId } : {}),
     ...(selectedTranscriptId ? { selectedTranscriptId } : {}),
+    ...(selectedGenerationUserId ? { selectedGenerationUserId } : {}),
     ...(forceSuggestAxesError ? { forceSuggestAxesError } : {}),
   };
 }
