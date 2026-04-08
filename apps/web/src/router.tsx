@@ -125,6 +125,8 @@ export type PersonaConfigDetailSearch = {
   selectedUserId?: string;
   selectedTranscriptId?: string;
   selectedGenerationUserId?: string;
+  selectedReviewStudyId?: string;
+  selectedVariantId?: string;
   forceSuggestAxesError?: boolean;
 };
 
@@ -155,11 +157,23 @@ function validatePersonaConfigDetailSearch(
       ? search.selectedGenerationUserId
       : undefined;
 
+  const selectedReviewStudyId =
+    typeof search.selectedReviewStudyId === "string" && search.selectedReviewStudyId.length > 0
+      ? search.selectedReviewStudyId
+      : undefined;
+
+  const selectedVariantId =
+    typeof search.selectedVariantId === "string" && search.selectedVariantId.length > 0
+      ? search.selectedVariantId
+      : undefined;
+
   return {
     tab: isPersonaConfigTabKey(search.tab) ? search.tab : "overview",
     ...(selectedUserId ? { selectedUserId } : {}),
     ...(selectedTranscriptId ? { selectedTranscriptId } : {}),
     ...(selectedGenerationUserId ? { selectedGenerationUserId } : {}),
+    ...(selectedReviewStudyId ? { selectedReviewStudyId } : {}),
+    ...(selectedVariantId ? { selectedVariantId } : {}),
     ...(forceSuggestAxesError ? { forceSuggestAxesError } : {}),
   };
 }

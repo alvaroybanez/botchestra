@@ -2416,9 +2416,9 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-detail?tab=review"],
     });
 
-    expect(reviewContainer.textContent).toContain("Accepted variants");
+    expect(reviewContainer.textContent).toContain("3 of 3 variants");
     expect(reviewContainer.textContent).toContain("Linked study");
-    expect(reviewContainer.textContent).toContain("Open study personas page");
+    expect(reviewContainer.textContent).toContain("Open study");
     expect(getVariantRows(reviewContainer)).toHaveLength(3);
   });
 

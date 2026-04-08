@@ -4,13 +4,10 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
 import { type BatchGenerationRunView } from "@/components/persona-generation-section";
-import { PersonaVariantReviewGrid } from "@/components/persona-variant-review-grid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { emptyStudyDetailSearch } from "@/routes/study-shared";
 import type { PersonaConfigDetailSearch } from "@/router";
+import { ReviewWorkspace } from "./review-workspace";
 import type {
   AxisFormValue,
   ConfigFormValue,
@@ -122,12 +119,12 @@ export function PersonaConfigDetailPage({
         estimatedCostUsd: number;
       }
     | undefined;
-  const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
+  const selectedReviewStudyId = detailSearch.selectedReviewStudyId;
   const configVariantReview = useQuery(
     api.personaVariantReview.getPackVariantReview,
-    selectedStudyId === null
+    selectedReviewStudyId === undefined
       ? { configId: typedConfigId }
-      : { configId: typedConfigId, studyId: selectedStudyId as Id<"studies"> },
+      : { configId: typedConfigId, studyId: selectedReviewStudyId as Id<"studies"> },
   ) as ConfigVariantReviewData | null | undefined;
   const startBatchGeneration = useMutation(api.batchGeneration.startBatchGeneration);
   const regenerateSyntheticUser = useMutation(api.batchGeneration.regenerateSyntheticUser);
@@ -236,15 +233,16 @@ export function PersonaConfigDetailPage({
     }
 
     const resolvedStudyId =
-      configVariantReview.selectedStudy?._id ?? configVariantReview.study?._id ?? null;
+      configVariantReview.selectedStudy?._id ?? configVariantReview.study?._id ?? undefined;
 
-    setSelectedStudyId((current) =>
-      current !== null &&
-      configVariantReview.studies.some((study) => study._id === current)
-        ? current
-        : resolvedStudyId,
-    );
-  }, [configVariantReview]);
+    const isCurrentValid =
+      selectedReviewStudyId !== undefined &&
+      configVariantReview.studies.some((study) => study._id === selectedReviewStudyId);
+
+    if (!isCurrentValid && resolvedStudyId !== selectedReviewStudyId) {
+      onSearchChange({ selectedReviewStudyId: resolvedStudyId });
+    }
+  }, [configVariantReview, selectedReviewStudyId, onSearchChange]);
 
   useEffect(() => {
     if (inlineToast === null) {
@@ -338,8 +336,6 @@ export function PersonaConfigDetailPage({
       : isDraft && syntheticUsers !== undefined && syntheticUserList.length === 0
       ? "Add at least one synthetic user before publishing this persona configuration."
       : null;
-  const selectedStudySummary =
-    configVariantReview?.selectedStudy ?? configVariantReview?.study ?? null;
   const attachedTranscriptIds = new Set(
     (configTranscripts ?? []).map((configTranscript) => String(configTranscript.transcriptId)),
   );
@@ -1214,9 +1210,9 @@ export function PersonaConfigDetailPage({
         {activeTab === "review" ? (
           <ReviewWorkspace
             configVariantReview={configVariantReview}
-            selectedStudyId={selectedStudyId}
-            selectedStudySummary={selectedStudySummary}
-            onStudyChange={setSelectedStudyId}
+            selectedVariantId={detailSearch.selectedVariantId}
+            selectedReviewStudyId={selectedReviewStudyId}
+            onSearchChange={onSearchChange}
           />
         ) : null}
       </ConfigShell>
@@ -1577,129 +1573,3 @@ function OverviewWorkspace({
   );
 }
 
-function ReviewWorkspace({
-  configVariantReview,
-  selectedStudyId,
-  selectedStudySummary,
-  onStudyChange,
-}: {
-  configVariantReview: ConfigVariantReviewData | null | undefined;
-  selectedStudyId: string | null;
-  selectedStudySummary: NonNullable<ConfigVariantReviewData["selectedStudy"]> | null;
-  onStudyChange: (studyId: string | null) => void;
-}) {
-  if (configVariantReview === undefined) {
-    return (
-      <LoadingCard
-        title="Variant Review"
-        body="Loading linked studies and accepted variants..."
-      />
-    );
-  }
-
-  if (configVariantReview === null) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Variant review unavailable</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            This persona configuration&apos;s variant review data could not be loaded for the
-            current organization.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (configVariantReview.studies.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No studies linked to this persona configuration</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Generate variants from a study that uses this published persona configuration,
-            then return here to review the accepted cohort.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <CardTitle>
-              {selectedStudySummary?.name ?? "Select a linked study"}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {selectedStudySummary
-                ? `${configVariantReview.variants.length} accepted variants available for review.`
-                : "Choose a linked study to review its accepted variants."}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:min-w-72">
-            <div className="grid gap-2">
-              <Label htmlFor="config-variant-study-filter">
-                Linked study
-              </Label>
-              <select
-                className={selectClassName}
-                id="config-variant-study-filter"
-                value={selectedStudyId ?? ""}
-                onChange={(event) =>
-                  onStudyChange(event.target.value || null)
-                }
-              >
-                {configVariantReview.studies.map((study) => (
-                  <option key={study._id} value={study._id}>
-                    {study.name} ({study.acceptedVariantCount} accepted)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedStudySummary ? (
-              <Button asChild variant="outline">
-                <Link
-                  params={{ studyId: selectedStudySummary._id }}
-                  search={emptyStudyDetailSearch}
-                  to="/studies/$studyId/personas"
-                >
-                  Open study personas page
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-        </CardHeader>
-        {selectedStudySummary ? (
-          <CardContent className="grid gap-4 sm:grid-cols-3">
-            <LocalSummaryValue
-              label="Study status"
-              value={selectedStudySummary.status}
-            />
-            <LocalSummaryValue
-              label="Run budget"
-              value={String(selectedStudySummary.runBudget)}
-            />
-            <LocalSummaryValue
-              label="Last updated"
-              value={formatTimestamp(selectedStudySummary.updatedAt)}
-            />
-          </CardContent>
-        ) : null}
-      </Card>
-
-      <PersonaVariantReviewGrid
-        emptyMessage="No accepted variants are available for the selected study yet. Generate variants from the study personas page first."
-        reviewData={configVariantReview}
-      />
-    </div>
-  );
-}
