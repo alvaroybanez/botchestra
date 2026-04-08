@@ -1,3 +1,4 @@
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,4 +131,58 @@ export function LocalSummaryValue({
       <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
     </div>
   );
+}
+
+interface WorkspaceErrorBoundaryProps {
+  resetKey: string;
+  children: ReactNode;
+}
+
+interface WorkspaceErrorBoundaryState {
+  error: Error | null;
+}
+
+export class WorkspaceErrorBoundary extends Component<
+  WorkspaceErrorBoundaryProps,
+  WorkspaceErrorBoundaryState
+> {
+  state: WorkspaceErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): WorkspaceErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Workspace render error:", error, info.componentStack);
+  }
+
+  componentDidUpdate(prevProps: WorkspaceErrorBoundaryProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Something went wrong</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This workspace encountered an error and could not render.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => this.setState({ error: null })}
+            >
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
 }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
+import { defaultPersonaConfigDetailSearch } from "@/router";
 import { NotFoundPlaceholder } from "@/routes/placeholders";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -475,6 +476,7 @@ export function TranscriptDetailPage({
                               <Link
                                 className="font-medium text-primary underline-offset-4 hover:underline"
                                 params={{ configId: configTranscript.config._id }}
+                                search={defaultPersonaConfigDetailSearch}
                                 to="/persona-configs/$configId"
                               >
                                 {configTranscript.config.name}
@@ -490,6 +492,7 @@ export function TranscriptDetailPage({
                             <Button asChild type="button" variant="outline">
                               <Link
                                 params={{ configId: configTranscript.config._id }}
+                                search={defaultPersonaConfigDetailSearch}
                                 to="/persona-configs/$configId"
                               >
                                 Open persona configuration

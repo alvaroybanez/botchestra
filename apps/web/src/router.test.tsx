@@ -2344,9 +2344,9 @@ describe("@botchestra/web routing", () => {
     );
     expect(links).toEqual(
       expect.arrayContaining([
-        "/persona-configs/config-draft",
-        "/persona-configs/config-published",
-        "/persona-configs/config-archived",
+        "/persona-configs/config-draft?tab=overview",
+        "/persona-configs/config-published?tab=overview",
+        "/persona-configs/config-archived?tab=overview",
       ]),
     );
   });
@@ -2394,22 +2394,32 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-detail"],
+      initialEntries: ["/persona-configs/config-detail?tab=overview"],
     });
 
     expect(container.textContent).toContain("Account Recovery Config");
     expect(container.textContent).toContain("Shared Axes");
-    expect(container.textContent).toContain("Digital confidence");
+    expect(hasInputWithValue(container, "Digital confidence")).toBe(true);
     expect(container.textContent).toContain("Audit Trail");
 
-    expect(container.textContent).toContain("Synthetic Users");
-    expect(container.textContent).toContain("Anxious new customer");
-    expect(container.textContent).toContain("Source: json_import");
+    const { container: usersContainer } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-detail?tab=users"],
+    });
 
-    expect(container.textContent).toContain("Accepted variants");
-    expect(container.textContent).toContain("Linked study");
-    expect(container.textContent).toContain("Open study personas page");
-    expect(getVariantRows(container)).toHaveLength(3);
+    expect(usersContainer.textContent).toContain("Anxious new customer");
+    expect(usersContainer.textContent).toContain("JSON import");
+    expect(usersContainer.textContent).toContain("1 of 1 users");
+
+    const { container: reviewContainer } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-detail?tab=review"],
+    });
+
+    expect(reviewContainer.textContent).toContain("3 of 3 variants");
+    expect(reviewContainer.textContent).toContain("Linked study");
+    expect(reviewContainer.textContent).toContain("Open study");
+    expect(getVariantRows(reviewContainer)).toHaveLength(3);
   });
 
   it("renders batch generation controls, estimates, and the empty state on draft configs", async () => {
@@ -2439,15 +2449,14 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-empty"],
+      initialEntries: ["/persona-configs/config-generation-empty?tab=generation"],
     });
 
-    expect(container.textContent).toContain("Synthetic User Generation");
-    expect(container.textContent).toContain("Generate Synthetic Users");
+    expect(container.textContent).toContain("Generation Controls");
     expect(container.textContent).toContain("2 axes x 3 levels = 9 synthetic users");
     expect(container.textContent).toContain("7,200 tokens");
     expect(container.textContent).toContain("$0.07");
-    expect(container.textContent).toContain("No generated synthetic users yet.");
+    expect(container.textContent).toContain("No synthetic users yet.");
   });
 
   it("updates batch generation granularity and starts generation with per-axis levels", async () => {
@@ -2477,7 +2486,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-start"],
+      initialEntries: ["/persona-configs/config-generation-start?tab=generation"],
     });
 
     await updateRadixSelect(document.body, "Support needs levels", "5 levels");
@@ -2581,25 +2590,27 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-progress"],
+      initialEntries: ["/persona-configs/config-generation-progress?tab=generation"],
     });
 
-    expect(container.textContent).toContain("Generation Progress");
+    expect(container.textContent).toContain("Run Progress");
     expect(container.textContent).toContain(
       "Generated 4 synthetic users with 1 failures.",
     );
-    expect(container.textContent).toContain("Generated Users Grid");
-    expect(container.textContent).toContain("Retry Failed");
+    expect(container.textContent).toContain("User Status");
+    expect(container.textContent).toContain("Retry 1 failed");
+    // Default view shows generated-only; expand to all sources to verify mixed badges
+    await clickButton(container, "Show all sources");
     expect(getTableCellText(container, "Alpha Profile", 3)).toBe("Generated");
     expect(getTableCellText(container, "Gamma Profile", 3)).toBe("Manual");
-    expect(getTableCellText(container, "Delta Profile", 3)).toBe("Transcript-derived");
+    expect(getTableCellText(container, "Delta Profile", 3)).toBe("Transcript");
 
-    await updateInput(container, 'input[aria-label="Search synthetic users"]', "Gamma");
+    await updateInput(container, 'input[aria-label="Search users"]', "Gamma");
     const generationGridTable = getGenerationGridTable(container);
     expect(generationGridTable.textContent).toContain("Gamma Profile");
     expect(generationGridTable.textContent).not.toContain("Alpha Profile");
 
-    await updateInput(container, 'input[aria-label="Search synthetic users"]', "");
+    await updateInput(container, 'input[aria-label="Search users"]', "");
 
     const completedRow = getTableRow(container, "Alpha Profile");
     await clickButton(completedRow, "Regenerate");
@@ -2614,7 +2625,7 @@ describe("@botchestra/web routing", () => {
       await rowDeferred.promise;
     });
 
-    await clickButton(container, "Retry Failed");
+    await clickButton(container, "Retry 1 failed");
 
     expect(regenerateSyntheticUserMock).toHaveBeenNthCalledWith(2, {
       syntheticUserId: "generated-failed",
@@ -2647,12 +2658,13 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-published"],
+      initialEntries: ["/persona-configs/config-generation-published?tab=generation"],
     });
 
-    expect(container.textContent).toContain("Synthetic User Generation");
-    expect(container.textContent).not.toContain("Generate Synthetic Users");
-    expect(container.textContent).not.toContain("Retry Failed");
+    expect(container.textContent).toContain("Run Progress");
+    expect(container.textContent).toContain("User Status");
+    expect(container.textContent).not.toContain("Generation Controls");
+    expect(container.textContent).not.toContain("Retry");
     expect(getButton(container, "Regenerate")).toBeUndefined();
   });
 
@@ -2807,9 +2819,9 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Apply selected");
 
-    expect(container.textContent).toContain("Human escalation preference");
-    expect(container.textContent).toContain("Issue urgency");
-    expect(container.textContent).not.toContain("Trust building");
+    expect(hasInputWithValue(container, "Human escalation preference")).toBe(true);
+    expect(hasInputWithValue(container, "Issue urgency")).toBe(true);
+    expect(hasInputWithValue(container, "Trust building")).toBe(false);
     expect(container.textContent).not.toContain("Review suggested axes");
   });
 
@@ -2923,7 +2935,7 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Import selected");
 
-    expect(container.textContent).toContain("Support channel preference");
+    expect(hasInputWithValue(container, "Support channel preference")).toBe(true);
     expect(container.textContent).toContain(
       "Skipped duplicate axis key: digital_confidence.",
     );
@@ -3030,14 +3042,13 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-with-transcripts"],
+      initialEntries: ["/persona-configs/config-with-transcripts?tab=transcripts"],
     });
 
-    expect(container.textContent).toContain("Attached Transcripts");
     expect(container.textContent).toContain("attached-call.txt");
-    expect(container.textContent).toContain("Attach transcripts");
+    expect(container.textContent).toContain("Attach");
 
-    await clickButton(container, "Attach transcripts");
+    await clickButton(container, "Attach");
     expect(document.body.textContent).toContain("Attach selected transcripts");
     const configAttachmentDialog = document.body.querySelector(
       'div[role="dialog"]',
@@ -3088,14 +3099,18 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-reviewer-transcripts"],
+      initialEntries: ["/persona-configs/config-reviewer-transcripts?tab=transcripts"],
       viewerRole: "reviewer",
     });
 
-    expect(container.textContent).toContain("Attached Transcripts");
     expect(container.textContent).toContain("reviewer-visible.txt");
-    expect(container.textContent).not.toContain("Attach transcripts");
-    expect(container.textContent).not.toContain("Detach");
+    // Reviewer should not see Attach/Detach action buttons (only the contextual notice)
+    expect(container.querySelector('button')).toBeDefined();
+    const buttonTexts = Array.from(container.querySelectorAll('button')).map(
+      (b) => b.textContent?.trim(),
+    );
+    expect(buttonTexts).not.toContain("Attach");
+    expect(buttonTexts).not.toContain("Detach");
   });
 
   it("runs auto-discover transcript extraction, shows results, applies personas, and links evidence snippets", async () => {
@@ -3197,7 +3212,7 @@ describe("@botchestra/web routing", () => {
 
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-transcript-extraction"],
+      initialEntries: ["/persona-configs/config-transcript-extraction?tab=transcripts"],
     });
 
     expect(container.textContent).toContain("Extract from Transcripts");
@@ -3333,7 +3348,7 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-guided-extraction"],
+      initialEntries: ["/persona-configs/config-guided-extraction?tab=transcripts"],
     });
 
     await clickButton(container, "Extract from Transcripts");
@@ -3375,6 +3390,296 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Support seeker");
   });
 
+  it("shows extraction processing state with per-transcript progress", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-extraction-processing" as Id<"personaConfigs">,
+      name: "Processing config",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-proc-1" as Id<"transcripts">,
+        originalFilename: "interview-alpha.txt",
+      }),
+      makeTranscript({
+        _id: "transcript-proc-2" as Id<"transcripts">,
+        originalFilename: "interview-beta.txt",
+      }),
+    ];
+    mockedConfigTranscriptsByPackId["config-extraction-processing"] = [
+      {
+        _id: "ct-proc-1",
+        configId: "config-extraction-processing",
+        transcriptId: "transcript-proc-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+      {
+        _id: "ct-proc-2",
+        configId: "config-extraction-processing",
+        transcriptId: "transcript-proc-2",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[1]!,
+      },
+    ];
+    mockedExtractionStatusByPackId["config-extraction-processing"] = {
+      configId: "config-extraction-processing",
+      mode: "auto_discover",
+      status: "processing",
+      guidedAxes: [],
+      proposedAxes: [],
+      archetypes: [],
+      totalTranscripts: 2,
+      processedTranscriptCount: 1,
+      currentTranscriptId: "transcript-proc-2",
+      succeededTranscriptIds: ["transcript-proc-1"],
+      failedTranscripts: [],
+      errorMessage: null,
+      startedBy: "researcher-1",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      completedAt: null,
+      transcriptSignals: [],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-extraction-processing?tab=transcripts"],
+    });
+
+    expect(container.textContent).toContain("Processing 1/2 transcripts");
+    expect(container.textContent).toContain("interview-alpha.txt");
+    expect(container.textContent).toContain("interview-beta.txt");
+    expect(container.textContent).toContain("Extraction in progress");
+  });
+
+  it("shows extraction failure state with error details and allows starting over", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-extraction-failed" as Id<"personaConfigs">,
+      name: "Failed extraction config",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-fail-1" as Id<"transcripts">,
+        originalFilename: "broken-interview.txt",
+      }),
+    ];
+    mockedConfigTranscriptsByPackId["config-extraction-failed"] = [
+      {
+        _id: "ct-fail-1",
+        configId: "config-extraction-failed",
+        transcriptId: "transcript-fail-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+    ];
+    mockedExtractionCostByPackId["config-extraction-failed"] = {
+      totalCharacters: 200,
+      estimatedTokens: 50,
+      estimatedCostUsd: 0.0005,
+    };
+    mockedExtractionStatusByPackId["config-extraction-failed"] = {
+      configId: "config-extraction-failed",
+      mode: "auto_discover",
+      status: "failed",
+      guidedAxes: [],
+      proposedAxes: [],
+      archetypes: [],
+      totalTranscripts: 1,
+      processedTranscriptCount: 0,
+      currentTranscriptId: null,
+      succeededTranscriptIds: [],
+      failedTranscripts: [
+        {
+          transcriptId: "transcript-fail-1",
+          error: "Model rate limit exceeded",
+        },
+      ],
+      errorMessage: "Extraction halted due to repeated failures.",
+      startedBy: "researcher-1",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      completedAt: null,
+      transcriptSignals: [],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-extraction-failed?tab=transcripts"],
+    });
+
+    expect(container.textContent).toContain("Extraction failed");
+    expect(container.textContent).toContain("Extraction halted due to repeated failures.");
+    expect(container.textContent).toContain("broken-interview.txt");
+    expect(container.textContent).toContain("Model rate limit exceeded");
+
+    // "Start over" resets to mode selection
+    delete mockedExtractionStatusByPackId["config-extraction-failed"];
+    await clickButton(container, "Start over");
+    expect(container.textContent).toContain("Auto-discover");
+    expect(container.textContent).toContain("Guided");
+  });
+
+  it("shows partial results when extraction completes with failures and allows applying successful archetypes", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-extraction-partial" as Id<"personaConfigs">,
+      name: "Partial extraction config",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-partial-1" as Id<"transcripts">,
+        originalFilename: "good-interview.txt",
+      }),
+      makeTranscript({
+        _id: "transcript-partial-2" as Id<"transcripts">,
+        originalFilename: "bad-interview.txt",
+      }),
+    ];
+    mockedConfigTranscriptsByPackId["config-extraction-partial"] = [
+      {
+        _id: "ct-partial-1",
+        configId: "config-extraction-partial",
+        transcriptId: "transcript-partial-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+      {
+        _id: "ct-partial-2",
+        configId: "config-extraction-partial",
+        transcriptId: "transcript-partial-2",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[1]!,
+      },
+    ];
+    mockedExtractionCostByPackId["config-extraction-partial"] = {
+      totalCharacters: 600,
+      estimatedTokens: 150,
+      estimatedCostUsd: 0.0015,
+    };
+    mockedExtractionStatusByPackId["config-extraction-partial"] = {
+      configId: "config-extraction-partial",
+      mode: "auto_discover",
+      status: "completed_with_failures",
+      guidedAxes: [],
+      proposedAxes: [
+        {
+          key: "patience_level",
+          label: "Patience level",
+          description: "Tolerance for slow or confusing interfaces.",
+          lowAnchor: "Impatient",
+          midAnchor: "Moderate",
+          highAnchor: "Very patient",
+          weight: 1,
+        },
+      ],
+      archetypes: [
+        {
+          name: "Patient explorer",
+          summary: "Takes time to understand each screen before moving on.",
+          axisValues: [{ key: "patience_level", value: 0.7 }],
+          evidenceSnippets: [
+            {
+              transcriptId: "transcript-partial-1",
+              quote: "I like to read everything on the page first.",
+              startChar: 0,
+              endChar: 45,
+            },
+          ],
+          contributingTranscriptIds: ["transcript-partial-1"],
+        },
+      ],
+      totalTranscripts: 2,
+      processedTranscriptCount: 2,
+      currentTranscriptId: null,
+      succeededTranscriptIds: ["transcript-partial-1"],
+      failedTranscripts: [
+        {
+          transcriptId: "transcript-partial-2",
+          error: "Transcript content was empty after preprocessing.",
+        },
+      ],
+      errorMessage: null,
+      startedBy: "researcher-1",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      completedAt: Date.now(),
+      transcriptSignals: [
+        {
+          _creationTime: Date.now(),
+          _id: "signal-partial-1",
+          configId: "config-extraction-partial",
+          transcriptId: "transcript-partial-1",
+          orgId: "researcher-1",
+          status: "completed",
+          signals: {
+            themes: ["thoroughness"],
+            attitudes: ["methodical"],
+            painPoints: ["information overload"],
+            decisionPatterns: ["reads before acting"],
+            evidenceSnippets: [
+              {
+                quote: "I like to read everything on the page first.",
+                startChar: 0,
+                endChar: 45,
+              },
+            ],
+          },
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-extraction-partial?tab=transcripts"],
+    });
+
+    // Partial results banner
+    expect(container.textContent).toContain("Partial results available");
+    expect(container.textContent).toContain("1 transcript failed");
+
+    // Successful archetype is visible and selected
+    expect(container.textContent).toContain("Patient explorer");
+    expect(container.textContent).toContain("Proposed axes");
+
+    // Per-transcript signal review shows successful signals
+    expect(container.textContent).toContain("thoroughness");
+    expect(container.textContent).toContain("methodical");
+
+    // Apply button works for partial results
+    await clickButton(container, "Apply to persona configuration");
+    expect(applyTranscriptDerivedSyntheticUsersMock).toHaveBeenCalledWith({
+      configId: "config-extraction-partial",
+      input: {
+        sharedAxes: [
+          {
+            key: "patience_level",
+            label: "Patience level",
+            description: "Tolerance for slow or confusing interfaces.",
+            lowAnchor: "Impatient",
+            midAnchor: "Moderate",
+            highAnchor: "Very patient",
+            weight: 1,
+          },
+        ],
+        archetypes: [
+          expect.objectContaining({
+            name: "Patient explorer",
+            evidenceSnippets: [
+              {
+                transcriptId: "transcript-partial-1",
+                quote: "I like to read everything on the page first.",
+              },
+            ],
+          }),
+        ],
+      },
+    });
+  });
+
   it("imports a config JSON from the list page and redirects to the imported config", async () => {
     mockedPackList = [];
 
@@ -3404,7 +3709,7 @@ describe("@botchestra/web routing", () => {
     expect(importJsonMock).toHaveBeenCalledWith({
       json: '{"name":"Imported Config","description":"Loaded from JSON"}',
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-configs/imported-config-id");
+    expect(getRouterLocationHref(router)).toBe("/persona-configs/imported-config-id?tab=overview");
   });
 
   it("creates a new config from the list page and redirects to the detail route", async () => {
@@ -3462,7 +3767,7 @@ describe("@botchestra/web routing", () => {
         ],
       },
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-configs/new-config-id");
+    expect(getRouterLocationHref(router)).toBe("/persona-configs/new-config-id?tab=overview");
   });
 
   it("shows publish confirmation and only mutates after confirmation", async () => {
@@ -3911,6 +4216,61 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Page not found");
     expect(container.textContent).toContain("Botchestra");
   });
+
+  it("pushes history for tab switches and replaces for in-tab selections on persona config detail", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-history" as Id<"personaConfigs">,
+      name: "History Test Config",
+    });
+    mockedSyntheticUsers = [
+      makeSyntheticUser({
+        _id: "user-hist-1" as Id<"syntheticUsers">,
+        name: "History User",
+        summary: "A user for testing history behavior.",
+      }),
+    ];
+    mockedPackVariantReview = makePackVariantReview();
+
+    const { container, history, router } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-history?tab=overview"],
+    });
+
+    expect(getRouterLocationHref(router)).toContain("tab=overview");
+    const initialLength = history.length;
+
+    // Switch tab to Users — should push (new history entry)
+    await clickButton(container, "Users");
+    expect(getRouterLocationHref(router)).toContain("tab=users");
+    expect(history.length).toBe(initialLength + 1);
+
+    // Click a user row within the Users tab — should replace (no new entry)
+    const userOption = container.querySelector("[role='option']");
+    expect(userOption).not.toBeNull();
+    const lengthBeforeSelection = history.length;
+    await act(async () => {
+      userOption!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(getRouterLocationHref(router)).toContain("selectedUserId=user-hist-1");
+    expect(history.length).toBe(lengthBeforeSelection);
+
+    // Switch tab to Generation — should push again
+    await clickButton(container, "Generation");
+    expect(getRouterLocationHref(router)).toContain("tab=generation");
+    expect(history.length).toBe(lengthBeforeSelection + 1);
+
+    // Go back — should return to Users tab
+    await act(async () => {
+      history.back();
+    });
+    expect(getRouterLocationHref(router)).toContain("tab=users");
+
+    // Go back again — should return to Overview tab
+    await act(async () => {
+      history.back();
+    });
+    expect(getRouterLocationHref(router)).toContain("tab=overview");
+  });
 });
 
 async function renderRoute({
@@ -3941,7 +4301,7 @@ async function renderRoute({
     await router.load();
   });
 
-  return { container, router };
+  return { container, history, router };
 }
 
 async function clickButton(root: ParentNode, text: string) {
@@ -3990,6 +4350,12 @@ async function updateInput(
     input!.dispatchEvent(new Event("input", { bubbles: true }));
     input!.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+function hasInputWithValue(root: ParentNode, value: string) {
+  return [...root.querySelectorAll<HTMLInputElement>("input")].some(
+    (input) => input.value === value,
+  );
 }
 
 async function updateSelect(

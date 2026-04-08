@@ -103,13 +103,79 @@ function validateTranscriptDetailSearch(search: Record<string, unknown>) {
     : {};
 }
 
-function validatePersonaConfigDetailSearch(search: Record<string, unknown>) {
+const personaConfigTabKeys = [
+  "overview",
+  "users",
+  "transcripts",
+  "generation",
+  "review",
+] as const;
+
+type PersonaConfigTabKey = (typeof personaConfigTabKeys)[number];
+
+function isPersonaConfigTabKey(value: unknown): value is PersonaConfigTabKey {
+  return (
+    typeof value === "string" &&
+    personaConfigTabKeys.includes(value as PersonaConfigTabKey)
+  );
+}
+
+export type PersonaConfigDetailSearch = {
+  tab: PersonaConfigTabKey;
+  selectedUserId?: string;
+  selectedTranscriptId?: string;
+  selectedGenerationUserId?: string;
+  selectedReviewStudyId?: string;
+  selectedVariantId?: string;
+  forceSuggestAxesError?: boolean;
+};
+
+export const defaultPersonaConfigDetailSearch: PersonaConfigDetailSearch = {
+  tab: "overview",
+};
+
+function validatePersonaConfigDetailSearch(
+  search: Record<string, unknown>,
+): PersonaConfigDetailSearch {
   const forceSuggestAxesError =
     search.forceSuggestAxesError === true ||
     search.forceSuggestAxesError === "true" ||
     search.forceSuggestAxesError === "1";
 
-  return forceSuggestAxesError ? { forceSuggestAxesError } : {};
+  const selectedUserId =
+    typeof search.selectedUserId === "string" && search.selectedUserId.length > 0
+      ? search.selectedUserId
+      : undefined;
+
+  const selectedTranscriptId =
+    typeof search.selectedTranscriptId === "string" && search.selectedTranscriptId.length > 0
+      ? search.selectedTranscriptId
+      : undefined;
+
+  const selectedGenerationUserId =
+    typeof search.selectedGenerationUserId === "string" && search.selectedGenerationUserId.length > 0
+      ? search.selectedGenerationUserId
+      : undefined;
+
+  const selectedReviewStudyId =
+    typeof search.selectedReviewStudyId === "string" && search.selectedReviewStudyId.length > 0
+      ? search.selectedReviewStudyId
+      : undefined;
+
+  const selectedVariantId =
+    typeof search.selectedVariantId === "string" && search.selectedVariantId.length > 0
+      ? search.selectedVariantId
+      : undefined;
+
+  return {
+    tab: isPersonaConfigTabKey(search.tab) ? search.tab : "overview",
+    ...(selectedUserId ? { selectedUserId } : {}),
+    ...(selectedTranscriptId ? { selectedTranscriptId } : {}),
+    ...(selectedGenerationUserId ? { selectedGenerationUserId } : {}),
+    ...(selectedReviewStudyId ? { selectedReviewStudyId } : {}),
+    ...(selectedVariantId ? { selectedVariantId } : {}),
+    ...(forceSuggestAxesError ? { forceSuggestAxesError } : {}),
+  };
 }
 
 const rootRoute = createRootRouteWithContext<AppRouterContext>()({
@@ -479,11 +545,23 @@ function TranscriptsPage() {
 
 function PersonaConfigDetailPage() {
   const { configId } = personaConfigDetailRoute.useParams();
-  const { forceSuggestAxesError } = personaConfigDetailRoute.useSearch();
+  const detailSearch = personaConfigDetailRoute.useSearch();
+  const navigate = personaConfigDetailRoute.useNavigate();
   return (
     <PersonaConfigDetailRoutePage
-      forceSuggestAxesError={forceSuggestAxesError}
       configId={configId}
+      detailSearch={detailSearch}
+      onSearchChange={(patch) => {
+        const isTabSwitch =
+          "tab" in patch && patch.tab !== detailSearch.tab;
+        void navigate({
+          ...(isTabSwitch ? {} : { replace: true }),
+          search: (previous) => ({
+            ...previous,
+            ...patch,
+          }),
+        });
+      }}
     />
   );
 }
