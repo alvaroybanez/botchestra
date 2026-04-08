@@ -128,6 +128,14 @@ export type ConfirmationState =
       title: string;
       description: string;
       confirmLabel: string;
+    }
+  | {
+      kind: "delete_synthetic_user";
+      syntheticUserId: Id<"syntheticUsers">;
+      userName: string;
+      title: string;
+      description: string;
+      confirmLabel: string;
     };
 
 export type ConfigVariantReviewData = VariantReviewData & {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import type {
   SyntheticUserFormValue,
   TranscriptId,
 } from "./types";
-import { emptySyntheticUserForm, textareaClassName } from "./helpers";
+import { emptySyntheticUserForm, parseEvidenceSnippets, textareaClassName } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Source-type metadata
@@ -145,10 +146,14 @@ function UserInspector({
   user,
   config,
   isDraft,
+  onEdit,
+  onDelete,
 }: {
   user: SyntheticUserDoc;
   config: PersonaConfigDoc;
   isDraft: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const isTranscriptDerived = user.sourceType === "transcript_derived";
   const axisValues = user.axisValues ?? [];
@@ -159,9 +164,21 @@ function UserInspector({
       <div>
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold">{user.name}</h3>
-          <Badge variant="outline" className="shrink-0">
-            {sourceTypeLabels[user.sourceType]}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {isDraft ? (
+              <>
+                <Button variant="outline" size="sm" onClick={onEdit}>
+                  Edit
+                </Button>
+                <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={onDelete}>
+                  Delete
+                </Button>
+              </>
+            ) : null}
+            <Badge variant="outline" className="shrink-0">
+              {sourceTypeLabels[user.sourceType]}
+            </Badge>
+          </div>
         </div>
         {user.generationStatus ? (
           <p className="mt-1 text-xs text-muted-foreground">
@@ -380,6 +397,99 @@ function InlineCreateForm({
 }
 
 // ---------------------------------------------------------------------------
+// Edit form (inline)
+// ---------------------------------------------------------------------------
+
+function InlineEditForm({
+  user,
+  isSaving,
+  onSave,
+  onCancel,
+}: {
+  user: SyntheticUserDoc;
+  isSaving: boolean;
+  onSave: (patch: { name: string; summary: string; evidenceSnippets: string[]; notes: string }) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(user.name);
+  const [summary, setSummary] = useState(user.summary);
+  const [evidenceText, setEvidenceText] = useState(
+    user.evidenceSnippets.join("\n"),
+  );
+  const [notes, setNotes] = useState(user.notes ?? "");
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSave({
+      name,
+      summary,
+      evidenceSnippets: parseEvidenceSnippets(evidenceText),
+      notes,
+    });
+  }
+
+  return (
+    <form
+      className="space-y-4 rounded-xl border bg-background p-4"
+      onSubmit={handleSubmit}
+    >
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium">Edit synthetic user</h4>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="edit-user-name">Name</Label>
+        <Input
+          id="edit-user-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          required
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="edit-user-summary">Summary</Label>
+        <textarea
+          id="edit-user-summary"
+          className={textareaClassName}
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
+          required
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="edit-user-evidence">Evidence snippets</Label>
+        <textarea
+          id="edit-user-evidence"
+          className={textareaClassName}
+          value={evidenceText}
+          onChange={(event) => setEvidenceText(event.target.value)}
+          placeholder="One snippet per line"
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="edit-user-notes">Notes</Label>
+        <textarea
+          id="edit-user-notes"
+          className={textareaClassName}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
+      </div>
+
+      <Button disabled={isSaving} type="submit">
+        {isSaving ? "Saving..." : "Save changes"}
+      </Button>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // UsersWorkspace (main export)
 // ---------------------------------------------------------------------------
 
@@ -393,6 +503,14 @@ interface UsersWorkspaceProps {
   selectedUserId: string | undefined;
   onToggleProtoForm: () => void;
   onCreateSyntheticUser: (event: React.FormEvent<HTMLFormElement>) => void;
+  onUpdateSyntheticUser: (
+    syntheticUserId: Id<"syntheticUsers">,
+    patch: { name: string; summary: string; evidenceSnippets: string[]; notes: string },
+  ) => Promise<void>;
+  onRequestDeleteSyntheticUser: (
+    syntheticUserId: Id<"syntheticUsers">,
+    userName: string,
+  ) => void;
   onSyntheticUserFormChange: (form: SyntheticUserFormValue) => void;
   onSearchChange: (patch: Partial<PersonaConfigDetailSearch>) => void;
 }
@@ -407,6 +525,8 @@ function UsersWorkspace({
   selectedUserId,
   onToggleProtoForm,
   onCreateSyntheticUser,
+  onUpdateSyntheticUser,
+  onRequestDeleteSyntheticUser,
   onSyntheticUserFormChange,
   onSearchChange,
 }: UsersWorkspaceProps) {
@@ -415,6 +535,7 @@ function UsersWorkspace({
     SyntheticUserDoc["sourceType"] | ""
   >("");
   const [sortKey, setSortKey] = useState<SortKey>("source");
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const filteredUsers = useMemo(
     () =>
@@ -593,11 +714,32 @@ function UsersWorkspace({
             onChange={onSyntheticUserFormChange}
             onClose={onToggleProtoForm}
           />
+        ) : selectedUser && editingUserId === selectedUser._id ? (
+          <InlineEditForm
+            key={selectedUser._id}
+            user={selectedUser}
+            isSaving={isSavingSyntheticUser}
+            onSave={async (patch) => {
+              await onUpdateSyntheticUser(
+                selectedUser._id as Id<"syntheticUsers">,
+                patch,
+              );
+              setEditingUserId(null);
+            }}
+            onCancel={() => setEditingUserId(null)}
+          />
         ) : selectedUser ? (
           <UserInspector
             user={selectedUser}
             config={config}
             isDraft={isDraft}
+            onEdit={() => setEditingUserId(selectedUser._id)}
+            onDelete={() =>
+              onRequestDeleteSyntheticUser(
+                selectedUser._id as Id<"syntheticUsers">,
+                selectedUser.name,
+              )
+            }
           />
         ) : (
           <div className="flex h-full items-center justify-center">

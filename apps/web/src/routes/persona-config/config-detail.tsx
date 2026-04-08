@@ -130,6 +130,8 @@ export function PersonaConfigDetailPage({
   const regenerateSyntheticUser = useMutation(api.batchGeneration.regenerateSyntheticUser);
   const updateDraft = useMutation(api.personaConfigs.updateDraft);
   const createSyntheticUser = useMutation(api.personaConfigs.createSyntheticUser);
+  const updateSyntheticUserMutation = useMutation(api.personaConfigs.updateSyntheticUser);
+  const deleteSyntheticUserMutation = useMutation(api.personaConfigs.deleteSyntheticUser);
   const publishConfig = useMutation(api.personaConfigs.publish);
   const archiveConfig = useMutation(api.personaConfigs.archive);
   const applyTranscriptDerivedSyntheticUsers = useMutation(
@@ -464,6 +466,48 @@ export function PersonaConfigDetailPage({
     }
   }
 
+  async function handleUpdateSyntheticUser(
+    syntheticUserId: Id<"syntheticUsers">,
+    patch: { name: string; summary: string; evidenceSnippets: string[]; notes: string },
+  ) {
+    if (!config) return;
+
+    setActionError(null);
+    setSaveMessage(null);
+    setIsSavingSyntheticUser(true);
+
+    try {
+      await updateSyntheticUserMutation({
+        syntheticUserId,
+        patch: {
+          name: patch.name,
+          summary: patch.summary,
+          evidenceSnippets: patch.evidenceSnippets,
+          ...(patch.notes.trim() ? { notes: patch.notes.trim() } : { notes: "" }),
+        },
+      });
+      setSaveMessage("Synthetic user updated.");
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Could not update synthetic user."));
+    } finally {
+      setIsSavingSyntheticUser(false);
+    }
+  }
+
+  function handleRequestDeleteSyntheticUser(
+    syntheticUserId: Id<"syntheticUsers">,
+    userName: string,
+  ) {
+    setConfirmationState({
+      kind: "delete_synthetic_user",
+      syntheticUserId,
+      userName,
+      title: "Delete synthetic user",
+      description: `Are you sure you want to delete "${userName}"? This action cannot be undone.`,
+      confirmLabel: "Delete",
+    });
+  }
+
   async function handleConfirmAction() {
     if (!config || !confirmationState) {
       return;
@@ -478,15 +522,22 @@ export function PersonaConfigDetailPage({
         await publishConfig({ configId: config._id });
         setOptimisticStatus("published");
         setSaveMessage("Persona configuration published.");
-      } else {
+      } else if (confirmationState.kind === "archive") {
         await archiveConfig({ configId: config._id });
         setOptimisticStatus("archived");
         setSaveMessage("Persona configuration archived.");
+      } else if (confirmationState.kind === "delete_synthetic_user") {
+        const deletedId = confirmationState.syntheticUserId;
+        await deleteSyntheticUserMutation({ syntheticUserId: deletedId });
+        setSaveMessage(`Synthetic user "${confirmationState.userName}" deleted.`);
+        if (detailSearch.selectedUserId === deletedId) {
+          onSearchChange({ selectedUserId: undefined });
+        }
       }
 
       setConfirmationState(null);
     } catch (error) {
-      setActionError(getErrorMessage(error, "Could not update persona configuration status."));
+      setActionError(getErrorMessage(error, "Could not complete the requested action."));
     } finally {
       setIsConfirmingAction(false);
     }
@@ -1127,6 +1178,8 @@ export function PersonaConfigDetailPage({
             selectedUserId={detailSearch.selectedUserId}
             onToggleProtoForm={() => setIsProtoFormOpen((current) => !current)}
             onCreateSyntheticUser={handleCreateSyntheticUser}
+            onUpdateSyntheticUser={handleUpdateSyntheticUser}
+            onRequestDeleteSyntheticUser={handleRequestDeleteSyntheticUser}
             onSyntheticUserFormChange={setSyntheticUserForm}
             onSearchChange={onSearchChange}
           />
