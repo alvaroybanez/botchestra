@@ -1824,4 +1824,103 @@ describe("persona config detail workspaces", () => {
       expect(container.textContent).toContain("Orientation");
     });
   });
+
+  describe("error boundary", () => {
+    // Build a configVariantReview where parent-level accesses succeed
+    // but ReviewWorkspaceInner throws when accessing config.sharedAxes
+    function makeCrashingReviewData(): ConfigReviewData {
+      const study = {
+        _id: "study-1",
+        name: "Crash study",
+        status: "persona_review",
+        runBudget: 64,
+        updatedAt: Date.now(),
+      };
+      return {
+        study,
+        selectedStudy: study,
+        config: {
+          _id: "config-1",
+          name: "Test Config",
+          status: "published",
+          get sharedAxes(): never {
+            throw new Error("Simulated workspace crash");
+          },
+        },
+        syntheticUsers: [{ _id: "user-1", name: "U", summary: "S" }],
+        variants: [],
+        studies: [{ ...study, acceptedVariantCount: 0 }],
+      } as unknown as ConfigReviewData;
+    }
+
+    it("shows error fallback when a workspace throws, without crashing shell", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = [makeSyntheticUser()];
+      mockedPackVariantReview = makeCrashingReviewData();
+
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=review",
+      ]);
+
+      // Shell still renders
+      expect(container.textContent).toContain("Test Config");
+      const tabs = container.querySelectorAll('[role="tab"]');
+      expect(tabs).toHaveLength(5);
+
+      // Error fallback renders inside the tabpanel
+      expect(container.textContent).toContain("Something went wrong");
+      expect(container.textContent).toContain("Try again");
+
+      spy.mockRestore();
+    });
+
+    it("resets error state when clicking Try again", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = [makeSyntheticUser()];
+      mockedPackVariantReview = makeCrashingReviewData();
+
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=review",
+      ]);
+
+      expect(container.textContent).toContain("Something went wrong");
+
+      // Click "Try again" — boundary resets, workspace throws again
+      await clickButton(container, "Try again");
+
+      // Still showing error (workspace still throws)
+      expect(container.textContent).toContain("Something went wrong");
+      // Shell is still intact
+      expect(container.textContent).toContain("Test Config");
+
+      spy.mockRestore();
+    });
+
+    it("resets error state when switching tabs", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = [makeSyntheticUser()];
+      mockedPackVariantReview = makeCrashingReviewData();
+
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=review",
+      ]);
+
+      expect(container.textContent).toContain("Something went wrong");
+
+      // Switch to overview tab — error resets because resetKey changes
+      await clickButton(container, "Overview");
+
+      // Overview renders normally (no error fallback)
+      expect(container.textContent).not.toContain("Something went wrong");
+      expect(container.textContent).toContain("Orientation");
+
+      spy.mockRestore();
+    });
+  });
 });

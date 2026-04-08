@@ -56,6 +56,7 @@ import {
   LoadingCard,
   LoadingSpinner,
   LocalSummaryValue,
+  WorkspaceErrorBoundary,
 } from "./shared-ui";
 import {
   AxisLibraryImportDialog,
@@ -1130,140 +1131,142 @@ export function PersonaConfigDetailPage({
           })
         }
       >
-        {activeTab === "overview" ? (
-          <OverviewWorkspace
-            config={config}
-            isDraft={isDraft}
-            resolvedStatus={resolvedStatus ?? config.status}
-            syntheticUserCount={syntheticUserList.length}
-            transcriptCount={(configTranscripts ?? []).length}
-            batchGenerationRun={batchGenerationRun ?? null}
-            draftForm={draftForm}
-            isSavingDraft={isSavingDraft}
-            resolvedAxes={resolvedAxes}
-            canSuggestAxes={canSuggestAxes}
-            isSuggestingAxes={isSuggestingAxes}
-            suggestionError={suggestionError}
-            isSuggestionPanelOpen={isSuggestionPanelOpen}
-            suggestedAxes={suggestedAxes}
-            selectedSuggestionCount={selectedSuggestionCount}
-            onSaveDraft={handleSaveDraft}
-            onDraftFormChange={setDraftForm}
-            onSuggestAxes={() => void handleSuggestAxes()}
-            onOpenAxisLibrary={() => {
-              setSelectedLibraryAxisIds([]);
-              setIsAxisLibraryOpen(true);
-            }}
-            onSuggestionSelectionToggle={handleSuggestionSelectionToggle}
-            onSuggestionEditToggle={handleSuggestionEditToggle}
-            onSuggestionAxisChange={handleSuggestionAxisChange}
-            onDismissSuggestions={handleDismissSuggestions}
-            onApplySuggestedAxes={handleApplySuggestedAxes}
-            formatTimestamp={formatTimestamp}
-          />
-        ) : null}
+        <WorkspaceErrorBoundary resetKey={activeTab}>
+          {activeTab === "overview" ? (
+            <OverviewWorkspace
+              config={config}
+              isDraft={isDraft}
+              resolvedStatus={resolvedStatus ?? config.status}
+              syntheticUserCount={syntheticUserList.length}
+              transcriptCount={(configTranscripts ?? []).length}
+              batchGenerationRun={batchGenerationRun ?? null}
+              draftForm={draftForm}
+              isSavingDraft={isSavingDraft}
+              resolvedAxes={resolvedAxes}
+              canSuggestAxes={canSuggestAxes}
+              isSuggestingAxes={isSuggestingAxes}
+              suggestionError={suggestionError}
+              isSuggestionPanelOpen={isSuggestionPanelOpen}
+              suggestedAxes={suggestedAxes}
+              selectedSuggestionCount={selectedSuggestionCount}
+              onSaveDraft={handleSaveDraft}
+              onDraftFormChange={setDraftForm}
+              onSuggestAxes={() => void handleSuggestAxes()}
+              onOpenAxisLibrary={() => {
+                setSelectedLibraryAxisIds([]);
+                setIsAxisLibraryOpen(true);
+              }}
+              onSuggestionSelectionToggle={handleSuggestionSelectionToggle}
+              onSuggestionEditToggle={handleSuggestionEditToggle}
+              onSuggestionAxisChange={handleSuggestionAxisChange}
+              onDismissSuggestions={handleDismissSuggestions}
+              onApplySuggestedAxes={handleApplySuggestedAxes}
+              formatTimestamp={formatTimestamp}
+            />
+          ) : null}
 
-        {activeTab === "users" ? (
-          <UsersWorkspace
-            config={config}
-            isDraft={isDraft}
-            syntheticUserList={syntheticUsers}
-            syntheticUserForm={syntheticUserForm}
-            isProtoFormOpen={isProtoFormOpen}
-            isSavingSyntheticUser={isSavingSyntheticUser}
-            selectedUserId={detailSearch.selectedUserId}
-            onToggleProtoForm={() => setIsProtoFormOpen((current) => !current)}
-            onCreateSyntheticUser={handleCreateSyntheticUser}
-            onUpdateSyntheticUser={handleUpdateSyntheticUser}
-            onRequestDeleteSyntheticUser={handleRequestDeleteSyntheticUser}
-            onSyntheticUserFormChange={setSyntheticUserForm}
-            onSearchChange={onSearchChange}
-          />
-        ) : null}
+          {activeTab === "users" ? (
+            <UsersWorkspace
+              config={config}
+              isDraft={isDraft}
+              syntheticUserList={syntheticUsers}
+              syntheticUserForm={syntheticUserForm}
+              isProtoFormOpen={isProtoFormOpen}
+              isSavingSyntheticUser={isSavingSyntheticUser}
+              selectedUserId={detailSearch.selectedUserId}
+              onToggleProtoForm={() => setIsProtoFormOpen((current) => !current)}
+              onCreateSyntheticUser={handleCreateSyntheticUser}
+              onUpdateSyntheticUser={handleUpdateSyntheticUser}
+              onRequestDeleteSyntheticUser={handleRequestDeleteSyntheticUser}
+              onSyntheticUserFormChange={setSyntheticUserForm}
+              onSearchChange={onSearchChange}
+            />
+          ) : null}
 
-        {activeTab === "transcripts" ? (
-          <TranscriptsWorkspace
-            config={config}
-            isDraft={isDraft}
-            canManageConfigTranscripts={canManageConfigTranscripts}
-            configTranscripts={configTranscripts ?? undefined}
-            extractionStatus={extractionStatus}
-            extractionButtonLabel={extractionButtonLabel}
-            canOpenExtraction={canOpenExtraction}
-            detachingTranscriptId={detachingTranscriptId}
-            isExtractionPanelOpen={isExtractionPanelOpen}
-            extractionMode={extractionMode}
-            extractionStep={extractionStep}
-            extractionError={extractionError}
-            extractionNotice={extractionNotice}
-            extractionCostEstimate={extractionCostEstimate}
-            isStartingExtraction={isStartingExtraction}
-            isApplyingExtractionResults={isApplyingExtractionResults}
-            guidedExtractionAxes={guidedExtractionAxes}
-            reviewArchetypes={reviewArchetypes}
-            activeReviewProposedAxes={activeReviewProposedAxes}
-            extractionSharedAxes={extractionSharedAxes}
-            selectedExtractionArchetypeCount={selectedExtractionArchetypeCount}
-            transcriptFilenameById={transcriptFilenameById}
-            discardingArchetypeId={discardingArchetypeId}
-            selectedTranscriptId={detailSearch.selectedTranscriptId}
-            onOpenTranscriptPicker={() => setIsTranscriptPickerOpen(true)}
-            onOpenExtractionPanel={handleOpenExtractionPanel}
-            onDetachTranscript={handleDetachTranscript}
-            onCloseExtractionPanel={() => setIsExtractionPanelOpen(false)}
-            onSelectExtractionMode={handleSelectExtractionMode}
-            onContinueToExtractionCost={handleContinueToExtractionCost}
-            onBackFromExtractionCost={handleBackFromExtractionCost}
-            onStartExtraction={handleStartExtraction}
-            onResetExtractionWizard={handleResetExtractionWizard}
-            onGuidedAxisChange={handleGuidedAxisChange}
-            onRemoveGuidedAxis={handleRemoveGuidedAxis}
-            onAddGuidedAxis={() =>
-              setGuidedExtractionAxes((current) => [...current, emptyAxis()])
-            }
-            onToggleArchetypeSelected={handleToggleReviewArchetypeSelection}
-            onToggleArchetypeEdit={handleToggleReviewArchetypeEdit}
-            onUpdateArchetype={handleReviewArchetypeChange}
-            onMergeSelectedArchetypes={handleMergeSelectedArchetypes}
-            onDiscardArchetype={setDiscardingArchetypeId}
-            onConfirmDiscardArchetype={handleConfirmDiscardArchetype}
-            onProposedAxisChange={handleReviewAxisChange}
-            onProposedAxisToggleEdit={handleToggleReviewAxisEdit}
-            onProposedAxisToggleRemoved={handleReviewAxisRemovalToggle}
-            onApplyExtractionResults={handleApplyTranscriptExtractionResults}
-            onSearchChange={onSearchChange}
-          />
-        ) : null}
+          {activeTab === "transcripts" ? (
+            <TranscriptsWorkspace
+              config={config}
+              isDraft={isDraft}
+              canManageConfigTranscripts={canManageConfigTranscripts}
+              configTranscripts={configTranscripts ?? undefined}
+              extractionStatus={extractionStatus}
+              extractionButtonLabel={extractionButtonLabel}
+              canOpenExtraction={canOpenExtraction}
+              detachingTranscriptId={detachingTranscriptId}
+              isExtractionPanelOpen={isExtractionPanelOpen}
+              extractionMode={extractionMode}
+              extractionStep={extractionStep}
+              extractionError={extractionError}
+              extractionNotice={extractionNotice}
+              extractionCostEstimate={extractionCostEstimate}
+              isStartingExtraction={isStartingExtraction}
+              isApplyingExtractionResults={isApplyingExtractionResults}
+              guidedExtractionAxes={guidedExtractionAxes}
+              reviewArchetypes={reviewArchetypes}
+              activeReviewProposedAxes={activeReviewProposedAxes}
+              extractionSharedAxes={extractionSharedAxes}
+              selectedExtractionArchetypeCount={selectedExtractionArchetypeCount}
+              transcriptFilenameById={transcriptFilenameById}
+              discardingArchetypeId={discardingArchetypeId}
+              selectedTranscriptId={detailSearch.selectedTranscriptId}
+              onOpenTranscriptPicker={() => setIsTranscriptPickerOpen(true)}
+              onOpenExtractionPanel={handleOpenExtractionPanel}
+              onDetachTranscript={handleDetachTranscript}
+              onCloseExtractionPanel={() => setIsExtractionPanelOpen(false)}
+              onSelectExtractionMode={handleSelectExtractionMode}
+              onContinueToExtractionCost={handleContinueToExtractionCost}
+              onBackFromExtractionCost={handleBackFromExtractionCost}
+              onStartExtraction={handleStartExtraction}
+              onResetExtractionWizard={handleResetExtractionWizard}
+              onGuidedAxisChange={handleGuidedAxisChange}
+              onRemoveGuidedAxis={handleRemoveGuidedAxis}
+              onAddGuidedAxis={() =>
+                setGuidedExtractionAxes((current) => [...current, emptyAxis()])
+              }
+              onToggleArchetypeSelected={handleToggleReviewArchetypeSelection}
+              onToggleArchetypeEdit={handleToggleReviewArchetypeEdit}
+              onUpdateArchetype={handleReviewArchetypeChange}
+              onMergeSelectedArchetypes={handleMergeSelectedArchetypes}
+              onDiscardArchetype={setDiscardingArchetypeId}
+              onConfirmDiscardArchetype={handleConfirmDiscardArchetype}
+              onProposedAxisChange={handleReviewAxisChange}
+              onProposedAxisToggleEdit={handleToggleReviewAxisEdit}
+              onProposedAxisToggleRemoved={handleReviewAxisRemovalToggle}
+              onApplyExtractionResults={handleApplyTranscriptExtractionResults}
+              onSearchChange={onSearchChange}
+            />
+          ) : null}
 
-        {activeTab === "generation" ? (
-          <GenerationWorkspace
-            config={config}
-            isDraft={isDraft}
-            canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
-            batchGenerationRun={batchGenerationRun ?? null}
-            syntheticUsers={syntheticUsers}
-            selectedGenerationUserId={detailSearch.selectedGenerationUserId}
-            onRegenerateUser={(syntheticUserId) =>
-              regenerateSyntheticUser({ syntheticUserId })
-            }
-            onStartGeneration={(levelsPerAxis) =>
-              startBatchGeneration({
-                configId: config._id,
-                levelsPerAxis,
-              })
-            }
-            onSearchChange={onSearchChange}
-          />
-        ) : null}
+          {activeTab === "generation" ? (
+            <GenerationWorkspace
+              config={config}
+              isDraft={isDraft}
+              canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
+              batchGenerationRun={batchGenerationRun ?? null}
+              syntheticUsers={syntheticUsers}
+              selectedGenerationUserId={detailSearch.selectedGenerationUserId}
+              onRegenerateUser={(syntheticUserId) =>
+                regenerateSyntheticUser({ syntheticUserId })
+              }
+              onStartGeneration={(levelsPerAxis) =>
+                startBatchGeneration({
+                  configId: config._id,
+                  levelsPerAxis,
+                })
+              }
+              onSearchChange={onSearchChange}
+            />
+          ) : null}
 
-        {activeTab === "review" ? (
-          <ReviewWorkspace
-            configVariantReview={configVariantReview}
-            selectedVariantId={detailSearch.selectedVariantId}
-            selectedReviewStudyId={selectedReviewStudyId}
-            onSearchChange={onSearchChange}
-          />
-        ) : null}
+          {activeTab === "review" ? (
+            <ReviewWorkspace
+              configVariantReview={configVariantReview}
+              selectedVariantId={detailSearch.selectedVariantId}
+              selectedReviewStudyId={selectedReviewStudyId}
+              onSearchChange={onSearchChange}
+            />
+          ) : null}
+        </WorkspaceErrorBoundary>
       </ConfigShell>
 
       <ConfirmationDialog
