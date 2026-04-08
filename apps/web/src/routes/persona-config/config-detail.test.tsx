@@ -1293,6 +1293,106 @@ describe("persona config detail workspaces", () => {
       expect(getButton(container, "Retry 1 failed")).toBeDefined();
     });
 
+    it("reports partial success and failure when some retries fail", async () => {
+      mockedPackDetail = makePack({
+        _id: "config-gen-partial" as Id<"personaConfigs">,
+      });
+      mockedSyntheticUsers = [
+        makeSyntheticUser({
+          _id: "gen-ok" as Id<"syntheticUsers">,
+          configId: "config-gen-partial" as Id<"personaConfigs">,
+          name: "Will Succeed",
+          sourceType: "generated",
+          generationStatus: "failed",
+          generationError: "Timed out.",
+        }),
+        makeSyntheticUser({
+          _id: "gen-bad" as Id<"syntheticUsers">,
+          configId: "config-gen-partial" as Id<"personaConfigs">,
+          name: "Will Fail",
+          sourceType: "generated",
+          generationStatus: "failed",
+          generationError: "Timed out.",
+        }),
+      ];
+
+      // First call succeeds, second rejects
+      regenerateSyntheticUserMock
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-gen-partial?tab=generation",
+      ]);
+
+      const retryButton = getButton(container, "Retry 2 failed");
+      expect(retryButton).toBeDefined();
+
+      await act(async () => {
+        retryButton!.dispatchEvent(
+          new MouseEvent("click", { bubbles: true }),
+        );
+      });
+
+      // Wait for Promise.allSettled to resolve
+      await act(async () => {});
+
+      // Partial success notice
+      expect(container.textContent).toContain(
+        "Queued regeneration for 1 of 2 synthetic users.",
+      );
+      // Partial failure error
+      expect(container.textContent).toContain("Network error");
+    });
+
+    it("reports all-failed when every retry attempt rejects", async () => {
+      mockedPackDetail = makePack({
+        _id: "config-gen-allfail" as Id<"personaConfigs">,
+      });
+      mockedSyntheticUsers = [
+        makeSyntheticUser({
+          _id: "gen-f1" as Id<"syntheticUsers">,
+          configId: "config-gen-allfail" as Id<"personaConfigs">,
+          name: "Fail One",
+          sourceType: "generated",
+          generationStatus: "failed",
+          generationError: "Err.",
+        }),
+        makeSyntheticUser({
+          _id: "gen-f2" as Id<"syntheticUsers">,
+          configId: "config-gen-allfail" as Id<"personaConfigs">,
+          name: "Fail Two",
+          sourceType: "generated",
+          generationStatus: "failed",
+          generationError: "Err.",
+        }),
+      ];
+
+      regenerateSyntheticUserMock
+        .mockRejectedValueOnce(new Error("Server error"))
+        .mockRejectedValueOnce(new Error("Server error"));
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-gen-allfail?tab=generation",
+      ]);
+
+      const retryButton = getButton(container, "Retry 2 failed");
+      expect(retryButton).toBeDefined();
+
+      await act(async () => {
+        retryButton!.dispatchEvent(
+          new MouseEvent("click", { bubbles: true }),
+        );
+      });
+
+      await act(async () => {});
+
+      // All-failed error
+      expect(container.textContent).toContain("Server error");
+      // No success notice
+      expect(container.textContent).not.toContain("Queued regeneration");
+    });
+
     it("supports keyboard navigation in user status table", async () => {
       mockedPackDetail = makePack({
         _id: "config-gen-kb" as Id<"personaConfigs">,

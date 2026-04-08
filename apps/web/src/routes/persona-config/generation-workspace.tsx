@@ -787,16 +787,40 @@ function GenerationWorkspaceInner({
     ]);
 
     try {
-      await Promise.all(failedIds.map((id) => onRegenerateUser(id)));
-      setGenerationNotice(
-        failedIds.length === 1
-          ? "Queued regeneration for 1 failed synthetic user."
-          : `Queued regeneration for ${failedIds.length} failed synthetic users.`,
+      const results = await Promise.allSettled(
+        failedIds.map((id) => onRegenerateUser(id)),
       );
-    } catch (err) {
-      setGenerationError(
-        getErrorMessage(err, "Could not retry the failed synthetic users."),
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      const failures = results.filter(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
       );
+
+      if (failures.length === 0) {
+        setGenerationNotice(
+          succeeded === 1
+            ? "Queued regeneration for 1 failed synthetic user."
+            : `Queued regeneration for ${succeeded} failed synthetic users.`,
+        );
+      } else if (succeeded === 0) {
+        const firstReason = failures[0]?.reason;
+        setGenerationError(
+          getErrorMessage(
+            firstReason,
+            `All ${failures.length} retry attempts failed.`,
+          ),
+        );
+      } else {
+        setGenerationNotice(
+          `Queued regeneration for ${succeeded} of ${failedIds.length} synthetic users.`,
+        );
+        const firstReason = failures[0]?.reason;
+        setGenerationError(
+          getErrorMessage(
+            firstReason,
+            `${failures.length} of ${failedIds.length} retry attempts failed.`,
+          ),
+        );
+      }
     } finally {
       setIsRetryingFailed(false);
       setRegeneratingUserIds((cur) =>
