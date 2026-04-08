@@ -88,10 +88,10 @@ function TranscriptListRow({
   const { transcript } = configTranscript;
 
   return (
-    <button
-      type="button"
+    <div
       aria-selected={isSelected}
       role="option"
+      tabIndex={-1}
       className={cn(
         "w-full cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors",
         "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -100,6 +100,12 @@ function TranscriptListRow({
           : "border-transparent bg-background",
       )}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-sm font-medium">
@@ -114,7 +120,7 @@ function TranscriptListRow({
           ? `Participant ${transcript.metadata.participantId}`
           : "No participant ID"}
       </p>
-    </button>
+    </div>
   );
 }
 

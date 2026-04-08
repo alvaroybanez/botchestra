@@ -391,12 +391,14 @@ function ReviewWorkspaceInner({
           ) : (
             <div
               className="h-full overflow-auto"
-              role="grid"
-              aria-label="Accepted variants"
-              tabIndex={0}
               onKeyDown={handleKeyDown}
             >
-              <table className="min-w-full border-collapse text-left text-sm">
+              <table
+                className="min-w-full border-collapse text-left text-sm"
+                role="grid"
+                aria-label="Accepted variants"
+                tabIndex={0}
+              >
                 <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b">
                     <DenseHeader>User</DenseHeader>
@@ -632,7 +634,10 @@ function SortableHeader({
 }) {
   const isActive = sortKey === activeSortKey;
   return (
-    <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <th
+      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+      aria-sort={isActive ? (sortDirection === "desc" ? "descending" : "ascending") : "none"}
+    >
       <button
         type="button"
         className="font-medium text-foreground hover:text-primary"

@@ -398,7 +398,7 @@ function UserStatusTableZone({
     return users;
   }, [syntheticUsers, showAllSources, searchText]);
 
-  const tableRef = useRef<HTMLTableSectionElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   const handleTableKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -485,7 +485,7 @@ function UserStatusTableZone({
       </div>
 
       <div className="overflow-x-auto" onKeyDown={handleTableKeyDown}>
-        <Table>
+        <Table ref={tableRef} tabIndex={0} role="grid">
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[140px]">Name</TableHead>
@@ -496,7 +496,7 @@ function UserStatusTableZone({
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody ref={tableRef} tabIndex={0} role="grid">
+          <TableBody>
             {visibleUsers.length === 0 ? (
               <TableRow>
                 <TableCell className="text-muted-foreground" colSpan={6}>

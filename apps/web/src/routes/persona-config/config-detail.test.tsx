@@ -1467,6 +1467,126 @@ describe("persona config detail workspaces", () => {
   });
 
   // -----------------------------------------------------------------------
+  // ARIA Semantics
+  // -----------------------------------------------------------------------
+  describe("ARIA semantics", () => {
+    it("renders user list items as div[role=option], not button", async () => {
+      mockedPackDetail = makePack();
+      mockedSyntheticUsers = [
+        makeSyntheticUser({
+          _id: "user-aria" as Id<"syntheticUsers">,
+          name: "ARIA User",
+          summary: "Testing element.",
+        }),
+      ];
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=users",
+      ]);
+
+      const options = container.querySelectorAll('[role="option"]');
+      expect(options.length).toBeGreaterThan(0);
+      for (const option of options) {
+        expect(option.tagName).toBe("DIV");
+      }
+      // No button elements should have role="option"
+      const buttonOptions = container.querySelectorAll('button[role="option"]');
+      expect(buttonOptions).toHaveLength(0);
+    });
+
+    it("renders transcript list items as div[role=option], not button", async () => {
+      const transcript = makeTranscript({
+        _id: "t-aria" as Id<"transcripts">,
+        originalFilename: "aria-test.txt",
+      });
+
+      mockedPackDetail = makePack();
+      mockedConfigTranscriptsByPackId["config-1"] = [
+        {
+          _id: "ct-aria",
+          configId: "config-1",
+          transcriptId: "t-aria",
+          createdAt: 1,
+          transcript,
+        },
+      ];
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-1?tab=transcripts",
+      ]);
+
+      const options = container.querySelectorAll('[role="option"]');
+      expect(options.length).toBeGreaterThan(0);
+      for (const option of options) {
+        expect(option.tagName).toBe("DIV");
+      }
+      const buttonOptions = container.querySelectorAll('button[role="option"]');
+      expect(buttonOptions).toHaveLength(0);
+    });
+
+    it("places role=grid on the table element in generation workspace", async () => {
+      mockedPackDetail = makePack({
+        _id: "config-gen-aria" as Id<"personaConfigs">,
+      });
+      mockedSyntheticUsers = [
+        makeSyntheticUser({
+          _id: "user-gen-aria" as Id<"syntheticUsers">,
+          configId: "config-gen-aria" as Id<"personaConfigs">,
+          name: "Gen ARIA User",
+          sourceType: "generated",
+          generationStatus: "completed",
+        }),
+      ];
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-gen-aria?tab=generation",
+      ]);
+
+      const grid = container.querySelector('[role="grid"]');
+      expect(grid).not.toBeNull();
+      expect(grid!.tagName).toBe("TABLE");
+    });
+
+    it("places role=grid on the table element in review workspace", async () => {
+      mockedPackDetail = makePack({
+        _id: "config-review-aria" as Id<"personaConfigs">,
+        status: "published",
+      });
+      mockedPackVariantReview = makePackVariantReview();
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-review-aria?tab=review",
+      ]);
+
+      const grid = container.querySelector('[role="grid"]');
+      expect(grid).not.toBeNull();
+      expect(grid!.tagName).toBe("TABLE");
+    });
+
+    it("adds aria-sort to sortable headers in review workspace", async () => {
+      mockedPackDetail = makePack({
+        _id: "config-review-sort-aria" as Id<"personaConfigs">,
+        status: "published",
+      });
+      mockedPackVariantReview = makePackVariantReview();
+
+      const { container } = await renderRoute([
+        "/persona-configs/config-review-sort-aria?tab=review",
+      ]);
+
+      // Default sort is edgeScore desc
+      const headers = container.querySelectorAll("th[aria-sort]");
+      expect(headers.length).toBeGreaterThanOrEqual(3);
+
+      const sortValues = [...headers].map((h) => h.getAttribute("aria-sort"));
+      // At least one header should be actively sorted (ascending or descending)
+      expect(sortValues.some((v) => v === "ascending" || v === "descending")).toBe(true);
+      // Non-active headers should have "none"
+      expect(sortValues.some((v) => v === "none")).toBe(true);
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // URL State and Deep-Linking
   // -----------------------------------------------------------------------
   describe("URL state and deep-linking", () => {

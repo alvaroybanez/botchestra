@@ -113,10 +113,10 @@ function UserListRow({
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <div
       aria-selected={isSelected}
       role="option"
+      tabIndex={-1}
       className={cn(
         "w-full cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors",
         "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -125,6 +125,12 @@ function UserListRow({
           : "border-transparent bg-background",
       )}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-sm font-medium">{user.name}</span>
@@ -135,7 +141,7 @@ function UserListRow({
       <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
         {user.summary}
       </p>
-    </button>
+    </div>
   );
 }
 
