@@ -3390,6 +3390,296 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Support seeker");
   });
 
+  it("shows extraction processing state with per-transcript progress", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-extraction-processing" as Id<"personaConfigs">,
+      name: "Processing config",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-proc-1" as Id<"transcripts">,
+        originalFilename: "interview-alpha.txt",
+      }),
+      makeTranscript({
+        _id: "transcript-proc-2" as Id<"transcripts">,
+        originalFilename: "interview-beta.txt",
+      }),
+    ];
+    mockedConfigTranscriptsByPackId["config-extraction-processing"] = [
+      {
+        _id: "ct-proc-1",
+        configId: "config-extraction-processing",
+        transcriptId: "transcript-proc-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+      {
+        _id: "ct-proc-2",
+        configId: "config-extraction-processing",
+        transcriptId: "transcript-proc-2",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[1]!,
+      },
+    ];
+    mockedExtractionStatusByPackId["config-extraction-processing"] = {
+      configId: "config-extraction-processing",
+      mode: "auto_discover",
+      status: "processing",
+      guidedAxes: [],
+      proposedAxes: [],
+      archetypes: [],
+      totalTranscripts: 2,
+      processedTranscriptCount: 1,
+      currentTranscriptId: "transcript-proc-2",
+      succeededTranscriptIds: ["transcript-proc-1"],
+      failedTranscripts: [],
+      errorMessage: null,
+      startedBy: "researcher-1",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      completedAt: null,
+      transcriptSignals: [],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-extraction-processing?tab=transcripts"],
+    });
+
+    expect(container.textContent).toContain("Processing 1/2 transcripts");
+    expect(container.textContent).toContain("interview-alpha.txt");
+    expect(container.textContent).toContain("interview-beta.txt");
+    expect(container.textContent).toContain("Extraction in progress");
+  });
+
+  it("shows extraction failure state with error details and allows starting over", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-extraction-failed" as Id<"personaConfigs">,
+      name: "Failed extraction config",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-fail-1" as Id<"transcripts">,
+        originalFilename: "broken-interview.txt",
+      }),
+    ];
+    mockedConfigTranscriptsByPackId["config-extraction-failed"] = [
+      {
+        _id: "ct-fail-1",
+        configId: "config-extraction-failed",
+        transcriptId: "transcript-fail-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+    ];
+    mockedExtractionCostByPackId["config-extraction-failed"] = {
+      totalCharacters: 200,
+      estimatedTokens: 50,
+      estimatedCostUsd: 0.0005,
+    };
+    mockedExtractionStatusByPackId["config-extraction-failed"] = {
+      configId: "config-extraction-failed",
+      mode: "auto_discover",
+      status: "failed",
+      guidedAxes: [],
+      proposedAxes: [],
+      archetypes: [],
+      totalTranscripts: 1,
+      processedTranscriptCount: 0,
+      currentTranscriptId: null,
+      succeededTranscriptIds: [],
+      failedTranscripts: [
+        {
+          transcriptId: "transcript-fail-1",
+          error: "Model rate limit exceeded",
+        },
+      ],
+      errorMessage: "Extraction halted due to repeated failures.",
+      startedBy: "researcher-1",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      completedAt: null,
+      transcriptSignals: [],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-extraction-failed?tab=transcripts"],
+    });
+
+    expect(container.textContent).toContain("Extraction failed");
+    expect(container.textContent).toContain("Extraction halted due to repeated failures.");
+    expect(container.textContent).toContain("broken-interview.txt");
+    expect(container.textContent).toContain("Model rate limit exceeded");
+
+    // "Start over" resets to mode selection
+    delete mockedExtractionStatusByPackId["config-extraction-failed"];
+    await clickButton(container, "Start over");
+    expect(container.textContent).toContain("Auto-discover");
+    expect(container.textContent).toContain("Guided");
+  });
+
+  it("shows partial results when extraction completes with failures and allows applying successful archetypes", async () => {
+    mockedPackDetail = makePack({
+      _id: "config-extraction-partial" as Id<"personaConfigs">,
+      name: "Partial extraction config",
+      status: "draft",
+    });
+    mockedTranscriptList = [
+      makeTranscript({
+        _id: "transcript-partial-1" as Id<"transcripts">,
+        originalFilename: "good-interview.txt",
+      }),
+      makeTranscript({
+        _id: "transcript-partial-2" as Id<"transcripts">,
+        originalFilename: "bad-interview.txt",
+      }),
+    ];
+    mockedConfigTranscriptsByPackId["config-extraction-partial"] = [
+      {
+        _id: "ct-partial-1",
+        configId: "config-extraction-partial",
+        transcriptId: "transcript-partial-1",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[0]!,
+      },
+      {
+        _id: "ct-partial-2",
+        configId: "config-extraction-partial",
+        transcriptId: "transcript-partial-2",
+        createdAt: Date.now(),
+        transcript: mockedTranscriptList[1]!,
+      },
+    ];
+    mockedExtractionCostByPackId["config-extraction-partial"] = {
+      totalCharacters: 600,
+      estimatedTokens: 150,
+      estimatedCostUsd: 0.0015,
+    };
+    mockedExtractionStatusByPackId["config-extraction-partial"] = {
+      configId: "config-extraction-partial",
+      mode: "auto_discover",
+      status: "completed_with_failures",
+      guidedAxes: [],
+      proposedAxes: [
+        {
+          key: "patience_level",
+          label: "Patience level",
+          description: "Tolerance for slow or confusing interfaces.",
+          lowAnchor: "Impatient",
+          midAnchor: "Moderate",
+          highAnchor: "Very patient",
+          weight: 1,
+        },
+      ],
+      archetypes: [
+        {
+          name: "Patient explorer",
+          summary: "Takes time to understand each screen before moving on.",
+          axisValues: [{ key: "patience_level", value: 0.7 }],
+          evidenceSnippets: [
+            {
+              transcriptId: "transcript-partial-1",
+              quote: "I like to read everything on the page first.",
+              startChar: 0,
+              endChar: 45,
+            },
+          ],
+          contributingTranscriptIds: ["transcript-partial-1"],
+        },
+      ],
+      totalTranscripts: 2,
+      processedTranscriptCount: 2,
+      currentTranscriptId: null,
+      succeededTranscriptIds: ["transcript-partial-1"],
+      failedTranscripts: [
+        {
+          transcriptId: "transcript-partial-2",
+          error: "Transcript content was empty after preprocessing.",
+        },
+      ],
+      errorMessage: null,
+      startedBy: "researcher-1",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      completedAt: Date.now(),
+      transcriptSignals: [
+        {
+          _creationTime: Date.now(),
+          _id: "signal-partial-1",
+          configId: "config-extraction-partial",
+          transcriptId: "transcript-partial-1",
+          orgId: "researcher-1",
+          status: "completed",
+          signals: {
+            themes: ["thoroughness"],
+            attitudes: ["methodical"],
+            painPoints: ["information overload"],
+            decisionPatterns: ["reads before acting"],
+            evidenceSnippets: [
+              {
+                quote: "I like to read everything on the page first.",
+                startChar: 0,
+                endChar: 45,
+              },
+            ],
+          },
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    };
+
+    const { container } = await renderRoute({
+      auth: { isAuthenticated: true, isLoading: false },
+      initialEntries: ["/persona-configs/config-extraction-partial?tab=transcripts"],
+    });
+
+    // Partial results banner
+    expect(container.textContent).toContain("Partial results available");
+    expect(container.textContent).toContain("1 transcript failed");
+
+    // Successful archetype is visible and selected
+    expect(container.textContent).toContain("Patient explorer");
+    expect(container.textContent).toContain("Proposed axes");
+
+    // Per-transcript signal review shows successful signals
+    expect(container.textContent).toContain("thoroughness");
+    expect(container.textContent).toContain("methodical");
+
+    // Apply button works for partial results
+    await clickButton(container, "Apply to persona configuration");
+    expect(applyTranscriptDerivedSyntheticUsersMock).toHaveBeenCalledWith({
+      configId: "config-extraction-partial",
+      input: {
+        sharedAxes: [
+          {
+            key: "patience_level",
+            label: "Patience level",
+            description: "Tolerance for slow or confusing interfaces.",
+            lowAnchor: "Impatient",
+            midAnchor: "Moderate",
+            highAnchor: "Very patient",
+            weight: 1,
+          },
+        ],
+        archetypes: [
+          expect.objectContaining({
+            name: "Patient explorer",
+            evidenceSnippets: [
+              {
+                transcriptId: "transcript-partial-1",
+                quote: "I like to read everything on the page first.",
+              },
+            ],
+          }),
+        ],
+      },
+    });
+  });
+
   it("imports a config JSON from the list page and redirects to the imported config", async () => {
     mockedPackList = [];
 
