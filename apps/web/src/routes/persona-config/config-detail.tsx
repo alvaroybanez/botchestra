@@ -1094,6 +1094,10 @@ export function PersonaConfigDetailPage({
           <OverviewWorkspace
             config={config}
             isDraft={isDraft}
+            resolvedStatus={resolvedStatus ?? config.status}
+            syntheticUserCount={syntheticUserList.length}
+            transcriptCount={configTranscripts.length}
+            batchGenerationRun={batchGenerationRun ?? null}
             draftForm={draftForm}
             isSavingDraft={isSavingDraft}
             resolvedAxes={resolvedAxes}
@@ -1314,9 +1318,54 @@ function SyntheticUserCard({ syntheticUser }: { syntheticUser: SyntheticUserDoc 
   );
 }
 
+function generationHealthLabel(
+  run: BatchGenerationRunView | null,
+): { text: string; tone: "default" | "success" | "warning" | "destructive" } {
+  if (run === null) {
+    return { text: "No runs", tone: "default" };
+  }
+
+  switch (run.status) {
+    case "pending":
+    case "running":
+      return {
+        text: `${run.progressPercent}% (${run.completedCount}/${run.totalCount})`,
+        tone: "warning",
+      };
+    case "completed":
+      return { text: `${run.completedCount}/${run.totalCount} completed`, tone: "success" };
+    case "partially_failed":
+      return {
+        text: `${run.completedCount} ok, ${run.failedCount} failed`,
+        tone: "warning",
+      };
+    case "failed":
+      return { text: "Failed", tone: "destructive" };
+  }
+}
+
+function generationHealthColor(
+  tone: "default" | "success" | "warning" | "destructive",
+) {
+  switch (tone) {
+    case "success":
+      return "text-emerald-600";
+    case "warning":
+      return "text-amber-600";
+    case "destructive":
+      return "text-destructive";
+    default:
+      return "text-muted-foreground";
+  }
+}
+
 function OverviewWorkspace({
   config,
   isDraft,
+  resolvedStatus,
+  syntheticUserCount,
+  transcriptCount,
+  batchGenerationRun,
   draftForm,
   isSavingDraft,
   resolvedAxes,
@@ -1339,6 +1388,10 @@ function OverviewWorkspace({
 }: {
   config: PersonaConfigDoc;
   isDraft: boolean;
+  resolvedStatus: PersonaConfigDoc["status"];
+  syntheticUserCount: number;
+  transcriptCount: number;
+  batchGenerationRun: BatchGenerationRunView | null;
   draftForm: ConfigFormValue;
   isSavingDraft: boolean;
   resolvedAxes: PersonaConfigDoc["sharedAxes"];
@@ -1359,8 +1412,44 @@ function OverviewWorkspace({
   onApplySuggestedAxes: () => void;
   formatTimestamp: (ts: number) => string;
 }) {
+  const genHealth = generationHealthLabel(batchGenerationRun);
+
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Orientation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <LocalSummaryValue label="Status" value={resolvedStatus} />
+            <LocalSummaryValue label="Version" value={`v${config.version}`} />
+            <LocalSummaryValue
+              label="Shared axes"
+              value={String(resolvedAxes.length)}
+            />
+            <LocalSummaryValue
+              label="Synthetic users"
+              value={String(syntheticUserCount)}
+            />
+            <LocalSummaryValue
+              label="Transcripts"
+              value={String(transcriptCount)}
+            />
+            <div className="rounded-lg border bg-background p-4">
+              <dt className="text-sm font-medium text-muted-foreground">
+                Generation health
+              </dt>
+              <dd
+                className={`mt-1 break-words text-sm font-medium ${generationHealthColor(genHealth.tone)}`}
+              >
+                {genHealth.text}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Metadata</CardTitle>
