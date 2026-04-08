@@ -5,6 +5,7 @@ node_modules/
 .agents
 .claude
 reviews
+trees/
 
 # Build output
 dist/

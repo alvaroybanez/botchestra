@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "cssstudio": "^0.5.0",
     "typescript": "^5.8.2",
     "vitest": "^3.1.1"
   },

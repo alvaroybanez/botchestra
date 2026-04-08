@@ -1,5 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+
+if (import.meta.env.DEV) {
+  import("cssstudio").then(({ startStudio }) => startStudio());
+}
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import App from "@/App";

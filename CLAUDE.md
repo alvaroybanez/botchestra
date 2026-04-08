@@ -15,7 +15,6 @@ Synthetic persona validation platform -- validates web flows using AI-driven bro
 - Dev server runs on port 5180.
 - Bug fixes start with a failing test, then the fix.
 - Before writing Convex functions, read `convex/_generated/ai/guidelines.md`.
-
 ## Deep Dive Docs
 Read these when working in the relevant area:
 - `agent_docs/convex-patterns.md` -- data model, dual-validator pattern, RBAC, workflows, state machines
