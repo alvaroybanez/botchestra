@@ -2399,7 +2399,7 @@ describe("@botchestra/web routing", () => {
 
     expect(container.textContent).toContain("Account Recovery Config");
     expect(container.textContent).toContain("Shared Axes");
-    expect(container.textContent).toContain("Digital confidence");
+    expect(hasInputWithValue(container, "Digital confidence")).toBe(true);
     expect(container.textContent).toContain("Audit Trail");
 
     const { container: usersContainer } = await renderRoute({
@@ -2819,9 +2819,9 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Apply selected");
 
-    expect(container.textContent).toContain("Human escalation preference");
-    expect(container.textContent).toContain("Issue urgency");
-    expect(container.textContent).not.toContain("Trust building");
+    expect(hasInputWithValue(container, "Human escalation preference")).toBe(true);
+    expect(hasInputWithValue(container, "Issue urgency")).toBe(true);
+    expect(hasInputWithValue(container, "Trust building")).toBe(false);
     expect(container.textContent).not.toContain("Review suggested axes");
   });
 
@@ -2935,7 +2935,7 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Import selected");
 
-    expect(container.textContent).toContain("Support channel preference");
+    expect(hasInputWithValue(container, "Support channel preference")).toBe(true);
     expect(container.textContent).toContain(
       "Skipped duplicate axis key: digital_confidence.",
     );
@@ -4005,6 +4005,12 @@ async function updateInput(
     input!.dispatchEvent(new Event("input", { bubbles: true }));
     input!.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+function hasInputWithValue(root: ParentNode, value: string) {
+  return [...root.querySelectorAll<HTMLInputElement>("input")].some(
+    (input) => input.value === value,
+  );
 }
 
 async function updateSelect(

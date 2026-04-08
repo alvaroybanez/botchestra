@@ -1388,12 +1388,12 @@ function OverviewWorkspace({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Metadata</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isDraft ? (
+      {isDraft ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Metadata &amp; Shared Axes</CardTitle>
+          </CardHeader>
+          <CardContent>
             <ConfigFormCard
               form={draftForm}
               formPrefix="edit-config"
@@ -1404,150 +1404,158 @@ function OverviewWorkspace({
               disabled={isSavingDraft}
               onSubmit={onSaveDraft}
               onChange={onDraftFormChange}
-            />
-          ) : (
-            <dl className="grid gap-4 sm:grid-cols-2">
-              <LocalSummaryValue label="Name" value={config.name} />
-              <LocalSummaryValue label="Version" value={`v${config.version}`} />
-              <LocalSummaryValue label="Description" value={config.description} />
-              <LocalSummaryValue label="Context" value={config.context} />
-            </dl>
-          )}
-        </CardContent>
-      </Card>
+              axisGenerationSlot={
+                <div className="space-y-4 rounded-xl border bg-background p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Axis generation</p>
+                      <p className="text-sm text-muted-foreground">
+                        Generate new axes from persona configuration metadata or import reusable
+                        ones from the shared library.
+                      </p>
+                    </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Shared Axes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isDraft ? (
-            <div className="space-y-4 rounded-xl border bg-background p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Axis generation</p>
-                  <p className="text-sm text-muted-foreground">
-                    Generate new axes from persona configuration metadata or import reusable
-                    ones from the shared library.
-                  </p>
-                </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        disabled={!canSuggestAxes || isSuggestingAxes}
+                        onClick={onSuggestAxes}
+                        type="button"
+                      >
+                        {isSuggestingAxes ? (
+                          <span className="inline-flex items-center gap-2">
+                            <LoadingSpinner />
+                            Suggesting...
+                          </span>
+                        ) : (
+                          "Suggest axes"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onOpenAxisLibrary}
+                      >
+                        Browse library
+                      </Button>
+                    </div>
+                  </div>
 
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    disabled={!canSuggestAxes || isSuggestingAxes}
-                    onClick={onSuggestAxes}
-                    type="button"
-                  >
+                  <div aria-live="polite" className="space-y-2">
                     {isSuggestingAxes ? (
-                      <span className="inline-flex items-center gap-2">
-                        <LoadingSpinner />
-                        Suggesting...
-                      </span>
-                    ) : (
-                      "Suggest axes"
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onOpenAxisLibrary}
-                  >
-                    Browse library
-                  </Button>
-                </div>
-              </div>
-
-              <div aria-live="polite" className="space-y-2">
-                {isSuggestingAxes ? (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    Generating axis suggestions from the current persona configuration
-                    metadata...
-                  </p>
-                ) : null}
-                {suggestionError ? (
-                  <p className="text-sm text-destructive" role="alert">
-                    {suggestionError}
-                  </p>
-                ) : null}
-              </div>
-
-              {isSuggestionPanelOpen ? (
-                <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
-                  <div className="space-y-1">
-                    <h4 className="text-lg font-semibold">
-                      Review suggested axes
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Select the axes you want to add, edit any field inline,
-                      then apply the selected suggestions.
-                    </p>
+                      <p className="text-sm text-muted-foreground" role="status">
+                        Generating axis suggestions from the current persona configuration
+                        metadata...
+                      </p>
+                    ) : null}
+                    {suggestionError ? (
+                      <p className="text-sm text-destructive" role="alert">
+                        {suggestionError}
+                      </p>
+                    ) : null}
                   </div>
 
-                  <div className="grid gap-4">
-                    {suggestedAxes.map((suggestion, index) => (
-                      <SuggestedAxisCard
-                        key={suggestion.id}
-                        index={index}
-                        suggestion={suggestion}
-                        onChange={(nextAxis) =>
-                          onSuggestionAxisChange(suggestion.id, nextAxis)
-                        }
-                        onToggleEdit={() =>
-                          onSuggestionEditToggle(suggestion.id)
-                        }
-                        onToggleSelected={() =>
-                          onSuggestionSelectionToggle(suggestion.id)
-                        }
-                      />
-                    ))}
-                  </div>
+                  {isSuggestionPanelOpen ? (
+                    <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-semibold">
+                          Review suggested axes
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Select the axes you want to add, edit any field inline,
+                          then apply the selected suggestions.
+                        </p>
+                      </div>
 
-                  <div className="flex flex-wrap justify-end gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={onDismissSuggestions}
-                    >
-                      Dismiss
-                    </Button>
-                    <Button
-                      disabled={selectedSuggestionCount === 0}
-                      type="button"
-                      onClick={onApplySuggestedAxes}
-                    >
-                      Apply selected
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+                      <div className="grid gap-4">
+                        {suggestedAxes.map((suggestion, index) => (
+                          <SuggestedAxisCard
+                            key={suggestion.id}
+                            index={index}
+                            suggestion={suggestion}
+                            onChange={(nextAxis) =>
+                              onSuggestionAxisChange(suggestion.id, nextAxis)
+                            }
+                            onToggleEdit={() =>
+                              onSuggestionEditToggle(suggestion.id)
+                            }
+                            onToggleSelected={() =>
+                              onSuggestionSelectionToggle(suggestion.id)
+                            }
+                          />
+                        ))}
+                      </div>
 
-          {resolvedAxes.map((axis, index) => (
-            <div
-              key={`${axis.key}-${index}`}
-              className="rounded-lg border bg-background p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium">{axis.label}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {axis.key} · weight {axis.weight}
-                  </p>
+                      <div className="flex flex-wrap justify-end gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={onDismissSuggestions}
+                        >
+                          Dismiss
+                        </Button>
+                        <Button
+                          disabled={selectedSuggestionCount === 0}
+                          type="button"
+                          onClick={onApplySuggestedAxes}
+                        >
+                          Apply selected
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {axis.description}
-              </p>
-              <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-                <LocalSummaryValue label="Low anchor" value={axis.lowAnchor} />
-                <LocalSummaryValue label="Mid anchor" value={axis.midAnchor} />
-                <LocalSummaryValue label="High anchor" value={axis.highAnchor} />
+              }
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Metadata</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <LocalSummaryValue label="Name" value={config.name} />
+                <LocalSummaryValue label="Version" value={`v${config.version}`} />
+                <LocalSummaryValue label="Description" value={config.description} />
+                <LocalSummaryValue label="Context" value={config.context} />
               </dl>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Shared Axes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {resolvedAxes.map((axis, index) => (
+                <div
+                  key={`${axis.key}-${index}`}
+                  className="rounded-lg border bg-background p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{axis.label}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {axis.key} · weight {axis.weight}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    {axis.description}
+                  </p>
+                  <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <LocalSummaryValue label="Low anchor" value={axis.lowAnchor} />
+                    <LocalSummaryValue label="Mid anchor" value={axis.midAnchor} />
+                    <LocalSummaryValue label="High anchor" value={axis.highAnchor} />
+                  </dl>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <Card>
         <CardHeader>
