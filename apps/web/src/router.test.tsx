@@ -2407,9 +2407,9 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-detail?tab=users"],
     });
 
-    expect(usersContainer.textContent).toContain("Synthetic Users");
     expect(usersContainer.textContent).toContain("Anxious new customer");
-    expect(usersContainer.textContent).toContain("Source: json_import");
+    expect(usersContainer.textContent).toContain("JSON import");
+    expect(usersContainer.textContent).toContain("1 of 1 users");
 
     const { container: reviewContainer } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },

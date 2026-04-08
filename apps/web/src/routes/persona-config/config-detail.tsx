@@ -73,6 +73,7 @@ import {
   TranscriptExtractionPanel,
 } from "./extraction-panel";
 import { ConfigShell } from "./config-shell";
+import { UsersWorkspace } from "./users-workspace";
 
 export function PersonaConfigDetailPage({
   configId,
@@ -1131,9 +1132,11 @@ export function PersonaConfigDetailPage({
             syntheticUserForm={syntheticUserForm}
             isProtoFormOpen={isProtoFormOpen}
             isSavingSyntheticUser={isSavingSyntheticUser}
+            selectedUserId={detailSearch.selectedUserId}
             onToggleProtoForm={() => setIsProtoFormOpen((current) => !current)}
             onCreateSyntheticUser={handleCreateSyntheticUser}
             onSyntheticUserFormChange={setSyntheticUserForm}
+            onSearchChange={onSearchChange}
           />
         ) : null}
 
@@ -1254,67 +1257,6 @@ export function PersonaConfigDetailPage({
         onToggleSelected={handleTranscriptSelectionToggle}
       />
     </>
-  );
-}
-
-function SyntheticUserCard({ syntheticUser }: { syntheticUser: SyntheticUserDoc }) {
-  const isTranscriptDerived = syntheticUser.sourceType === "transcript_derived";
-
-  return (
-    <div className="rounded-xl border bg-background p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h4 className="text-lg font-semibold">{syntheticUser.name}</h4>
-          <p className="text-sm text-muted-foreground">Source: {syntheticUser.sourceType}</p>
-        </div>
-        <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-          {syntheticUser.axes.length} axes
-        </span>
-      </div>
-
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        {syntheticUser.summary}
-      </p>
-
-      {syntheticUser.evidenceSnippets.length > 0 ? (
-        <div className="mt-4 space-y-2">
-          <p className="text-sm font-medium">Evidence snippets</p>
-          <ul className="space-y-2">
-            {syntheticUser.evidenceSnippets.map((snippet, index) => (
-              <li
-                key={`${syntheticUser._id}-${index}`}
-              >
-                {isTranscriptDerived && syntheticUser.sourceRefs[index] ? (
-                  <Link
-                    className="block rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
-                    params={{
-                      transcriptId: syntheticUser.sourceRefs[index] as TranscriptId,
-                    }}
-                    search={{ highlightSnippet: snippet }}
-                    to="/transcripts/$transcriptId"
-                  >
-                    {snippet}
-                  </Link>
-                ) : (
-                  <div className="rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground">
-                    {snippet}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {syntheticUser.notes ? (
-        <div className="mt-4">
-          <p className="text-sm font-medium">Notes</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {syntheticUser.notes}
-          </p>
-        </div>
-      ) : null}
-    </div>
   );
 }
 
@@ -1632,149 +1574,6 @@ function OverviewWorkspace({
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function UsersWorkspace({
-  config,
-  isDraft,
-  syntheticUserList,
-  syntheticUserForm,
-  isProtoFormOpen,
-  isSavingSyntheticUser,
-  onToggleProtoForm,
-  onCreateSyntheticUser,
-  onSyntheticUserFormChange,
-}: {
-  config: PersonaConfigDoc;
-  isDraft: boolean;
-  syntheticUserList: SyntheticUserDoc[];
-  syntheticUserForm: SyntheticUserFormValue;
-  isProtoFormOpen: boolean;
-  isSavingSyntheticUser: boolean;
-  onToggleProtoForm: () => void;
-  onCreateSyntheticUser: (event: React.FormEvent<HTMLFormElement>) => void;
-  onSyntheticUserFormChange: (form: SyntheticUserFormValue) => void;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <CardTitle>Synthetic Users</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Review the persona configuration&apos;s source synthetic users and the evidence
-            used to anchor them.
-          </p>
-        </div>
-        {isDraft ? (
-          <Button
-            variant="outline"
-            onClick={onToggleProtoForm}
-          >
-            {isProtoFormOpen ? "Close form" : "Add synthetic user"}
-          </Button>
-        ) : null}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isProtoFormOpen ? (
-          <form
-            className="space-y-4 rounded-xl border bg-background p-4"
-            onSubmit={onCreateSyntheticUser}
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="create-proto-name">Name</Label>
-              <Input
-                id="create-proto-name"
-                value={syntheticUserForm.name}
-                onChange={(event) =>
-                  onSyntheticUserFormChange({
-                    ...syntheticUserForm,
-                    name: event.target.value,
-                  })
-                }
-                required
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="create-proto-summary">Summary</Label>
-              <textarea
-                id="create-proto-summary"
-                className={textareaClassName}
-                value={syntheticUserForm.summary}
-                onChange={(event) =>
-                  onSyntheticUserFormChange({
-                    ...syntheticUserForm,
-                    summary: event.target.value,
-                  })
-                }
-                required
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="create-proto-evidence">
-                Evidence snippets
-              </Label>
-              <textarea
-                id="create-proto-evidence"
-                className={textareaClassName}
-                value={syntheticUserForm.evidenceText}
-                onChange={(event) =>
-                  onSyntheticUserFormChange({
-                    ...syntheticUserForm,
-                    evidenceText: event.target.value,
-                  })
-                }
-                placeholder="One snippet per line"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="create-proto-notes">Notes</Label>
-              <textarea
-                id="create-proto-notes"
-                className={textareaClassName}
-                value={syntheticUserForm.notes}
-                onChange={(event) =>
-                  onSyntheticUserFormChange({
-                    ...syntheticUserForm,
-                    notes: event.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <p className="text-xs leading-5 text-muted-foreground">
-              New synthetic users inherit the current shared axes so you
-              can quickly draft content before publishing.
-            </p>
-
-            <Button disabled={isSavingSyntheticUser} type="submit">
-              {isSavingSyntheticUser ? "Saving..." : "Save synthetic user"}
-            </Button>
-          </form>
-        ) : null}
-
-        {syntheticUserList.length === 0 ? (
-          <div className="rounded-xl border border-dashed bg-background p-6">
-            <p className="text-sm leading-6 text-muted-foreground">
-              No synthetic users yet. Add the first synthetic user to make
-              this draft persona configuration publishable.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {syntheticUserList.map((syntheticUser) => (
-              <SyntheticUserCard
-                key={syntheticUser._id}
-                syntheticUser={syntheticUser}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
