@@ -166,8 +166,8 @@ describe("axisGeneration.suggestAxes", () => {
 
     const options = mockedGenerateWithModel.mock.calls[0]?.[1];
 
-    expect(options?.system).toContain("Questionnaire Generator");
-    expect(options?.system).toContain("Google Persona Generators");
+    expect(options?.system).toContain("expert UX researcher");
+    expect(options?.system).toContain("Domain Specificity");
     expect(options?.prompt).toContain("Travel booking config");
     expect(options?.prompt).toContain("Multi-step flight booking flow");
     expect(options?.prompt).toContain(
