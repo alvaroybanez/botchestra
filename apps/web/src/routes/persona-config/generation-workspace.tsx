@@ -829,60 +829,157 @@ function GenerationWorkspaceInner({
     }
   }
 
-  return (
-    <div className="space-y-4">
-      {/* Zone 1: Controls & cost estimate (draft-only) */}
-      {showControls ? (
-        <GenerationControlsZone
-          axes={axes}
-          hasActiveRun={hasActiveRun}
-          levelsPerAxis={levelsPerAxis}
-          generationValidation={generationValidation}
-          costEstimate={costEstimate}
-          isStarting={isStarting}
-          onLevelsChange={setLevelsPerAxis}
-          onStart={() => void handleStart()}
-          error={generationError}
-          notice={generationNotice}
-        />
-      ) : (
-        <>
-          {generationError ? (
-            <p className="text-sm text-destructive" role="alert">
-              {generationError}
-            </p>
-          ) : null}
-          {generationNotice ? (
-            <p className="text-sm text-emerald-700" role="status">
-              {generationNotice}
-            </p>
-          ) : null}
-        </>
-      )}
-
-      {/* Zone 2: Run progress/failure state */}
-      {batchGenerationRun ? (
-        <RunProgressZone run={batchGenerationRun} />
+  const controlsZone = showControls ? (
+    <GenerationControlsZone
+      axes={axes}
+      hasActiveRun={hasActiveRun}
+      levelsPerAxis={levelsPerAxis}
+      generationValidation={generationValidation}
+      costEstimate={costEstimate}
+      isStarting={isStarting}
+      onLevelsChange={setLevelsPerAxis}
+      onStart={() => void handleStart()}
+      error={generationError}
+      notice={generationNotice}
+    />
+  ) : (
+    <>
+      {generationError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {generationError}
+        </p>
       ) : null}
+      {generationNotice ? (
+        <p className="text-sm text-emerald-700" role="status">
+          {generationNotice}
+        </p>
+      ) : null}
+    </>
+  );
 
-      {/* Zone 3: User status table */}
-      <UserStatusTableZone
-        syntheticUsers={syntheticUsers}
-        axes={axes}
-        showAllSources={showAllSources}
-        showGenerationControls={showControls}
-        hasActiveRun={hasActiveRun}
-        failedGeneratedCount={failedGeneratedUsers.length}
-        isRetryingFailed={isRetryingFailed}
-        regeneratingUserIds={regeneratingUserIds}
-        onToggleSources={() => setShowAllSources((prev) => !prev)}
-        onRegenerateUser={(id) => void handleRegenerateUser(id)}
-        onRetryFailed={() => void handleRetryFailed()}
-        selectedUserId={selectedGenerationUserId}
-        onSelectUser={(id) =>
-          onSearchChange({ selectedGenerationUserId: id })
-        }
-      />
+  const progressZone = batchGenerationRun ? (
+    <RunProgressZone run={batchGenerationRun} />
+  ) : null;
+
+  const tableZone = (
+    <UserStatusTableZone
+      syntheticUsers={syntheticUsers}
+      axes={axes}
+      showAllSources={showAllSources}
+      showGenerationControls={showControls}
+      hasActiveRun={hasActiveRun}
+      failedGeneratedCount={failedGeneratedUsers.length}
+      isRetryingFailed={isRetryingFailed}
+      regeneratingUserIds={regeneratingUserIds}
+      onToggleSources={() => setShowAllSources((prev) => !prev)}
+      onRegenerateUser={(id) => void handleRegenerateUser(id)}
+      onRetryFailed={() => void handleRetryFailed()}
+      selectedUserId={selectedGenerationUserId}
+      onSelectUser={(id) =>
+        onSearchChange({ selectedGenerationUserId: id })
+      }
+    />
+  );
+
+  return (
+    <div data-uidotsh-pick="Generation layout" className="contents">
+      {/* ── Option 1: Stacked (current) ── */}
+      <div data-uidotsh-option="Stacked (current)" className="contents">
+        <div className="space-y-4">
+          {controlsZone}
+          {progressZone}
+          {tableZone}
+        </div>
+      </div>
+
+      {/* ── Option 2: Two-column ── */}
+      <div data-uidotsh-option="Two-column" className="contents" hidden>
+        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+          <div className="space-y-4">
+            {controlsZone}
+          </div>
+          <div className="space-y-4">
+            {progressZone}
+            {tableZone}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 3: Compact controls ── */}
+      <div data-uidotsh-option="Compact controls" className="contents" hidden>
+        <div className="space-y-4">
+          {showControls ? (
+            <div className="flex items-center gap-4 rounded-xl border bg-card px-5 py-3">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">{axes.length}</span>
+                <span className="text-muted-foreground">axes</span>
+              </div>
+              <div className="h-4 w-px bg-border" />
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">{generationValidation.totalUsers}</span>
+                <span className="text-muted-foreground">users</span>
+              </div>
+              <div className="h-4 w-px bg-border" />
+              <div className="flex items-center gap-2 text-sm">
+                {costEstimate ? (
+                  <>
+                    <span className="font-medium">{formatCurrency(costEstimate.estimatedCostUsd)}</span>
+                    <span className="text-muted-foreground">est. cost</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">No estimate</span>
+                )}
+              </div>
+              {generationError ? (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <p className="text-sm text-destructive">{generationError}</p>
+                </>
+              ) : null}
+              {generationNotice ? (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <p className="text-sm text-emerald-700">{generationNotice}</p>
+                </>
+              ) : null}
+              <div className="ml-auto">
+                <Button
+                  disabled={!generationValidation.valid || hasActiveRun || isStarting}
+                  onClick={() => void handleStart()}
+                  size="sm"
+                  type="button"
+                >
+                  {isStarting ? "Starting..." : "Generate"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {generationError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {generationError}
+                </p>
+              ) : null}
+              {generationNotice ? (
+                <p className="text-sm text-emerald-700" role="status">
+                  {generationNotice}
+                </p>
+              ) : null}
+            </>
+          )}
+          {progressZone}
+          {tableZone}
+        </div>
+      </div>
+
+      {/* ── Option 4: Controls below ── */}
+      <div data-uidotsh-option="Controls below" className="contents" hidden>
+        <div className="space-y-4">
+          {progressZone}
+          {tableZone}
+          {controlsZone}
+        </div>
+      </div>
     </div>
   );
 }

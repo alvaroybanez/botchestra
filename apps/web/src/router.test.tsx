@@ -2118,7 +2118,7 @@ describe("@botchestra/web routing", () => {
     expect(issueCards[0]?.textContent).toContain("What broke");
     expect(issueCards[0]?.textContent).toContain("Where");
     expect(issueCards[0]?.textContent).toContain("Affected segments");
-    expect(issueCards[0]?.textContent).toContain("Representative quotes");
+    expect(issueCards[0]?.textContent).toContain("Representative quotes from Synthetic Users (always validate with humans!)");
     expect(issueCards[0]?.textContent).toContain("Recommendation");
     expect(issueCards[0]?.textContent).toContain("Confidence note");
 

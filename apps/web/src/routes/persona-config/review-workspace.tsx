@@ -258,240 +258,392 @@ function ReviewWorkspaceInner({
     [filteredVariants, selectedVariantId, onSearchChange],
   );
 
-  return (
-    <div className="space-y-4">
-      {/* Study selector bar */}
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="grid min-w-48 gap-1.5">
-          <Label htmlFor="review-study-filter">Linked study</Label>
-          <select
-            className={selectClassName}
-            id="review-study-filter"
-            value={selectedReviewStudyId ?? ""}
-            onChange={(e) => handleStudyChange(e.target.value)}
-          >
-            {configVariantReview.studies.map((study) => (
-              <option key={study._id} value={study._id}>
-                {study.name} ({study.acceptedVariantCount} accepted)
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {selectedStudySummary ? (
-          <>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>
-                Status:{" "}
-                <Badge variant="outline">{selectedStudySummary.status}</Badge>
-              </span>
-              <span>Budget: {selectedStudySummary.runBudget}</span>
-              <span>
-                Updated: {formatTimestamp(selectedStudySummary.updatedAt)}
-              </span>
-            </div>
-            <Button asChild size="sm" variant="outline" className="ml-auto">
-              <Link
-                params={{ studyId: selectedStudySummary._id }}
-                search={emptyStudyDetailSearch}
-                to="/studies/$studyId/personas"
-              >
-                Open study
-              </Link>
-            </Button>
-          </>
-        ) : null}
+  const studySelectorBar = (
+    <div className="flex flex-wrap items-end gap-4">
+      <div className="grid min-w-48 gap-1.5">
+        <Label htmlFor="review-study-filter">Linked study</Label>
+        <select
+          className={selectClassName}
+          id="review-study-filter"
+          value={selectedReviewStudyId ?? ""}
+          onChange={(e) => handleStudyChange(e.target.value)}
+        >
+          {configVariantReview.studies.map((study) => (
+            <option key={study._id} value={study._id}>
+              {study.name} ({study.acceptedVariantCount} accepted)
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="review-user-filter" className="text-xs">
-            Synthetic user
-          </Label>
-          <select
-            className={cn(selectClassName, "h-9")}
-            id="review-user-filter"
-            value={selectedSyntheticUserId}
-            onChange={(e) => setSelectedSyntheticUserId(e.target.value)}
-          >
-            <option value="all">All users</option>
-            {configVariantReview.syntheticUsers.map((u) => (
-              <option key={u._id} value={u._id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="review-axis-filter" className="text-xs">
-            Axis
-          </Label>
-          <select
-            className={cn(selectClassName, "h-9")}
-            id="review-axis-filter"
-            value={selectedAxisKey}
-            onChange={(e) => setSelectedAxisKey(e.target.value)}
-          >
-            {configVariantReview.config.sharedAxes.map((axis) => (
-              <option key={axis.key} value={axis.key}>
-                {axis.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="review-min-axis" className="text-xs">
-            Min
-          </Label>
-          <Input
-            className="h-9 w-24"
-            id="review-min-axis"
-            max="1"
-            min="-1"
-            placeholder="-1.00"
-            step="0.01"
-            type="number"
-            value={minimumAxisValue}
-            onChange={(e) => setMinimumAxisValue(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="review-max-axis" className="text-xs">
-            Max
-          </Label>
-          <Input
-            className="h-9 w-24"
-            id="review-max-axis"
-            max="1"
-            min="-1"
-            placeholder="1.00"
-            step="0.01"
-            type="number"
-            value={maximumAxisValue}
-            onChange={(e) => setMaximumAxisValue(e.target.value)}
-          />
-        </div>
-        <p className="ml-auto self-end text-xs text-muted-foreground">
-          {filteredVariants.length} of {configVariantReview.variants.length}{" "}
-          variants
-        </p>
-      </div>
-
-      {/* Main split-pane: table + inspector */}
-      <div className="flex gap-4" style={{ minHeight: 480 }}>
-        {/* Dense table pane */}
-        <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
-          {filteredVariants.length === 0 ? (
-            <div className="flex h-full items-center justify-center p-6">
-              <p className="text-sm text-muted-foreground">
-                No accepted variants match the current filters.
-              </p>
-            </div>
-          ) : (
-            <div
-              className="h-full overflow-auto"
-              onKeyDown={handleKeyDown}
+      {selectedStudySummary ? (
+        <>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>
+              Status:{" "}
+              <Badge variant="outline">{selectedStudySummary.status}</Badge>
+            </span>
+            <span>Budget: {selectedStudySummary.runBudget}</span>
+            <span>
+              Updated: {formatTimestamp(selectedStudySummary.updatedAt)}
+            </span>
+          </div>
+          <Button asChild size="sm" variant="outline" className="ml-auto">
+            <Link
+              params={{ studyId: selectedStudySummary._id }}
+              search={emptyStudyDetailSearch}
+              to="/studies/$studyId/personas"
             >
-              <table
-                className="min-w-full border-collapse text-left text-sm"
-                role="grid"
-                aria-label="Accepted variants"
-                tabIndex={0}
-              >
-                <thead className="sticky top-0 z-10 bg-card">
-                  <tr className="border-b">
-                    <DenseHeader>User</DenseHeader>
-                    {configVariantReview.config.sharedAxes.map((axis) => (
-                      <DenseHeader key={axis.key}>
-                        {abbreviateAxisLabel(axis.label)}
-                      </DenseHeader>
-                    ))}
-                    <SortableHeader
-                      label="Edge"
-                      sortKey="edgeScore"
-                      activeSortKey={sortKey}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <SortableHeader
-                      label="Coher."
-                      sortKey="coherenceScore"
-                      activeSortKey={sortKey}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <SortableHeader
-                      label="Dist."
-                      sortKey="distinctnessScore"
-                      activeSortKey={sortKey}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                  </tr>
-                </thead>
-                <tbody ref={tableRef}>
-                  {filteredVariants.map((variant) => (
-                    <tr
-                      key={variant._id}
-                      data-variant-id={variant._id}
-                      data-testid="variant-row"
-                      role="row"
-                      aria-selected={variant._id === selectedVariantId}
-                      className={cn(
-                        "cursor-pointer border-b last:border-b-0 transition-colors",
-                        variant._id === selectedVariantId
-                          ? "bg-accent"
-                          : "hover:bg-muted/50",
-                      )}
-                      onClick={() => handleRowSelect(variant._id)}
-                    >
-                      <td className="max-w-[160px] truncate px-3 py-2 font-medium">
-                        {variant.syntheticUserName}
-                      </td>
-                      {configVariantReview.config.sharedAxes.map((axis) => (
-                        <td
-                          key={`${variant._id}-${axis.key}`}
-                          className="px-3 py-2 tabular-nums text-muted-foreground"
-                        >
-                          {formatAxisValue(
-                            getAxisValue(variant.axisValues, axis.key),
-                          )}
-                        </td>
-                      ))}
-                      <td className="px-3 py-2 tabular-nums">
-                        {formatScore(variant.edgeScore)}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {formatScore(variant.coherenceScore)}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {formatScore(variant.distinctnessScore)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+              Open study
+            </Link>
+          </Button>
+        </>
+      ) : null}
+    </div>
+  );
 
-        {/* Sticky narrative inspector */}
-        <div className="w-80 shrink-0 overflow-y-auto rounded-xl border bg-card p-5">
-          {selectedVariant ? (
-            <VariantInspector
-              variant={selectedVariant}
-              sharedAxes={configVariantReview.config.sharedAxes}
-              syntheticUsers={configVariantReview.syntheticUsers}
-              selectedAxisKey={selectedAxisKey}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-center text-sm text-muted-foreground">
-                Select a variant row to inspect its narrative details.
-              </p>
+  const filterBar = (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="grid gap-1.5">
+        <Label htmlFor="review-user-filter" className="text-xs">
+          Synthetic user
+        </Label>
+        <select
+          className={cn(selectClassName, "h-9")}
+          id="review-user-filter"
+          value={selectedSyntheticUserId}
+          onChange={(e) => setSelectedSyntheticUserId(e.target.value)}
+        >
+          <option value="all">All users</option>
+          {configVariantReview.syntheticUsers.map((u) => (
+            <option key={u._id} value={u._id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="review-axis-filter" className="text-xs">
+          Axis
+        </Label>
+        <select
+          className={cn(selectClassName, "h-9")}
+          id="review-axis-filter"
+          value={selectedAxisKey}
+          onChange={(e) => setSelectedAxisKey(e.target.value)}
+        >
+          {configVariantReview.config.sharedAxes.map((axis) => (
+            <option key={axis.key} value={axis.key}>
+              {axis.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="review-min-axis" className="text-xs">
+          Min
+        </Label>
+        <Input
+          className="h-9 w-24"
+          id="review-min-axis"
+          max="1"
+          min="-1"
+          placeholder="-1.00"
+          step="0.01"
+          type="number"
+          value={minimumAxisValue}
+          onChange={(e) => setMinimumAxisValue(e.target.value)}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="review-max-axis" className="text-xs">
+          Max
+        </Label>
+        <Input
+          className="h-9 w-24"
+          id="review-max-axis"
+          max="1"
+          min="-1"
+          placeholder="1.00"
+          step="0.01"
+          type="number"
+          value={maximumAxisValue}
+          onChange={(e) => setMaximumAxisValue(e.target.value)}
+        />
+      </div>
+      <p className="ml-auto self-end text-xs text-muted-foreground">
+        {filteredVariants.length} of {configVariantReview.variants.length}{" "}
+        variants
+      </p>
+    </div>
+  );
+
+  const variantTableContent = (
+    <>
+      {filteredVariants.length === 0 ? (
+        <div className="flex h-full items-center justify-center p-6">
+          <p className="text-sm text-muted-foreground">
+            No accepted variants match the current filters.
+          </p>
+        </div>
+      ) : (
+        <div
+          className="h-full overflow-auto"
+          onKeyDown={handleKeyDown}
+        >
+          <table
+            className="min-w-full border-collapse text-left text-sm"
+            role="grid"
+            aria-label="Accepted variants"
+            tabIndex={0}
+          >
+            <thead className="sticky top-0 z-10 bg-card">
+              <tr className="border-b">
+                <DenseHeader>User</DenseHeader>
+                {configVariantReview.config.sharedAxes.map((axis) => (
+                  <DenseHeader key={axis.key}>
+                    {abbreviateAxisLabel(axis.label)}
+                  </DenseHeader>
+                ))}
+                <SortableHeader
+                  label="Edge"
+                  sortKey="edgeScore"
+                  activeSortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  label="Coher."
+                  sortKey="coherenceScore"
+                  activeSortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  label="Dist."
+                  sortKey="distinctnessScore"
+                  activeSortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </tr>
+            </thead>
+            <tbody ref={tableRef}>
+              {filteredVariants.map((variant) => (
+                <tr
+                  key={variant._id}
+                  data-variant-id={variant._id}
+                  data-testid="variant-row"
+                  role="row"
+                  aria-selected={variant._id === selectedVariantId}
+                  className={cn(
+                    "cursor-pointer border-b last:border-b-0 transition-colors",
+                    variant._id === selectedVariantId
+                      ? "bg-accent"
+                      : "hover:bg-muted/50",
+                  )}
+                  onClick={() => handleRowSelect(variant._id)}
+                >
+                  <td className="max-w-[160px] truncate px-3 py-2 font-medium">
+                    {variant.syntheticUserName}
+                  </td>
+                  {configVariantReview.config.sharedAxes.map((axis) => (
+                    <td
+                      key={`${variant._id}-${axis.key}`}
+                      className="px-3 py-2 tabular-nums text-muted-foreground"
+                    >
+                      {formatAxisValue(
+                        getAxisValue(variant.axisValues, axis.key),
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 tabular-nums">
+                    {formatScore(variant.edgeScore)}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {formatScore(variant.coherenceScore)}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">
+                    {formatScore(variant.distinctnessScore)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+
+  const inspectorContent = selectedVariant ? (
+    <VariantInspector
+      variant={selectedVariant}
+      sharedAxes={configVariantReview.config.sharedAxes}
+      syntheticUsers={configVariantReview.syntheticUsers}
+      selectedAxisKey={selectedAxisKey}
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <p className="text-center text-sm text-muted-foreground">
+        Select a variant row to inspect its narrative details.
+      </p>
+    </div>
+  );
+
+  const selectedAxis = configVariantReview.config.sharedAxes.find(
+    (a) => a.key === selectedAxisKey,
+  );
+
+  return (
+    <div data-uidotsh-pick="Review layout" className="contents">
+      {/* ── Option 1: Table + sidebar (current) ── */}
+      <div data-uidotsh-option="Table + sidebar (current)" className="contents">
+        <div className="space-y-4">
+          {studySelectorBar}
+          {filterBar}
+
+          <div className="flex gap-4" style={{ minHeight: 480 }}>
+            <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
+              {variantTableContent}
             </div>
-          )}
+
+            <div className="w-80 shrink-0 overflow-y-auto rounded-xl border bg-card p-5">
+              {inspectorContent}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 2: Full-width table ── */}
+      <div data-uidotsh-option="Full-width table" className="contents" hidden>
+        <div className="space-y-4">
+          {studySelectorBar}
+          {filterBar}
+
+          <div className="overflow-hidden rounded-xl border bg-card" style={{ minHeight: 480 }}>
+            {variantTableContent}
+          </div>
+
+          <div className="rounded-xl border bg-card p-5">
+            {inspectorContent}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 3: Wide inspector ── */}
+      <div data-uidotsh-option="Wide inspector" className="contents" hidden>
+        <div className="space-y-4">
+          {studySelectorBar}
+          {filterBar}
+
+          <div className="flex gap-4" style={{ minHeight: 480 }}>
+            <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
+              {variantTableContent}
+            </div>
+
+            <div className="w-96 shrink-0 overflow-y-auto rounded-xl border bg-card p-5">
+              {inspectorContent}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 4: Table above, inspector below ── */}
+      <div data-uidotsh-option="Table above, inspector below" className="contents" hidden>
+        <div className="space-y-4">
+          {studySelectorBar}
+          {filterBar}
+
+          <div className="overflow-hidden rounded-xl border bg-card" style={{ minHeight: 320 }}>
+            {variantTableContent}
+          </div>
+
+          <div className="rounded-xl border bg-card p-5">
+            {selectedVariant ? (
+              <div className="flex gap-8">
+                <div className="shrink-0 space-y-5">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold">{selectedVariant.syntheticUserName}</h3>
+                    {configVariantReview.syntheticUsers.find(
+                      (u) => u._id === selectedVariant.syntheticUserId,
+                    ) ? (
+                      <p className="text-xs text-muted-foreground">
+                        {configVariantReview.syntheticUsers.find(
+                          (u) => u._id === selectedVariant.syntheticUserId,
+                        )?.summary}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Scores
+                    </h4>
+                    <div className="flex gap-2">
+                      <ScoreBadge label="Edge" value={selectedVariant.edgeScore} />
+                      <ScoreBadge label="Coher." value={selectedVariant.coherenceScore} />
+                      <ScoreBadge label="Dist." value={selectedVariant.distinctnessScore} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Axis values
+                    </h4>
+                    <div className="space-y-1.5">
+                      {configVariantReview.config.sharedAxes.map((axis) => {
+                        const value = getAxisValue(selectedVariant.axisValues, axis.key);
+                        return (
+                          <div
+                            key={axis.key}
+                            className={cn(
+                              "flex items-center justify-between rounded px-2 py-1 text-sm",
+                              axis.key === selectedAxisKey && "bg-muted",
+                            )}
+                          >
+                            <span className="truncate text-muted-foreground">
+                              {axis.label}
+                            </span>
+                            <span className="ml-2 shrink-0 tabular-nums font-medium">
+                              {formatAxisValue(value)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {selectedAxis ? (
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {selectedAxis.label} anchors
+                      </h4>
+                      <div className="space-y-1.5 text-xs">
+                        <AnchorRow label="Low" value={selectedAxis.lowAnchor} />
+                        <AnchorRow label="Mid" value={selectedAxis.midAnchor} />
+                        <AnchorRow label="High" value={selectedAxis.highAnchor} />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-2">
+                  <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    First-person bio
+                  </h4>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                    {selectedVariant.firstPersonBio}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-center text-sm text-muted-foreground">
+                  Select a variant row to inspect its narrative details.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

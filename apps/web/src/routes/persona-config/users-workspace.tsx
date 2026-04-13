@@ -661,145 +661,344 @@ function UsersWorkspaceInner({
   );
 
   // ---------------------------------------------------------------------------
+  // Shared fragments for layout variations
+  // ---------------------------------------------------------------------------
+
+  const inspectorContent = isProtoFormOpen && isDraft ? (
+    <InlineCreateForm
+      form={syntheticUserForm}
+      isSaving={isSavingSyntheticUser}
+      onSubmit={onCreateSyntheticUser}
+      onChange={onSyntheticUserFormChange}
+      onClose={onToggleProtoForm}
+    />
+  ) : selectedUser && editingUserId === selectedUser._id ? (
+    <InlineEditForm
+      key={selectedUser._id}
+      user={selectedUser}
+      isSaving={isSavingSyntheticUser}
+      onSave={async (patch) => {
+        await onUpdateSyntheticUser(
+          selectedUser._id as Id<"syntheticUsers">,
+          patch,
+        );
+        setEditingUserId(null);
+      }}
+      onCancel={() => setEditingUserId(null)}
+    />
+  ) : selectedUser ? (
+    <UserInspector
+      user={selectedUser}
+      config={config}
+      isDraft={isDraft}
+      onEdit={() => setEditingUserId(selectedUser._id)}
+      onDelete={() =>
+        onRequestDeleteSyntheticUser(
+          selectedUser._id as Id<"syntheticUsers">,
+          selectedUser.name,
+        )
+      }
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <p className="text-sm text-muted-foreground">
+        {syntheticUserList.length === 0
+          ? "Add a synthetic user to get started."
+          : "Select a user from the list."}
+      </p>
+    </div>
+  );
+
+  const searchAndFilters = (
+    <>
+      <Input
+        placeholder="Search users..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        aria-label="Search synthetic users"
+      />
+      <div className="flex gap-2">
+        <select
+          value={sourceFilter}
+          onChange={(e) =>
+            setSourceFilter(
+              e.target.value as SyntheticUserDoc["sourceType"] | "",
+            )
+          }
+          className={cn(nativeSelectClassName, "flex-1")}
+          aria-label="Filter by source"
+        >
+          <option value="">All sources</option>
+          {sourceTypeFilterOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          className={cn(nativeSelectClassName, "flex-1")}
+          aria-label="Sort order"
+        >
+          {sortOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {isDraft ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={onToggleProtoForm}
+        >
+          {isProtoFormOpen ? "Close form" : "Add user"}
+        </Button>
+      ) : null}
+    </>
+  );
+
+  const userListItems = filteredUsers.length === 0 ? (
+    <p className="p-3 text-center text-xs text-muted-foreground">
+      {syntheticUserList.length === 0
+        ? "No synthetic users yet."
+        : "No users match the current filters."}
+    </p>
+  ) : (
+    filteredUsers.map((user) => (
+      <UserListRow
+        key={user._id}
+        user={user}
+        isSelected={user._id === selectedUserId}
+        onSelect={() =>
+          onSearchChange({ selectedUserId: user._id })
+        }
+      />
+    ))
+  );
+
+  const listFooter = (
+    <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+      {filteredUsers.length} of {syntheticUserList.length} users
+    </div>
+  );
+
+  const emptyMessage = syntheticUserList.length === 0
+    ? "No synthetic users yet."
+    : "No users match the current filters.";
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="flex gap-4" style={{ minHeight: 480 }}>
-      {/* Master pane */}
-      <div className="flex w-72 shrink-0 flex-col rounded-xl border bg-card">
-        {/* Controls */}
-        <div className="space-y-3 border-b p-3">
-          <Input
-            placeholder="Search users..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            aria-label="Search synthetic users"
-          />
-          <div className="flex gap-2">
-            <select
-              value={sourceFilter}
-              onChange={(e) =>
-                setSourceFilter(
-                  e.target.value as SyntheticUserDoc["sourceType"] | "",
-                )
-              }
-              className={cn(nativeSelectClassName, "flex-1")}
-              aria-label="Filter by source"
+    <div data-uidotsh-pick="Users layout" className="contents">
+      {/* ── Option 1: Master-detail (current) ── */}
+      <div data-uidotsh-option="Master-detail (current)" className="contents">
+        <div className="flex gap-4" style={{ minHeight: 480 }}>
+          <div className="flex w-72 shrink-0 flex-col rounded-xl border bg-card">
+            <div className="space-y-3 border-b p-3">
+              {searchAndFilters}
+            </div>
+            <div
+              ref={listRef}
+              role="listbox"
+              aria-label="Synthetic users"
+              tabIndex={0}
+              className="flex-1 space-y-1 overflow-y-auto p-2 focus-visible:outline-none"
+              onKeyDown={handleListKeyDown}
             >
-              <option value="">All sources</option>
-              {sourceTypeFilterOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as SortKey)}
-              className={cn(nativeSelectClassName, "flex-1")}
-              aria-label="Sort order"
-            >
-              {sortOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              {userListItems}
+            </div>
+            {listFooter}
           </div>
-          {isDraft ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={onToggleProtoForm}
-            >
-              {isProtoFormOpen ? "Close form" : "Add user"}
-            </Button>
-          ) : null}
-        </div>
-
-        {/* List */}
-        <div
-          ref={listRef}
-          role="listbox"
-          aria-label="Synthetic users"
-          tabIndex={0}
-          className="flex-1 space-y-1 overflow-y-auto p-2 focus-visible:outline-none"
-          onKeyDown={handleListKeyDown}
-        >
-          {filteredUsers.length === 0 ? (
-            <p className="p-3 text-center text-xs text-muted-foreground">
-              {syntheticUserList.length === 0
-                ? "No synthetic users yet."
-                : "No users match the current filters."}
-            </p>
-          ) : (
-            filteredUsers.map((user) => (
-              <UserListRow
-                key={user._id}
-                user={user}
-                isSelected={user._id === selectedUserId}
-                onSelect={() =>
-                  onSearchChange({ selectedUserId: user._id })
-                }
-              />
-            ))
-          )}
-        </div>
-
-        {/* Count footer */}
-        <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-          {filteredUsers.length} of {syntheticUserList.length} users
+          <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+            {inspectorContent}
+          </div>
         </div>
       </div>
 
-      {/* Inspector pane */}
-      <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
-        {isProtoFormOpen && isDraft ? (
-          <InlineCreateForm
-            form={syntheticUserForm}
-            isSaving={isSavingSyntheticUser}
-            onSubmit={onCreateSyntheticUser}
-            onChange={onSyntheticUserFormChange}
-            onClose={onToggleProtoForm}
-          />
-        ) : selectedUser && editingUserId === selectedUser._id ? (
-          <InlineEditForm
-            key={selectedUser._id}
-            user={selectedUser}
-            isSaving={isSavingSyntheticUser}
-            onSave={async (patch) => {
-              await onUpdateSyntheticUser(
-                selectedUser._id as Id<"syntheticUsers">,
-                patch,
-              );
-              setEditingUserId(null);
-            }}
-            onCancel={() => setEditingUserId(null)}
-          />
-        ) : selectedUser ? (
-          <UserInspector
-            user={selectedUser}
-            config={config}
-            isDraft={isDraft}
-            onEdit={() => setEditingUserId(selectedUser._id)}
-            onDelete={() =>
-              onRequestDeleteSyntheticUser(
-                selectedUser._id as Id<"syntheticUsers">,
-                selectedUser.name,
-              )
-            }
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">
-              {syntheticUserList.length === 0
-                ? "Add a synthetic user to get started."
-                : "Select a user from the list."}
-            </p>
+      {/* ── Option 2: Vertical split ── */}
+      <div data-uidotsh-option="Vertical split" className="contents" hidden>
+        <div className="flex flex-col gap-4" style={{ minHeight: 480 }}>
+          <div className="rounded-xl border bg-card">
+            <div className="space-y-3 border-b p-3">
+              {searchAndFilters}
+            </div>
+            <div
+              role="listbox"
+              aria-label="Synthetic users"
+              tabIndex={0}
+              className="flex gap-2 overflow-x-auto p-2 focus-visible:outline-none"
+              style={{ minHeight: 200 }}
+              onKeyDown={handleListKeyDown}
+            >
+              {filteredUsers.length === 0 ? (
+                <p className="p-3 text-center text-xs text-muted-foreground">
+                  {emptyMessage}
+                </p>
+              ) : (
+                filteredUsers.map((user) => (
+                  <div
+                    key={user._id}
+                    aria-selected={user._id === selectedUserId}
+                    role="option"
+                    tabIndex={-1}
+                    className={cn(
+                      "w-56 shrink-0 cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors",
+                      "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      user._id === selectedUserId
+                        ? "border-primary/40 bg-accent"
+                        : "border-transparent bg-background",
+                    )}
+                    onClick={() => onSearchChange({ selectedUserId: user._id })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSearchChange({ selectedUserId: user._id });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium">{user.name}</span>
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        {sourceTypeLabels[user.sourceType]}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 line-clamp-3 text-xs text-muted-foreground">
+                      {user.summary}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            {listFooter}
           </div>
-        )}
+          <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+            {inspectorContent}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 3: Wide sidebar ── */}
+      <div data-uidotsh-option="Wide sidebar" className="contents" hidden>
+        <div className="flex gap-4" style={{ minHeight: 480 }}>
+          <div className="flex w-96 shrink-0 flex-col rounded-xl border bg-card">
+            <div className="space-y-3 border-b p-3">
+              {searchAndFilters}
+            </div>
+            <div
+              role="listbox"
+              aria-label="Synthetic users"
+              tabIndex={0}
+              className="flex-1 space-y-1 overflow-y-auto p-2 focus-visible:outline-none"
+              onKeyDown={handleListKeyDown}
+            >
+              {filteredUsers.length === 0 ? (
+                <p className="p-3 text-center text-xs text-muted-foreground">
+                  {emptyMessage}
+                </p>
+              ) : (
+                filteredUsers.map((user) => (
+                  <div
+                    key={user._id}
+                    aria-selected={user._id === selectedUserId}
+                    role="option"
+                    tabIndex={-1}
+                    className={cn(
+                      "w-full cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors",
+                      "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      user._id === selectedUserId
+                        ? "border-primary/40 bg-accent"
+                        : "border-transparent bg-background",
+                    )}
+                    onClick={() => onSearchChange({ selectedUserId: user._id })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSearchChange({ selectedUserId: user._id });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium">{user.name}</span>
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        {sourceTypeLabels[user.sourceType]}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {user.summary}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            {listFooter}
+          </div>
+          <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+            {inspectorContent}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 4: Table list ── */}
+      <div data-uidotsh-option="Table list" className="contents" hidden>
+        <div className="flex flex-col gap-4" style={{ minHeight: 480 }}>
+          <div className="rounded-xl border bg-card">
+            <div className="space-y-3 border-b p-3">
+              {searchAndFilters}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Name</th>
+                    <th className="px-3 py-2 font-medium">Source</th>
+                    <th className="px-3 py-2 font-medium">Summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-3 py-4 text-center text-xs text-muted-foreground">
+                        {emptyMessage}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <tr
+                        key={user._id}
+                        className={cn(
+                          "cursor-pointer border-b transition-colors last:border-b-0",
+                          "hover:bg-accent/50",
+                          user._id === selectedUserId
+                            ? "bg-accent"
+                            : "bg-background",
+                        )}
+                        onClick={() => onSearchChange({ selectedUserId: user._id })}
+                      >
+                        <td className="whitespace-nowrap px-3 py-2 font-medium">{user.name}</td>
+                        <td className="whitespace-nowrap px-3 py-2">
+                          <Badge variant="outline" className="text-[10px]">
+                            {sourceTypeLabels[user.sourceType]}
+                          </Badge>
+                        </td>
+                        <td className="max-w-md truncate px-3 py-2 text-muted-foreground">{user.summary}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {listFooter}
+          </div>
+          <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+            {inspectorContent}
+          </div>
+        </div>
       </div>
     </div>
   );

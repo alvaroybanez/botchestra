@@ -584,7 +584,7 @@ function FindingCard({
         </div>
 
         <section className="space-y-3">
-          <h3 className="text-base font-semibold">Representative quotes</h3>
+          <h3 className="text-base font-semibold">Representative quotes from Synthetic Users (always validate with humans!)</h3>
           {representativeQuotes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No representative quotes were captured for this issue cluster.

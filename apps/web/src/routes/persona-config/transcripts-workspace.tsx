@@ -456,128 +456,526 @@ function TranscriptsWorkspaceInner({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-4" style={{ minHeight: 480 }}>
-        {/* Master pane */}
-        <div className="flex w-72 shrink-0 flex-col rounded-xl border bg-card">
-          <div className="space-y-3 border-b p-3">
-            <Input
-              placeholder="Search transcripts..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              aria-label="Search transcripts"
-            />
-            <div className="flex gap-2">
-              <select
-                value={formatFilter}
-                onChange={(e) => setFormatFilter(e.target.value)}
-                className={cn(nativeSelectClassName, "flex-1")}
-                aria-label="Filter by format"
-              >
-                <option value="">All formats</option>
-                {formatFilterOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as SortKey)}
-                className={cn(nativeSelectClassName, "flex-1")}
-                aria-label="Sort order"
-              >
-                {sortOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-2">
-              {isDraft && canManageConfigTranscripts ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={onOpenTranscriptPicker}
-                >
-                  Attach
-                </Button>
-              ) : null}
-              {canOpenExtraction ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={extractionStatus?.status === "processing"}
-                  onClick={onOpenExtractionPanel}
-                >
-                  {extractionButtonLabel}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-
-          <div
-            ref={listRef}
-            role="listbox"
-            aria-label="Attached transcripts"
-            tabIndex={0}
-            className="flex-1 space-y-1 overflow-y-auto p-2 focus-visible:outline-none"
-            onKeyDown={handleListKeyDown}
-          >
-            {filteredTranscripts.length === 0 ? (
-              <p className="p-3 text-center text-xs text-muted-foreground">
-                {configTranscripts.length === 0
-                  ? "No transcripts attached yet."
-                  : "No transcripts match the current filters."}
-              </p>
-            ) : (
-              filteredTranscripts.map((ct) => (
-                <TranscriptListRow
-                  key={ct._id}
-                  configTranscript={ct}
-                  isSelected={
-                    String(ct.transcriptId) === selectedTranscriptId
-                  }
-                  onSelect={() =>
-                    onSearchChange({
-                      selectedTranscriptId: String(ct.transcriptId),
-                    })
-                  }
+      <div data-uidotsh-pick="Transcripts layout" className="contents">
+        {/* Option 1: Master-detail (current) */}
+        <div data-uidotsh-option="Master-detail (current)" className="contents">
+          <div className="flex gap-4" style={{ minHeight: 480 }}>
+            <div className="flex w-72 shrink-0 flex-col rounded-xl border bg-card">
+              <div className="space-y-3 border-b p-3">
+                <Input
+                  placeholder="Search transcripts..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  aria-label="Search transcripts"
                 />
-              ))
-            )}
-          </div>
+                <div className="flex gap-2">
+                  <select
+                    value={formatFilter}
+                    onChange={(e) => setFormatFilter(e.target.value)}
+                    className={cn(nativeSelectClassName, "flex-1")}
+                    aria-label="Filter by format"
+                  >
+                    <option value="">All formats</option>
+                    {formatFilterOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as SortKey)}
+                    className={cn(nativeSelectClassName, "flex-1")}
+                    aria-label="Sort order"
+                  >
+                    {sortOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  {isDraft && canManageConfigTranscripts ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={onOpenTranscriptPicker}
+                    >
+                      Attach
+                    </Button>
+                  ) : null}
+                  {canOpenExtraction ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={extractionStatus?.status === "processing"}
+                      onClick={onOpenExtractionPanel}
+                    >
+                      {extractionButtonLabel}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
 
-          <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-            {filteredTranscripts.length} of {configTranscripts.length}{" "}
-            transcripts
+              <div
+                ref={listRef}
+                role="listbox"
+                aria-label="Attached transcripts"
+                tabIndex={0}
+                className="flex-1 space-y-1 overflow-y-auto p-2 focus-visible:outline-none"
+                onKeyDown={handleListKeyDown}
+              >
+                {filteredTranscripts.length === 0 ? (
+                  <p className="p-3 text-center text-xs text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "No transcripts attached yet."
+                      : "No transcripts match the current filters."}
+                  </p>
+                ) : (
+                  filteredTranscripts.map((ct) => (
+                    <TranscriptListRow
+                      key={ct._id}
+                      configTranscript={ct}
+                      isSelected={
+                        String(ct.transcriptId) === selectedTranscriptId
+                      }
+                      onSelect={() =>
+                        onSearchChange({
+                          selectedTranscriptId: String(ct.transcriptId),
+                        })
+                      }
+                    />
+                  ))
+                )}
+              </div>
+
+              <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                {filteredTranscripts.length} of {configTranscripts.length}{" "}
+                transcripts
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+              {selectedTranscript ? (
+                <TranscriptInspector
+                  configTranscript={selectedTranscript}
+                  isDraft={isDraft}
+                  canManage={canManageConfigTranscripts}
+                  isDetaching={
+                    detachingTranscriptId ===
+                    String(selectedTranscript.transcriptId)
+                  }
+                  onDetach={onDetachTranscript}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "Attach a transcript to get started."
+                      : "Select a transcript from the list."}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Inspector pane */}
-        <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
-          {selectedTranscript ? (
-            <TranscriptInspector
-              configTranscript={selectedTranscript}
-              isDraft={isDraft}
-              canManage={canManageConfigTranscripts}
-              isDetaching={
-                detachingTranscriptId ===
-                String(selectedTranscript.transcriptId)
-              }
-              onDetach={onDetachTranscript}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                {configTranscripts.length === 0
-                  ? "Attach a transcript to get started."
-                  : "Select a transcript from the list."}
-              </p>
+        {/* Option 2: Vertical split */}
+        <div data-uidotsh-option="Vertical split" className="contents" hidden>
+          <div className="flex flex-col gap-4" style={{ minHeight: 480 }}>
+            <div className="rounded-xl border bg-card">
+              <div className="flex flex-wrap items-center gap-2 border-b p-3">
+                <Input
+                  placeholder="Search transcripts..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  aria-label="Search transcripts"
+                  className="w-56"
+                />
+                <select
+                  value={formatFilter}
+                  onChange={(e) => setFormatFilter(e.target.value)}
+                  className={cn(nativeSelectClassName, "w-32")}
+                  aria-label="Filter by format"
+                >
+                  <option value="">All formats</option>
+                  {formatFilterOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value as SortKey)}
+                  className={cn(nativeSelectClassName, "w-40")}
+                  aria-label="Sort order"
+                >
+                  {sortOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="ml-auto flex gap-2">
+                  {isDraft && canManageConfigTranscripts ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onOpenTranscriptPicker}
+                    >
+                      Attach
+                    </Button>
+                  ) : null}
+                  {canOpenExtraction ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={extractionStatus?.status === "processing"}
+                      onClick={onOpenExtractionPanel}
+                    >
+                      {extractionButtonLabel}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div
+                ref={listRef}
+                role="listbox"
+                aria-label="Attached transcripts"
+                tabIndex={0}
+                className="flex gap-2 overflow-x-auto p-2 focus-visible:outline-none"
+                onKeyDown={handleListKeyDown}
+              >
+                {filteredTranscripts.length === 0 ? (
+                  <p className="p-3 text-center text-xs text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "No transcripts attached yet."
+                      : "No transcripts match the current filters."}
+                  </p>
+                ) : (
+                  filteredTranscripts.map((ct) => (
+                    <div key={ct._id} className="shrink-0">
+                      <TranscriptListRow
+                        configTranscript={ct}
+                        isSelected={
+                          String(ct.transcriptId) === selectedTranscriptId
+                        }
+                        onSelect={() =>
+                          onSearchChange({
+                            selectedTranscriptId: String(ct.transcriptId),
+                          })
+                        }
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                {filteredTranscripts.length} of {configTranscripts.length}{" "}
+                transcripts
+              </div>
             </div>
-          )}
+
+            <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+              {selectedTranscript ? (
+                <TranscriptInspector
+                  configTranscript={selectedTranscript}
+                  isDraft={isDraft}
+                  canManage={canManageConfigTranscripts}
+                  isDetaching={
+                    detachingTranscriptId ===
+                    String(selectedTranscript.transcriptId)
+                  }
+                  onDetach={onDetachTranscript}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "Attach a transcript to get started."
+                      : "Select a transcript from the list."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Option 3: Wide sidebar */}
+        <div data-uidotsh-option="Wide sidebar" className="contents" hidden>
+          <div className="flex gap-4" style={{ minHeight: 480 }}>
+            <div className="flex w-96 shrink-0 flex-col rounded-xl border bg-card">
+              <div className="space-y-3 border-b p-3">
+                <Input
+                  placeholder="Search transcripts..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  aria-label="Search transcripts"
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={formatFilter}
+                    onChange={(e) => setFormatFilter(e.target.value)}
+                    className={cn(nativeSelectClassName, "flex-1")}
+                    aria-label="Filter by format"
+                  >
+                    <option value="">All formats</option>
+                    {formatFilterOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as SortKey)}
+                    className={cn(nativeSelectClassName, "flex-1")}
+                    aria-label="Sort order"
+                  >
+                    {sortOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  {isDraft && canManageConfigTranscripts ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={onOpenTranscriptPicker}
+                    >
+                      Attach
+                    </Button>
+                  ) : null}
+                  {canOpenExtraction ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={extractionStatus?.status === "processing"}
+                      onClick={onOpenExtractionPanel}
+                    >
+                      {extractionButtonLabel}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div
+                ref={listRef}
+                role="listbox"
+                aria-label="Attached transcripts"
+                tabIndex={0}
+                className="flex-1 space-y-1 overflow-y-auto p-2 focus-visible:outline-none"
+                onKeyDown={handleListKeyDown}
+              >
+                {filteredTranscripts.length === 0 ? (
+                  <p className="p-3 text-center text-xs text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "No transcripts attached yet."
+                      : "No transcripts match the current filters."}
+                  </p>
+                ) : (
+                  filteredTranscripts.map((ct) => (
+                    <TranscriptListRow
+                      key={ct._id}
+                      configTranscript={ct}
+                      isSelected={
+                        String(ct.transcriptId) === selectedTranscriptId
+                      }
+                      onSelect={() =>
+                        onSearchChange({
+                          selectedTranscriptId: String(ct.transcriptId),
+                        })
+                      }
+                    />
+                  ))
+                )}
+              </div>
+
+              <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                {filteredTranscripts.length} of {configTranscripts.length}{" "}
+                transcripts
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+              {selectedTranscript ? (
+                <TranscriptInspector
+                  configTranscript={selectedTranscript}
+                  isDraft={isDraft}
+                  canManage={canManageConfigTranscripts}
+                  isDetaching={
+                    detachingTranscriptId ===
+                    String(selectedTranscript.transcriptId)
+                  }
+                  onDetach={onDetachTranscript}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "Attach a transcript to get started."
+                      : "Select a transcript from the list."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Option 4: Compact list */}
+        <div data-uidotsh-option="Compact list" className="contents" hidden>
+          <div className="flex gap-4" style={{ minHeight: 480 }}>
+            <div className="flex w-56 shrink-0 flex-col rounded-xl border bg-card">
+              <div className="space-y-3 border-b p-3">
+                <Input
+                  placeholder="Search..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  aria-label="Search transcripts"
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={formatFilter}
+                    onChange={(e) => setFormatFilter(e.target.value)}
+                    className={cn(nativeSelectClassName, "flex-1")}
+                    aria-label="Filter by format"
+                  >
+                    <option value="">All</option>
+                    {formatFilterOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as SortKey)}
+                    className={cn(nativeSelectClassName, "flex-1")}
+                    aria-label="Sort order"
+                  >
+                    {sortOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  {isDraft && canManageConfigTranscripts ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={onOpenTranscriptPicker}
+                    >
+                      Attach
+                    </Button>
+                  ) : null}
+                  {canOpenExtraction ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={extractionStatus?.status === "processing"}
+                      onClick={onOpenExtractionPanel}
+                    >
+                      {extractionButtonLabel}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div
+                ref={listRef}
+                role="listbox"
+                aria-label="Attached transcripts"
+                tabIndex={0}
+                className="flex-1 space-y-0.5 overflow-y-auto p-1.5 focus-visible:outline-none"
+                onKeyDown={handleListKeyDown}
+              >
+                {filteredTranscripts.length === 0 ? (
+                  <p className="p-3 text-center text-xs text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "No transcripts attached yet."
+                      : "No transcripts match the current filters."}
+                  </p>
+                ) : (
+                  filteredTranscripts.map((ct) => {
+                    const isSelected =
+                      String(ct.transcriptId) === selectedTranscriptId;
+                    return (
+                      <div
+                        key={ct._id}
+                        aria-selected={isSelected}
+                        role="option"
+                        tabIndex={-1}
+                        className={cn(
+                          "cursor-pointer truncate rounded-md px-2 py-1.5 text-xs transition-colors",
+                          "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          isSelected
+                            ? "bg-accent font-medium"
+                            : "text-muted-foreground",
+                        )}
+                        onClick={() =>
+                          onSearchChange({
+                            selectedTranscriptId: String(ct.transcriptId),
+                          })
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSearchChange({
+                              selectedTranscriptId: String(ct.transcriptId),
+                            });
+                          }
+                        }}
+                      >
+                        {ct.transcript.originalFilename}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="border-t px-2 py-1.5 text-[10px] text-muted-foreground">
+                {filteredTranscripts.length}/{configTranscripts.length}
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card p-5">
+              {selectedTranscript ? (
+                <TranscriptInspector
+                  configTranscript={selectedTranscript}
+                  isDraft={isDraft}
+                  canManage={canManageConfigTranscripts}
+                  isDetaching={
+                    detachingTranscriptId ===
+                    String(selectedTranscript.transcriptId)
+                  }
+                  onDetach={onDetachTranscript}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-muted-foreground">
+                    {configTranscripts.length === 0
+                      ? "Attach a transcript to get started."
+                      : "Select a transcript from the list."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

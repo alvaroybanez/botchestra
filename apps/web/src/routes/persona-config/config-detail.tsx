@@ -1404,231 +1404,505 @@ function OverviewWorkspace({
 }) {
   const genHealth = generationHealthLabel(batchGenerationRun);
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Orientation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <LocalSummaryValue label="Status" value={resolvedStatus} />
-            <LocalSummaryValue label="Version" value={`v${config.version}`} />
-            <LocalSummaryValue
-              label="Shared axes"
-              value={String(resolvedAxes.length)}
-            />
-            <LocalSummaryValue
-              label="Synthetic users"
-              value={String(syntheticUserCount)}
-            />
-            <LocalSummaryValue
-              label="Transcripts"
-              value={String(transcriptCount)}
-            />
-            <div className="rounded-lg border bg-background p-4">
-              <dt className="text-sm font-medium text-muted-foreground">
-                Generation health
-              </dt>
-              <dd
-                className={`mt-1 break-words text-sm font-medium ${generationHealthColor(genHealth.tone)}`}
-              >
-                {genHealth.text}
-              </dd>
+  const draftFormBlock = isDraft ? (
+    <ConfigFormCard
+      form={draftForm}
+      formPrefix="edit-config"
+      submitLabel={isSavingDraft ? "Saving..." : "Save draft changes"}
+      title={null}
+      description={null}
+      error={null}
+      disabled={isSavingDraft}
+      onSubmit={onSaveDraft}
+      onChange={onDraftFormChange}
+      axisGenerationSlot={
+        <div className="space-y-4 rounded-xl border bg-background p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Axis generation</p>
+              <p className="text-sm text-muted-foreground">
+                Generate new axes from persona configuration metadata or import reusable
+                ones from the shared library.
+              </p>
             </div>
-          </dl>
-        </CardContent>
-      </Card>
 
-      {isDraft ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Metadata &amp; Shared Axes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ConfigFormCard
-              form={draftForm}
-              formPrefix="edit-config"
-              submitLabel={isSavingDraft ? "Saving..." : "Save draft changes"}
-              title={null}
-              description={null}
-              error={null}
-              disabled={isSavingDraft}
-              onSubmit={onSaveDraft}
-              onChange={onDraftFormChange}
-              axisGenerationSlot={
-                <div className="space-y-4 rounded-xl border bg-background p-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Axis generation</p>
-                      <p className="text-sm text-muted-foreground">
-                        Generate new axes from persona configuration metadata or import reusable
-                        ones from the shared library.
-                      </p>
-                    </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                disabled={!canSuggestAxes || isSuggestingAxes}
+                onClick={onSuggestAxes}
+                type="button"
+              >
+                {isSuggestingAxes ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoadingSpinner />
+                    Suggesting...
+                  </span>
+                ) : (
+                  "Suggest axes"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onOpenAxisLibrary}
+              >
+                Browse library
+              </Button>
+            </div>
+          </div>
 
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        disabled={!canSuggestAxes || isSuggestingAxes}
-                        onClick={onSuggestAxes}
-                        type="button"
-                      >
-                        {isSuggestingAxes ? (
-                          <span className="inline-flex items-center gap-2">
-                            <LoadingSpinner />
-                            Suggesting...
-                          </span>
-                        ) : (
-                          "Suggest axes"
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onOpenAxisLibrary}
-                      >
-                        Browse library
-                      </Button>
-                    </div>
-                  </div>
+          <div aria-live="polite" className="space-y-2">
+            {isSuggestingAxes ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                Generating axis suggestions from the current persona configuration
+                metadata...
+              </p>
+            ) : null}
+            {suggestionError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {suggestionError}
+              </p>
+            ) : null}
+          </div>
 
-                  <div aria-live="polite" className="space-y-2">
-                    {isSuggestingAxes ? (
-                      <p className="text-sm text-muted-foreground" role="status">
-                        Generating axis suggestions from the current persona configuration
-                        metadata...
-                      </p>
-                    ) : null}
-                    {suggestionError ? (
-                      <p className="text-sm text-destructive" role="alert">
-                        {suggestionError}
-                      </p>
-                    ) : null}
-                  </div>
+          {isSuggestionPanelOpen ? (
+            <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
+              <div className="space-y-1">
+                <h4 className="text-lg font-semibold">
+                  Review suggested axes
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Select the axes you want to add, edit any field inline,
+                  then apply the selected suggestions.
+                </p>
+              </div>
 
-                  {isSuggestionPanelOpen ? (
-                    <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
-                      <div className="space-y-1">
-                        <h4 className="text-lg font-semibold">
-                          Review suggested axes
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          Select the axes you want to add, edit any field inline,
-                          then apply the selected suggestions.
-                        </p>
-                      </div>
+              <div className="grid gap-4">
+                {suggestedAxes.map((suggestion, index) => (
+                  <SuggestedAxisCard
+                    key={suggestion.id}
+                    index={index}
+                    suggestion={suggestion}
+                    onChange={(nextAxis) =>
+                      onSuggestionAxisChange(suggestion.id, nextAxis)
+                    }
+                    onToggleEdit={() =>
+                      onSuggestionEditToggle(suggestion.id)
+                    }
+                    onToggleSelected={() =>
+                      onSuggestionSelectionToggle(suggestion.id)
+                    }
+                  />
+                ))}
+              </div>
 
-                      <div className="grid gap-4">
-                        {suggestedAxes.map((suggestion, index) => (
-                          <SuggestedAxisCard
-                            key={suggestion.id}
-                            index={index}
-                            suggestion={suggestion}
-                            onChange={(nextAxis) =>
-                              onSuggestionAxisChange(suggestion.id, nextAxis)
-                            }
-                            onToggleEdit={() =>
-                              onSuggestionEditToggle(suggestion.id)
-                            }
-                            onToggleSelected={() =>
-                              onSuggestionSelectionToggle(suggestion.id)
-                            }
-                          />
-                        ))}
-                      </div>
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onDismissSuggestions}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  disabled={selectedSuggestionCount === 0}
+                  type="button"
+                  onClick={onApplySuggestedAxes}
+                >
+                  Apply selected
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      }
+    />
+  ) : null;
 
-                      <div className="flex flex-wrap justify-end gap-3">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={onDismissSuggestions}
-                        >
-                          Dismiss
-                        </Button>
-                        <Button
-                          disabled={selectedSuggestionCount === 0}
-                          type="button"
-                          onClick={onApplySuggestedAxes}
-                        >
-                          Apply selected
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              }
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <>
+  return (
+    <div data-uidotsh-pick="Overview layout" className="contents">
+      {/* ── Option 1: Stacked cards (current) ── */}
+      <div data-uidotsh-option="Stacked cards (current)" className="contents">
+        <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Metadata</CardTitle>
+              <CardTitle>Orientation</CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                <LocalSummaryValue label="Name" value={config.name} />
+              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <LocalSummaryValue label="Status" value={resolvedStatus} />
                 <LocalSummaryValue label="Version" value={`v${config.version}`} />
-                <LocalSummaryValue label="Description" value={config.description} />
-                <LocalSummaryValue label="Context" value={config.context} />
+                <LocalSummaryValue label="Shared axes" value={String(resolvedAxes.length)} />
+                <LocalSummaryValue label="Synthetic users" value={String(syntheticUserCount)} />
+                <LocalSummaryValue label="Transcripts" value={String(transcriptCount)} />
+                <div className="rounded-lg border bg-background p-4">
+                  <dt className="text-sm font-medium text-muted-foreground">Generation health</dt>
+                  <dd className={`mt-1 break-words text-sm font-medium ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</dd>
+                </div>
               </dl>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Shared Axes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {resolvedAxes.map((axis, index) => (
-                <div
-                  key={`${axis.key}-${index}`}
-                  className="rounded-lg border bg-background p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{axis.label}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {axis.key} · weight {axis.weight}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    {axis.description}
-                  </p>
-                  <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <LocalSummaryValue label="Low anchor" value={axis.lowAnchor} />
-                    <LocalSummaryValue label="Mid anchor" value={axis.midAnchor} />
-                    <LocalSummaryValue label="High anchor" value={axis.highAnchor} />
+          {isDraft ? (
+            <Card>
+              <CardHeader><CardTitle>Metadata &amp; Shared Axes</CardTitle></CardHeader>
+              <CardContent>{draftFormBlock}</CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader><CardTitle>Metadata</CardTitle></CardHeader>
+                <CardContent>
+                  <dl className="grid gap-4 sm:grid-cols-2">
+                    <LocalSummaryValue label="Name" value={config.name} />
+                    <LocalSummaryValue label="Version" value={`v${config.version}`} />
+                    <LocalSummaryValue label="Description" value={config.description} />
+                    <LocalSummaryValue label="Context" value={config.context} />
                   </dl>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle>Shared Axes</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  {resolvedAxes.map((axis, index) => (
+                    <div key={`${axis.key}-${index}`} className="rounded-lg border bg-background p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{axis.label}</p>
+                          <p className="text-sm text-muted-foreground">{axis.key} · weight {axis.weight}</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{axis.description}</p>
+                      <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <LocalSummaryValue label="Low anchor" value={axis.lowAnchor} />
+                        <LocalSummaryValue label="Mid anchor" value={axis.midAnchor} />
+                        <LocalSummaryValue label="High anchor" value={axis.highAnchor} />
+                      </dl>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          <Card>
+            <CardHeader><CardTitle>Audit Trail</CardTitle></CardHeader>
+            <CardContent className="grid gap-4">
+              <LocalSummaryValue label="Created by" value={config.createdBy} />
+              <LocalSummaryValue label="Last modified by" value={config.updatedBy ?? config.createdBy} />
+              <LocalSummaryValue label="Created at" value={formatTs(config.createdAt)} />
+              <LocalSummaryValue label="Last updated" value={formatTs(config.updatedAt)} />
             </CardContent>
           </Card>
-        </>
-      )}
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Audit Trail</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <LocalSummaryValue label="Created by" value={config.createdBy} />
-          <LocalSummaryValue
-            label="Last modified by"
-            value={config.updatedBy ?? config.createdBy}
-          />
-          <LocalSummaryValue
-            label="Created at"
-            value={formatTs(config.createdAt)}
-          />
-          <LocalSummaryValue
-            label="Last updated"
-            value={formatTs(config.updatedAt)}
-          />
-        </CardContent>
-      </Card>
+      {/* ── Option 2: Two-column split ── */}
+      <div data-uidotsh-option="Two-column split" className="contents" hidden>
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+          {/* Left sidebar — stats + audit */}
+          <div className="space-y-6">
+            <div className="rounded-xl border bg-card p-5">
+              <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">Quick stats</h3>
+              <dl className="mt-4 space-y-4">
+                {[
+                  { label: "Status", value: resolvedStatus },
+                  { label: "Version", value: `v${config.version}` },
+                  { label: "Shared axes", value: String(resolvedAxes.length) },
+                  { label: "Synthetic users", value: String(syntheticUserCount) },
+                  { label: "Transcripts", value: String(transcriptCount) },
+                ].map((stat) => (
+                  <div key={stat.label} className="flex items-baseline justify-between gap-3">
+                    <dt className="text-sm text-muted-foreground">{stat.label}</dt>
+                    <dd className="text-sm font-medium tabular-nums">{stat.value}</dd>
+                  </div>
+                ))}
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-sm text-muted-foreground">Gen. health</dt>
+                  <dd className={`text-sm font-medium ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="rounded-xl border bg-card p-5">
+              <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">Audit trail</h3>
+              <dl className="mt-4 space-y-3">
+                {[
+                  { label: "Created by", value: config.createdBy },
+                  { label: "Modified by", value: config.updatedBy ?? config.createdBy },
+                  { label: "Created", value: formatTs(config.createdAt) },
+                  { label: "Updated", value: formatTs(config.updatedAt) },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <dt className="text-sm text-muted-foreground">{item.label}</dt>
+                    <dd className="mt-0.5 text-sm font-medium">{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+
+          {/* Right main — metadata + axes */}
+          <div className="space-y-6">
+            {isDraft ? (
+              <Card>
+                <CardHeader><CardTitle>Metadata &amp; Shared Axes</CardTitle></CardHeader>
+                <CardContent>{draftFormBlock}</CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="rounded-xl border bg-card p-6">
+                  <h3 className="text-lg font-semibold tracking-tight">Metadata</h3>
+                  <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+                      <dd className="mt-1 text-sm">{config.name}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-muted-foreground">Context</dt>
+                      <dd className="mt-1 text-sm">{config.context}</dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-sm font-medium text-muted-foreground">Description</dt>
+                      <dd className="mt-1 text-sm leading-6 text-pretty">{config.description}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="rounded-xl border bg-card p-6">
+                  <h3 className="text-lg font-semibold tracking-tight">Shared Axes</h3>
+                  <div className="mt-4 divide-y divide-border/50">
+                    {resolvedAxes.map((axis, index) => (
+                      <div key={`split-${axis.key}-${index}`} className="py-4 first:pt-0 last:pb-0">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="font-medium">{axis.label}</p>
+                          <p className="text-sm text-muted-foreground">{axis.key} · w{axis.weight}</p>
+                        </div>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{axis.description}</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                          <div className="rounded-md bg-muted/50 px-3 py-2">
+                            <p className="text-[0.6875rem] font-medium text-muted-foreground">Low</p>
+                            <p className="text-sm">{axis.lowAnchor}</p>
+                          </div>
+                          <div className="rounded-md bg-muted/50 px-3 py-2">
+                            <p className="text-[0.6875rem] font-medium text-muted-foreground">Mid</p>
+                            <p className="text-sm">{axis.midAnchor}</p>
+                          </div>
+                          <div className="rounded-md bg-muted/50 px-3 py-2">
+                            <p className="text-[0.6875rem] font-medium text-muted-foreground">High</p>
+                            <p className="text-sm">{axis.highAnchor}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 3: Flat sections with dividers ── */}
+      <div data-uidotsh-option="Flat sections" className="contents" hidden>
+        <div className="space-y-8">
+          {/* Inline stat strip */}
+          <dl className="flex flex-wrap gap-x-6 gap-y-2 border-b border-border/40 pb-6">
+            {[
+              { label: "Status", value: resolvedStatus },
+              { label: "Version", value: `v${config.version}` },
+              { label: "Axes", value: String(resolvedAxes.length) },
+              { label: "Users", value: String(syntheticUserCount) },
+              { label: "Transcripts", value: String(transcriptCount) },
+            ].map((stat) => (
+              <div key={stat.label} className="flex items-baseline gap-2">
+                <dt className="text-sm text-muted-foreground">{stat.label}</dt>
+                <dd className="text-sm font-semibold tabular-nums">{stat.value}</dd>
+              </div>
+            ))}
+            <div className="flex items-baseline gap-2">
+              <dt className="text-sm text-muted-foreground">Generation</dt>
+              <dd className={`text-sm font-semibold ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</dd>
+            </div>
+          </dl>
+
+          {/* Metadata */}
+          {isDraft ? (
+            <div className="border-b border-border/40 pb-8">
+              <h3 className="text-lg font-semibold tracking-tight">Metadata &amp; Shared Axes</h3>
+              <div className="mt-4">{draftFormBlock}</div>
+            </div>
+          ) : (
+            <>
+              <div className="border-b border-border/40 pb-8">
+                <h3 className="text-lg font-semibold tracking-tight">Metadata</h3>
+                <dl className="mt-4 grid gap-x-12 gap-y-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+                    <dd className="mt-1 text-sm">{config.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">Context</dt>
+                    <dd className="mt-1 text-sm">{config.context}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-sm font-medium text-muted-foreground">Description</dt>
+                    <dd className="mt-1 max-w-[65ch] text-sm leading-6 text-pretty">{config.description}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="border-b border-border/40 pb-8">
+                <h3 className="text-lg font-semibold tracking-tight">Shared Axes</h3>
+                <div className="mt-4 space-y-5">
+                  {resolvedAxes.map((axis, index) => (
+                    <div key={`flat-${axis.key}-${index}`}>
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <p className="font-medium">{axis.label}</p>
+                        <span className="font-mono text-sm text-muted-foreground">{axis.key}</span>
+                        <span className="text-sm text-muted-foreground">· weight {axis.weight}</span>
+                      </div>
+                      <p className="mt-1 max-w-[65ch] text-sm leading-6 text-muted-foreground text-pretty">{axis.description}</p>
+                      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                        <span><span className="text-muted-foreground">Low:</span> {axis.lowAnchor}</span>
+                        <span><span className="text-muted-foreground">Mid:</span> {axis.midAnchor}</span>
+                        <span><span className="text-muted-foreground">High:</span> {axis.highAnchor}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Audit trail — inline */}
+          <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+            <div>
+              <span className="text-muted-foreground">Created by </span>
+              <span className="font-medium">{config.createdBy}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Modified by </span>
+              <span className="font-medium">{config.updatedBy ?? config.createdBy}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Created </span>
+              <span className="font-medium">{formatTs(config.createdAt)}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Updated </span>
+              <span className="font-medium">{formatTs(config.updatedAt)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Option 4: Dense dashboard ── */}
+      <div data-uidotsh-option="Dense dashboard" className="contents" hidden>
+        <div className="space-y-6">
+          {/* Stats well */}
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border/50 sm:grid-cols-6">
+            {[
+              { label: "Status", value: resolvedStatus },
+              { label: "Version", value: `v${config.version}` },
+              { label: "Axes", value: String(resolvedAxes.length) },
+              { label: "Users", value: String(syntheticUserCount) },
+              { label: "Transcripts", value: String(transcriptCount) },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-card px-4 py-3 text-center">
+                <p className="text-[0.6875rem] font-medium text-muted-foreground">{stat.label}</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums">{stat.value}</p>
+              </div>
+            ))}
+            <div className="bg-card px-4 py-3 text-center">
+              <p className="text-[0.6875rem] font-medium text-muted-foreground">Generation</p>
+              <p className={`mt-0.5 text-sm font-semibold ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</p>
+            </div>
+          </div>
+
+          {isDraft ? (
+            <Card>
+              <CardHeader><CardTitle>Metadata &amp; Shared Axes</CardTitle></CardHeader>
+              <CardContent>{draftFormBlock}</CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Metadata as horizontal DL */}
+              <div className="rounded-xl border bg-card">
+                <div className="border-b border-border/40 px-5 py-3">
+                  <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">Metadata</h3>
+                </div>
+                <dl className="grid gap-px bg-border/30 sm:grid-cols-2">
+                  {[
+                    { label: "Name", value: config.name },
+                    { label: "Context", value: config.context },
+                    { label: "Description", value: config.description, span: true },
+                  ].map((item) => (
+                    <div key={item.label} className={`bg-card px-5 py-3 ${"span" in item && item.span ? "sm:col-span-2" : ""}`}>
+                      <dt className="text-[0.6875rem] font-medium text-muted-foreground">{item.label}</dt>
+                      <dd className="mt-0.5 text-sm leading-6">{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              {/* Axes as table */}
+              <div className="rounded-xl border bg-card">
+                <div className="border-b border-border/40 px-5 py-3">
+                  <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">
+                    Shared Axes ({resolvedAxes.length})
+                  </h3>
+                </div>
+                <div className="divide-y divide-border/30">
+                  {resolvedAxes.map((axis, index) => (
+                    <div key={`dense-${axis.key}-${index}`} className="grid gap-3 px-5 py-4 lg:grid-cols-[1fr_1fr_1fr]">
+                      <div className="lg:col-span-3">
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <p className="text-sm font-medium">{axis.label}</p>
+                          <span className="font-mono text-[0.6875rem] text-muted-foreground">{axis.key}</span>
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground">w{axis.weight}</span>
+                        </div>
+                        {axis.description ? (
+                          <p className="mt-1 max-w-[55ch] text-sm leading-6 text-muted-foreground text-pretty">{axis.description}</p>
+                        ) : null}
+                      </div>
+                      <div className="rounded-md bg-muted/40 px-3 py-2">
+                        <p className="text-[0.6875rem] font-medium text-muted-foreground">Low</p>
+                        <p className="text-sm">{axis.lowAnchor}</p>
+                      </div>
+                      <div className="rounded-md bg-muted/40 px-3 py-2">
+                        <p className="text-[0.6875rem] font-medium text-muted-foreground">Mid</p>
+                        <p className="text-sm">{axis.midAnchor}</p>
+                      </div>
+                      <div className="rounded-md bg-muted/40 px-3 py-2">
+                        <p className="text-[0.6875rem] font-medium text-muted-foreground">High</p>
+                        <p className="text-sm">{axis.highAnchor}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Audit as compact footer */}
+          <div className="rounded-xl border bg-card">
+            <div className="grid gap-px bg-border/30 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: "Created by", value: config.createdBy },
+                { label: "Modified by", value: config.updatedBy ?? config.createdBy },
+                { label: "Created", value: formatTs(config.createdAt) },
+                { label: "Updated", value: formatTs(config.updatedAt) },
+              ].map((item) => (
+                <div key={item.label} className="bg-card px-4 py-3">
+                  <p className="text-[0.6875rem] font-medium text-muted-foreground">{item.label}</p>
+                  <p className="mt-0.5 text-sm font-medium">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
