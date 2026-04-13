@@ -13,13 +13,19 @@
  */
 
 import { writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { generateWithModel } from "../packages/ai/src/index";
 import {
   validateGeneratedVariantCandidate,
   countWords,
   type GeneratedVariantCandidate,
 } from "../convex/personaEngine/variantGeneration";
+
+// Dynamic import of the prompt from {target} (worktree copy) or fallback to local
+const TARGET_PATH = process.env.EVO_TARGET
+  ? resolve(process.env.EVO_TARGET)
+  : resolve(import.meta.dir, "../convex/personaEngine/expansionPrompt.ts");
+const promptModule = await import(TARGET_PATH) as typeof import("../convex/personaEngine/expansionPrompt");
 
 // ---------------------------------------------------------------------------
 // Inline instrumentation (no SDK dependency)
@@ -249,26 +255,6 @@ const EVAL_TASKS: EvalTask[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Prompt construction — imported from target; replicated here for isolation
-// ---------------------------------------------------------------------------
-
-function buildExpansionPrompt(
-  config: { name: string; context: string },
-  syntheticUser: { summary: string; evidenceSnippets: string[] },
-  axisValues: Record<string, number>,
-): string {
-  return [
-    `Config name: ${config.name}`,
-    `Config context: ${config.context}`,
-    `Synthetic user summary: ${syntheticUser.summary}`,
-    `Evidence snippets: ${syntheticUser.evidenceSnippets.join(" | ")}`,
-    `Axis values: ${JSON.stringify(axisValues)}`,
-    "Return JSON with keys firstPersonBio, behaviorRules, tensionSeed, coherenceScore.",
-    "The bio must be 80-150 words, behaviorRules must contain 5-8 strings, tensionSeed must be non-empty, and coherenceScore must be between 0 and 1.",
-  ].join("\n");
-}
-
-// ---------------------------------------------------------------------------
 // Score a single candidate
 // ---------------------------------------------------------------------------
 
@@ -345,7 +331,7 @@ async function main() {
 
   for (const task of tasks) {
     console.error(`[eval] Task ${task.id}...`);
-    const prompt = buildExpansionPrompt(
+    const prompt = promptModule.buildExpansionPrompt(
       task.config,
       task.syntheticUser,
       task.axisValues,
@@ -370,7 +356,7 @@ async function main() {
     try {
       const result = await generateWithModel("expansion", {
         system:
-          "Return only valid JSON for a synthetic persona variant. Do not include markdown fences.",
+          promptModule.EXPANSION_SYSTEM_PROMPT,
         prompt,
         modelOverride,
       });

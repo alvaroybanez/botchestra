@@ -19,6 +19,7 @@ import {
   type SyntheticUserForAllocation,
   validateGeneratedVariantCandidate,
 } from "./personaEngine/variantGeneration";
+import { buildExpansionPrompt, EXPANSION_SYSTEM_PROMPT } from "./personaEngine/expansionPrompt";
 import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
 
 export const previewVariants = action({
@@ -307,8 +308,7 @@ async function generateCandidate(
   try {
     const result = await generateWithModel("expansion", {
       modelOverride,
-      system:
-        "Return only valid JSON for a synthetic persona variant. Do not include markdown fences.",
+      system: EXPANSION_SYSTEM_PROMPT,
       prompt: buildExpansionPrompt(config, syntheticUser, axisValues),
     });
 
@@ -365,22 +365,6 @@ function toPersistedVariant({
     distinctnessScore,
     accepted,
   };
-}
-
-function buildExpansionPrompt(
-  config: Doc<"personaConfigs">,
-  syntheticUser: Doc<"syntheticUsers">,
-  axisValues: Record<string, number>,
-) {
-  return [
-    `Config name: ${config.name}`,
-    `Config context: ${config.context}`,
-    `Synthetic user summary: ${syntheticUser.summary}`,
-    `Evidence snippets: ${syntheticUser.evidenceSnippets.join(" | ")}`,
-    `Axis values: ${JSON.stringify(axisValues)}`,
-    "Return JSON with keys firstPersonBio, behaviorRules, tensionSeed, coherenceScore.",
-    "The bio must be 80-150 words, behaviorRules must contain 5-8 strings, tensionSeed must be non-empty, and coherenceScore must be between 0 and 1.",
-  ].join("\n");
 }
 
 function summarizeProjectedPerSyntheticUser(
