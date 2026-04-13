@@ -19,6 +19,10 @@ import {
   type RunSummaryContext,
   type SummarizableRunSummaryContext,
 } from "./analysis/runSummaries";
+import {
+  buildSummarizationPrompt,
+  SUMMARIZATION_SYSTEM_PROMPT,
+} from "./analysis/summarizationPrompt";
 
 const aiRunSummarySchema = z.object({
   outcomeClassification: z.enum(["success", "failure", "abandoned"]),
@@ -160,8 +164,7 @@ async function summarizeRun(
   try {
     const result = await generateWithModel("summarization", {
       modelOverride,
-      system:
-        "Return only valid JSON. Summarize one synthetic usability run using concise evidence-backed language.",
+      system: SUMMARIZATION_SYSTEM_PROMPT,
       prompt: buildSummarizationPrompt(run),
     });
     const parsedJson = JSON.parse(result.text);
@@ -222,44 +225,6 @@ type AnalyzeStudyResult = {
   issueClusterCount: number;
   reportId: Id<"studyReports"> | null;
 };
-
-function buildSummarizationPrompt(run: RunSummaryContext) {
-  return [
-    "You are summarizing one synthetic user run for downstream issue clustering.",
-    "Return JSON with exactly these keys:",
-    JSON.stringify({
-      outcomeClassification: "success | failure | abandoned",
-      failureSummary: "one sentence",
-      failurePoint: "where the run failed or ended",
-      lastSuccessfulState: "last clearly successful state before failure",
-      blockingText: "blocking copy, error, or obstacle",
-      frustrationMarkers: ["short marker"],
-      selfReportedConfidence: 0.5,
-      representativeQuote: "exact or near-exact participant wording",
-    }),
-    "Rules:",
-    "- Use [] when there are no frustration markers.",
-    "- Use null when no self-reported confidence exists.",
-    "- Keep representativeQuote grounded in the provided self-report text when available.",
-    `Run status: ${run.status}`,
-    `Final outcome: ${run.finalOutcome ?? "not captured"}`,
-    `Final URL: ${run.finalUrl ?? "not captured"}`,
-    `Error code: ${run.errorCode ?? "none"}`,
-    `Step count: ${run.stepCount ?? "not captured"}`,
-    `Duration seconds: ${run.durationSec ?? "not captured"}`,
-    `Frustration count: ${run.frustrationCount}`,
-    `Self report: ${JSON.stringify(run.selfReport ?? null)}`,
-    `Milestones: ${JSON.stringify(
-      run.milestones.map((milestone) => ({
-        stepIndex: milestone.stepIndex,
-        actionType: milestone.actionType,
-        title: milestone.title,
-        url: milestone.url,
-        note: milestone.note ?? null,
-      })),
-    )}`,
-  ].join("\n");
-}
 
 function toErrorMessage(error: unknown) {
   if (error instanceof Error) {
