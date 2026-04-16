@@ -1064,6 +1064,89 @@ export declare const internal: {
       any
     >;
   };
+  migrations: {
+    rewriteOrgIdsToStable: {
+      rewriteAuditEvents: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteAxisDefinitions: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteBatchGenerationRuns: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteCredentials: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteGuardrailEvents: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteMetrics: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewritePersonaConfigs: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteSettings: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteStudies: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteTranscriptExtractionRuns: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteTranscripts: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      rewriteTranscriptSignals: FunctionReference<
+        "mutation",
+        "internal",
+        { cursor: string | null; dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      runAll: FunctionReference<
+        "action",
+        "internal",
+        { dryRun?: boolean; pageSize?: number },
+        any
+      >;
+      verify: FunctionReference<"query", "internal", {}, any>;
+    };
+  };
   personaConfigs: {
     getExportPayload: FunctionReference<
       "query",

@@ -5,6 +5,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { buildStudyReportArtifactKeys } from "./analysis/reportArtifacts";
+import { requireIdentity, resolveOrgId } from "./rbac";
 
 const LOCAL_ARTIFACT_PROXY_BASE_URL = "http://localhost:8787";
 const DEFAULT_SIGNED_URL_EXPIRY_SECONDS = 4 * 60 * 60;
@@ -13,7 +14,6 @@ const RUN_ARTIFACT_KEY_PATTERN = /^runs\/([^/]+)\/.+$/;
 const STUDY_REPORT_ARTIFACT_KEY_PATTERN = /^study-reports\/([^/]+)\/.+$/;
 
 type ArtifactResolverCtx = Pick<QueryCtx | MutationCtx, "db" | "storage">;
-type ArtifactResolverQueryCtx = QueryCtx;
 type ArtifactScope = {
   studyId: Id<"studies">;
   orgId: string;
@@ -41,7 +41,7 @@ export const getArtifactUrl = query({
     const scope = await getArtifactScopeForKey(
       ctx,
       normalizedKey,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     return await resolveArtifactUrlWithScope(ctx, scope, normalizedKey);
@@ -312,16 +312,6 @@ async function findStudyReportByStudyId(
     .query("studyReports")
     .withIndex("by_studyId", (query) => query.eq("studyId", studyId))
     .unique();
-}
-
-async function requireIdentity(ctx: ArtifactResolverQueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
 }
 
 function uniqueStrings(values: readonly string[]) {

@@ -4,7 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { assertConfigIsDraft } from "./personaConfigs";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 
 const MAX_CONFIG_TRANSCRIPT_QUERY_SIZE = 100;
 
@@ -15,11 +15,11 @@ export const attachTranscript = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const config = await loadConfigForOrg(ctx, args.configId, identity.tokenIdentifier);
+    const config = await loadConfigForOrg(ctx, args.configId, resolveOrgId(identity));
     const transcript = await loadTranscriptForOrg(
       ctx,
       args.transcriptId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     assertConfigIsDraft(config);
@@ -38,7 +38,7 @@ export const attachTranscript = mutation({
     });
 
     await ctx.db.patch(config._id, {
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
       updatedAt: createdAt,
     });
 
@@ -58,8 +58,8 @@ export const detachTranscript = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const config = await loadConfigForOrg(ctx, args.configId, identity.tokenIdentifier);
-    await loadTranscriptForOrg(ctx, args.transcriptId, identity.tokenIdentifier);
+    const config = await loadConfigForOrg(ctx, args.configId, resolveOrgId(identity));
+    await loadTranscriptForOrg(ctx, args.transcriptId, resolveOrgId(identity));
 
     assertConfigIsDraft(config);
 
@@ -71,7 +71,7 @@ export const detachTranscript = mutation({
 
     await ctx.db.delete(existing._id);
     await ctx.db.patch(config._id, {
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
       updatedAt: Date.now(),
     });
 
@@ -91,7 +91,7 @@ export const listConfigTranscripts = query({
     const identity = await requireIdentity(ctx);
     const config = await ctx.db.get(args.configId);
 
-    if (config === null || config.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== resolveOrgId(identity)) {
       return [];
     }
 
@@ -104,7 +104,7 @@ export const listConfigTranscripts = query({
     for (const association of associations) {
       const transcript = await ctx.db.get(association.transcriptId);
 
-      if (transcript === null || transcript.orgId !== identity.tokenIdentifier) {
+      if (transcript === null || transcript.orgId !== resolveOrgId(identity)) {
         continue;
       }
 
@@ -126,7 +126,7 @@ export const listTranscriptConfigs = query({
     const identity = await requireIdentity(ctx);
     const transcript = await ctx.db.get(args.transcriptId);
 
-    if (transcript === null || transcript.orgId !== identity.tokenIdentifier) {
+    if (transcript === null || transcript.orgId !== resolveOrgId(identity)) {
       return [];
     }
 
@@ -139,7 +139,7 @@ export const listTranscriptConfigs = query({
     for (const association of associations) {
       const config = await ctx.db.get(association.configId);
 
-      if (config === null || config.orgId !== identity.tokenIdentifier) {
+      if (config === null || config.orgId !== resolveOrgId(identity)) {
         continue;
       }
 

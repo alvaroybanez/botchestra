@@ -18,7 +18,7 @@ import {
 } from "./batchGeneration/gridAnchors";
 import { expandedSyntheticUserPersistedSchema } from "./batchGeneration/expansion";
 import { MAX_SYNTHETIC_USERS_PER_CONFIG } from "./personaConfig.constants";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 
 const gridLevelCountSchema = z.union([z.literal(3), z.literal(5), z.literal(7)]);
 
@@ -65,7 +65,7 @@ export const startBatchGeneration = mutation({
       .parse(args);
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
     const configId = parsedArgs.configId as Id<"personaConfigs">;
-    const config = await getConfigForOrg(ctx, configId, identity.tokenIdentifier);
+    const config = await getConfigForOrg(ctx, configId, resolveOrgId(identity));
 
     assertConfigIsDraft(config);
 
@@ -122,7 +122,7 @@ export const startBatchGeneration = mutation({
     const startedAt = Date.now();
     const runId = await ctx.db.insert("batchGenerationRuns", {
       configId,
-      orgId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
       status: "pending",
       levelsPerAxis: normalizedLevelsPerAxis,
       totalCount: validation.totalUsers,
@@ -148,7 +148,7 @@ export const startBatchGeneration = mutation({
 
     await ctx.db.patch(configId, {
       updatedAt: startedAt,
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
     });
 
     await ctx.scheduler.runAfter(
@@ -169,7 +169,7 @@ export const getBatchGenerationRun = query({
     const identity = await requireIdentity(ctx);
     const config = await ctx.db.get(args.configId);
 
-    if (config === null || config.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
@@ -204,7 +204,7 @@ export const regenerateSyntheticUser = mutation({
     const { syntheticUser, config } = await getSyntheticUserForOrg(
       ctx,
       args.syntheticUserId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     assertConfigIsDraft(config);

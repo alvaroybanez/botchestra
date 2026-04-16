@@ -12,7 +12,7 @@ import {
   buildSuggestAxesSystemPrompt,
 } from "./axisGenerationPrompt";
 import { axisSchema } from "./personaConfigs";
-import { requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 
 const AXIS_KEY_PATTERN = /^[a-z0-9_]+$/;
 
@@ -74,7 +74,7 @@ export const suggestAxes = action({
     }
 
     const settings = await ctx.runQuery(internal.settings.getEffectiveSettingsForOrg, {
-      orgId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
     });
     const modelOverride = settings.modelConfig.find(
       (entry: { taskCategory: string; modelId: string }) =>

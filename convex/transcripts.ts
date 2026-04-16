@@ -12,7 +12,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 
 const MAX_TRANSCRIPT_QUERY_SIZE = 100;
 const DELETE_BATCH_SIZE = 100;
@@ -98,8 +98,8 @@ export const uploadTranscript = mutation({
       metadata: normalizeTranscriptMetadata(parsedArgs.metadata),
       processingStatus: "pending",
       characterCount: 0,
-      orgId: identity.tokenIdentifier,
-      createdBy: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
+      createdBy: resolveOrgId(identity),
       createdAt: now,
       updatedAt: now,
     });
@@ -177,7 +177,7 @@ export const updateTranscriptMetadata = mutation({
     const transcript = await loadTranscriptForOrg(
       ctx,
       transcriptId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
     const nextMetadata = normalizeTranscriptMetadata({
       ...transcript.metadata,
@@ -190,7 +190,7 @@ export const updateTranscriptMetadata = mutation({
       updatedAt: Date.now(),
     });
 
-    return await loadTranscriptForOrg(ctx, transcriptId, identity.tokenIdentifier);
+    return await loadTranscriptForOrg(ctx, transcriptId, resolveOrgId(identity));
   },
 });
 
@@ -203,7 +203,7 @@ export const deleteTranscript = mutation({
     const transcript = await loadTranscriptForOrg(
       ctx,
       args.transcriptId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     while (true) {
@@ -243,7 +243,7 @@ export const listTranscripts = query({
     const normalizedTags = new Set(args.tags?.map((tag) => tag.trim().toLowerCase()) ?? []);
     const transcripts = await ctx.db
       .query("transcripts")
-      .withIndex("by_orgId", (q) => q.eq("orgId", identity.tokenIdentifier))
+      .withIndex("by_orgId", (q) => q.eq("orgId", resolveOrgId(identity)))
       .order("desc")
       .take(MAX_TRANSCRIPT_QUERY_SIZE);
 
@@ -290,7 +290,7 @@ export const getTranscript = query({
     const identity = await requireIdentity(ctx);
     const transcript = await ctx.db.get(args.transcriptId);
 
-    if (transcript === null || transcript.orgId !== identity.tokenIdentifier) {
+    if (transcript === null || transcript.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
@@ -315,7 +315,7 @@ export const normalizeTranscriptId = query({
 
     const transcript = await ctx.db.get(normalizedTranscriptId);
 
-    if (transcript === null || transcript.orgId !== identity.tokenIdentifier) {
+    if (transcript === null || transcript.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
@@ -334,7 +334,7 @@ export const getTranscriptContent = action({
       { transcriptId: args.transcriptId },
     );
 
-    if (transcript === null || transcript.orgId !== identity.tokenIdentifier) {
+    if (transcript === null || transcript.orgId !== resolveOrgId(identity)) {
       return null;
     }
 

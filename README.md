@@ -8,7 +8,7 @@
 |---|---|---|
 | **Frontend** | Vite + React 19 + TanStack Router + Tailwind v4 + shadcn/ui | `apps/web` |
 | **Backend** | Convex (control plane & system of record) | `convex/` |
-| **Browser Executor** | Cloudflare Worker + Durable Objects + `@cloudflare/playwright` | `apps/browser-executor` |
+| **Browser Executor** | Cloudflare Worker + Durable Objects + `@cloudflare/puppeteer` (Browser Rendering) | `apps/browser-executor` |
 | **AI** | OpenAI via Vercel AI SDK (`ai` + `@ai-sdk/openai`) | `packages/ai` |
 | **Auth** | Convex Auth with password provider | `convex/auth.ts` |
 | **Shared** | Zod schemas and domain types | `packages/shared` |

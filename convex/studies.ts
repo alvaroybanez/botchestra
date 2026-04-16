@@ -9,7 +9,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 import {
   capStudyActiveConcurrency,
   capStudyRunBudget,
@@ -299,15 +299,15 @@ export const createStudy = mutation({
     const config = await getConfigForOrg(
       ctx,
       parsedArgs.study.personaConfigId as Id<"personaConfigs">,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
     const effectiveSettings = await loadEffectiveSettingsForOrg(
       ctx,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
     const now = Date.now();
     const studyId = await ctx.db.insert("studies", {
-      orgId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
       personaConfigId: config._id,
       name: parsedArgs.study.name,
       ...(parsedArgs.study.description !== undefined
@@ -323,12 +323,12 @@ export const createStudy = mutation({
         effectiveSettings.maxConcurrency,
       ),
       status: "draft",
-      createdBy: identity.tokenIdentifier,
+      createdBy: resolveOrgId(identity),
       createdAt: now,
       updatedAt: now,
     });
 
-    return await getStudyForOrg(ctx, studyId, identity.tokenIdentifier);
+    return await getStudyForOrg(ctx, studyId, resolveOrgId(identity));
   },
 });
 
@@ -346,10 +346,10 @@ export const updateStudy = mutation({
       .parse(args);
     const studyId = parsedArgs.studyId as Id<"studies">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const study = await getStudyForOrg(ctx, studyId, identity.tokenIdentifier);
+    const study = await getStudyForOrg(ctx, studyId, resolveOrgId(identity));
     const effectiveSettings = await loadEffectiveSettingsForOrg(
       ctx,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     if (study.status !== "draft") {
@@ -385,7 +385,7 @@ export const updateStudy = mutation({
       updatedAt: Date.now(),
     });
 
-    return await getStudyForOrg(ctx, studyId, identity.tokenIdentifier);
+    return await getStudyForOrg(ctx, studyId, resolveOrgId(identity));
   },
 });
 
@@ -396,11 +396,11 @@ export const validateStudyLaunch = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+    const study = await getStudyForOrg(ctx, args.studyId, resolveOrgId(identity));
 
     return await validateStudyLaunchWithRecording(ctx, {
       study,
-      actorId: identity.tokenIdentifier,
+      actorId: resolveOrgId(identity),
       productionAck: args.productionAck === true,
     });
   },
@@ -413,10 +413,10 @@ export const launchStudy = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const study = await getStudyForOrg(ctx, args.studyId, identity.tokenIdentifier);
+    const study = await getStudyForOrg(ctx, args.studyId, resolveOrgId(identity));
     const effectiveSettings = await loadEffectiveSettingsForOrg(
       ctx,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
     const runBudget = capStudyRunBudget(
       study.runBudget ?? DEFAULT_STUDY_RUN_BUDGET,
@@ -469,7 +469,7 @@ export const launchStudy = mutation({
     const config = await getConfigForOrg(
       ctx,
       study.personaConfigId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     if (config.status !== "published") {
@@ -478,7 +478,7 @@ export const launchStudy = mutation({
 
     const guardrailValidation = await validateStudyLaunchWithRecording(ctx, {
       study,
-      actorId: identity.tokenIdentifier,
+      actorId: resolveOrgId(identity),
       productionAck: args.productionAck === true,
     });
 
@@ -496,19 +496,19 @@ export const launchStudy = mutation({
     if (study.status !== "ready" || !hasConfirmedVariants) {
       await ctx.db.patch(study._id, {
         status: "persona_review",
-        launchRequestedBy: identity.tokenIdentifier,
+        launchRequestedBy: resolveOrgId(identity),
         updatedAt: launchTimestamp,
       });
     } else {
       await ctx.db.patch(study._id, {
         status: "queued",
-        launchRequestedBy: identity.tokenIdentifier,
+        launchRequestedBy: resolveOrgId(identity),
         launchedAt: launchTimestamp,
         updatedAt: launchTimestamp,
       });
     }
     await recordAuditEvent(ctx, {
-      actorId: identity.tokenIdentifier,
+      actorId: resolveOrgId(identity),
       eventType: "study.launched",
       studyId: study._id,
       resourceType: "study",
@@ -520,7 +520,7 @@ export const launchStudy = mutation({
       internal.studyLifecycleWorkflow.runStudyLifecycle,
       {
         studyId: study._id,
-        launchRequestedBy: identity.tokenIdentifier,
+        launchRequestedBy: resolveOrgId(identity),
       },
       {
         onComplete: internal.studyLifecycleWorkflow.handleStudyLifecycleComplete,
@@ -529,7 +529,7 @@ export const launchStudy = mutation({
       },
     );
 
-    return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
+    return await getStudyForOrg(ctx, study._id, resolveOrgId(identity));
   },
 });
 
@@ -547,7 +547,7 @@ export const cancelStudy = mutation({
       .parse(args);
     const studyId = parsedArgs.studyId as Id<"studies">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const study = await getStudyForOrg(ctx, studyId, identity.tokenIdentifier);
+    const study = await getStudyForOrg(ctx, studyId, resolveOrgId(identity));
 
     if (isTerminalStudyStatus(study.status)) {
       throw new ConvexError(
@@ -570,7 +570,7 @@ export const cancelStudy = mutation({
         updatedAt: cancellationRequestedAt,
       });
       await recordAuditEvent(ctx, {
-        actorId: identity.tokenIdentifier,
+        actorId: resolveOrgId(identity),
         eventType: "study.cancelled",
         studyId: study._id,
         resourceType: "study",
@@ -579,7 +579,7 @@ export const cancelStudy = mutation({
         createdAt: cancellationRequestedAt,
       });
 
-      return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
+      return await getStudyForOrg(ctx, study._id, resolveOrgId(identity));
     }
 
     const runs = await listRunsForStudy(ctx, study._id);
@@ -608,7 +608,7 @@ export const cancelStudy = mutation({
       updatedAt: cancellationRequestedAt,
     });
     await recordAuditEvent(ctx, {
-      actorId: identity.tokenIdentifier,
+      actorId: resolveOrgId(identity),
       eventType: "study.cancelled",
       studyId: study._id,
       resourceType: "study",
@@ -620,7 +620,7 @@ export const cancelStudy = mutation({
       studyId: study._id,
     });
 
-    return await getStudyForOrg(ctx, study._id, identity.tokenIdentifier);
+    return await getStudyForOrg(ctx, study._id, resolveOrgId(identity));
   },
 });
 
@@ -632,7 +632,7 @@ export const getStudy = query({
     const identity = await requireIdentity(ctx);
     const study = await ctx.db.get(args.studyId);
 
-    if (study === null || study.orgId !== identity.tokenIdentifier) {
+    if (study === null || study.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
@@ -648,7 +648,7 @@ export const listStudies = query({
     return await ctx.db
       .query("studies")
       .withIndex("by_orgId_and_updatedAt", (q) =>
-        q.eq("orgId", identity.tokenIdentifier),
+        q.eq("orgId", resolveOrgId(identity)),
       )
       .order("desc")
       .take(100);

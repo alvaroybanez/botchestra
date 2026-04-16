@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
-import { ADMIN_ROLES, requireRole } from "./rbac";
+import { ADMIN_ROLES, requireRole, resolveOrgId } from "./rbac";
 
 export const AUDIT_EVENT_TYPES = [
   "study.launched",
@@ -97,12 +97,12 @@ export const getAdminDiagnosticsOverview = query({
     const [recentMetrics, recentStudies] = await Promise.all([
       ctx.db
         .query("metrics")
-        .withIndex("by_orgId_and_recordedAt", (q) => q.eq("orgId", identity.tokenIdentifier))
+        .withIndex("by_orgId_and_recordedAt", (q) => q.eq("orgId", resolveOrgId(identity)))
         .order("desc")
         .take(recentMetricLimit),
       ctx.db
         .query("studies")
-        .withIndex("by_orgId_and_updatedAt", (q) => q.eq("orgId", identity.tokenIdentifier))
+        .withIndex("by_orgId_and_updatedAt", (q) => q.eq("orgId", resolveOrgId(identity)))
         .order("desc")
         .take(recentStudyLimit),
     ]);
@@ -119,7 +119,7 @@ export const getAdminDiagnosticsOverview = query({
       loadedStudies
         .filter(
           (study): study is Doc<"studies"> =>
-            study !== null && study.orgId === identity.tokenIdentifier,
+            study !== null && study.orgId === resolveOrgId(identity),
         )
         .map((study) => [study._id, study]),
     );
@@ -243,7 +243,7 @@ export const listAuditEvents = query({
       .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
     const limit = parsedArgs.limit ?? 100;
-    const rows = await loadAuditEventsForOrg(ctx, identity.tokenIdentifier, {
+    const rows = await loadAuditEventsForOrg(ctx, resolveOrgId(identity), {
       actorId: parsedArgs.actorId,
       studyId: parsedArgs.studyId as Id<"studies"> | undefined,
       eventType: parsedArgs.eventType,
@@ -301,7 +301,7 @@ export const listMetrics = query({
       .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
     const limit = parsedArgs.limit ?? 100;
-    const rows = await loadMetricsForOrg(ctx, identity.tokenIdentifier, {
+    const rows = await loadMetricsForOrg(ctx, resolveOrgId(identity), {
       studyId: parsedArgs.studyId as Id<"studies"> | undefined,
       metricType: parsedArgs.metricType,
       startAt: parsedArgs.startAt,

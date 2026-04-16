@@ -7,7 +7,7 @@ import { internalQuery, mutation, query } from "./_generated/server";
 import { listCredentialSummariesForOrg } from "./credentials";
 import { recordAuditEvent } from "./observability";
 import { MIN_RUN_BUDGET } from "./personaEngine/variantGeneration";
-import { ADMIN_ROLES, requireRole } from "./rbac";
+import { ADMIN_ROLES, requireRole, resolveOrgId } from "./rbac";
 
 const taskCategorySchema = z.enum([
   "expansion",
@@ -111,10 +111,10 @@ export const getSettings = query({
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
 
     return {
-      ...(await loadEffectiveSettingsForOrg(ctx, identity.tokenIdentifier)),
+      ...(await loadEffectiveSettingsForOrg(ctx, resolveOrgId(identity))),
       credentials: await listCredentialSummariesForOrg(
         ctx,
-        identity.tokenIdentifier,
+        resolveOrgId(identity),
       ),
     };
   },
@@ -147,8 +147,8 @@ export const updateSettings = mutation({
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
 
     return await upsertSettingsForOrg(ctx, {
-      orgId: identity.tokenIdentifier,
-      actorId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
+      actorId: resolveOrgId(identity),
       patch: parsedArgs.patch,
     });
   },
@@ -167,12 +167,12 @@ export const addDomainToAllowlist = mutation({
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
     const currentSettings = await loadEffectiveSettingsForOrg(
       ctx,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     return await upsertSettingsForOrg(ctx, {
-      orgId: identity.tokenIdentifier,
-      actorId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
+      actorId: resolveOrgId(identity),
       patch: {
         domainAllowlist: [...currentSettings.domainAllowlist, parsedArgs.domain],
       },
@@ -199,12 +199,12 @@ export const removeDomainFromAllowlist = mutation({
 
     const currentSettings = await loadEffectiveSettingsForOrg(
       ctx,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     return await upsertSettingsForOrg(ctx, {
-      orgId: identity.tokenIdentifier,
-      actorId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
+      actorId: resolveOrgId(identity),
       patch: {
         domainAllowlist: currentSettings.domainAllowlist.filter(
           (domain) => domain !== normalizedDomain,

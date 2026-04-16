@@ -20,7 +20,7 @@ import {
   validateGeneratedVariantCandidate,
 } from "./personaEngine/variantGeneration";
 import { buildExpansionPrompt, EXPANSION_SYSTEM_PROMPT } from "./personaEngine/expansionPrompt";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 
 export const previewVariants = action({
   args: {
@@ -40,7 +40,7 @@ export const previewVariants = action({
       internal.personaVariantGenerationModel.getPreviewContext,
       {
         configId: parsedArgs.configId as Id<"personaConfigs">,
-        orgId: identity.tokenIdentifier,
+        orgId: resolveOrgId(identity),
       },
     );
 
@@ -88,7 +88,7 @@ export const generateVariantsForStudy = action({
     return await generateVariantsForStudyForOrg(
       ctx,
       args.studyId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
   },
 });

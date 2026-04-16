@@ -5,6 +5,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { DEFAULT_RUN_BUDGET, MAX_RUN_BUDGET } from "./personaEngine/variantGeneration";
+import { requireIdentity, resolveOrgId } from "./rbac";
 
 const studySummarySchema = z.object({
   _id: z.string(),
@@ -22,13 +23,13 @@ export const getStudyVariantReview = query({
     const identity = await requireIdentity(ctx);
     const study = await ctx.db.get(args.studyId);
 
-    if (study === null || study.orgId !== identity.tokenIdentifier) {
+    if (study === null || study.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
     const config = await ctx.db.get(study.personaConfigId);
 
-    if (config === null || config.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
@@ -47,7 +48,7 @@ export const getPackVariantReview = query({
     const identity = await requireIdentity(ctx);
     const config = await ctx.db.get(args.configId);
 
-    if (config === null || config.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
@@ -64,7 +65,7 @@ export const getPackVariantReview = query({
     >();
 
     for (const study of studies) {
-      if (study.orgId !== identity.tokenIdentifier) {
+      if (study.orgId !== resolveOrgId(identity)) {
         continue;
       }
 
@@ -78,7 +79,7 @@ export const getPackVariantReview = query({
     }
 
     const scopedStudies = studies.filter(
-      (study) => study.orgId === identity.tokenIdentifier,
+      (study) => study.orgId === resolveOrgId(identity),
     );
     const selectedStudy =
       scopedStudies.find((study) => study._id === args.studyId) ??
@@ -185,12 +186,3 @@ function toStudySummary(study: Doc<"studies">) {
   };
 }
 
-async function requireIdentity(ctx: QueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
-}

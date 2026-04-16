@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation } from "./_generated/server";
-import { COMMENTER_ROLES, requireRole } from "./rbac";
+import { COMMENTER_ROLES, requireRole, resolveOrgId } from "./rbac";
 
 const requiredString = (label: string) =>
   z.string().trim().min(1, `${label} is required.`);
@@ -25,7 +25,7 @@ export const addNote = mutation({
     await getIssueClusterForOrg(
       ctx,
       parsedArgs.issueId as Id<"issueClusters">,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     const createdAt = Date.now();

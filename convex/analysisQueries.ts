@@ -6,6 +6,7 @@ import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { resolveArtifactUrlsForStudy } from "./artifactResolver";
 import { decodeRunSummaryKey } from "./analysis/runSummaries";
+import { requireIdentity, resolveOrgId } from "./rbac";
 
 const severitySchema = z.enum(["blocker", "major", "minor", "cosmetic"]);
 const runStatusSchema = z.enum([
@@ -393,21 +394,11 @@ async function getStudyForOrg(ctx: QueryCtx, studyId: Id<"studies">) {
   const identity = await requireIdentity(ctx);
   const study = await ctx.db.get(studyId);
 
-  if (study === null || study.orgId !== identity.tokenIdentifier) {
+  if (study === null || study.orgId !== resolveOrgId(identity)) {
     throw new ConvexError("Study not found.");
   }
 
   return study;
-}
-
-async function requireIdentity(ctx: QueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
 }
 
 function uniqueIds<TableName extends "issueClusters" | "syntheticUsers" | "runs">(

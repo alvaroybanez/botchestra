@@ -9,7 +9,7 @@ import {
   query,
 } from "./_generated/server";
 import { recordAuditEvent } from "./observability";
-import { ADMIN_ROLES, requireRole } from "./rbac";
+import { ADMIN_ROLES, requireRole, resolveOrgId } from "./rbac";
 
 const CREDENTIAL_ENCRYPTION_PREFIX = "encv1";
 const CREDENTIAL_ENCRYPTION_SALT = "botchestra.credentials.v1";
@@ -94,7 +94,7 @@ export const listCredentials = query({
   args: {},
   handler: async (ctx) => {
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    return await listCredentialSummariesForOrg(ctx, identity.tokenIdentifier);
+    return await listCredentialSummariesForOrg(ctx, resolveOrgId(identity));
   },
 });
 
@@ -109,7 +109,7 @@ export const createCredential = mutation({
       })
       .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    const orgId = identity.tokenIdentifier;
+    const orgId = resolveOrgId(identity);
     const ref = normalizeCredentialRef(parsedArgs.credential.ref);
     const existing = await loadCredentialByRef(ctx, orgId, ref);
 
@@ -143,7 +143,7 @@ export const createCredential = mutation({
 
     await recordAuditEvent(ctx, {
       orgId,
-      actorId: identity.tokenIdentifier,
+      actorId: resolveOrgId(identity),
       eventType: "credential.created",
       resourceType: "credential",
       resourceId: ref,
@@ -167,7 +167,7 @@ export const updateCredential = mutation({
       })
       .parse(args);
     const { identity } = await requireRole(ctx, ADMIN_ROLES);
-    const orgId = identity.tokenIdentifier;
+    const orgId = resolveOrgId(identity);
     const credentialId = parsedArgs.credentialId as Id<"credentials">;
     const existing = await loadCredentialForOrg(ctx, credentialId, orgId);
     const nextRef =
@@ -218,7 +218,7 @@ export const updateCredential = mutation({
 
     await recordAuditEvent(ctx, {
       orgId,
-      actorId: identity.tokenIdentifier,
+      actorId: resolveOrgId(identity),
       eventType: "credential.updated",
       resourceType: "credential",
       resourceId: nextRef,
@@ -238,14 +238,14 @@ export const deleteCredential = mutation({
     const credential = await loadCredentialForOrg(
       ctx,
       args.credentialId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
     const deletedAt = Date.now();
 
     await ctx.db.delete(credential._id);
     await recordAuditEvent(ctx, {
-      orgId: identity.tokenIdentifier,
-      actorId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
+      actorId: resolveOrgId(identity),
       eventType: "credential.deleted",
       resourceType: "credential",
       resourceId: credential.ref,

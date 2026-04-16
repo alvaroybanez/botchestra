@@ -12,7 +12,7 @@ import {
   query,
 } from "./_generated/server";
 import { MAX_SYNTHETIC_USERS_PER_CONFIG } from "./personaConfig.constants";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 
 const draftStatusSchema = z.enum(["draft", "published", "archived"]);
 
@@ -274,9 +274,9 @@ export const createDraft = mutation({
       ...parsedArgs.config,
       version: 1,
       status: "draft",
-      orgId: identity.tokenIdentifier,
-      createdBy: identity.tokenIdentifier,
-      updatedBy: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
+      createdBy: resolveOrgId(identity),
+      updatedBy: resolveOrgId(identity),
       createdAt: now,
       updatedAt: now,
     });
@@ -294,8 +294,8 @@ export const importJson = action({
       internal.personaConfigs.persistImportedPack,
       {
         importedPack,
-        orgId: identity.tokenIdentifier,
-        createdBy: identity.tokenIdentifier,
+        orgId: resolveOrgId(identity),
+        createdBy: resolveOrgId(identity),
       },
     );
 
@@ -313,7 +313,7 @@ export const exportJson = action({
       internal.personaConfigs.getExportPayload,
       {
         configId: args.configId,
-        orgId: identity.tokenIdentifier,
+        orgId: resolveOrgId(identity),
       },
     );
 
@@ -335,13 +335,13 @@ export const updateDraft = mutation({
       .parse(args);
     const configId = parsedArgs.configId as Id<"personaConfigs">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const config = await getPackForIdentity(ctx, configId, identity.tokenIdentifier);
+    const config = await getPackForIdentity(ctx, configId, resolveOrgId(identity));
 
     assertConfigIsDraft(config);
 
     await ctx.db.patch(configId, {
       ...parsedArgs.patch,
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
       updatedAt: Date.now(),
     });
 
@@ -355,7 +355,7 @@ export const publish = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const config = await getPackForIdentity(ctx, args.configId, identity.tokenIdentifier);
+    const config = await getPackForIdentity(ctx, args.configId, resolveOrgId(identity));
 
     if (config.status === "published") {
       throw new ConvexError("Persona configuration is already published.");
@@ -389,15 +389,15 @@ export const publish = mutation({
     }
 
     await ctx.runMutation(internal.axisLibrary.upsertSharedAxesFromPackPublish, {
-      orgId: identity.tokenIdentifier,
-      actorId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
+      actorId: resolveOrgId(identity),
       sharedAxes: config.sharedAxes,
     });
 
     await ctx.db.patch(args.configId, {
       status: "published",
       version: config.version + 1,
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
       updatedAt: Date.now(),
     });
 
@@ -411,7 +411,7 @@ export const archive = mutation({
   },
   handler: async (ctx, args) => {
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const config = await getPackForIdentity(ctx, args.configId, identity.tokenIdentifier);
+    const config = await getPackForIdentity(ctx, args.configId, resolveOrgId(identity));
 
     if (config.status === "draft") {
       throw new ConvexError("Only published persona configurations can be archived.");
@@ -423,7 +423,7 @@ export const archive = mutation({
 
     await ctx.db.patch(args.configId, {
       status: "archived",
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
       updatedAt: Date.now(),
     });
 
@@ -445,7 +445,7 @@ export const createSyntheticUser = mutation({
       .parse(args);
     const configId = parsedArgs.configId as Id<"personaConfigs">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const config = await getPackForIdentity(ctx, configId, identity.tokenIdentifier);
+    const config = await getPackForIdentity(ctx, configId, resolveOrgId(identity));
 
     assertConfigIsDraft(config);
     assertSyntheticUserAxisKeys(config.sharedAxes, parsedArgs.syntheticUser.axes);
@@ -464,7 +464,7 @@ export const createSyntheticUser = mutation({
         : {}),
     });
 
-    await touchPack(ctx, configId, identity.tokenIdentifier);
+    await touchPack(ctx, configId, resolveOrgId(identity));
 
     return syntheticUserId;
   },
@@ -487,7 +487,7 @@ export const updateSyntheticUser = mutation({
     const { config } = await getSyntheticUserForIdentity(
       ctx,
       syntheticUserId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     assertConfigIsDraft(config);
@@ -499,7 +499,7 @@ export const updateSyntheticUser = mutation({
     await ctx.db.patch(syntheticUserId, {
       ...parsedArgs.patch,
     });
-    await touchPack(ctx, config._id, identity.tokenIdentifier);
+    await touchPack(ctx, config._id, resolveOrgId(identity));
 
     return syntheticUserId;
   },
@@ -514,13 +514,13 @@ export const deleteSyntheticUser = mutation({
     const { config } = await getSyntheticUserForIdentity(
       ctx,
       args.syntheticUserId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     assertConfigIsDraft(config);
 
     await ctx.db.delete(args.syntheticUserId);
-    await touchPack(ctx, config._id, identity.tokenIdentifier);
+    await touchPack(ctx, config._id, resolveOrgId(identity));
 
     return args.syntheticUserId;
   },
@@ -543,7 +543,7 @@ export const applyTranscriptDerivedSyntheticUsers = mutation({
       .parse(args);
     const configId = parsedArgs.configId as Id<"personaConfigs">;
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const config = await getPackForIdentity(ctx, configId, identity.tokenIdentifier);
+    const config = await getPackForIdentity(ctx, configId, resolveOrgId(identity));
 
     assertConfigIsDraft(config);
     await assertSyntheticUserCapacityForBatch(
@@ -559,7 +559,7 @@ export const applyTranscriptDerivedSyntheticUsers = mutation({
     await ctx.db.patch(configId, {
       sharedAxes: parsedArgs.input.sharedAxes,
       updatedAt: Date.now(),
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
     });
 
     const createdSyntheticUserIds: Id<"syntheticUsers">[] = [];
@@ -581,7 +581,7 @@ export const applyTranscriptDerivedSyntheticUsers = mutation({
       createdSyntheticUserIds.push(syntheticUserId);
     }
 
-    await touchPack(ctx, configId, identity.tokenIdentifier);
+    await touchPack(ctx, configId, resolveOrgId(identity));
 
     return createdSyntheticUserIds;
   },
@@ -595,7 +595,7 @@ export const get = query({
     const identity = await requireIdentity(ctx);
     const config = await ctx.db.get(args.configId);
 
-    if (config === null || config.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== resolveOrgId(identity)) {
       return null;
     }
 
@@ -610,7 +610,7 @@ export const list = query({
 
     return await ctx.db
       .query("personaConfigs")
-      .withIndex("by_orgId", (q) => q.eq("orgId", identity.tokenIdentifier))
+      .withIndex("by_orgId", (q) => q.eq("orgId", resolveOrgId(identity)))
       .order("desc")
       .take(50);
   },
@@ -626,7 +626,7 @@ export const getSyntheticUser = query({
     return await getSyntheticUserOrNull(
       ctx,
       args.syntheticUserId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
   },
 });
@@ -639,7 +639,7 @@ export const listSyntheticUsers = query({
     const identity = await requireIdentity(ctx);
     const config = await ctx.db.get(args.configId);
 
-    if (config === null || config.orgId !== identity.tokenIdentifier) {
+    if (config === null || config.orgId !== resolveOrgId(identity)) {
       return [];
     }
 

@@ -13,7 +13,7 @@ import {
   query,
 } from "./_generated/server";
 import { axisSchema, axisValidator } from "./personaConfigs";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 import { loadEffectiveSettingsForOrg } from "./settings";
 
 const MAX_TRANSCRIPTS_PER_PACK = 100;
@@ -242,14 +242,14 @@ export const estimateExtractionCost = query({
     const transcripts = await loadTranscriptsForOrg(
       ctx,
       args.transcriptIds,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
     const totalCharacters = transcripts.reduce(
       (sum, transcript) => sum + transcript.characterCount,
       0,
     );
     const estimatedTokens = Math.ceil(totalCharacters / 4);
-    const settings = await loadEffectiveSettingsForOrg(ctx, identity.tokenIdentifier);
+    const settings = await loadEffectiveSettingsForOrg(ctx, resolveOrgId(identity));
     const modelOverride = settings.modelConfig.find(
       (entry) => entry.taskCategory === "summarization",
     )?.modelId;
@@ -272,11 +272,11 @@ export const getExtractionStatus = query({
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
-    const config = await loadConfigForOrg(ctx, args.configId, identity.tokenIdentifier);
+    const config = await loadConfigForOrg(ctx, args.configId, resolveOrgId(identity));
     const attachedTranscripts = await loadAttachedTranscripts(
       ctx,
       config._id,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
     const attachedTranscriptIds = new Set(attachedTranscripts.map((transcript) => transcript._id));
     const transcriptSignals = (
@@ -317,7 +317,7 @@ export const clusterArchetypes = action({
       (internal as any).transcriptExtraction.getClusteringContext,
       {
         configId: parsedArgs.configId as Id<"personaConfigs">,
-        orgId: identity.tokenIdentifier,
+        orgId: resolveOrgId(identity),
       },
     );
     const guidedAxes = resolveGuidedAxes(
@@ -355,7 +355,7 @@ export const startExtraction = action({
       (internal as any).transcriptExtraction.getConfigExtractionContext,
       {
         configId: parsedArgs.configId as Id<"personaConfigs">,
-        orgId: identity.tokenIdentifier,
+        orgId: resolveOrgId(identity),
       },
     );
 
@@ -371,7 +371,7 @@ export const startExtraction = action({
     const now = Date.now();
     const initialState: ExtractionRunState = {
       configId: configContext.config._id,
-      orgId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
       mode: parsedArgs.mode,
       status: "processing",
       guidedAxes,
@@ -381,7 +381,7 @@ export const startExtraction = action({
       processedTranscriptCount: 0,
       succeededTranscriptIds: [],
       failedTranscripts: [],
-      startedBy: identity.tokenIdentifier,
+      startedBy: resolveOrgId(identity),
       startedAt: now,
       updatedAt: now,
     };
@@ -463,7 +463,7 @@ export const startExtraction = action({
         guidedAxes,
         modelOverride: await getModelOverrideForOrg(
           ctx,
-          identity.tokenIdentifier,
+          resolveOrgId(identity),
           "clustering",
         ),
         signalDocs: await getCompletedSignalsForConfigFromAction(ctx, args.configId),

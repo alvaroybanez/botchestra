@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { ActionCtx, QueryCtx } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import {
   action,
   internalQuery,
@@ -12,6 +12,7 @@ import {
   type StudyReportExportCluster,
 } from "./analysis/reportArtifacts";
 import { collectIssueClusterArtifactKeys, resolveArtifactUrlsForStudy } from "./artifactResolver";
+import { requireIdentity, resolveOrgId } from "./rbac";
 
 type ReportArtifactsPayload = ReturnType<typeof buildStudyReportArtifacts>;
 type ExportedReportArtifact = {
@@ -32,7 +33,7 @@ export const exportJson = action({
       internal.reportExports.getArtifactsForOrg,
       {
       studyId: args.studyId,
-      orgId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
       },
     );
 
@@ -56,7 +57,7 @@ export const exportHtml = action({
       internal.reportExports.getArtifactsForOrg,
       {
       studyId: args.studyId,
-      orgId: identity.tokenIdentifier,
+      orgId: resolveOrgId(identity),
       },
     );
 
@@ -96,16 +97,6 @@ export const getArtifactsForOrg = internalQuery({
     });
   },
 });
-
-async function requireIdentity(ctx: ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
-}
 
 async function getStudyForOrg(
   ctx: QueryCtx,

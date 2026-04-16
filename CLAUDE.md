@@ -2,9 +2,11 @@
 
 Synthetic persona validation platform -- validates web flows using AI-driven browser agents with synthetic personas.
 
+- IMPORTANT: Codex will review your output once you are done.
+
 ## Monorepo Map
 - `apps/web` -- React 19 + TanStack Router + Tailwind v4 + shadcn/ui frontend
-- `apps/browser-executor` -- Cloudflare Worker with `@cloudflare/playwright`
+- `apps/browser-executor` -- Cloudflare Worker with `@cloudflare/puppeteer` + a `BrowserLeaseDO` Durable Object (Browser Rendering binding)
 - `convex/` -- Convex backend (schema is source of truth for all persisted data)
 - `packages/ai` -- AI wrapper (`@ai-sdk/openai`); never hardcode model names
 - `packages/shared` -- Shared types and utilities
@@ -17,10 +19,10 @@ Synthetic persona validation platform -- validates web flows using AI-driven bro
 - Before writing Convex functions, read `convex/_generated/ai/guidelines.md`.
 ## Deep Dive Docs
 Read these when working in the relevant area:
-- `agent_docs/convex-patterns.md` -- data model, dual-validator pattern, RBAC, workflows, state machines
-- `agent_docs/frontend-patterns.md` -- routing, component organization, state management, styling
-- `agent_docs/testing-patterns.md` -- Convex tests, frontend tests, AI mocking, file naming
-- `agent_docs/packages-overview.md` -- AI wrapper, shared schemas, browser executor
+- `docs/convex-patterns.md` -- data model, dual-validator pattern, RBAC, workflows, state machines
+- `docs/frontend-patterns.md` -- routing, component organization, state management, styling
+- `docs/testing-patterns.md` -- Convex tests, frontend tests, AI mocking, file naming
+- `docs/packages-overview.md` -- AI wrapper, shared schemas, browser executor
 
 ## Key Conventions
 
@@ -42,7 +44,7 @@ Read these when working in the relevant area:
 - No real browser tests in CI — use mock browser abstractions
 
 ## Guardrails
-- Never run Playwright inside Convex directly.
+- Never run the headless browser (`@cloudflare/puppeteer`) inside Convex directly — it runs only in the `apps/browser-executor` Worker.
 - Never let agents see hidden success criteria.
 - Never promote findings without replay evidence.
 - Never couple the frontend directly to R2 object structure.

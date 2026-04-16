@@ -45,6 +45,15 @@ export async function requireIdentity(ctx: QueryCtx | MutationCtx | ActionCtx) {
   return identity;
 }
 
+export function resolveOrgId(identity: { tokenIdentifier: string }): string {
+  const parts = identity.tokenIdentifier.split("|");
+  return parts.length >= 2 ? `${parts[0]}|${parts[1]}` : identity.tokenIdentifier;
+}
+
+export async function requireOrgId(ctx: QueryCtx | MutationCtx | ActionCtx) {
+  return resolveOrgId(await requireIdentity(ctx));
+}
+
 export async function requireRole(
   ctx: QueryCtx | MutationCtx | ActionCtx,
   allowedRoles: readonly UserRole[],

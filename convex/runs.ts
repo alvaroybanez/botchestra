@@ -10,6 +10,7 @@ import {
   recordMetric,
 } from "./observability";
 import { resolveArtifactUrlsForStudy } from "./artifactResolver";
+import { requireIdentity, resolveOrgId } from "./rbac";
 
 const runStatusSchema = z.enum([
   "queued",
@@ -537,21 +538,11 @@ async function getStudyForOrg(ctx: QueryCtx, studyId: Id<"studies">) {
   const identity = await requireIdentity(ctx);
   const study = await ctx.db.get(studyId);
 
-  if (study === null || study.orgId !== identity.tokenIdentifier) {
+  if (study === null || study.orgId !== resolveOrgId(identity)) {
     throw new ConvexError("Study not found.");
   }
 
   return study;
-}
-
-async function requireIdentity(ctx: QueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
-  return identity;
 }
 
 type RunStatus = z.infer<typeof runStatusSchema>;

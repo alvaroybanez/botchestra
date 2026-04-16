@@ -4,7 +4,7 @@ import { convexTest } from "convex-test";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
-import { ADMIN_ROLES, requireRole } from "./rbac";
+import { ADMIN_ROLES, requireRole, resolveOrgId } from "./rbac";
 
 const modules = {
   "./_generated/api.js": () => import("./_generated/api.js"),
@@ -101,6 +101,86 @@ const makeTaskSpec = () => ({
   environmentLabel: "staging",
   locale: "en-US",
   viewport: { width: 1440, height: 900 },
+});
+
+describe("resolveOrgId", () => {
+  const issuer = "https://tame-lark-825.eu-west-1.convex.site";
+  const userId = "kh7110vb6rn7vxa1dvnrz87mwh843v2h";
+  const sessionId = "jh7fzhk70e6rdcst7a9b482m4d843dw3";
+
+  it("drops the sessionId from a 3-part production tokenIdentifier", () => {
+    expect(resolveOrgId({ tokenIdentifier: `${issuer}|${userId}|${sessionId}` })).toBe(
+      `${issuer}|${userId}`,
+    );
+  });
+
+  it("is idempotent — 2-part stable value passes through unchanged", () => {
+    const stable = `${issuer}|${userId}`;
+    expect(resolveOrgId({ tokenIdentifier: stable })).toBe(stable);
+  });
+
+  it("preserves 1-part opaque identifiers (test fixtures)", () => {
+    expect(resolveOrgId({ tokenIdentifier: "org_1" })).toBe("org_1");
+  });
+
+  it("handles empty strings gracefully (no crash, passes through)", () => {
+    expect(resolveOrgId({ tokenIdentifier: "" })).toBe("");
+  });
+
+  it("two different sessions for the same user yield the same orgId", () => {
+    const sessionA = `${issuer}|${userId}|session_A`;
+    const sessionB = `${issuer}|${userId}|session_B`;
+    expect(resolveOrgId({ tokenIdentifier: sessionA })).toBe(
+      resolveOrgId({ tokenIdentifier: sessionB }),
+    );
+  });
+});
+
+describe("orgId persistence across sessions", () => {
+  const issuer = "https://tame-lark-825.eu-west-1.convex.site";
+  const userId = "kh7110vb6rn7vxa1dvnrz87mwh843v2h";
+
+  const identityWithSession = (sessionId: string) => ({
+    subject: userId,
+    tokenIdentifier: `${issuer}|${userId}|${sessionId}`,
+    issuer,
+    name: "Alvaro",
+    email: "alvaro@example.com",
+    role: "researcher",
+  });
+
+  it("a study created in session A is visible to session B for the same user", async () => {
+    const t = createTest();
+    const sessionA = t.withIdentity(identityWithSession("session_A"));
+    const sessionB = t.withIdentity(identityWithSession("session_B"));
+
+    const publishedPackId = await insertPack(t, { status: "published" });
+    await t.run(async (ctx) =>
+      ctx.db.patch(publishedPackId, {
+        orgId: resolveOrgId({ tokenIdentifier: `${issuer}|${userId}|any_session` }),
+        createdBy: resolveOrgId({ tokenIdentifier: `${issuer}|${userId}|any_session` }),
+        updatedBy: resolveOrgId({ tokenIdentifier: `${issuer}|${userId}|any_session` }),
+      }),
+    );
+
+    const created = await sessionA.mutation(api.studies.createStudy, {
+      study: {
+        personaConfigId: publishedPackId,
+        name: "Cross-session study",
+        description: "Created on session A.",
+        taskSpec: makeTaskSpec(),
+        runBudget: 50,
+        activeConcurrency: 4,
+      },
+    });
+
+    expect(created.orgId).toBe(`${issuer}|${userId}`);
+
+    const fromSessionB = await sessionB.query(api.studies.getStudy, {
+      studyId: created._id,
+    });
+    expect(fromSessionB._id).toBe(created._id);
+  });
 });
 
 describe("rbac", () => {

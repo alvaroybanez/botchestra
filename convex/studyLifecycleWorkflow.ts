@@ -28,6 +28,7 @@ import {
   resolveArtifactUrlsForStudy,
 } from "./artifactResolver";
 import { recordAuditEvent } from "./observability";
+import { requireIdentity, resolveOrgId } from "./rbac";
 import { DEFAULT_STUDY_RUN_BUDGET } from "./studies";
 import { workflow } from "./workflow";
 
@@ -1068,15 +1069,10 @@ async function getStudyForOrg(
   ctx: QueryCtx,
   studyId: Id<"studies">,
 ) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  if (identity === null) {
-    throw new ConvexError("Not authenticated.");
-  }
-
+  const identity = await requireIdentity(ctx);
   const study = await ctx.db.get(studyId);
 
-  if (study === null || study.orgId !== identity.tokenIdentifier) {
+  if (study === null || study.orgId !== resolveOrgId(identity)) {
     throw new ConvexError("Study not found.");
   }
 

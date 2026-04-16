@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { requireIdentity, requireRole, STUDY_MANAGER_ROLES } from "./rbac";
+import { requireIdentity, requireRole, resolveOrgId, STUDY_MANAGER_ROLES } from "./rbac";
 
 const MAX_AXIS_DEFINITION_QUERY_SIZE = 100;
 const AXIS_KEY_PATTERN = /^[a-z0-9_]+$/;
@@ -86,7 +86,7 @@ export const createAxisDefinition = mutation({
   handler: async (ctx, args) => {
     const parsedArgs = z.object({ axis: axisDefinitionInputSchema }).parse(args);
     const { identity } = await requireRole(ctx, STUDY_MANAGER_ROLES);
-    const orgId = identity.tokenIdentifier;
+    const orgId = resolveOrgId(identity);
     const existing = await getAxisDefinitionByKey(ctx, orgId, parsedArgs.axis.key);
 
     if (existing !== null) {
@@ -102,8 +102,8 @@ export const createAxisDefinition = mutation({
       usageCount: 0,
       creationSource: "manual",
       orgId,
-      createdBy: identity.tokenIdentifier,
-      updatedBy: identity.tokenIdentifier,
+      createdBy: resolveOrgId(identity),
+      updatedBy: resolveOrgId(identity),
       createdAt: now,
       updatedAt: now,
     });
@@ -127,7 +127,7 @@ export const updateAxisDefinition = mutation({
     const existing = await loadAxisDefinitionForOrg(
       ctx,
       axisDefinitionId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     if (
@@ -152,12 +152,12 @@ export const updateAxisDefinition = mutation({
       creationSource: existing.creationSource,
       orgId: existing.orgId,
       createdBy: existing.createdBy,
-      updatedBy: identity.tokenIdentifier,
+      updatedBy: resolveOrgId(identity),
       createdAt: existing.createdAt,
       updatedAt,
     });
 
-    return await loadAxisDefinitionForOrg(ctx, axisDefinitionId, identity.tokenIdentifier);
+    return await loadAxisDefinitionForOrg(ctx, axisDefinitionId, resolveOrgId(identity));
   },
 });
 
@@ -170,7 +170,7 @@ export const deleteAxisDefinition = mutation({
     const axisDefinition = await loadAxisDefinitionForOrg(
       ctx,
       args.axisDefinitionId,
-      identity.tokenIdentifier,
+      resolveOrgId(identity),
     );
 
     await ctx.db.delete(axisDefinition._id);
@@ -189,7 +189,7 @@ export const listAxisDefinitions = query({
 
     return await ctx.db
       .query("axisDefinitions")
-      .withIndex("by_orgId", (q) => q.eq("orgId", identity.tokenIdentifier))
+      .withIndex("by_orgId", (q) => q.eq("orgId", resolveOrgId(identity)))
       .order("desc")
       .take(MAX_AXIS_DEFINITION_QUERY_SIZE);
   },
@@ -205,7 +205,7 @@ export const getAxisDefinition = query({
 
     if (
       axisDefinition === null ||
-      axisDefinition.orgId !== identity.tokenIdentifier
+      axisDefinition.orgId !== resolveOrgId(identity)
     ) {
       return null;
     }
