@@ -71,6 +71,7 @@ export type ExecuteRunIntegrationOptions = {
     request: ExecuteRunRequest;
     result: Awaited<ReturnType<ReturnType<typeof createRunExecutor>["execute"]>>;
     apiKey?: string;
+    baseURL?: string;
     onResult?: (result: { success: boolean; fallback: boolean; reason?: string }) => void;
   }) => Promise<GeneratedSelfReport>;
   now?: () => number;
@@ -81,6 +82,7 @@ export type ExecuteRunHandlerEnv = {
   BROWSER?: BrowserBindingLike;
   BROWSER_LEASE?: DurableObjectNamespaceLike;
   OPENAI_API_KEY?: string;
+  OPENAI_BASE_URL?: string;
 };
 
 type ReportGenerator = (
@@ -304,6 +306,7 @@ function resolveSelectAction(
         prompt,
         abortSignal,
         apiKey: env.OPENAI_API_KEY,
+        baseURL: env.OPENAI_BASE_URL,
       }),
   });
 }
@@ -396,6 +399,7 @@ export function createExecuteRunHandler(options: ExecuteRunIntegrationOptions = 
         request: redactSecrets(request, secretValues),
         result: redactedResult,
         apiKey: env.OPENAI_API_KEY,
+        baseURL: env.OPENAI_BASE_URL,
         onResult: (resultMeta) => {
           selfReportResult.success = resultMeta.success;
           selfReportResult.fallback = resultMeta.fallback;

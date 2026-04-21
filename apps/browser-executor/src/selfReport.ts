@@ -12,6 +12,7 @@ import { logStructuredError } from "./structuredLogger";
 type SelfReportTextGenerator = (
   prompt: string,
   apiKey?: string,
+  baseURL?: string,
 ) => Promise<{ text: string } | string>;
 
 type GenerateSelfReportOptions = {
@@ -19,6 +20,7 @@ type GenerateSelfReportOptions = {
   result: RunExecutionResult;
   generateText?: SelfReportTextGenerator;
   apiKey?: string;
+  baseURL?: string;
   onResult?: (result: { success: boolean; fallback: boolean; reason?: string }) => void;
 };
 
@@ -26,11 +28,12 @@ type SelfReportWithAnswers = SelfReport & {
   answers: Record<string, SelfReportAnswer>;
 };
 
-async function defaultGenerateText(prompt: string, apiKey?: string) {
+async function defaultGenerateText(prompt: string, apiKey?: string, baseURL?: string) {
   return generateWithModel("summarization", {
     system: SELF_REPORT_SYSTEM_PROMPT,
     prompt,
     apiKey,
+    baseURL,
   });
 }
 
@@ -190,6 +193,7 @@ export async function generateSelfReport(
     const generated = await generateText(
       buildSelfReportPrompt(options.request, options.result),
       options.apiKey,
+      options.baseURL,
     );
     const rawText = typeof generated === "string" ? generated : generated.text;
     const parsed = SelfReportSchema.safeParse(

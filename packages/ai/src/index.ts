@@ -48,6 +48,7 @@ type GenerateOptions = {
   system?: string;
   modelOverride?: string;
   apiKey?: string;
+  baseURL?: string;
   stream?: false;
 } & Omit<Parameters<typeof generateText>[0], "model" | "prompt" | "system">;
 
@@ -56,12 +57,21 @@ type StreamOptions = {
   system?: string;
   modelOverride?: string;
   apiKey?: string;
+  baseURL?: string;
   stream: true;
 } & Omit<Parameters<typeof streamText>[0], "model" | "prompt" | "system">;
 
-function resolveProvider(apiKey?: string) {
+function resolveProvider(apiKey?: string, baseURL?: string) {
   const normalizedApiKey = apiKey?.trim();
-  return normalizedApiKey ? createOpenAI({ apiKey: normalizedApiKey }) : openai;
+  const normalizedBaseURL = baseURL?.trim() || getEnvValue("OPENAI_BASE_URL")?.trim();
+  if (!normalizedApiKey && !normalizedBaseURL) {
+    return openai;
+  }
+
+  return createOpenAI({
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    ...(normalizedBaseURL ? { baseURL: normalizedBaseURL } : {}),
+  });
 }
 
 export async function generateWithModel(
@@ -77,14 +87,20 @@ export async function generateWithModel(
   options: GenerateOptions | StreamOptions,
 ) {
   const modelId = resolveModel(category, options.modelOverride);
-  const model = resolveProvider(options.apiKey)(modelId);
+  const model = resolveProvider(options.apiKey, options.baseURL)(modelId);
 
   if ("stream" in options && options.stream) {
-    const { stream: _, modelOverride: __, apiKey: ___, ...rest } = options;
+    const { stream: _, modelOverride: __, apiKey: ___, baseURL: ____, ...rest } = options;
     return streamText({ ...rest, model });
   }
 
-  const { stream: _, modelOverride: __, apiKey: ___, ...rest } = options as GenerateOptions & {
+  const {
+    stream: _,
+    modelOverride: __,
+    apiKey: ___,
+    baseURL: ____,
+    ...rest
+  } = options as GenerateOptions & {
     stream?: false;
   };
   return generateText({ ...rest, model });
