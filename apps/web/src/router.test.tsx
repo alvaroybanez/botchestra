@@ -1,17 +1,7 @@
 import { act } from "react";
 import ReactDOM from "react-dom/client";
-import {
-  createMemoryHistory,
-  RouterProvider,
-} from "@tanstack/react-router";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getFunctionName } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
@@ -48,35 +38,18 @@ type ViewerAccess = {
 
 let mockedViewerAccess: ViewerAccess | null | undefined = null;
 
-let mockedPackList:
-  | Doc<"personaConfigs">[]
-  | undefined = [];
-let mockedAxisDefinitions:
-  | Doc<"axisDefinitions">[]
-  | undefined = [];
-let mockedTranscriptList:
-  | Doc<"transcripts">[]
-  | undefined = [];
-let mockedPackDetail:
-  | Doc<"personaConfigs">
-  | null
-  | undefined = null;
-let mockedTranscriptDetail:
-  | Doc<"transcripts">
-  | null
-  | undefined = null;
-let mockedSyntheticUsers:
-  | Doc<"syntheticUsers">[]
-  | undefined = [];
+let mockedPackList: Doc<"personaConfigs">[] | undefined = [];
+let mockedAxisDefinitions: Doc<"axisDefinitions">[] | undefined = [];
+let mockedTranscriptList: Doc<"transcripts">[] | undefined = [];
+let mockedPackDetail: Doc<"personaConfigs"> | null | undefined = null;
+let mockedTranscriptDetail: Doc<"transcripts"> | null | undefined = null;
+let mockedSyntheticUsers: Doc<"syntheticUsers">[] | undefined = [];
 type BatchGenerationRunView = Doc<"batchGenerationRuns"> & {
   remainingCount: number;
   progressPercent: number;
 };
 
-let mockedBatchGenerationRun:
-  | BatchGenerationRunView
-  | null
-  | undefined = null;
+let mockedBatchGenerationRun: BatchGenerationRunView | null | undefined = null;
 type ReviewStudy = {
   _id: string;
   name: string;
@@ -372,26 +345,38 @@ let mockedAuditEvents: AuditEventView[] | undefined = [];
 let mockedSettingsView: SettingsView | undefined = undefined;
 let mockedTranscriptContentById: Record<string, TranscriptContent | undefined> =
   {};
-let mockedConfigTranscriptsByPackId: Record<string, Array<{
-  _id: string;
-  configId: string;
-  transcriptId: string;
-  createdAt: number;
-  transcript: Doc<"transcripts">;
-}> | undefined> = {};
-let mockedTranscriptPacksByTranscriptId: Record<string, Array<{
-  _id: string;
-  transcriptId: string;
-  configId: string;
-  createdAt: number;
-  config: Doc<"personaConfigs">;
-}> | undefined> = {};
+let mockedConfigTranscriptsByPackId: Record<
+  string,
+  | Array<{
+      _id: string;
+      configId: string;
+      transcriptId: string;
+      createdAt: number;
+      transcript: Doc<"transcripts">;
+    }>
+  | undefined
+> = {};
+let mockedTranscriptPacksByTranscriptId: Record<
+  string,
+  | Array<{
+      _id: string;
+      transcriptId: string;
+      configId: string;
+      createdAt: number;
+      config: Doc<"personaConfigs">;
+    }>
+  | undefined
+> = {};
 let mockedExtractionStatusByPackId: Record<string, any> = {};
-let mockedExtractionCostByPackId: Record<string, {
-  totalCharacters: number;
-  estimatedTokens: number;
-  estimatedCostUsd: number;
-} | undefined> = {};
+let mockedExtractionCostByPackId: Record<
+  string,
+  | {
+      totalCharacters: number;
+      estimatedTokens: number;
+      estimatedCostUsd: number;
+    }
+  | undefined
+> = {};
 const MOCK_ARTIFACT_BASE_URL = "http://localhost:8787";
 const createDraftMock = vi.fn();
 const createStudyMock = vi.fn();
@@ -504,7 +489,9 @@ vi.mock("convex/react", () => ({
       return regenerateSyntheticUserMock;
     }
 
-    if (mutationName === "personaConfigs:applyTranscriptDerivedSyntheticUsers") {
+    if (
+      mutationName === "personaConfigs:applyTranscriptDerivedSyntheticUsers"
+    ) {
       return applyTranscriptDerivedSyntheticUsersMock;
     }
 
@@ -602,10 +589,7 @@ vi.mock("convex/react", () => ({
       }
 
       return studyRuns.filter((run) => {
-        if (
-          typeof args?.outcome === "string" &&
-          run.status !== args.outcome
-        ) {
+        if (typeof args?.outcome === "string" && run.status !== args.outcome) {
           return false;
         }
 
@@ -646,7 +630,7 @@ vi.mock("convex/react", () => ({
           key.startsWith("data:")
             ? key
             : `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(key)}`,
-        ]),
+        ])
       );
     }
 
@@ -753,7 +737,9 @@ vi.mock("convex/react", () => ({
     }
 
     if (queryName === "configTranscripts:listTranscriptConfigs") {
-      return mockedTranscriptPacksByTranscriptId[String(args?.transcriptId)] ?? [];
+      return (
+        mockedTranscriptPacksByTranscriptId[String(args?.transcriptId)] ?? []
+      );
     }
 
     if (queryName === "transcriptExtraction:getExtractionStatus") {
@@ -762,10 +748,13 @@ vi.mock("convex/react", () => ({
 
     if (queryName === "transcriptExtraction:estimateExtractionCost") {
       const transcriptIds = (args?.transcriptIds as string[] | undefined) ?? [];
-      const configId = Object.entries(mockedConfigTranscriptsByPackId).find(([, attachments]) =>
-        transcriptIds.every((transcriptId) =>
-          (attachments ?? []).some((attachment) => attachment.transcriptId === transcriptId),
-        ),
+      const configId = Object.entries(mockedConfigTranscriptsByPackId).find(
+        ([, attachments]) =>
+          transcriptIds.every((transcriptId) =>
+            (attachments ?? []).some(
+              (attachment) => attachment.transcriptId === transcriptId
+            )
+          )
       )?.[0];
 
       return configId ? mockedExtractionCostByPackId[configId] : undefined;
@@ -775,8 +764,9 @@ vi.mock("convex/react", () => ({
   },
 }));
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 const mountedRoots: ReactDOM.Root[] = [];
 
@@ -819,7 +809,7 @@ beforeEach(() => {
   createDraftMock.mockResolvedValue("new-config-id" as Id<"personaConfigs">);
   createStudyMock.mockReset();
   createStudyMock.mockResolvedValue(
-    makeStudy({ _id: "study-created" as Id<"studies"> }),
+    makeStudy({ _id: "study-created" as Id<"studies"> })
   );
   updateStudyMock.mockReset();
   updateStudyMock.mockResolvedValue(undefined);
@@ -828,15 +818,21 @@ beforeEach(() => {
   cancelStudyMock.mockReset();
   cancelStudyMock.mockResolvedValue(undefined);
   importJsonMock.mockReset();
-  importJsonMock.mockResolvedValue("imported-config-id" as Id<"personaConfigs">);
+  importJsonMock.mockResolvedValue(
+    "imported-config-id" as Id<"personaConfigs">
+  );
   updateDraftMock.mockReset();
   updateDraftMock.mockResolvedValue(undefined);
   createSyntheticUserMock.mockReset();
   createSyntheticUserMock.mockResolvedValue(undefined);
   startBatchGenerationMock.mockReset();
-  startBatchGenerationMock.mockResolvedValue("run-1" as Id<"batchGenerationRuns">);
+  startBatchGenerationMock.mockResolvedValue(
+    "run-1" as Id<"batchGenerationRuns">
+  );
   regenerateSyntheticUserMock.mockReset();
-  regenerateSyntheticUserMock.mockResolvedValue("proto-1" as Id<"syntheticUsers">);
+  regenerateSyntheticUserMock.mockResolvedValue(
+    "proto-1" as Id<"syntheticUsers">
+  );
   publishMock.mockReset();
   publishMock.mockResolvedValue(undefined);
   archiveMock.mockReset();
@@ -875,44 +871,48 @@ beforeEach(() => {
   ]);
   uploadTranscriptMock.mockReset();
   uploadTranscriptMock
-    .mockImplementationOnce(async ({ originalFilename }: { originalFilename: string }) => ({
-      uploadUrl: `https://upload.factory.dev/${encodeURIComponent(originalFilename)}`,
-      transcriptId: null,
-    }))
-    .mockImplementation(async ({
-      storageId,
-      originalFilename,
-    }: {
-      storageId?: string;
-      originalFilename: string;
-    }) => {
-      if (storageId === undefined) {
+    .mockImplementationOnce(
+      async ({ originalFilename }: { originalFilename: string }) => ({
+        uploadUrl: `https://upload.factory.dev/${encodeURIComponent(originalFilename)}`,
+        transcriptId: null,
+      })
+    )
+    .mockImplementation(
+      async ({
+        storageId,
+        originalFilename,
+      }: {
+        storageId?: string;
+        originalFilename: string;
+      }) => {
+        if (storageId === undefined) {
+          return {
+            uploadUrl: `https://upload.factory.dev/${encodeURIComponent(originalFilename)}`,
+            transcriptId: null,
+          };
+        }
+
+        const transcriptId = `${originalFilename}-id` as Id<"transcripts">;
+        mockedTranscriptList = [
+          makeTranscript({
+            _id: transcriptId,
+            originalFilename,
+            format: originalFilename.endsWith(".json") ? "json" : "txt",
+            processingStatus: "pending",
+            characterCount: 0,
+            metadata: {
+              tags: [],
+            },
+          }),
+          ...(mockedTranscriptList ?? []),
+        ];
+
         return {
-          uploadUrl: `https://upload.factory.dev/${encodeURIComponent(originalFilename)}`,
-          transcriptId: null,
+          uploadUrl: null,
+          transcriptId,
         };
       }
-
-      const transcriptId = `${originalFilename}-id` as Id<"transcripts">;
-      mockedTranscriptList = [
-        makeTranscript({
-          _id: transcriptId,
-          originalFilename,
-          format: originalFilename.endsWith(".json") ? "json" : "txt",
-          processingStatus: "pending",
-          characterCount: 0,
-          metadata: {
-            tags: [],
-          },
-        }),
-        ...(mockedTranscriptList ?? []),
-      ];
-
-      return {
-        uploadUrl: null,
-        transcriptId,
-      };
-    });
+    );
   updateTranscriptMetadataMock.mockReset();
   updateTranscriptMetadataMock.mockResolvedValue(undefined);
   deleteTranscriptMock.mockReset();
@@ -924,7 +924,7 @@ beforeEach(() => {
   getTranscriptContentMock.mockReset();
   getTranscriptContentMock.mockImplementation(
     async ({ transcriptId }: { transcriptId: string }) =>
-      mockedTranscriptContentById[transcriptId] ?? null,
+      mockedTranscriptContentById[transcriptId] ?? null
   );
   startTranscriptExtractionMock.mockReset();
   startTranscriptExtractionMock.mockResolvedValue(undefined);
@@ -957,16 +957,18 @@ beforeEach(() => {
           "Content-Type": "application/json",
         },
         status: 200,
-      }),
+      })
   );
 });
 
 describe("@botchestra/web routing", () => {
   it("sanitizes redirect targets to local in-app paths", () => {
     expect(resolveRedirectPath("/studies/test-id-123/report")).toBe(
-      "/studies/test-id-123/report",
+      "/studies/test-id-123/report"
     );
-    expect(resolveRedirectPath("https://example.com/settings")).toBe("/studies");
+    expect(resolveRedirectPath("https://example.com/settings")).toBe(
+      "/studies"
+    );
     expect(resolveRedirectPath("//example.com/settings")).toBe("/studies");
   });
 
@@ -1006,14 +1008,10 @@ describe("@botchestra/web routing", () => {
       .map((label) => label.textContent?.trim())
       .filter((label): label is string => Boolean(label));
 
-    expect(initialGroupLabels).toEqual([
-      "Orchestrate",
-      "Configure",
-      "Analyze",
-    ]);
+    expect(initialGroupLabels).toEqual(["Orchestrate", "Configure", "Analyze"]);
 
     const collapseButton = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Collapse sidebar"]',
+      'button[aria-label="Collapse sidebar"]'
     );
     expect(collapseButton).not.toBeNull();
 
@@ -1022,7 +1020,7 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(
-      container.querySelector('button[aria-label="Expand sidebar"]'),
+      container.querySelector('button[aria-label="Expand sidebar"]')
     ).not.toBeNull();
 
     const collapsedGroupLabels = [...container.querySelectorAll("nav p")]
@@ -1034,14 +1032,14 @@ describe("@botchestra/web routing", () => {
     expect(studiesNavLink?.textContent?.trim()).toBe("");
 
     const expandButton = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Expand sidebar"]',
+      'button[aria-label="Expand sidebar"]'
     );
     await act(async () => {
       expandButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(
-      container.querySelector('button[aria-label="Collapse sidebar"]'),
+      container.querySelector('button[aria-label="Collapse sidebar"]')
     ).not.toBeNull();
   });
 
@@ -1052,7 +1050,7 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(getRouterLocationHref(router)).toBe(
-      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport",
+      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport"
     );
     expect(container.querySelector("#login-email")).not.toBeNull();
     expect(container.textContent).toContain("Don't have an account? Sign up");
@@ -1066,7 +1064,7 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(getRouterLocationHref(router)).toBe(
-      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport",
+      "/login?redirect=%2Fstudies%2Ftest-id-123%2Freport"
     );
     expect(container.querySelector("#login-email")).not.toBeNull();
     expect(container.textContent).not.toContain("Validation Console");
@@ -1091,11 +1089,13 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("Access denied");
-    expect(container.textContent).toContain("Only admins can access workspace settings.");
+    expect(container.textContent).toContain(
+      "Only admins can access workspace settings."
+    );
     expect(container.textContent).not.toContain("Current route");
 
     const linkLabels = [...container.querySelectorAll("a")].map((link) =>
-      link.textContent?.trim(),
+      link.textContent?.trim()
     );
     expect(linkLabels).not.toContain("Settings");
   });
@@ -1113,7 +1113,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Credentials");
 
     const linkLabels = [...container.querySelectorAll("a")].map((link) =>
-      link.textContent?.trim(),
+      link.textContent?.trim()
     );
     expect(linkLabels).toContain("Settings");
   });
@@ -1126,10 +1126,12 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("Access denied");
-    expect(container.textContent).toContain("Only admins can access workspace diagnostics.");
+    expect(container.textContent).toContain(
+      "Only admins can access workspace diagnostics."
+    );
 
     const linkLabels = [...container.querySelectorAll("a")].map((link) =>
-      link.textContent?.trim(),
+      link.textContent?.trim()
     );
     expect(linkLabels).not.toContain("Diagnostics");
   });
@@ -1157,7 +1159,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Audit trail");
 
     const linkLabels = [...container.querySelectorAll("a")].map((link) =>
-      link.textContent?.trim(),
+      link.textContent?.trim()
     );
     expect(linkLabels).toContain("Diagnostics");
 
@@ -1167,9 +1169,15 @@ describe("@botchestra/web routing", () => {
     expect(getAuditRows(container)).toHaveLength(2);
     expect(container.textContent).toContain("report.published");
 
-    await updateSelect(container, "#audit-event-type-filter", "study.cancelled");
+    await updateSelect(
+      container,
+      "#audit-event-type-filter",
+      "study.cancelled"
+    );
     expect(getAuditRows(container)).toHaveLength(1);
-    expect(container.textContent).toContain("Manual stop after blocker reproduction.");
+    expect(container.textContent).toContain(
+      "Manual stop after blocker reproduction."
+    );
     expect(container.textContent).not.toContain("Published ranked report.");
   });
 
@@ -1199,7 +1207,7 @@ describe("@botchestra/web routing", () => {
           href: "/studies/new",
           text: expect.stringContaining("Create your first study"),
         }),
-      ]),
+      ])
     );
   });
 
@@ -1272,27 +1280,23 @@ describe("@botchestra/web routing", () => {
     await updateTextarea(
       container,
       "#study-description",
-      "Evaluates the purchase flow for first-time shoppers.",
+      "Evaluates the purchase flow for first-time shoppers."
     );
     await updateTextarea(
       container,
       "#study-scenario",
-      "A shopper needs to buy a pair of shoes before a weekend trip.",
+      "A shopper needs to buy a pair of shoes before a weekend trip."
     );
-    await updateTextarea(
-      container,
-      "#study-goal",
-      "Reach order confirmation.",
-    );
+    await updateTextarea(container, "#study-goal", "Reach order confirmation.");
     await updateInput(
       container,
       "#study-starting-url",
-      "https://example.com/products/shoes",
+      "https://example.com/products/shoes"
     );
     await updateTextarea(
       container,
       "#study-allowed-domains",
-      "example.com\ncheckout.example.com",
+      "example.com\ncheckout.example.com"
     );
     await updateInput(container, "#study-run-budget", "50");
     await updateInput(container, "#study-active-concurrency", "6");
@@ -1300,17 +1304,17 @@ describe("@botchestra/web routing", () => {
     await updateTextarea(
       container,
       "#study-success-criteria",
-      "See order confirmation",
+      "See order confirmation"
     );
     await updateTextarea(
       container,
       "#study-stop-conditions",
-      "Leave the allowlisted domain",
+      "Leave the allowlisted domain"
     );
     await updateTextarea(
       container,
       "#study-post-task-questions",
-      "Did you finish?",
+      "Did you finish?"
     );
     await updateInput(container, "#study-max-steps", "18");
     await updateInput(container, "#study-max-duration", "360");
@@ -1320,7 +1324,7 @@ describe("@botchestra/web routing", () => {
 
     await act(async () => {
       form!.dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
+        new Event("submit", { bubbles: true, cancelable: true })
       );
     });
 
@@ -1359,7 +1363,9 @@ describe("@botchestra/web routing", () => {
         activeConcurrency: 6,
       },
     });
-    expect(getRouterLocationHref(router)).toBe("/studies/study-created/overview");
+    expect(getRouterLocationHref(router)).toBe(
+      "/studies/study-created/overview"
+    );
   });
 
   it("renders persona variant cards with axis value distributions and coherence scores", async () => {
@@ -1379,7 +1385,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Distinctness score");
     expect(container.textContent).toContain("Bio preview");
     expect(
-      container.querySelectorAll('[data-testid="persona-variant-card"]'),
+      container.querySelectorAll('[data-testid="persona-variant-card"]')
     ).toHaveLength(3);
   });
 
@@ -1392,7 +1398,9 @@ describe("@botchestra/web routing", () => {
     });
 
     const cards = [
-      ...container.querySelectorAll<HTMLElement>('[data-testid="persona-variant-card"]'),
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="persona-variant-card"]'
+      ),
     ];
     expect(cards).toHaveLength(3);
     expect(cards[0]?.textContent).toContain("Goal-driven power user");
@@ -1405,12 +1413,13 @@ describe("@botchestra/web routing", () => {
     generateVariantsMock.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolveGeneration = () => resolve({
-            acceptedCount: 64,
-            rejectedCount: 0,
-            retryCount: 0,
-          });
-        }),
+          resolveGeneration = () =>
+            resolve({
+              acceptedCount: 64,
+              rejectedCount: 0,
+              retryCount: 0,
+            });
+        })
     );
 
     const { container } = await renderRoute({
@@ -1421,19 +1430,21 @@ describe("@botchestra/web routing", () => {
     await clickButton(container, "Generate variants");
 
     const generateButton = [...container.querySelectorAll("button")].find(
-      (button) => button.textContent?.trim() === "Generating variants...",
+      (button) => button.textContent?.trim() === "Generating variants..."
     );
     expect(generateButton).toBeDefined();
     expect(generateButton).toHaveProperty("disabled", true);
     expect(container.textContent).toContain("Generating variants...");
-    expect(generateVariantsMock).toHaveBeenCalledWith({ studyId: "study-live" });
+    expect(generateVariantsMock).toHaveBeenCalledWith({
+      studyId: "study-live",
+    });
 
     await act(async () => {
       resolveGeneration?.();
     });
 
     expect(container.textContent).toContain(
-      "Generated 64 accepted variants (0 rejected, 0 retries).",
+      "Generated 64 accepted variants (0 rejected, 0 retries)."
     );
   });
 
@@ -1457,7 +1468,9 @@ describe("@botchestra/web routing", () => {
 
     expect(container.textContent).toContain("Checkout usability benchmark");
     expect(container.textContent).toContain("Task specification");
-    expect(container.textContent).toContain("A shopper wants to complete checkout.");
+    expect(container.textContent).toContain(
+      "A shopper wants to complete checkout."
+    );
     expect(container.textContent).toContain("Overview summary");
     expect(container.textContent).toContain("Total runs");
     expect(container.textContent).toContain("Success rate");
@@ -1466,7 +1479,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Run configuration");
     expect(container.textContent).toContain("Live monitor");
     expect(
-      container.querySelector('[data-testid="study-tabs-active-indicator"]'),
+      container.querySelector('[data-testid="study-tabs-active-indicator"]')
     ).not.toBeNull();
 
     const links = [...container.querySelectorAll("a")].map((link) => ({
@@ -1496,7 +1509,7 @@ describe("@botchestra/web routing", () => {
           href: "/studies/study-live/report",
           text: "Report",
         }),
-      ]),
+      ])
     );
   });
 
@@ -1518,27 +1531,29 @@ describe("@botchestra/web routing", () => {
       ],
     });
 
-    const personasLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
-      (link) => link.textContent?.trim() === "Personas",
-    );
+    const personasLink = [
+      ...container.querySelectorAll<HTMLAnchorElement>("a"),
+    ].find((link) => link.textContent?.trim() === "Personas");
 
     expect(personasLink).not.toBeNull();
     expect(personasLink?.getAttribute("href")).toContain(
-      "/studies/study-live/personas",
+      "/studies/study-live/personas"
     );
     expect(personasLink?.getAttribute("href")).toContain("outcome=hard_fail");
     expect(personasLink?.getAttribute("href")).toContain(
-      "syntheticUserId=proto-careful",
+      "syntheticUserId=proto-careful"
     );
 
     await act(async () => {
       personasLink!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(getRouterLocationHref(router)).toContain("/studies/study-live/personas");
+    expect(getRouterLocationHref(router)).toContain(
+      "/studies/study-live/personas"
+    );
     expect(getRouterLocationHref(router)).toContain("outcome=hard_fail");
     expect(getRouterLocationHref(router)).toContain(
-      "syntheticUserId=proto-careful",
+      "syntheticUserId=proto-careful"
     );
   });
 
@@ -1574,18 +1589,26 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Edit Study");
     await updateInput(container, "#study-name", "Updated study name");
-    await updateInput(container, "#study-starting-url", "https://example.com/new-start");
+    await updateInput(
+      container,
+      "#study-starting-url",
+      "https://example.com/new-start"
+    );
     await updateInput(container, "#study-run-budget", "50");
     await updateInput(container, "#study-active-concurrency", "5");
     await updateSelect(container, "#study-environment-label", "qa");
-    await updateTextarea(container, "#study-post-task-questions", "Did you finish?\nWhat slowed you down?");
+    await updateTextarea(
+      container,
+      "#study-post-task-questions",
+      "Did you finish?\nWhat slowed you down?"
+    );
 
     const form = container.querySelector("form");
     expect(form).not.toBeNull();
 
     await act(async () => {
       form!.dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
+        new Event("submit", { bubbles: true, cancelable: true })
       );
     });
 
@@ -1599,7 +1622,16 @@ describe("@botchestra/web routing", () => {
           goal: "Reach order confirmation.",
           startingUrl: "https://example.com/new-start",
           allowedDomains: ["example.com"],
-          allowedActions: ["goto", "click", "type", "select", "scroll", "wait", "back", "finish"],
+          allowedActions: [
+            "goto",
+            "click",
+            "type",
+            "select",
+            "scroll",
+            "wait",
+            "back",
+            "finish",
+          ],
           forbiddenActions: ["payment_submission", "external_download"],
           successCriteria: ["Order confirmation is visible"],
           stopConditions: ["Leave the allowlisted domain"],
@@ -1783,10 +1815,10 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Step 6");
     expect(container.textContent).toContain("30% of step budget");
     expect(
-      container.querySelector('[aria-label="Replay: Waiting"]'),
+      container.querySelector('[aria-label="Replay: Waiting"]')
     ).not.toBeNull();
     expect(
-      container.querySelector('[aria-label="Analysis: Waiting"]'),
+      container.querySelector('[aria-label="Analysis: Waiting"]')
     ).not.toBeNull();
   });
 
@@ -1811,10 +1843,10 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(
-      replayingView.container.querySelector('[aria-label="Replay: Replaying"]'),
+      replayingView.container.querySelector('[aria-label="Replay: Replaying"]')
     ).not.toBeNull();
     expect(
-      replayingView.container.querySelector('[aria-label="Analysis: Waiting"]'),
+      replayingView.container.querySelector('[aria-label="Analysis: Waiting"]')
     ).not.toBeNull();
 
     mockedStudyById = {
@@ -1830,10 +1862,12 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(
-      analyzingView.container.querySelector('[aria-label="Replay: Complete"]'),
+      analyzingView.container.querySelector('[aria-label="Replay: Complete"]')
     ).not.toBeNull();
     expect(
-      analyzingView.container.querySelector('[aria-label="Analysis: Analyzing"]'),
+      analyzingView.container.querySelector(
+        '[aria-label="Analysis: Analyzing"]'
+      )
     ).not.toBeNull();
   });
 
@@ -1872,7 +1906,9 @@ describe("@botchestra/web routing", () => {
     await updateSelect(container, "#run-outcome-filter", "");
     await updateInput(container, "#run-persona-name-filter", "speedy");
     expect(container.textContent).toContain("Filtered runs (1)");
-    expect(container.textContent).toContain("Fast repeat buyer who completed the flow without friction.");
+    expect(container.textContent).toContain(
+      "Fast repeat buyer who completed the flow without friction."
+    );
 
     await updateSelect(container, "#run-outcome-filter", "hard_fail");
     expect(container.textContent).toContain("Filtered runs (0)");
@@ -1901,7 +1937,7 @@ describe("@botchestra/web routing", () => {
     await updateInput(container, "#run-persona-name-filter", "careful");
 
     const findingsLink = [...container.querySelectorAll("a")].find(
-      (link) => link.textContent === "Findings",
+      (link) => link.textContent === "Findings"
     );
     expect(findingsLink).not.toBeNull();
 
@@ -1910,13 +1946,13 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(getRouterLocationHref(router)).toContain(
-      "/studies/study-live/findings",
+      "/studies/study-live/findings"
     );
     expect(getRouterLocationHref(router)).toContain("outcome=hard_fail");
     expect(getRouterLocationHref(router)).toContain("personaName=careful");
 
     const runsLink = [...container.querySelectorAll("a")].find(
-      (link) => link.textContent === "Runs",
+      (link) => link.textContent === "Runs"
     );
     expect(runsLink).not.toBeNull();
 
@@ -1925,10 +1961,10 @@ describe("@botchestra/web routing", () => {
     });
 
     const outcomeSelect = container.querySelector<HTMLSelectElement>(
-      "#run-outcome-filter",
+      "#run-outcome-filter"
     );
     const personaNameInput = container.querySelector<HTMLInputElement>(
-      "#run-persona-name-filter",
+      "#run-persona-name-filter"
     );
 
     expect(outcomeSelect?.value).toBe("hard_fail");
@@ -1953,62 +1989,71 @@ describe("@botchestra/web routing", () => {
 
     expect(container.textContent).toContain("Findings Explorer");
     expect(container.textContent).toContain(
-      "Checkout continue button hidden on the address step",
+      "Checkout continue button hidden on the address step"
     );
     expect(container.textContent).toContain(
-      "Replay evidence confirms the continue button is clipped below the fold.",
+      "Replay evidence confirms the continue button is clipped below the fold."
     );
     expect(container.textContent).toContain(
-      "linked to contact flow felt repetitive and not clearly tied to the numbers monthly payment around after.",
+      "linked to contact flow felt repetitive and not clearly tied to the numbers monthly payment around after."
     );
     expect(container.textContent).toContain("digital confidence");
     expect(container.textContent).toContain("-0.9 to -0.3");
     expect(container.textContent).not.toContain(
-      "CONTACT_FLOW_FELT_REPETITIVE_AND_NOT_CLEARLY_TIED_TO_THE_NUMBERS_MONTHLY_PAYMENT_AROUND_AFTER",
+      "CONTACT_FLOW_FELT_REPETITIVE_AND_NOT_CLEARLY_TIED_TO_THE_NUMBERS_MONTHLY_PAYMENT_AROUND_AFTER"
     );
     expect(container.textContent).toContain("Impact score");
     expect(container.textContent).toContain("0.92");
     expect(container.textContent).toContain(
-      "I could not figure out how to continue from the address step.",
+      "I could not figure out how to continue from the address step."
     );
 
-    const evidenceLinks = [...container.querySelectorAll<HTMLAnchorElement>("a")]
-      .filter((link) => link.textContent?.includes("Open evidence"));
+    const evidenceLinks = [
+      ...container.querySelectorAll<HTMLAnchorElement>("a"),
+    ].filter((link) => link.textContent?.includes("Open evidence"));
     expect(evidenceLinks).toHaveLength(2);
     expect(evidenceLinks[0]?.getAttribute("href")).toBe(
-      "http://localhost:8787/artifacts/runs%2Frun-hard-fail%2Fmilestones%2F2.jpg",
+      "http://localhost:8787/artifacts/runs%2Frun-hard-fail%2Fmilestones%2F2.jpg"
     );
 
     const findingMetricPills = container.querySelectorAll(
-      '[data-testid="finding-metric-pills"]',
+      '[data-testid="finding-metric-pills"]'
     );
     expect(findingMetricPills).toHaveLength(2);
     expect(findingMetricPills[0]?.children).toHaveLength(2);
 
     await updateSelect(container, "#finding-severity-filter", "blocker");
     expect(container.textContent).toContain("Showing 1 of 2 clusters");
-    expect(container.textContent).not.toContain("Payment totals shift late in checkout");
+    expect(container.textContent).not.toContain(
+      "Payment totals shift late in checkout"
+    );
 
     await updateSelect(container, "#finding-persona-filter", "proto-speedy");
     expect(container.textContent).toContain("No matching findings");
 
     await updateSelect(container, "#finding-severity-filter", "");
     await updateSelect(container, "#finding-persona-filter", "proto-careful");
-    await updateSelect(container, "#finding-axis-key-filter", "digital_confidence");
+    await updateSelect(
+      container,
+      "#finding-axis-key-filter",
+      "digital_confidence"
+    );
     await updateInput(container, "#finding-axis-min-filter", "-0.8");
     await updateInput(container, "#finding-axis-max-filter", "-0.2");
     await updateSelect(container, "#finding-outcome-filter", "hard_fail");
     await updateInput(
       container,
       "#finding-url-prefix-filter",
-      "https://example.com/checkout/address",
+      "https://example.com/checkout/address"
     );
 
     expect(container.textContent).toContain("Showing 1 of 2 clusters");
     expect(container.textContent).toContain(
-      "Checkout continue button hidden on the address step",
+      "Checkout continue button hidden on the address step"
     );
-    expect(container.textContent).not.toContain("Payment totals shift late in checkout");
+    expect(container.textContent).not.toContain(
+      "Payment totals shift late in checkout"
+    );
   });
 
   it("opens the linked representative run detail from a findings card", async () => {
@@ -2041,9 +2086,9 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/studies/study-live/findings"],
     });
 
-    const runLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
-      (link) => link.textContent?.includes("Open run detail"),
-    );
+    const runLink = [
+      ...container.querySelectorAll<HTMLAnchorElement>("a"),
+    ].find((link) => link.textContent?.includes("Open run detail"));
 
     expect(runLink).not.toBeNull();
 
@@ -2106,36 +2151,40 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("12/12 terminal");
 
     const issueCards = [
-      ...container.querySelectorAll<HTMLElement>('[data-testid="report-issue-card"]'),
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="report-issue-card"]'
+      ),
     ];
     expect(issueCards).toHaveLength(2);
     expect(issueCards[0]?.textContent).toContain(
-      "Payment totals shift late in checkout",
+      "Payment totals shift late in checkout"
     );
     expect(issueCards[1]?.textContent).toContain(
-      "Checkout continue button hidden on the address step",
+      "Checkout continue button hidden on the address step"
     );
     expect(issueCards[0]?.textContent).toContain("What broke");
     expect(issueCards[0]?.textContent).toContain("Where");
     expect(issueCards[0]?.textContent).toContain("Affected segments");
-    expect(issueCards[0]?.textContent).toContain("Representative quotes from Synthetic Users (always validate with humans!)");
+    expect(issueCards[0]?.textContent).toContain(
+      "Representative quotes from Synthetic Users (always validate with humans!)"
+    );
     expect(issueCards[0]?.textContent).toContain("Recommendation");
     expect(issueCards[0]?.textContent).toContain("Confidence note");
 
     const evidenceLinks = [
       ...container.querySelectorAll<HTMLAnchorElement>(
-        '[data-testid="report-evidence-link"]',
+        '[data-testid="report-evidence-link"]'
       ),
     ];
     expect(evidenceLinks).toHaveLength(2);
     expect(evidenceLinks[0]?.getAttribute("href")).toBe(
-      "http://localhost:8787/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
+      "http://localhost:8787/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg"
     );
     expect(evidenceLinks[0]?.querySelector("img")?.getAttribute("src")).toBe(
-      "http://localhost:8787/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg",
+      "http://localhost:8787/artifacts/runs%2Frun-success%2Fmilestones%2F4.jpg"
     );
     expect(container.textContent).toContain(
-      "Replay evidence confirms the continue button is clipped below the fold.",
+      "Replay evidence confirms the continue button is clipped below the fold."
     );
   });
 
@@ -2168,27 +2217,33 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Export JSON");
 
-    expect(exportJsonReportMock).toHaveBeenCalledWith({ studyId: "study-live" });
+    expect(exportJsonReportMock).toHaveBeenCalledWith({
+      studyId: "study-live",
+    });
     expect(clickedDownloads).toHaveLength(1);
     expect(clickedDownloads[0]).toEqual({
       download: "study-report-study-live.json",
       href: "blob:mock-1",
     });
-    expect(JSON.parse(await downloadedBlobs.get("blob:mock-1")!.text())).toMatchObject({
+    expect(
+      JSON.parse(await downloadedBlobs.get("blob:mock-1")!.text())
+    ).toMatchObject({
       studyId: "study-live",
       issueClusterIds: ["finding-address", "finding-payment"],
     });
 
     await clickButton(container, "Export HTML");
 
-    expect(exportHtmlReportMock).toHaveBeenCalledWith({ studyId: "study-live" });
+    expect(exportHtmlReportMock).toHaveBeenCalledWith({
+      studyId: "study-live",
+    });
     expect(clickedDownloads).toHaveLength(2);
     expect(clickedDownloads[1]).toEqual({
       download: "study-report-study-live.html",
       href: "blob:mock-2",
     });
     expect(await downloadedBlobs.get("blob:mock-2")!.text()).toContain(
-      "<!DOCTYPE html>",
+      "<!DOCTYPE html>"
     );
   });
 
@@ -2206,7 +2261,9 @@ describe("@botchestra/web routing", () => {
       download: "study-report-demo-study.json",
       href: "blob:mock-1",
     });
-    expect(JSON.parse(await downloadedBlobs.get("blob:mock-1")!.text())).toMatchObject({
+    expect(
+      JSON.parse(await downloadedBlobs.get("blob:mock-1")!.text())
+    ).toMatchObject({
       studyId: "demo-study",
       issueClusterIds: ["finding-demo-address", "finding-demo-payment"],
     });
@@ -2220,7 +2277,7 @@ describe("@botchestra/web routing", () => {
       href: "blob:mock-2",
     });
     expect(await downloadedBlobs.get("blob:mock-2")!.text()).toContain(
-      "Checkout continue button hidden on the address step",
+      "Checkout continue button hidden on the address step"
     );
   });
 
@@ -2235,12 +2292,12 @@ describe("@botchestra/web routing", () => {
         initialEntries: [initialEntry],
       });
 
-      const overviewLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
-        (link) => link.textContent?.trim() === "Go to Overview",
-      );
+      const overviewLink = [
+        ...container.querySelectorAll<HTMLAnchorElement>("a"),
+      ].find((link) => link.textContent?.trim() === "Go to Overview");
 
       expect(overviewLink?.getAttribute("href")).toBe(
-        "/studies/demo-study/overview",
+        "/studies/demo-study/overview"
       );
     }
 
@@ -2249,9 +2306,9 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/studies/demo-study/report"],
     });
 
-    const overviewLink = [...container.querySelectorAll<HTMLAnchorElement>("a")].find(
-      (link) => link.textContent?.trim() === "Go to Overview",
-    );
+    const overviewLink = [
+      ...container.querySelectorAll<HTMLAnchorElement>("a"),
+    ].find((link) => link.textContent?.trim() === "Go to Overview");
 
     expect(overviewLink).not.toBeNull();
 
@@ -2259,7 +2316,9 @@ describe("@botchestra/web routing", () => {
       overviewLink!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(getRouterLocationHref(router)).toContain("/studies/demo-study/overview");
+    expect(getRouterLocationHref(router)).toContain(
+      "/studies/demo-study/overview"
+    );
     expect(container.textContent).toContain("Task specification");
   });
 
@@ -2272,7 +2331,9 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("No persona configurations yet");
-    expect(container.textContent).toContain("Create your first persona configuration");
+    expect(container.textContent).toContain(
+      "Create your first persona configuration"
+    );
   });
 
   it("renders the axis library route and places its sidebar link after Persona Configs", async () => {
@@ -2288,11 +2349,11 @@ describe("@botchestra/web routing", () => {
     });
 
     const linkLabels = [...container.querySelectorAll("a")].map((link) =>
-      link.textContent?.trim(),
+      link.textContent?.trim()
     );
 
     expect(linkLabels.indexOf("Axis Library")).toBe(
-      linkLabels.indexOf("Persona Configs") + 1,
+      linkLabels.indexOf("Persona Configs") + 1
     );
     expect(getRouterLocationHref(router)).toBe("/axis-library");
     expect(container.textContent).toContain("Axis Library");
@@ -2332,7 +2393,9 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("draft");
     expect(container.textContent).toContain("Mobile Banking Config");
     expect(container.textContent).toContain("published");
-    expect(container.textContent).toContain("Archived persona configurations (1)");
+    expect(container.textContent).toContain(
+      "Archived persona configurations (1)"
+    );
 
     const archivedSection = container.querySelector("details");
     expect(archivedSection).not.toBeNull();
@@ -2340,14 +2403,14 @@ describe("@botchestra/web routing", () => {
     expect(archivedSection?.textContent).toContain("archived");
 
     const links = [...container.querySelectorAll("a")].map((link) =>
-      link.getAttribute("href"),
+      link.getAttribute("href")
     );
     expect(links).toEqual(
       expect.arrayContaining([
         "/persona-configs/config-draft?tab=overview",
         "/persona-configs/config-published?tab=overview",
         "/persona-configs/config-archived?tab=overview",
-      ]),
+      ])
     );
   });
 
@@ -2367,9 +2430,11 @@ describe("@botchestra/web routing", () => {
     });
 
     expect(container.textContent).toContain("No active persona configurations");
-    expect(container.textContent).toContain("Archived persona configurations (1)");
+    expect(container.textContent).toContain(
+      "Archived persona configurations (1)"
+    );
     expect(container.querySelector("details")?.textContent).toContain(
-      "Legacy Support Config",
+      "Legacy Support Config"
     );
   });
 
@@ -2449,11 +2514,15 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-empty?tab=generation"],
+      initialEntries: [
+        "/persona-configs/config-generation-empty?tab=generation",
+      ],
     });
 
     expect(container.textContent).toContain("Generation Controls");
-    expect(container.textContent).toContain("2 axes x 3 levels = 9 synthetic users");
+    expect(container.textContent).toContain(
+      "2 axes x 3 levels = 9 synthetic users"
+    );
     expect(container.textContent).toContain("7,200 tokens");
     expect(container.textContent).toContain("$0.07");
     expect(container.textContent).toContain("No synthetic users yet.");
@@ -2486,13 +2555,15 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-start?tab=generation"],
+      initialEntries: [
+        "/persona-configs/config-generation-start?tab=generation",
+      ],
     });
 
     await updateRadixSelect(document.body, "Support needs levels", "5 levels");
 
     expect(container.textContent).toContain(
-      "2 axes x mixed levels (3 · 5) = 15 synthetic users",
+      "2 axes x mixed levels (3 · 5) = 15 synthetic users"
     );
     expect(container.textContent).toContain("12,000 tokens");
 
@@ -2506,7 +2577,7 @@ describe("@botchestra/web routing", () => {
       },
     });
     expect(container.textContent).toContain(
-      "Batch generation started. Progress will continue even if you navigate away.",
+      "Batch generation started. Progress will continue even if you navigate away."
     );
   });
 
@@ -2590,12 +2661,14 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-progress?tab=generation"],
+      initialEntries: [
+        "/persona-configs/config-generation-progress?tab=generation",
+      ],
     });
 
     expect(container.textContent).toContain("Run Progress");
     expect(container.textContent).toContain(
-      "Generated 4 synthetic users with 1 failures.",
+      "Generated 4 synthetic users with 1 failures."
     );
     expect(container.textContent).toContain("User Status");
     expect(container.textContent).toContain("Retry 1 failed");
@@ -2658,7 +2731,9 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-generation-published?tab=generation"],
+      initialEntries: [
+        "/persona-configs/config-generation-published?tab=generation",
+      ],
     });
 
     expect(container.textContent).toContain("Run Progress");
@@ -2689,7 +2764,9 @@ describe("@botchestra/web routing", () => {
       status: "published",
     });
     mockedSyntheticUsers = [
-      makeSyntheticUser({ _id: "proto-axis-published" as Id<"syntheticUsers"> }),
+      makeSyntheticUser({
+        _id: "proto-axis-published" as Id<"syntheticUsers">,
+      }),
     ];
 
     const { container } = await renderRoute({
@@ -2741,7 +2818,11 @@ describe("@botchestra/web routing", () => {
     const suggestButton = getButton(container, "Suggest axes");
     expect(suggestButton?.disabled).toBe(true);
 
-    await updateInput(container, "#edit-config-name", "Account recovery config");
+    await updateInput(
+      container,
+      "#edit-config-name",
+      "Account recovery config"
+    );
     await updateInput(container, "#edit-config-context", "US fintech support");
 
     expect(getButton(container, "Suggest axes")?.disabled).toBe(false);
@@ -2755,7 +2836,7 @@ describe("@botchestra/web routing", () => {
       existingAxisKeys: ["digital_confidence"],
     });
     expect(container.textContent).toContain(
-      "Generating axis suggestions from the current persona configuration metadata...",
+      "Generating axis suggestions from the current persona configuration metadata..."
     );
     expect(getButton(container, "Suggesting...")?.disabled).toBe(true);
 
@@ -2799,13 +2880,15 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Issue urgency");
 
     const suggestionCheckboxes = [
-      ...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+      ...container.querySelectorAll<HTMLInputElement>(
+        '[data-uidotsh-option]:not([hidden]) input[type="checkbox"]'
+      ),
     ];
     expect(suggestionCheckboxes).toHaveLength(3);
 
     await act(async () => {
       suggestionCheckboxes[1]!.dispatchEvent(
-        new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }),
+        new KeyboardEvent("keydown", { bubbles: true, key: "Enter" })
       );
     });
     expect(suggestionCheckboxes[1]!.checked).toBe(false);
@@ -2814,12 +2897,14 @@ describe("@botchestra/web routing", () => {
     await updateInput(
       container,
       'input[id^="suggested-axis-"][id$="-label"]',
-      "Human escalation preference",
+      "Human escalation preference"
     );
 
     await clickButton(container, "Apply selected");
 
-    expect(hasInputWithValue(container, "Human escalation preference")).toBe(true);
+    expect(hasInputWithValue(container, "Human escalation preference")).toBe(
+      true
+    );
     expect(hasInputWithValue(container, "Issue urgency")).toBe(true);
     expect(hasInputWithValue(container, "Trust building")).toBe(false);
     expect(container.textContent).not.toContain("Review suggested axes");
@@ -2833,7 +2918,7 @@ describe("@botchestra/web routing", () => {
       description: "Password reset and recovery flows",
     });
     suggestAxesMock.mockRejectedValueOnce(
-      new Error("Failed to parse suggested axes JSON."),
+      new Error("Failed to parse suggested axes JSON.")
     );
 
     const { container } = await renderRoute({
@@ -2844,7 +2929,7 @@ describe("@botchestra/web routing", () => {
     await clickButton(container, "Suggest axes");
 
     expect(container.textContent).toContain(
-      "We couldn't generate axis suggestions right now. Please try again.",
+      "We couldn't generate axis suggestions right now. Please try again."
     );
     expect(getButton(container, "Suggest axes")?.disabled).toBe(false);
   });
@@ -2857,12 +2942,14 @@ describe("@botchestra/web routing", () => {
       description: "Password reset and recovery flows",
     });
     suggestAxesMock.mockRejectedValueOnce(
-      new Error("Forced axis suggestion failure for testing."),
+      new Error("Forced axis suggestion failure for testing.")
     );
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-axis-force-error?forceSuggestAxesError=1"],
+      initialEntries: [
+        "/persona-configs/config-axis-force-error?forceSuggestAxesError=1",
+      ],
     });
 
     await clickButton(container, "Suggest axes");
@@ -2875,7 +2962,7 @@ describe("@botchestra/web routing", () => {
       forceError: true,
     });
     expect(container.textContent).toContain(
-      "We couldn't generate axis suggestions right now. Please try again.",
+      "We couldn't generate axis suggestions right now. Please try again."
     );
   });
 
@@ -2905,7 +2992,8 @@ describe("@botchestra/web routing", () => {
         _id: "axis-library-new" as Id<"axisDefinitions">,
         key: "support_channel_preference",
         label: "Support channel preference",
-        description: "Whether the person prefers chat, email, or phone support.",
+        description:
+          "Whether the person prefers chat, email, or phone support.",
         lowAnchor: "Prefers self-serve articles",
         midAnchor: "Uses chat for quick help",
         highAnchor: "Wants a human conversation",
@@ -2923,7 +3011,7 @@ describe("@botchestra/web routing", () => {
 
     const libraryCheckboxes = [
       ...container.querySelectorAll<HTMLInputElement>(
-        'input[id^="axis-library-"]',
+        'input[id^="axis-library-"]'
       ),
     ];
     expect(libraryCheckboxes).toHaveLength(2);
@@ -2935,9 +3023,11 @@ describe("@botchestra/web routing", () => {
 
     await clickButton(container, "Import selected");
 
-    expect(hasInputWithValue(container, "Support channel preference")).toBe(true);
+    expect(hasInputWithValue(container, "Support channel preference")).toBe(
+      true
+    );
     expect(container.textContent).toContain(
-      "Skipped duplicate axis key: digital_confidence.",
+      "Skipped duplicate axis key: digital_confidence."
     );
   });
 
@@ -2965,7 +3055,8 @@ describe("@botchestra/web routing", () => {
         _id: "axis-library-import" as Id<"axisDefinitions">,
         key: "support_channel_preference",
         label: "Support channel preference",
-        description: "Whether the person prefers chat, email, or phone support.",
+        description:
+          "Whether the person prefers chat, email, or phone support.",
         lowAnchor: "Prefers self-serve articles",
         midAnchor: "Uses chat for quick help",
         highAnchor: "Wants a human conversation",
@@ -3042,7 +3133,9 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-with-transcripts?tab=transcripts"],
+      initialEntries: [
+        "/persona-configs/config-with-transcripts?tab=transcripts",
+      ],
     });
 
     expect(container.textContent).toContain("attached-call.txt");
@@ -3051,13 +3144,17 @@ describe("@botchestra/web routing", () => {
     await clickButton(container, "Attach");
     expect(document.body.textContent).toContain("Attach selected transcripts");
     const configAttachmentDialog = document.body.querySelector(
-      'div[role="dialog"]',
+      'div[role="dialog"]'
     ) as HTMLDivElement;
-    await updateInput(configAttachmentDialog, "#config-attach-transcripts-search", "vip-2");
+    await updateInput(
+      configAttachmentDialog,
+      "#config-attach-transcripts-search",
+      "vip-2"
+    );
     await act(async () => {
       document.body
         .querySelector<HTMLInputElement>(
-          "#config-attach-transcript-searchable-transcript",
+          "#config-attach-transcript-searchable-transcript"
         )
         ?.click();
     });
@@ -3099,15 +3196,17 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-reviewer-transcripts?tab=transcripts"],
+      initialEntries: [
+        "/persona-configs/config-reviewer-transcripts?tab=transcripts",
+      ],
       viewerRole: "reviewer",
     });
 
     expect(container.textContent).toContain("reviewer-visible.txt");
     // Reviewer should not see Attach/Detach action buttons (only the contextual notice)
-    expect(container.querySelector('button')).toBeDefined();
-    const buttonTexts = Array.from(container.querySelectorAll('button')).map(
-      (b) => b.textContent?.trim(),
+    expect(container.querySelector("button")).toBeDefined();
+    const buttonTexts = Array.from(container.querySelectorAll("button")).map(
+      (b) => b.textContent?.trim()
     );
     expect(buttonTexts).not.toContain("Attach");
     expect(buttonTexts).not.toContain("Detach");
@@ -3139,80 +3238,88 @@ describe("@botchestra/web routing", () => {
       estimatedTokens: 120,
       estimatedCostUsd: 0.0012,
     };
-    startTranscriptExtractionMock.mockImplementation(async ({ configId, mode }) => {
-      mockedExtractionStatusByPackId[configId] = {
-        configId,
-        mode,
-        status: "completed",
-        guidedAxes: [],
-        proposedAxes: [
-          {
-            key: "confidence_level",
-            label: "Confidence level",
-            description: "Comfort finishing the task without live assistance.",
-            lowAnchor: "Needs live support",
-            midAnchor: "Can finish with a quick check",
-            highAnchor: "Self-directed",
-            weight: 1,
-          },
-        ],
-        archetypes: [
-          {
-            name: "Deliberate verifier",
-            summary: "Moves slowly, double-checks prices, and wants reassurance.",
-            axisValues: [{ key: "confidence_level", value: -0.35 }],
-            evidenceSnippets: [
-              {
-                transcriptId: "transcript-auto-1",
-                quote: "I wanted to double-check the price before continuing.",
-                startChar: 0,
-                endChar: 54,
-              },
-            ],
-            contributingTranscriptIds: ["transcript-auto-1"],
-          },
-        ],
-        totalTranscripts: 1,
-        processedTranscriptCount: 1,
-        currentTranscriptId: null,
-        succeededTranscriptIds: ["transcript-auto-1"],
-        failedTranscripts: [],
-        errorMessage: null,
-        startedBy: "researcher-1",
-        startedAt: Date.now(),
-        updatedAt: Date.now(),
-        completedAt: Date.now(),
-        transcriptSignals: [
-          {
-            _creationTime: Date.now(),
-            _id: "signal-auto-1",
-            configId: "config-transcript-extraction",
-            transcriptId: "transcript-auto-1",
-            orgId: "researcher-1",
-            status: "completed",
-            signals: {
-              themes: ["price sensitivity"],
-              attitudes: ["cautious"],
-              painPoints: ["surprise fees"],
-              decisionPatterns: ["pauses to verify totals"],
+    startTranscriptExtractionMock.mockImplementation(
+      async ({ configId, mode }) => {
+        mockedExtractionStatusByPackId[configId] = {
+          configId,
+          mode,
+          status: "completed",
+          guidedAxes: [],
+          proposedAxes: [
+            {
+              key: "confidence_level",
+              label: "Confidence level",
+              description:
+                "Comfort finishing the task without live assistance.",
+              lowAnchor: "Needs live support",
+              midAnchor: "Can finish with a quick check",
+              highAnchor: "Self-directed",
+              weight: 1,
+            },
+          ],
+          archetypes: [
+            {
+              name: "Deliberate verifier",
+              summary:
+                "Moves slowly, double-checks prices, and wants reassurance.",
+              axisValues: [{ key: "confidence_level", value: -0.35 }],
               evidenceSnippets: [
                 {
-                  quote: "I wanted to double-check the price before continuing.",
+                  transcriptId: "transcript-auto-1",
+                  quote:
+                    "I wanted to double-check the price before continuing.",
                   startChar: 0,
                   endChar: 54,
                 },
               ],
+              contributingTranscriptIds: ["transcript-auto-1"],
             },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          },
-        ],
-      };
-    });
+          ],
+          totalTranscripts: 1,
+          processedTranscriptCount: 1,
+          currentTranscriptId: null,
+          succeededTranscriptIds: ["transcript-auto-1"],
+          failedTranscripts: [],
+          errorMessage: null,
+          startedBy: "researcher-1",
+          startedAt: Date.now(),
+          updatedAt: Date.now(),
+          completedAt: Date.now(),
+          transcriptSignals: [
+            {
+              _creationTime: Date.now(),
+              _id: "signal-auto-1",
+              configId: "config-transcript-extraction",
+              transcriptId: "transcript-auto-1",
+              orgId: "researcher-1",
+              status: "completed",
+              signals: {
+                themes: ["price sensitivity"],
+                attitudes: ["cautious"],
+                painPoints: ["surprise fees"],
+                decisionPatterns: ["pauses to verify totals"],
+                evidenceSnippets: [
+                  {
+                    quote:
+                      "I wanted to double-check the price before continuing.",
+                    startChar: 0,
+                    endChar: 54,
+                  },
+                ],
+              },
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            },
+          ],
+        };
+      }
+    );
 
     const { container, router } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-transcript-extraction?tab=transcripts"],
+      initialEntries: [
+        "/persona-configs/config-transcript-extraction?tab=transcripts",
+      ],
     });
 
     expect(container.textContent).toContain("Extract from Transcripts");
@@ -3268,17 +3375,19 @@ describe("@botchestra/web routing", () => {
     });
 
     const evidenceLink = [...container.querySelectorAll("a")].find((link) =>
-      link.textContent?.includes("I wanted to double-check the price before continuing."),
+      link.textContent?.includes(
+        "I wanted to double-check the price before continuing."
+      )
     );
     expect(evidenceLink).not.toBeUndefined();
 
     await act(async () => {
       evidenceLink?.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true }),
+        new MouseEvent("click", { bubbles: true, cancelable: true })
       );
     });
     expect(getRouterLocationHref(router)).toContain(
-      "/transcripts/transcript-auto-1?highlightSnippet=",
+      "/transcripts/transcript-auto-1?highlightSnippet="
     );
   });
 
@@ -3309,46 +3418,51 @@ describe("@botchestra/web routing", () => {
       estimatedTokens: 75,
       estimatedCostUsd: 0.0008,
     };
-    startTranscriptExtractionMock.mockImplementation(async ({ configId, mode, guidedAxes }) => {
-      mockedExtractionStatusByPackId[configId] = {
-        configId,
-        mode,
-        status: "completed",
-        guidedAxes,
-        proposedAxes: [],
-        archetypes: [
-          {
-            name: "Support seeker",
-            summary: "Needs a person to verify complex account steps.",
-            axisValues: [{ key: "support_need", value: 0.8 }],
-            evidenceSnippets: [
-              {
-                transcriptId: "transcript-guided-1",
-                quote: "I just wanted a human to confirm I was doing it right.",
-                startChar: 0,
-                endChar: 57,
-              },
-            ],
-            contributingTranscriptIds: ["transcript-guided-1"],
-          },
-        ],
-        totalTranscripts: 1,
-        processedTranscriptCount: 1,
-        currentTranscriptId: null,
-        succeededTranscriptIds: ["transcript-guided-1"],
-        failedTranscripts: [],
-        errorMessage: null,
-        startedBy: "researcher-1",
-        startedAt: Date.now(),
-        updatedAt: Date.now(),
-        completedAt: Date.now(),
-        transcriptSignals: [],
-      };
-    });
+    startTranscriptExtractionMock.mockImplementation(
+      async ({ configId, mode, guidedAxes }) => {
+        mockedExtractionStatusByPackId[configId] = {
+          configId,
+          mode,
+          status: "completed",
+          guidedAxes,
+          proposedAxes: [],
+          archetypes: [
+            {
+              name: "Support seeker",
+              summary: "Needs a person to verify complex account steps.",
+              axisValues: [{ key: "support_need", value: 0.8 }],
+              evidenceSnippets: [
+                {
+                  transcriptId: "transcript-guided-1",
+                  quote:
+                    "I just wanted a human to confirm I was doing it right.",
+                  startChar: 0,
+                  endChar: 57,
+                },
+              ],
+              contributingTranscriptIds: ["transcript-guided-1"],
+            },
+          ],
+          totalTranscripts: 1,
+          processedTranscriptCount: 1,
+          currentTranscriptId: null,
+          succeededTranscriptIds: ["transcript-guided-1"],
+          failedTranscripts: [],
+          errorMessage: null,
+          startedBy: "researcher-1",
+          startedAt: Date.now(),
+          updatedAt: Date.now(),
+          completedAt: Date.now(),
+          transcriptSignals: [],
+        };
+      }
+    );
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-guided-extraction?tab=transcripts"],
+      initialEntries: [
+        "/persona-configs/config-guided-extraction?tab=transcripts",
+      ],
     });
 
     await clickButton(container, "Extract from Transcripts");
@@ -3357,16 +3471,32 @@ describe("@botchestra/web routing", () => {
 
     expect(container.textContent).toContain("Each axis needs a snake_case key");
 
-    await updateInput(container, "#guided-extraction-axis-0-key", "support_need");
-    await updateInput(container, "#guided-extraction-axis-0-label", "Support need");
+    await updateInput(
+      container,
+      "#guided-extraction-axis-0-key",
+      "support_need"
+    );
+    await updateInput(
+      container,
+      "#guided-extraction-axis-0-label",
+      "Support need"
+    );
     await updateInput(container, "#guided-extraction-axis-0-low", "Self-serve");
-    await updateInput(container, "#guided-extraction-axis-0-mid", "Needs a quick check");
-    await updateInput(container, "#guided-extraction-axis-0-high", "Needs live help");
+    await updateInput(
+      container,
+      "#guided-extraction-axis-0-mid",
+      "Needs a quick check"
+    );
+    await updateInput(
+      container,
+      "#guided-extraction-axis-0-high",
+      "Needs live help"
+    );
     await updateInput(container, "#guided-extraction-axis-0-weight", "1");
     await updateTextarea(
       container,
       "#guided-extraction-axis-0-description",
-      "How much human confirmation the person wants.",
+      "How much human confirmation the person wants."
     );
 
     await clickButton(container, "Continue to cost estimate");
@@ -3444,7 +3574,9 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-extraction-processing?tab=transcripts"],
+      initialEntries: [
+        "/persona-configs/config-extraction-processing?tab=transcripts",
+      ],
     });
 
     expect(container.textContent).toContain("Processing 1/2 transcripts");
@@ -3506,11 +3638,15 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-extraction-failed?tab=transcripts"],
+      initialEntries: [
+        "/persona-configs/config-extraction-failed?tab=transcripts",
+      ],
     });
 
     expect(container.textContent).toContain("Extraction failed");
-    expect(container.textContent).toContain("Extraction halted due to repeated failures.");
+    expect(container.textContent).toContain(
+      "Extraction halted due to repeated failures."
+    );
     expect(container.textContent).toContain("broken-interview.txt");
     expect(container.textContent).toContain("Model rate limit exceeded");
 
@@ -3634,7 +3770,9 @@ describe("@botchestra/web routing", () => {
 
     const { container } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
-      initialEntries: ["/persona-configs/config-extraction-partial?tab=transcripts"],
+      initialEntries: [
+        "/persona-configs/config-extraction-partial?tab=transcripts",
+      ],
     });
 
     // Partial results banner
@@ -3692,24 +3830,26 @@ describe("@botchestra/web routing", () => {
     await updateTextarea(
       container,
       "#import-config-json",
-      '{"name":"Imported Config","description":"Loaded from JSON"}',
+      '{"name":"Imported Config","description":"Loaded from JSON"}'
     );
 
     const importForm = [...container.querySelectorAll("form")].find((form) =>
-      form.querySelector("#import-config-json"),
+      form.querySelector("#import-config-json")
     );
     expect(importForm).not.toBeNull();
 
     await act(async () => {
       importForm!.dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
+        new Event("submit", { bubbles: true, cancelable: true })
       );
     });
 
     expect(importJsonMock).toHaveBeenCalledWith({
       json: '{"name":"Imported Config","description":"Loaded from JSON"}',
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-configs/imported-config-id?tab=overview");
+    expect(getRouterLocationHref(router)).toBe(
+      "/persona-configs/imported-config-id?tab=overview"
+    );
   });
 
   it("creates a new config from the list page and redirects to the detail route", async () => {
@@ -3725,19 +3865,27 @@ describe("@botchestra/web routing", () => {
     await updateTextarea(
       container,
       "#create-config-description",
-      "Config for storefront and checkout studies",
+      "Config for storefront and checkout studies"
     );
     await updateInput(container, "#create-config-context", "US retail");
     await updateInput(container, "#create-config-axis-0-key", "confidence");
     await updateInput(container, "#create-config-axis-0-label", "Confidence");
-    await updateInput(container, "#create-config-axis-0-low", "Needs reassurance");
-    await updateInput(container, "#create-config-axis-0-mid", "Can continue alone");
+    await updateInput(
+      container,
+      "#create-config-axis-0-low",
+      "Needs reassurance"
+    );
+    await updateInput(
+      container,
+      "#create-config-axis-0-mid",
+      "Can continue alone"
+    );
     await updateInput(container, "#create-config-axis-0-high", "Self-directed");
     await updateInput(container, "#create-config-axis-0-weight", "1");
     await updateTextarea(
       container,
       "#create-config-axis-0-description",
-      "Comfort with unfamiliar digital tasks.",
+      "Comfort with unfamiliar digital tasks."
     );
 
     const form = container.querySelector("form");
@@ -3745,7 +3893,7 @@ describe("@botchestra/web routing", () => {
 
     await act(async () => {
       form!.dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
+        new Event("submit", { bubbles: true, cancelable: true })
       );
     });
 
@@ -3767,7 +3915,9 @@ describe("@botchestra/web routing", () => {
         ],
       },
     });
-    expect(getRouterLocationHref(router)).toBe("/persona-configs/new-config-id?tab=overview");
+    expect(getRouterLocationHref(router)).toBe(
+      "/persona-configs/new-config-id?tab=overview"
+    );
   });
 
   it("shows publish confirmation and only mutates after confirmation", async () => {
@@ -3818,9 +3968,11 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/persona-configs/config-publish-active-run"],
     });
 
-    expect(getButton(container, "Publish")?.hasAttribute("disabled")).toBe(true);
+    expect(getButton(container, "Publish")?.hasAttribute("disabled")).toBe(
+      true
+    );
     expect(container.textContent).toContain(
-      "Cannot publish while batch generation is in progress.",
+      "Cannot publish while batch generation is in progress."
     );
   });
 
@@ -3864,11 +4016,11 @@ describe("@botchestra/web routing", () => {
     });
 
     const linkLabels = [...container.querySelectorAll("a")].map((link) =>
-      link.textContent?.trim(),
+      link.textContent?.trim()
     );
 
     expect(linkLabels.indexOf("Transcripts")).toBe(
-      linkLabels.indexOf("Axis Library") + 1,
+      linkLabels.indexOf("Axis Library") + 1
     );
     expect(getRouterLocationHref(router)).toBe("/transcripts");
     expect(container.textContent).toContain("Transcripts");
@@ -3895,13 +4047,14 @@ describe("@botchestra/web routing", () => {
         }
 
         uploadCount += 1;
-        const transcriptId = `transcript-upload-${uploadCount}` as Id<"transcripts">;
+        const transcriptId =
+          `transcript-upload-${uploadCount}` as Id<"transcripts">;
 
         return {
           uploadUrl: null,
           transcriptId,
         };
-      },
+      }
     );
     fetchMock.mockImplementation(
       async () =>
@@ -3910,7 +4063,7 @@ describe("@botchestra/web routing", () => {
             "Content-Type": "application/json",
           },
           status: 200,
-        }),
+        })
     );
 
     const { container } = await renderRoute({
@@ -3921,7 +4074,9 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("No transcripts yet");
     expect(container.textContent).toContain("Upload transcripts");
 
-    const uploadZone = container.querySelector<HTMLElement>("#transcript-upload-zone");
+    const uploadZone = container.querySelector<HTMLElement>(
+      "#transcript-upload-zone"
+    );
     expect(uploadZone?.getAttribute("data-drag-active")).toBe("false");
 
     await act(async () => {
@@ -3934,30 +4089,26 @@ describe("@botchestra/web routing", () => {
     });
     expect(uploadZone?.getAttribute("data-drag-active")).toBe("false");
 
-    await updateFiles(
-      container,
-      "#transcript-upload-input",
-      [
-        new File(["Plain text transcript"], "customer-interview.txt", {
-          type: "text/plain",
-        }),
-        new File(
-          [JSON.stringify([{ speaker: "Interviewer", text: "How was it?" }])],
-          "customer-interview.json",
-          { type: "application/json" },
-        ),
-        new File(["not supported"], "customer-interview.pdf", {
-          type: "application/pdf",
-        }),
-      ],
-    );
+    await updateFiles(container, "#transcript-upload-input", [
+      new File(["Plain text transcript"], "customer-interview.txt", {
+        type: "text/plain",
+      }),
+      new File(
+        [JSON.stringify([{ speaker: "Interviewer", text: "How was it?" }])],
+        "customer-interview.json",
+        { type: "application/json" }
+      ),
+      new File(["not supported"], "customer-interview.pdf", {
+        type: "application/pdf",
+      }),
+    ]);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(uploadTranscriptMock).toHaveBeenCalledTimes(4);
     expect(container.textContent).toContain("customer-interview.txt");
     expect(container.textContent).toContain("customer-interview.json");
     expect(container.textContent).toContain(
-      "Unsupported files were skipped: customer-interview.pdf.",
+      "Unsupported files were skipped: customer-interview.pdf."
     );
   });
 
@@ -4010,7 +4161,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).not.toContain("checkout-call.txt");
     expect(container.textContent).not.toContain("support-call.txt");
     expect(container.textContent).toContain(
-      "Showing 1 of 3 transcripts matching tag “checkout”, format “json”, and search “vip-2”.",
+      "Showing 1 of 3 transcripts matching tag “checkout”, format “json”, and search “vip-2”."
     );
   });
 
@@ -4066,7 +4217,7 @@ describe("@botchestra/web routing", () => {
 
     expect(container.textContent).toContain("account-recovery.txt");
     expect(container.textContent).toContain(
-      "Customer could not reset their password without support.",
+      "Customer could not reset their password without support."
     );
     expect(container.textContent).toContain("Linked Persona Configurations");
     expect(container.textContent).toContain("Linked draft config");
@@ -4087,18 +4238,22 @@ describe("@botchestra/web routing", () => {
     });
 
     await clickButton(container, "Attach to persona configuration");
-    expect(document.body.textContent).toContain("Attach selected persona configurations");
+    expect(document.body.textContent).toContain(
+      "Attach selected persona configurations"
+    );
     const transcriptAttachDialog = document.body.querySelector(
-      'div[role="dialog"]',
+      'div[role="dialog"]'
     ) as HTMLDivElement;
     await updateInput(
       transcriptAttachDialog,
       "#transcript-attach-config-search",
-      "support",
+      "support"
     );
     await act(async () => {
       document.body
-        .querySelector<HTMLInputElement>("#transcript-attach-config-draft-config")
+        .querySelector<HTMLInputElement>(
+          "#transcript-attach-config-draft-config"
+        )
         ?.click();
     });
     await clickButton(document.body, "Attach selected persona configurations");
@@ -4145,7 +4300,9 @@ describe("@botchestra/web routing", () => {
       ],
     });
 
-    const highlightedText = container.querySelector("mark[data-highlighted-snippet='true']");
+    const highlightedText = container.querySelector(
+      "mark[data-highlighted-snippet='true']"
+    );
     expect(highlightedText).not.toBeNull();
     expect(highlightedText?.textContent).toContain("double-check the price");
   });
@@ -4190,8 +4347,12 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).not.toContain("Save metadata");
     expect(container.textContent).not.toContain("Delete transcript");
     expect(container.textContent).toContain("Linked Persona Configurations");
-    expect(container.textContent).not.toContain("Attach to persona configuration");
-    expect(container.querySelector("#transcript-attach-config-search")).toBeNull();
+    expect(container.textContent).not.toContain(
+      "Attach to persona configuration"
+    );
+    expect(
+      container.querySelector("#transcript-attach-config-search")
+    ).toBeNull();
   });
 
   it("shows not-found content for invalid transcript detail links", async () => {
@@ -4202,7 +4363,9 @@ describe("@botchestra/web routing", () => {
       initialEntries: ["/transcripts/missing-transcript"],
     });
 
-    expect(getRouterLocationHref(router)).toBe("/transcripts/missing-transcript");
+    expect(getRouterLocationHref(router)).toBe(
+      "/transcripts/missing-transcript"
+    );
     expect(container.textContent).toContain("Page not found");
   });
 
@@ -4251,7 +4414,9 @@ describe("@botchestra/web routing", () => {
     await act(async () => {
       userOption!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(getRouterLocationHref(router)).toContain("selectedUserId=user-hist-1");
+    expect(getRouterLocationHref(router)).toContain(
+      "selectedUserId=user-hist-1"
+    );
     expect(history.length).toBe(lengthBeforeSelection);
 
     // Switch tab to Generation — should push again
@@ -4316,7 +4481,7 @@ async function clickButton(root: ParentNode, text: string) {
 
 async function clickButtonContaining(root: ParentNode, text: string) {
   const button = [...root.querySelectorAll("button")].find((candidate) =>
-    candidate.textContent?.includes(text),
+    candidate.textContent?.includes(text)
   );
 
   expect(button).toBeDefined();
@@ -4328,14 +4493,14 @@ async function clickButtonContaining(root: ParentNode, text: string) {
 
 function getButton(root: ParentNode, text: string) {
   return [...root.querySelectorAll("button")].find(
-    (candidate) => candidate.textContent?.trim() === text,
+    (candidate) => candidate.textContent?.trim() === text
   );
 }
 
 async function updateInput(
   container: HTMLDivElement,
   selector: string,
-  value: string,
+  value: string
 ) {
   const input = container.querySelector<HTMLInputElement>(selector);
 
@@ -4344,7 +4509,7 @@ async function updateInput(
   await act(async () => {
     const valueSetter = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
-      "value",
+      "value"
     )?.set;
     valueSetter?.call(input, value);
     input!.dispatchEvent(new Event("input", { bubbles: true }));
@@ -4354,14 +4519,14 @@ async function updateInput(
 
 function hasInputWithValue(root: ParentNode, value: string) {
   return [...root.querySelectorAll<HTMLInputElement>("input")].some(
-    (input) => input.value === value,
+    (input) => input.value === value
   );
 }
 
 async function updateSelect(
   container: HTMLDivElement,
   selector: string,
-  value: string,
+  value: string
 ) {
   const select = container.querySelector<HTMLSelectElement>(selector);
 
@@ -4370,7 +4535,7 @@ async function updateSelect(
   await act(async () => {
     const valueSetter = Object.getOwnPropertyDescriptor(
       HTMLSelectElement.prototype,
-      "value",
+      "value"
     )?.set;
     valueSetter?.call(select, value);
     select!.dispatchEvent(new Event("input", { bubbles: true }));
@@ -4381,10 +4546,10 @@ async function updateSelect(
 async function updateRadixSelect(
   root: ParentNode,
   ariaLabel: string,
-  optionText: string,
+  optionText: string
 ) {
   const trigger = root.querySelector<HTMLButtonElement>(
-    `button[aria-label="${ariaLabel}"]`,
+    `button[aria-label="${ariaLabel}"]`
   );
 
   expect(trigger).not.toBeNull();
@@ -4393,9 +4558,9 @@ async function updateRadixSelect(
     trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
 
-  const option = [...document.body.querySelectorAll<HTMLElement>('[role="option"]')].find(
-    (candidate) => candidate.textContent?.trim() === optionText,
-  );
+  const option = [
+    ...document.body.querySelectorAll<HTMLElement>('[role="option"]'),
+  ].find((candidate) => candidate.textContent?.trim() === optionText);
 
   expect(option).toBeDefined();
 
@@ -4407,7 +4572,7 @@ async function updateRadixSelect(
 async function updateFiles(
   container: HTMLDivElement,
   selector: string,
-  files: File[],
+  files: File[]
 ) {
   const input = container.querySelector<HTMLInputElement>(selector);
 
@@ -4434,16 +4599,19 @@ function createDeferred<T>() {
 }
 
 function getVariantRows(container: HTMLDivElement) {
-  return [...container.querySelectorAll<HTMLElement>('[data-testid="variant-row"]')].map(
-    (row) => row.textContent ?? "",
-  );
+  return [
+    ...container.querySelectorAll<HTMLElement>(
+      '[data-uidotsh-option]:not([hidden]) [data-testid="variant-row"]'
+    ),
+  ].map((row) => row.textContent ?? "");
 }
 
 function getGenerationGridTable(root: ParentNode) {
-  const table = [...root.querySelectorAll<HTMLTableElement>("table")].find((candidate) =>
-    candidate.textContent?.includes("Axis values")
-    && candidate.textContent?.includes("Bio preview")
-    && candidate.textContent?.includes("Source"),
+  const table = [...root.querySelectorAll<HTMLTableElement>("table")].find(
+    (candidate) =>
+      candidate.textContent?.includes("Axis values") &&
+      candidate.textContent?.includes("Bio preview") &&
+      candidate.textContent?.includes("Source")
   );
 
   expect(table).toBeDefined();
@@ -4452,8 +4620,8 @@ function getGenerationGridTable(root: ParentNode) {
 }
 
 function getTableRow(root: ParentNode, text: string) {
-  const row = [...root.querySelectorAll<HTMLTableRowElement>("tr")].find((candidate) =>
-    candidate.textContent?.includes(text),
+  const row = [...root.querySelectorAll<HTMLTableRowElement>("tr")].find(
+    (candidate) => candidate.textContent?.includes(text)
   );
 
   expect(row).toBeDefined();
@@ -4461,7 +4629,11 @@ function getTableRow(root: ParentNode, text: string) {
   return row!;
 }
 
-function getTableCellText(root: ParentNode, rowText: string, cellIndex: number) {
+function getTableCellText(
+  root: ParentNode,
+  rowText: string,
+  cellIndex: number
+) {
   const row = getTableRow(root, rowText);
   const cells = [...row.querySelectorAll<HTMLTableCellElement>("td")];
 
@@ -4471,9 +4643,9 @@ function getTableCellText(root: ParentNode, rowText: string, cellIndex: number) 
 }
 
 function getAuditRows(container: HTMLDivElement) {
-  return [...container.querySelectorAll<HTMLElement>('[data-testid="audit-row"]')].map(
-    (row) => row.textContent ?? "",
-  );
+  return [
+    ...container.querySelectorAll<HTMLElement>('[data-testid="audit-row"]'),
+  ].map((row) => row.textContent ?? "");
 }
 
 function makeStudy(overrides: Partial<Doc<"studies">> = {}): Doc<"studies"> {
@@ -4512,7 +4684,7 @@ function makeStudy(overrides: Partial<Doc<"studies">> = {}): Doc<"studies"> {
 
 function makeRunSummary(
   studyId: string,
-  overrides: Partial<RunSummary> = {},
+  overrides: Partial<RunSummary> = {}
 ): RunSummary {
   return {
     studyId,
@@ -4708,7 +4880,8 @@ function makeRunList(): RunListItem[] {
       syntheticUserId: "proto-careful",
       syntheticUserName: "Careful shopper",
       syntheticUserSummary: "Moves slowly and checks every total.",
-      firstPersonBio: "Checkout failed at address entry after the shipping form became confusing.",
+      firstPersonBio:
+        "Checkout failed at address entry after the shipping form became confusing.",
       axisValues: [{ key: "digital_confidence", value: -0.42 }],
       finalUrl: "https://example.com/checkout/address",
       finalOutcome: "address_validation_failed",
@@ -4721,7 +4894,8 @@ function makeRunList(): RunListItem[] {
       syntheticUserId: "proto-speedy",
       syntheticUserName: "Speedy repeat buyer",
       syntheticUserSummary: "Moves quickly and expects autofill to work.",
-      firstPersonBio: "Fast repeat buyer who completed the flow without friction.",
+      firstPersonBio:
+        "Fast repeat buyer who completed the flow without friction.",
       axisValues: [{ key: "digital_confidence", value: 0.78 }],
       finalUrl: "https://example.com/checkout/confirmation",
       finalOutcome: "order_confirmed",
@@ -4748,15 +4922,13 @@ function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
         suggestedChange: "Explain which fields need to change.",
       },
       artifactManifestKey: "runs/run-hard-fail/artifacts.json",
-      artifactManifestUrl:
-        `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
-          "runs/run-hard-fail/artifacts.json",
-        )}`,
+      artifactManifestUrl: `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+        "runs/run-hard-fail/artifacts.json"
+      )}`,
       summaryKey: "runs/run-hard-fail/summary.json",
-      summaryUrl:
-        `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
-          "runs/run-hard-fail/summary.json",
-        )}`,
+      summaryUrl: `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+        "runs/run-hard-fail/summary.json"
+      )}`,
       ...overrides.run,
     },
     personaVariant: {
@@ -4781,10 +4953,9 @@ function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
         actionType: "click",
         rationaleShort: "Started checkout from the cart page.",
         screenshotKey: "runs/run-hard-fail/milestones/1.png",
-        screenshotUrl:
-          `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
-            "runs/run-hard-fail/milestones/1.png",
-          )}`,
+        screenshotUrl: `${MOCK_ARTIFACT_BASE_URL}/artifacts/${encodeURIComponent(
+          "runs/run-hard-fail/milestones/1.png"
+        )}`,
       },
       {
         _id: "milestone-2",
@@ -4793,7 +4964,8 @@ function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
         url: "https://example.com/checkout/address",
         title: "Address",
         actionType: "type",
-        rationaleShort: "Entered the shipping address and hit a validation issue.",
+        rationaleShort:
+          "Entered the shipping address and hit a validation issue.",
       },
       ...(overrides.milestones ?? []),
     ],
@@ -4811,9 +4983,7 @@ function makeFindings(): FindingView[] {
       score: 0.92,
       affectedRunCount: 3,
       affectedRunRate: 0.5,
-      affectedAxisRanges: [
-        { key: "digital_confidence", min: -0.9, max: -0.3 },
-      ],
+      affectedAxisRanges: [{ key: "digital_confidence", min: -0.9, max: -0.3 }],
       recommendation:
         "Pin the continue action below the form and keep it visible after validation messages appear.",
       confidenceNote: "Replay reproduced the missing button twice.",
@@ -4865,9 +5035,7 @@ function makeFindings(): FindingView[] {
       score: 0.27,
       affectedRunCount: 2,
       affectedRunRate: 0.33,
-      affectedAxisRanges: [
-        { key: "digital_confidence", min: 0.2, max: 0.8 },
-      ],
+      affectedAxisRanges: [{ key: "digital_confidence", min: 0.2, max: 0.8 }],
       recommendation:
         "Explain taxes and shipping earlier so totals stay predictable by the time payment loads.",
       confidenceNote: "Observed in one replay and one primary run.",
@@ -4907,7 +5075,7 @@ function makeFindings(): FindingView[] {
 }
 
 function makeStudyReport(
-  overrides: Partial<StudyReportView> = {},
+  overrides: Partial<StudyReportView> = {}
 ): StudyReportView {
   return {
     _id: "report-study-live",
@@ -4940,9 +5108,7 @@ function makeReportJsonExportArtifact() {
     content: JSON.stringify({
       studyId: "study-live",
       issueClusterIds: ["finding-address", "finding-payment"],
-      limitations: [
-        "Findings are synthetic and directional.",
-      ],
+      limitations: ["Findings are synthetic and directional."],
     }),
   };
 }
@@ -4961,7 +5127,7 @@ function makeReportHtmlExportArtifact() {
 async function updateTextarea(
   container: HTMLDivElement,
   selector: string,
-  value: string,
+  value: string
 ) {
   const textarea = container.querySelector<HTMLTextAreaElement>(selector);
 
@@ -4970,7 +5136,7 @@ async function updateTextarea(
   await act(async () => {
     const valueSetter = Object.getOwnPropertyDescriptor(
       HTMLTextAreaElement.prototype,
-      "value",
+      "value"
     )?.set;
     valueSetter?.call(textarea, value);
     textarea!.dispatchEvent(new Event("input", { bubbles: true }));
@@ -4978,7 +5144,9 @@ async function updateTextarea(
   });
 }
 
-function makePack(overrides: Partial<Doc<"personaConfigs">> = {}): Doc<"personaConfigs"> {
+function makePack(
+  overrides: Partial<Doc<"personaConfigs">> = {}
+): Doc<"personaConfigs"> {
   return {
     _creationTime: 1,
     _id: (overrides._id ?? "config-1") as Id<"personaConfigs">,
@@ -5008,7 +5176,7 @@ function makePack(overrides: Partial<Doc<"personaConfigs">> = {}): Doc<"personaC
 }
 
 function makeTranscript(
-  overrides: Partial<Doc<"transcripts">> = {},
+  overrides: Partial<Doc<"transcripts">> = {}
 ): Doc<"transcripts"> {
   return {
     _creationTime: 1,
@@ -5034,7 +5202,7 @@ function makeTranscript(
 }
 
 function makeAxisDefinition(
-  overrides: Partial<Doc<"axisDefinitions">> = {},
+  overrides: Partial<Doc<"axisDefinitions">> = {}
 ): Doc<"axisDefinitions"> {
   return {
     _creationTime: 1,
@@ -5059,7 +5227,7 @@ function makeAxisDefinition(
 }
 
 function makeSyntheticUser(
-  overrides: Partial<Doc<"syntheticUsers">> = {},
+  overrides: Partial<Doc<"syntheticUsers">> = {}
 ): Doc<"syntheticUsers"> {
   return {
     _creationTime: 1,
@@ -5087,7 +5255,7 @@ function makeSyntheticUser(
 }
 
 function makeBatchGenerationRun(
-  overrides: Partial<BatchGenerationRunView> = {},
+  overrides: Partial<BatchGenerationRunView> = {}
 ): BatchGenerationRunView {
   return {
     _creationTime: 1,

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.output/
+.wrangler/
+.evo/
+test-results/
+
+# Convex codegen — machine-generated
+convex/_generated/
+
+# Lockfiles
+bun.lock
+bun.lockb
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

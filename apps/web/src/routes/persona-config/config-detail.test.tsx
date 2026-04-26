@@ -6,25 +6,12 @@
  */
 import { act } from "react";
 import ReactDOM from "react-dom/client";
-import {
-  createMemoryHistory,
-  RouterProvider,
-} from "@tanstack/react-router";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getFunctionName } from "convex/server";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
-import {
-  createAppRouter,
-  type AppAuthState,
-} from "@/router";
+import { createAppRouter, type AppAuthState } from "@/router";
 
 // ---------------------------------------------------------------------------
 // Shared mock state
@@ -114,19 +101,27 @@ type ConfigReviewData = ReviewData & {
 
 let mockedPackVariantReview: ConfigReviewData | null | undefined = undefined;
 
-let mockedConfigTranscriptsByPackId: Record<string, Array<{
-  _id: string;
-  configId: string;
-  transcriptId: string;
-  createdAt: number;
-  transcript: Doc<"transcripts">;
-}> | undefined> = {};
+let mockedConfigTranscriptsByPackId: Record<
+  string,
+  | Array<{
+      _id: string;
+      configId: string;
+      transcriptId: string;
+      createdAt: number;
+      transcript: Doc<"transcripts">;
+    }>
+  | undefined
+> = {};
 let mockedExtractionStatusByPackId: Record<string, unknown> = {};
-let mockedExtractionCostByPackId: Record<string, {
-  totalCharacters: number;
-  estimatedTokens: number;
-  estimatedCostUsd: number;
-} | undefined> = {};
+let mockedExtractionCostByPackId: Record<
+  string,
+  | {
+      totalCharacters: number;
+      estimatedTokens: number;
+      estimatedCostUsd: number;
+    }
+  | undefined
+> = {};
 let mockedStudyList: Doc<"studies">[] | undefined = [];
 let mockedSettingsView: unknown | undefined = undefined;
 
@@ -159,21 +154,29 @@ vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => {
     const name = getFunctionName(mutation as never);
     if (name === "personaConfigs:updateDraft") return updateDraftMock;
-    if (name === "personaConfigs:createSyntheticUser") return createSyntheticUserMock;
-    if (name === "personaConfigs:updateSyntheticUser") return updateSyntheticUserMock;
-    if (name === "personaConfigs:deleteSyntheticUser") return deleteSyntheticUserMock;
-    if (name === "batchGeneration:startBatchGeneration") return startBatchGenerationMock;
-    if (name === "batchGeneration:regenerateSyntheticUser") return regenerateSyntheticUserMock;
+    if (name === "personaConfigs:createSyntheticUser")
+      return createSyntheticUserMock;
+    if (name === "personaConfigs:updateSyntheticUser")
+      return updateSyntheticUserMock;
+    if (name === "personaConfigs:deleteSyntheticUser")
+      return deleteSyntheticUserMock;
+    if (name === "batchGeneration:startBatchGeneration")
+      return startBatchGenerationMock;
+    if (name === "batchGeneration:regenerateSyntheticUser")
+      return regenerateSyntheticUserMock;
     if (name === "personaConfigs:publish") return publishMock;
     if (name === "personaConfigs:archive") return archiveMock;
-    if (name === "configTranscripts:attachTranscript") return attachTranscriptMock;
-    if (name === "configTranscripts:detachTranscript") return detachTranscriptMock;
+    if (name === "configTranscripts:attachTranscript")
+      return attachTranscriptMock;
+    if (name === "configTranscripts:detachTranscript")
+      return detachTranscriptMock;
     return vi.fn();
   },
   useAction: (action: unknown) => {
     const name = getFunctionName(action as never);
     if (name === "axisGeneration:suggestAxes") return suggestAxesMock;
-    if (name === "transcriptExtraction:startExtraction") return startTranscriptExtractionMock;
+    if (name === "transcriptExtraction:startExtraction")
+      return startTranscriptExtractionMock;
     return vi.fn();
   },
   useQuery: (query: unknown, args: Record<string, unknown> | undefined) => {
@@ -182,12 +185,16 @@ vi.mock("convex/react", () => ({
     if (name === "settings:getSettings") return mockedSettingsView;
     if (name === "studies:listStudies") return mockedStudyList;
     if (name === "personaConfigs:list") return mockedPackList;
-    if (name === "axisLibrary:listAxisDefinitions") return mockedAxisDefinitions;
+    if (name === "axisLibrary:listAxisDefinitions")
+      return mockedAxisDefinitions;
     if (name === "transcripts:listTranscripts") return mockedTranscriptList;
     if (name === "personaConfigs:get") return mockedPackDetail;
-    if (name === "personaConfigs:listSyntheticUsers") return mockedSyntheticUsers;
-    if (name === "batchGeneration:getBatchGenerationRun") return mockedBatchGenerationRun;
-    if (name === "personaVariantReview:getPackVariantReview") return mockedPackVariantReview;
+    if (name === "personaConfigs:listSyntheticUsers")
+      return mockedSyntheticUsers;
+    if (name === "batchGeneration:getBatchGenerationRun")
+      return mockedBatchGenerationRun;
+    if (name === "personaVariantReview:getPackVariantReview")
+      return mockedPackVariantReview;
     if (name === "configTranscripts:listConfigTranscripts")
       return mockedConfigTranscriptsByPackId[String(args?.configId)] ?? [];
     if (name === "configTranscripts:listTranscriptConfigs") return [];
@@ -195,8 +202,9 @@ vi.mock("convex/react", () => ({
       return mockedExtractionStatusByPackId[String(args?.configId)] ?? null;
     if (name === "transcriptExtraction:estimateExtractionCost") {
       const tIds = (args?.transcriptIds as string[] | undefined) ?? [];
-      const cId = Object.entries(mockedConfigTranscriptsByPackId).find(([, a]) =>
-        tIds.every((tid) => (a ?? []).some((att) => att.transcriptId === tid)),
+      const cId = Object.entries(mockedConfigTranscriptsByPackId).find(
+        ([, a]) =>
+          tIds.every((tid) => (a ?? []).some((att) => att.transcriptId === tid))
       )?.[0];
       return cId ? mockedExtractionCostByPackId[cId] : undefined;
     }
@@ -208,8 +216,9 @@ vi.mock("convex/react", () => ({
 // Setup / teardown
 // ---------------------------------------------------------------------------
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 const mountedRoots: ReactDOM.Root[] = [];
 
@@ -220,7 +229,9 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-function makeViewerAccess(role: ViewerAccess["role"] = "researcher"): ViewerAccess {
+function makeViewerAccess(
+  role: ViewerAccess["role"] = "researcher"
+): ViewerAccess {
   return {
     role,
     permissions: {
@@ -275,7 +286,9 @@ beforeEach(() => {
   createSyntheticUserMock.mockReset().mockResolvedValue(undefined);
   updateSyntheticUserMock.mockReset().mockResolvedValue(undefined);
   deleteSyntheticUserMock.mockReset().mockResolvedValue(undefined);
-  startBatchGenerationMock.mockReset().mockResolvedValue("run-1" as Id<"batchGenerationRuns">);
+  startBatchGenerationMock
+    .mockReset()
+    .mockResolvedValue("run-1" as Id<"batchGenerationRuns">);
   regenerateSyntheticUserMock.mockReset().mockResolvedValue(undefined);
   publishMock.mockReset().mockResolvedValue(undefined);
   archiveMock.mockReset().mockResolvedValue(undefined);
@@ -289,7 +302,9 @@ beforeEach(() => {
 // Factory helpers
 // ---------------------------------------------------------------------------
 
-function makePack(overrides: Partial<Doc<"personaConfigs">> = {}): Doc<"personaConfigs"> {
+function makePack(
+  overrides: Partial<Doc<"personaConfigs">> = {}
+): Doc<"personaConfigs"> {
   return {
     _creationTime: 1,
     _id: (overrides._id ?? "config-1") as Id<"personaConfigs">,
@@ -319,7 +334,7 @@ function makePack(overrides: Partial<Doc<"personaConfigs">> = {}): Doc<"personaC
 }
 
 function makeSyntheticUser(
-  overrides: Partial<Doc<"syntheticUsers">> = {},
+  overrides: Partial<Doc<"syntheticUsers">> = {}
 ): Doc<"syntheticUsers"> {
   return {
     _creationTime: 1,
@@ -347,7 +362,7 @@ function makeSyntheticUser(
 }
 
 function makeTranscript(
-  overrides: Partial<Doc<"transcripts">> = {},
+  overrides: Partial<Doc<"transcripts">> = {}
 ): Doc<"transcripts"> {
   return {
     _creationTime: 1,
@@ -457,10 +472,7 @@ async function renderRoute(initialEntries: string[]) {
 
   await act(async () => {
     root.render(
-      <RouterProvider
-        context={{ auth: mockedAuthState }}
-        router={router}
-      />,
+      <RouterProvider context={{ auth: mockedAuthState }} router={router} />
     );
   });
 
@@ -473,7 +485,7 @@ async function renderRoute(initialEntries: string[]) {
 
 async function clickButton(root: ParentNode, text: string) {
   const button = [...root.querySelectorAll("button")].find(
-    (b) => b.textContent?.trim() === text,
+    (b) => b.textContent?.trim() === text
   );
   expect(button).toBeDefined();
   await act(async () => {
@@ -483,21 +495,21 @@ async function clickButton(root: ParentNode, text: string) {
 
 function getButton(root: ParentNode, text: string) {
   return [...root.querySelectorAll("button")].find(
-    (b) => b.textContent?.trim() === text,
+    (b) => b.textContent?.trim() === text
   );
 }
 
 async function updateInput(
   container: HTMLElement,
   selector: string,
-  value: string,
+  value: string
 ) {
   const input = container.querySelector<HTMLInputElement>(selector);
   expect(input).not.toBeNull();
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
-      "value",
+      "value"
     )?.set;
     setter?.call(input, value);
     input!.dispatchEvent(new Event("input", { bubbles: true }));
@@ -508,14 +520,14 @@ async function updateInput(
 async function updateSelect(
   container: HTMLElement,
   selector: string,
-  value: string,
+  value: string
 ) {
   const select = container.querySelector<HTMLSelectElement>(selector);
   expect(select).not.toBeNull();
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(
       HTMLSelectElement.prototype,
-      "value",
+      "value"
     )?.set;
     setter?.call(select, value);
     select!.dispatchEvent(new Event("input", { bubbles: true }));
@@ -525,9 +537,7 @@ async function updateSelect(
 
 function dispatchKeyDown(element: Element, key: string) {
   return act(async () => {
-    element.dispatchEvent(
-      new KeyboardEvent("keydown", { key, bubbles: true }),
-    );
+    element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
   });
 }
 
@@ -583,7 +593,7 @@ describe("persona config detail workspaces", () => {
       ]);
 
       const overviewTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Overview",
+        (t) => t.textContent?.trim() === "Overview"
       );
       expect(overviewTab?.getAttribute("aria-selected")).toBe("true");
     });
@@ -596,13 +606,11 @@ describe("persona config detail workspaces", () => {
       ]);
 
       const tabs = container.querySelectorAll('[role="tab"]');
-      const usersTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Users",
-      );
+      const usersTab = [...tabs].find((t) => t.textContent?.trim() === "Users");
       expect(usersTab?.getAttribute("aria-selected")).toBe("true");
 
       const overviewTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Overview",
+        (t) => t.textContent?.trim() === "Overview"
       );
       expect(overviewTab?.getAttribute("aria-selected")).toBe("false");
     });
@@ -616,9 +624,7 @@ describe("persona config detail workspaces", () => {
 
       const tabpanel = container.querySelector('[role="tabpanel"]');
       expect(tabpanel).not.toBeNull();
-      expect(tabpanel?.getAttribute("aria-label")).toBe(
-        "generation workspace",
-      );
+      expect(tabpanel?.getAttribute("aria-label")).toBe("generation workspace");
     });
 
     it("shows Publish button for drafts, Archive for published", async () => {
@@ -780,7 +786,9 @@ describe("persona config detail workspaces", () => {
       expect(listbox).not.toBeNull();
       expect(listbox?.getAttribute("aria-label")).toBe("Synthetic users");
 
-      const options = container.querySelectorAll('[role="option"]');
+      const options = container.querySelectorAll(
+        '[data-uidotsh-option]:not([hidden]) [role="option"]'
+      );
       expect(options).toHaveLength(2);
 
       // First user auto-selected
@@ -854,7 +862,7 @@ describe("persona config detail workspaces", () => {
       await updateSelect(
         container,
         '[aria-label="Filter by source"]',
-        "generated",
+        "generated"
       );
 
       expect(container.textContent).toContain("1 of 2 users");
@@ -880,7 +888,7 @@ describe("persona config detail workspaces", () => {
       await updateInput(
         container,
         '[aria-label="Search synthetic users"]',
-        "Alice",
+        "Alice"
       );
 
       expect(container.textContent).toContain("1 of 2 users");
@@ -913,7 +921,7 @@ describe("persona config detail workspaces", () => {
 
       // The inspector should now show Bob
       const selectedOption = container.querySelector(
-        '[role="option"][aria-selected="true"]',
+        '[role="option"][aria-selected="true"]'
       );
       expect(selectedOption?.textContent).toContain("Bob");
     });
@@ -928,7 +936,7 @@ describe("persona config detail workspaces", () => {
 
       expect(container.textContent).toContain("No synthetic users yet.");
       expect(container.textContent).toContain(
-        "Add a synthetic user to get started.",
+        "Add a synthetic user to get started."
       );
     });
 
@@ -1004,11 +1012,9 @@ describe("persona config detail workspaces", () => {
         "/persona-configs/config-1?tab=transcripts",
       ]);
 
+      expect(container.textContent).toContain("No transcripts attached yet.");
       expect(container.textContent).toContain(
-        "No transcripts attached yet.",
-      );
-      expect(container.textContent).toContain(
-        "Attach a transcript to get started.",
+        "Attach a transcript to get started."
       );
     });
 
@@ -1035,7 +1041,7 @@ describe("persona config detail workspaces", () => {
 
       expect(getButton(container, "Attach")).toBeUndefined();
       expect(container.textContent).toContain(
-        "Transcript attachments become read-only",
+        "Transcript attachments become read-only"
       );
     });
 
@@ -1072,8 +1078,20 @@ describe("persona config detail workspaces", () => {
 
       mockedPackDetail = makePack();
       mockedConfigTranscriptsByPackId["config-1"] = [
-        { _id: "ct-1", configId: "config-1", transcriptId: "t-1", createdAt: 2, transcript: t1 },
-        { _id: "ct-2", configId: "config-1", transcriptId: "t-2", createdAt: 1, transcript: t2 },
+        {
+          _id: "ct-1",
+          configId: "config-1",
+          transcriptId: "t-1",
+          createdAt: 2,
+          transcript: t1,
+        },
+        {
+          _id: "ct-2",
+          configId: "config-1",
+          transcriptId: "t-2",
+          createdAt: 1,
+          transcript: t2,
+        },
       ];
 
       const { container } = await renderRoute([
@@ -1084,7 +1102,7 @@ describe("persona config detail workspaces", () => {
       await dispatchKeyDown(listbox, "ArrowDown");
 
       const selectedOption = container.querySelector(
-        '[role="option"][aria-selected="true"]',
+        '[role="option"][aria-selected="true"]'
       );
       expect(selectedOption?.textContent).toContain("second.txt");
     });
@@ -1098,7 +1116,7 @@ describe("persona config detail workspaces", () => {
       ]);
 
       expect(container.textContent).toContain(
-        "Reviewers can inspect attached transcripts but cannot attach or detach them.",
+        "Reviewers can inspect attached transcripts but cannot attach or detach them."
       );
     });
 
@@ -1173,7 +1191,7 @@ describe("persona config detail workspaces", () => {
 
       expect(container.textContent).toContain("Generation Controls");
       expect(container.textContent).toContain(
-        "2 axes x 3 levels = 9 synthetic users",
+        "2 axes x 3 levels = 9 synthetic users"
       );
       expect(container.textContent).toContain("User Status");
     });
@@ -1216,9 +1234,7 @@ describe("persona config detail workspaces", () => {
         "/persona-configs/config-gen-empty?tab=generation",
       ]);
 
-      expect(container.textContent).toContain(
-        "No synthetic users yet.",
-      );
+      expect(container.textContent).toContain("No synthetic users yet.");
     });
 
     it("shows generated users with status badges and axis values", async () => {
@@ -1329,9 +1345,7 @@ describe("persona config detail workspaces", () => {
       expect(retryButton).toBeDefined();
 
       await act(async () => {
-        retryButton!.dispatchEvent(
-          new MouseEvent("click", { bubbles: true }),
-        );
+        retryButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       });
 
       // Wait for Promise.allSettled to resolve
@@ -1339,7 +1353,7 @@ describe("persona config detail workspaces", () => {
 
       // Partial success notice
       expect(container.textContent).toContain(
-        "Queued regeneration for 1 of 2 synthetic users.",
+        "Queued regeneration for 1 of 2 synthetic users."
       );
       // Partial failure error
       expect(container.textContent).toContain("Network error");
@@ -1380,9 +1394,7 @@ describe("persona config detail workspaces", () => {
       expect(retryButton).toBeDefined();
 
       await act(async () => {
-        retryButton!.dispatchEvent(
-          new MouseEvent("click", { bubbles: true }),
-        );
+        retryButton!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       });
 
       await act(async () => {});
@@ -1423,9 +1435,7 @@ describe("persona config detail workspaces", () => {
 
       await dispatchKeyDown(tableBody!, "ArrowDown");
 
-      const selectedRow = container.querySelector(
-        "[data-user-row].bg-accent",
-      );
+      const selectedRow = container.querySelector("[data-user-row].bg-accent");
       expect(selectedRow?.textContent).toContain("User Two");
     });
   });
@@ -1446,7 +1456,7 @@ describe("persona config detail workspaces", () => {
       ]);
 
       const variantRows = container.querySelectorAll(
-        '[data-testid="variant-row"]',
+        '[data-uidotsh-option]:not([hidden]) [data-testid="variant-row"]'
       );
       expect(variantRows).toHaveLength(2);
 
@@ -1468,7 +1478,7 @@ describe("persona config detail workspaces", () => {
 
       // Inspector should show first variant's bio
       expect(container.textContent).toContain(
-        "I check totals carefully before purchasing.",
+        "I check totals carefully before purchasing."
       );
       expect(container.textContent).toContain("Scores");
       expect(container.textContent).toContain("Axis values");
@@ -1490,7 +1500,7 @@ describe("persona config detail workspaces", () => {
       ]);
 
       expect(container.textContent).toContain(
-        "No studies linked to this persona configuration",
+        "No studies linked to this persona configuration"
       );
     });
 
@@ -1538,7 +1548,7 @@ describe("persona config detail workspaces", () => {
       await dispatchKeyDown(grid!, "ArrowDown");
 
       const selectedRow = container.querySelector(
-        '[data-testid="variant-row"][aria-selected="true"]',
+        '[data-testid="variant-row"][aria-selected="true"]'
       );
       expect(selectedRow?.textContent).toContain("Power user");
     });
@@ -1554,13 +1564,13 @@ describe("persona config detail workspaces", () => {
         "/persona-configs/config-review-sort?tab=review",
       ]);
 
-      const edgeHeader = [...container.querySelectorAll("button")].find(
-        (b) => b.textContent?.includes("Edge"),
+      const edgeHeader = [...container.querySelectorAll("button")].find((b) =>
+        b.textContent?.includes("Edge")
       );
       expect(edgeHeader).toBeDefined();
 
-      const coherHeader = [...container.querySelectorAll("button")].find(
-        (b) => b.textContent?.includes("Coher."),
+      const coherHeader = [...container.querySelectorAll("button")].find((b) =>
+        b.textContent?.includes("Coher.")
       );
       expect(coherHeader).toBeDefined();
     });
@@ -1680,7 +1690,9 @@ describe("persona config detail workspaces", () => {
 
       const sortValues = [...headers].map((h) => h.getAttribute("aria-sort"));
       // At least one header should be actively sorted (ascending or descending)
-      expect(sortValues.some((v) => v === "ascending" || v === "descending")).toBe(true);
+      expect(
+        sortValues.some((v) => v === "ascending" || v === "descending")
+      ).toBe(true);
       // Non-active headers should have "none"
       expect(sortValues.some((v) => v === "none")).toBe(true);
     });
@@ -1695,13 +1707,11 @@ describe("persona config detail workspaces", () => {
         _id: "config-url" as Id<"personaConfigs">,
       });
 
-      const { container } = await renderRoute([
-        "/persona-configs/config-url",
-      ]);
+      const { container } = await renderRoute(["/persona-configs/config-url"]);
 
       const tabs = container.querySelectorAll('[role="tab"]');
       const overviewTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Overview",
+        (t) => t.textContent?.trim() === "Overview"
       );
       expect(overviewTab?.getAttribute("aria-selected")).toBe("true");
     });
@@ -1717,9 +1727,7 @@ describe("persona config detail workspaces", () => {
       ]);
 
       const tabs = container.querySelectorAll('[role="tab"]');
-      const usersTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Users",
-      );
+      const usersTab = [...tabs].find((t) => t.textContent?.trim() === "Users");
       expect(usersTab?.getAttribute("aria-selected")).toBe("true");
 
       // Users workspace is active — check for user list ARIA landmark
@@ -1740,7 +1748,7 @@ describe("persona config detail workspaces", () => {
 
       const tabs = container.querySelectorAll('[role="tab"]');
       const reviewTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Review",
+        (t) => t.textContent?.trim() === "Review"
       );
       expect(reviewTab?.getAttribute("aria-selected")).toBe("true");
     });
@@ -1766,7 +1774,7 @@ describe("persona config detail workspaces", () => {
 
       // The inspector should show the second user
       const selectedOption = container.querySelector(
-        '[role="option"][aria-selected="true"]',
+        '[role="option"][aria-selected="true"]'
       );
       expect(selectedOption?.textContent).toContain("Second");
     });
@@ -1787,7 +1795,7 @@ describe("persona config detail workspaces", () => {
 
         const tabElements = container.querySelectorAll('[role="tab"]');
         const activeTab = [...tabElements].find(
-          (t) => t.getAttribute("aria-selected") === "true",
+          (t) => t.getAttribute("aria-selected") === "true"
         );
 
         expect(activeTab?.textContent?.trim().toLowerCase()).toBe(tab);
@@ -1805,7 +1813,7 @@ describe("persona config detail workspaces", () => {
 
       const tabs = container.querySelectorAll('[role="tab"]');
       const overviewTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Overview",
+        (t) => t.textContent?.trim() === "Overview"
       );
       expect(overviewTab?.getAttribute("aria-selected")).toBe("true");
     });
@@ -1824,9 +1832,7 @@ describe("persona config detail workspaces", () => {
       await clickButton(container, "Users");
 
       const tabs = container.querySelectorAll('[role="tab"]');
-      const usersTab = [...tabs].find(
-        (t) => t.textContent?.trim() === "Users",
-      );
+      const usersTab = [...tabs].find((t) => t.textContent?.trim() === "Users");
       expect(usersTab?.getAttribute("aria-selected")).toBe("true");
 
       // Verify URL updated
@@ -1846,7 +1852,9 @@ describe("persona config detail workspaces", () => {
         "/persona-configs/config-loading?tab=overview",
       ]);
 
-      expect(container.textContent).toContain("Loading persona configuration details...");
+      expect(container.textContent).toContain(
+        "Loading persona configuration details..."
+      );
     });
 
     it("shows not found when config data is null", async () => {
@@ -1857,7 +1865,7 @@ describe("persona config detail workspaces", () => {
       ]);
 
       expect(container.textContent).toContain(
-        "Persona configuration not found",
+        "Persona configuration not found"
       );
     });
 
@@ -1908,7 +1916,9 @@ describe("persona config detail workspaces", () => {
       const tabs = container.querySelectorAll('[role="tab"]');
       expect(tabs).toHaveLength(5);
       // Generation workspace shows its own loading card
-      expect(container.textContent).toContain("Loading synthetic users for generation...");
+      expect(container.textContent).toContain(
+        "Loading synthetic users for generation..."
+      );
     });
 
     it("does not crash overview workspace when workspace data is still loading", async () => {
