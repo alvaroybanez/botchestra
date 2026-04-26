@@ -14,11 +14,97 @@ export function InlineToast({ toast }: { toast: InlineToastState }) {
           "rounded-lg border px-4 py-3 text-sm shadow-lg",
           toast.tone === "error"
             ? "border-destructive/30 bg-destructive text-destructive-foreground"
-            : "border-emerald-300 bg-emerald-600 text-white",
+            : "border-emerald-300 bg-emerald-600 text-white"
         )}
         role="alert"
       >
         {toast.message}
+      </div>
+    </div>
+  );
+}
+
+export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+export const DEFAULT_PAGE_SIZE = 20;
+
+const paginationSelectClassName =
+  "flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
+export function PaginationFooter({
+  pageSize,
+  currentPage,
+  pageCount,
+  filteredCount,
+  totalCount,
+  itemLabel = "items",
+  onPageChange,
+  onPageSizeChange,
+}: {
+  pageSize: number;
+  currentPage: number;
+  pageCount: number;
+  filteredCount: number;
+  totalCount: number;
+  itemLabel?: string;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+}) {
+  const pageStart = filteredCount === 0 ? 0 : currentPage * pageSize + 1;
+  const pageEnd = Math.min(filteredCount, (currentPage + 1) * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
+      <p>
+        {filteredCount === 0
+          ? `0 of ${totalCount} ${itemLabel}`
+          : `${filteredCount} of ${totalCount} ${itemLabel} · Showing ${pageStart}-${pageEnd}`}
+      </p>
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2">
+          <span>Per page</span>
+          <select
+            aria-label={`${itemLabel} per page`}
+            className={cn(paginationSelectClassName, "w-auto")}
+            value={pageSize}
+            onChange={(event) => {
+              onPageSizeChange(Number(event.target.value));
+              onPageChange(0);
+            }}
+          >
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-center gap-2">
+          <Button
+            aria-label="Previous page"
+            disabled={currentPage === 0}
+            onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Prev
+          </Button>
+          <span className="tabular-nums">
+            Page {currentPage + 1} of {pageCount}
+          </span>
+          <Button
+            aria-label="Next page"
+            disabled={currentPage >= pageCount - 1}
+            onClick={() =>
+              onPageChange(Math.min(pageCount - 1, currentPage + 1))
+            }
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );

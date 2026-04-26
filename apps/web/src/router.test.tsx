@@ -2465,7 +2465,7 @@ describe("@botchestra/web routing", () => {
     expect(container.textContent).toContain("Account Recovery Config");
     expect(container.textContent).toContain("Shared Axes");
     expect(hasInputWithValue(container, "Digital confidence")).toBe(true);
-    expect(container.textContent).toContain("Audit Trail");
+    expect(container.textContent).toContain("Audit trail");
 
     const { container: usersContainer } = await renderRoute({
       auth: { isAuthenticated: true, isLoading: false },
@@ -2519,16 +2519,14 @@ describe("@botchestra/web routing", () => {
       ],
     });
 
-    expect(container.textContent).toContain("Generation Controls");
-    expect(container.textContent).toContain(
-      "2 axes x 3 levels = 9 synthetic users"
-    );
-    expect(container.textContent).toContain("7,200 tokens");
+    // Compact controls bar shows axes count, projected users, and est. cost.
+    expect(container.textContent).toContain("est. cost");
     expect(container.textContent).toContain("$0.07");
+    expect(getButton(container, "Generate")).toBeDefined();
     expect(container.textContent).toContain("No synthetic users yet.");
   });
 
-  it("updates batch generation granularity and starts generation with per-axis levels", async () => {
+  it("starts batch generation with default per-axis levels from compact controls", async () => {
     mockedPackDetail = makePack({
       _id: "config-generation-start" as Id<"personaConfigs">,
       sharedAxes: [
@@ -2560,20 +2558,13 @@ describe("@botchestra/web routing", () => {
       ],
     });
 
-    await updateRadixSelect(document.body, "Support needs levels", "5 levels");
-
-    expect(container.textContent).toContain(
-      "2 axes x mixed levels (3 · 5) = 15 synthetic users"
-    );
-    expect(container.textContent).toContain("12,000 tokens");
-
-    await clickButton(container, "Confirm & Generate");
+    await clickButton(container, "Generate");
 
     expect(startBatchGenerationMock).toHaveBeenCalledWith({
       configId: "config-generation-start",
       levelsPerAxis: {
         digital_confidence: 3,
-        support_needs: 5,
+        support_needs: 3,
       },
     });
     expect(container.textContent).toContain(
@@ -2881,7 +2872,7 @@ describe("@botchestra/web routing", () => {
 
     const suggestionCheckboxes = [
       ...container.querySelectorAll<HTMLInputElement>(
-        '[data-uidotsh-option]:not([hidden]) input[type="checkbox"]'
+        'input[id^="suggested-axis-toggle-"]'
       ),
     ];
     expect(suggestionCheckboxes).toHaveLength(3);
@@ -4543,32 +4534,6 @@ async function updateSelect(
   });
 }
 
-async function updateRadixSelect(
-  root: ParentNode,
-  ariaLabel: string,
-  optionText: string
-) {
-  const trigger = root.querySelector<HTMLButtonElement>(
-    `button[aria-label="${ariaLabel}"]`
-  );
-
-  expect(trigger).not.toBeNull();
-
-  await act(async () => {
-    trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-  });
-
-  const option = [
-    ...document.body.querySelectorAll<HTMLElement>('[role="option"]'),
-  ].find((candidate) => candidate.textContent?.trim() === optionText);
-
-  expect(option).toBeDefined();
-
-  await act(async () => {
-    option!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-  });
-}
-
 async function updateFiles(
   container: HTMLDivElement,
   selector: string,
@@ -4600,9 +4565,7 @@ function createDeferred<T>() {
 
 function getVariantRows(container: HTMLDivElement) {
   return [
-    ...container.querySelectorAll<HTMLElement>(
-      '[data-uidotsh-option]:not([hidden]) [data-testid="variant-row"]'
-    ),
+    ...container.querySelectorAll<HTMLElement>('[data-testid="variant-row"]'),
   ].map((row) => row.textContent ?? "");
 }
 

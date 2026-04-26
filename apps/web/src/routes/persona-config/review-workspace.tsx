@@ -21,7 +21,7 @@ type SharedAxis = VariantReviewData["config"]["sharedAxes"][number];
 
 function getAxisValue(
   axisValues: { key: string; value: number }[],
-  axisKey: string,
+  axisKey: string
 ) {
   return axisValues.find((av) => av.key === axisKey)?.value ?? 0;
 }
@@ -74,9 +74,7 @@ export function ReviewWorkspace({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>
-            No studies linked to this persona configuration
-          </CardTitle>
+          <CardTitle>No studies linked to this persona configuration</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
@@ -109,14 +107,13 @@ function ReviewWorkspaceInner({
   selectedReviewStudyId: string | undefined;
   onSearchChange: (patch: Partial<PersonaConfigDetailSearch>) => void;
 }) {
-  const [selectedSyntheticUserId, setSelectedSyntheticUserId] =
-    useState("all");
+  const [selectedSyntheticUserId, setSelectedSyntheticUserId] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("edgeScore");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [minimumAxisValue, setMinimumAxisValue] = useState("");
   const [maximumAxisValue, setMaximumAxisValue] = useState("");
   const [selectedAxisKey, setSelectedAxisKey] = useState(
-    configVariantReview.config.sharedAxes[0]?.key ?? "",
+    configVariantReview.config.sharedAxes[0]?.key ?? ""
   );
   const tableRef = useRef<HTMLTableSectionElement>(null);
 
@@ -128,12 +125,12 @@ function ReviewWorkspaceInner({
       current === "all" ||
       configVariantReview.syntheticUsers.some((u) => u._id === current)
         ? current
-        : "all",
+        : "all"
     );
     setSelectedAxisKey((current) =>
       configVariantReview.config.sharedAxes.some((a) => a.key === current)
         ? current
-        : (configVariantReview.config.sharedAxes[0]?.key ?? ""),
+        : (configVariantReview.config.sharedAxes[0]?.key ?? "")
     );
   }, [
     configVariantReview.config._id,
@@ -176,9 +173,9 @@ function ReviewWorkspaceInner({
   const selectedVariant = useMemo(
     () =>
       selectedVariantId
-        ? filteredVariants.find((v) => v._id === selectedVariantId) ?? null
+        ? (filteredVariants.find((v) => v._id === selectedVariantId) ?? null)
         : null,
-    [filteredVariants, selectedVariantId],
+    [filteredVariants, selectedVariantId]
   );
 
   // Auto-select first variant when none selected or current selection is filtered out
@@ -201,12 +198,12 @@ function ReviewWorkspaceInner({
         selectedVariantId: undefined,
       });
     },
-    [onSearchChange],
+    [onSearchChange]
   );
 
   function handleSort(nextSortKey: SortKey) {
     setSortDirection((current) =>
-      sortKey === nextSortKey && current === "desc" ? "asc" : "desc",
+      sortKey === nextSortKey && current === "desc" ? "asc" : "desc"
     );
     setSortKey(nextSortKey);
   }
@@ -215,7 +212,7 @@ function ReviewWorkspaceInner({
     (variantId: string) => {
       onSearchChange({ selectedVariantId: variantId });
     },
-    [onSearchChange],
+    [onSearchChange]
   );
 
   const handleKeyDown = useCallback(
@@ -249,13 +246,13 @@ function ReviewWorkspaceInner({
         if (nextVariant) {
           onSearchChange({ selectedVariantId: nextVariant._id });
           const row = tableRef.current?.querySelector(
-            `[data-variant-id="${nextVariant._id}"]`,
+            `[data-variant-id="${nextVariant._id}"]`
           );
           row?.scrollIntoView({ block: "nearest" });
         }
       }
     },
-    [filteredVariants, selectedVariantId, onSearchChange],
+    [filteredVariants, selectedVariantId, onSearchChange]
   );
 
   const studySelectorBar = (
@@ -387,10 +384,7 @@ function ReviewWorkspaceInner({
           </p>
         </div>
       ) : (
-        <div
-          className="h-full overflow-auto"
-          onKeyDown={handleKeyDown}
-        >
+        <div className="h-full overflow-auto" onKeyDown={handleKeyDown}>
           <table
             className="min-w-full border-collapse text-left text-sm"
             role="grid"
@@ -440,7 +434,7 @@ function ReviewWorkspaceInner({
                     "cursor-pointer border-b last:border-b-0 transition-colors",
                     variant._id === selectedVariantId
                       ? "bg-accent"
-                      : "hover:bg-muted/50",
+                      : "hover:bg-muted/50"
                   )}
                   onClick={() => handleRowSelect(variant._id)}
                 >
@@ -453,7 +447,7 @@ function ReviewWorkspaceInner({
                       className="px-3 py-2 tabular-nums text-muted-foreground"
                     >
                       {formatAxisValue(
-                        getAxisValue(variant.axisValues, axis.key),
+                        getAxisValue(variant.axisValues, axis.key)
                       )}
                     </td>
                   ))}
@@ -490,160 +484,18 @@ function ReviewWorkspaceInner({
     </div>
   );
 
-  const selectedAxis = configVariantReview.config.sharedAxes.find(
-    (a) => a.key === selectedAxisKey,
-  );
-
   return (
-    <div data-uidotsh-pick="Review layout" className="contents">
-      {/* ── Option 1: Table + sidebar (current) ── */}
-      <div data-uidotsh-option="Table + sidebar (current)" className="contents">
-        <div className="space-y-4">
-          {studySelectorBar}
-          {filterBar}
+    <div className="space-y-4">
+      {studySelectorBar}
+      {filterBar}
 
-          <div className="flex gap-4" style={{ minHeight: 480 }}>
-            <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
-              {variantTableContent}
-            </div>
-
-            <div className="w-80 shrink-0 overflow-y-auto rounded-xl border bg-card p-5">
-              {inspectorContent}
-            </div>
-          </div>
+      <div className="flex gap-4" style={{ minHeight: 480 }}>
+        <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
+          {variantTableContent}
         </div>
-      </div>
 
-      {/* ── Option 2: Full-width table ── */}
-      <div data-uidotsh-option="Full-width table" className="contents" hidden>
-        <div className="space-y-4">
-          {studySelectorBar}
-          {filterBar}
-
-          <div className="overflow-hidden rounded-xl border bg-card" style={{ minHeight: 480 }}>
-            {variantTableContent}
-          </div>
-
-          <div className="rounded-xl border bg-card p-5">
-            {inspectorContent}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Option 3: Wide inspector ── */}
-      <div data-uidotsh-option="Wide inspector" className="contents" hidden>
-        <div className="space-y-4">
-          {studySelectorBar}
-          {filterBar}
-
-          <div className="flex gap-4" style={{ minHeight: 480 }}>
-            <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
-              {variantTableContent}
-            </div>
-
-            <div className="w-96 shrink-0 overflow-y-auto rounded-xl border bg-card p-5">
-              {inspectorContent}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Option 4: Table above, inspector below ── */}
-      <div data-uidotsh-option="Table above, inspector below" className="contents" hidden>
-        <div className="space-y-4">
-          {studySelectorBar}
-          {filterBar}
-
-          <div className="overflow-hidden rounded-xl border bg-card" style={{ minHeight: 320 }}>
-            {variantTableContent}
-          </div>
-
-          <div className="rounded-xl border bg-card p-5">
-            {selectedVariant ? (
-              <div className="flex gap-8">
-                <div className="shrink-0 space-y-5">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-semibold">{selectedVariant.syntheticUserName}</h3>
-                    {configVariantReview.syntheticUsers.find(
-                      (u) => u._id === selectedVariant.syntheticUserId,
-                    ) ? (
-                      <p className="text-xs text-muted-foreground">
-                        {configVariantReview.syntheticUsers.find(
-                          (u) => u._id === selectedVariant.syntheticUserId,
-                        )?.summary}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Scores
-                    </h4>
-                    <div className="flex gap-2">
-                      <ScoreBadge label="Edge" value={selectedVariant.edgeScore} />
-                      <ScoreBadge label="Coher." value={selectedVariant.coherenceScore} />
-                      <ScoreBadge label="Dist." value={selectedVariant.distinctnessScore} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Axis values
-                    </h4>
-                    <div className="space-y-1.5">
-                      {configVariantReview.config.sharedAxes.map((axis) => {
-                        const value = getAxisValue(selectedVariant.axisValues, axis.key);
-                        return (
-                          <div
-                            key={axis.key}
-                            className={cn(
-                              "flex items-center justify-between rounded px-2 py-1 text-sm",
-                              axis.key === selectedAxisKey && "bg-muted",
-                            )}
-                          >
-                            <span className="truncate text-muted-foreground">
-                              {axis.label}
-                            </span>
-                            <span className="ml-2 shrink-0 tabular-nums font-medium">
-                              {formatAxisValue(value)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {selectedAxis ? (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {selectedAxis.label} anchors
-                      </h4>
-                      <div className="space-y-1.5 text-xs">
-                        <AnchorRow label="Low" value={selectedAxis.lowAnchor} />
-                        <AnchorRow label="Mid" value={selectedAxis.midAnchor} />
-                        <AnchorRow label="High" value={selectedAxis.highAnchor} />
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="min-w-0 flex-1 space-y-2">
-                  <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    First-person bio
-                  </h4>
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                    {selectedVariant.firstPersonBio}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center py-8">
-                <p className="text-center text-sm text-muted-foreground">
-                  Select a variant row to inspect its narrative details.
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="w-80 shrink-0 overflow-y-auto rounded-xl border bg-card p-5">
+          {inspectorContent}
         </div>
       </div>
     </div>
@@ -662,7 +514,7 @@ function VariantInspector({
   selectedAxisKey: string;
 }) {
   const syntheticUser = syntheticUsers.find(
-    (u) => u._id === variant.syntheticUserId,
+    (u) => u._id === variant.syntheticUserId
   );
   const selectedAxis = sharedAxes.find((a) => a.key === selectedAxisKey);
 
@@ -703,7 +555,7 @@ function VariantInspector({
                 key={axis.key}
                 className={cn(
                   "flex items-center justify-between rounded px-2 py-1 text-sm",
-                  axis.key === selectedAxisKey && "bg-muted",
+                  axis.key === selectedAxisKey && "bg-muted"
                 )}
               >
                 <span className="truncate text-muted-foreground">
@@ -788,7 +640,13 @@ function SortableHeader({
   return (
     <th
       className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-      aria-sort={isActive ? (sortDirection === "desc" ? "descending" : "ascending") : "none"}
+      aria-sort={
+        isActive
+          ? sortDirection === "desc"
+            ? "descending"
+            : "ascending"
+          : "none"
+      }
     >
       <button
         type="button"

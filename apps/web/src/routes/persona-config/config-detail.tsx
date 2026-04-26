@@ -58,10 +58,7 @@ import {
   LocalSummaryValue,
   WorkspaceErrorBoundary,
 } from "./shared-ui";
-import {
-  AxisLibraryImportDialog,
-  SuggestedAxisCard,
-} from "./axis-components";
+import { AxisLibraryImportDialog, SuggestedAxisCard } from "./axis-components";
 import { ConfigFormCard } from "./config-form-card";
 import { TranscriptAttachmentDialog } from "./extraction-panel";
 import { ConfigShell } from "./config-shell";
@@ -84,18 +81,26 @@ export function PersonaConfigDetailPage({
   const syntheticUsers = useQuery(api.personaConfigs.listSyntheticUsers, {
     configId: typedConfigId,
   });
-  const axisDefinitions = useQuery((api as any).axisLibrary.listAxisDefinitions, {}) as
-    | import("./types").AxisDefinition[]
-    | undefined;
-  const transcriptLibrary = useQuery((api as any).transcripts.listTranscripts, {}) as
-    | TranscriptDoc[]
-    | undefined;
-  const configTranscripts = useQuery((api as any).configTranscripts.listConfigTranscripts, {
-    configId: typedConfigId,
-  }) as ConfigTranscriptAttachment[] | undefined;
-  const batchGenerationRun = useQuery(api.batchGeneration.getBatchGenerationRun, {
-    configId: typedConfigId,
-  }) as BatchGenerationRunView | null | undefined;
+  const axisDefinitions = useQuery(
+    (api as any).axisLibrary.listAxisDefinitions,
+    {}
+  ) as import("./types").AxisDefinition[] | undefined;
+  const transcriptLibrary = useQuery(
+    (api as any).transcripts.listTranscripts,
+    {}
+  ) as TranscriptDoc[] | undefined;
+  const configTranscripts = useQuery(
+    (api as any).configTranscripts.listConfigTranscripts,
+    {
+      configId: typedConfigId,
+    }
+  ) as ConfigTranscriptAttachment[] | undefined;
+  const batchGenerationRun = useQuery(
+    api.batchGeneration.getBatchGenerationRun,
+    {
+      configId: typedConfigId,
+    }
+  ) as BatchGenerationRunView | null | undefined;
   const viewerAccess = useQuery((api as any).rbac.getViewerAccess, {}) as
     | ViewerAccess
     | undefined;
@@ -103,16 +108,18 @@ export function PersonaConfigDetailPage({
     (api as any).transcriptExtraction.getExtractionStatus,
     viewerAccess?.permissions.canManagePersonaConfigs === true
       ? { configId: typedConfigId }
-      : "skip",
+      : "skip"
   ) as ExtractionStatus | null | undefined;
   const extractionCostEstimate = useQuery(
     (api as any).transcriptExtraction.estimateExtractionCost,
     viewerAccess?.permissions.canManagePersonaConfigs === true &&
       (configTranscripts?.length ?? 0) > 0
       ? {
-          transcriptIds: configTranscripts!.map((configTranscript) => configTranscript.transcriptId),
+          transcriptIds: configTranscripts!.map(
+            (configTranscript) => configTranscript.transcriptId
+          ),
         }
-      : "skip",
+      : "skip"
   ) as
     | {
         totalCharacters: number;
@@ -125,25 +132,42 @@ export function PersonaConfigDetailPage({
     api.personaVariantReview.getPackVariantReview,
     selectedReviewStudyId === undefined
       ? { configId: typedConfigId }
-      : { configId: typedConfigId, studyId: selectedReviewStudyId as Id<"studies"> },
+      : {
+          configId: typedConfigId,
+          studyId: selectedReviewStudyId as Id<"studies">,
+        }
   ) as ConfigVariantReviewData | null | undefined;
-  const startBatchGeneration = useMutation(api.batchGeneration.startBatchGeneration);
-  const regenerateSyntheticUser = useMutation(api.batchGeneration.regenerateSyntheticUser);
+  const startBatchGeneration = useMutation(
+    api.batchGeneration.startBatchGeneration
+  );
+  const regenerateSyntheticUser = useMutation(
+    api.batchGeneration.regenerateSyntheticUser
+  );
   const updateDraft = useMutation(api.personaConfigs.updateDraft);
-  const createSyntheticUser = useMutation(api.personaConfigs.createSyntheticUser);
-  const updateSyntheticUserMutation = useMutation(api.personaConfigs.updateSyntheticUser);
-  const deleteSyntheticUserMutation = useMutation(api.personaConfigs.deleteSyntheticUser);
+  const createSyntheticUser = useMutation(
+    api.personaConfigs.createSyntheticUser
+  );
+  const updateSyntheticUserMutation = useMutation(
+    api.personaConfigs.updateSyntheticUser
+  );
+  const deleteSyntheticUserMutation = useMutation(
+    api.personaConfigs.deleteSyntheticUser
+  );
   const publishConfig = useMutation(api.personaConfigs.publish);
   const archiveConfig = useMutation(api.personaConfigs.archive);
   const applyTranscriptDerivedSyntheticUsers = useMutation(
-    (api as any).personaConfigs.applyTranscriptDerivedSyntheticUsers,
+    (api as any).personaConfigs.applyTranscriptDerivedSyntheticUsers
   );
   const suggestAxes = useAction((api as any).axisGeneration.suggestAxes);
   const startTranscriptExtraction = useAction(
-    (api as any).transcriptExtraction.startExtraction,
+    (api as any).transcriptExtraction.startExtraction
   );
-  const attachTranscript = useMutation((api as any).configTranscripts.attachTranscript);
-  const detachTranscript = useMutation((api as any).configTranscripts.detachTranscript);
+  const attachTranscript = useMutation(
+    (api as any).configTranscripts.attachTranscript
+  );
+  const detachTranscript = useMutation(
+    (api as any).configTranscripts.detachTranscript
+  );
   const [draftForm, setDraftForm] = useState<ConfigFormValue>(emptyConfigForm);
   const [syntheticUserForm, setSyntheticUserForm] =
     useState<SyntheticUserFormValue>(emptySyntheticUserForm);
@@ -163,40 +187,43 @@ export function PersonaConfigDetailPage({
   const [isSuggestingAxes, setIsSuggestingAxes] = useState(false);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [isAxisLibraryOpen, setIsAxisLibraryOpen] = useState(false);
-  const [selectedLibraryAxisIds, setSelectedLibraryAxisIds] = useState<string[]>(
-    [],
-  );
+  const [selectedLibraryAxisIds, setSelectedLibraryAxisIds] = useState<
+    string[]
+  >([]);
   const [inlineToast, setInlineToast] = useState<InlineToastState | null>(null);
   const [isTranscriptPickerOpen, setIsTranscriptPickerOpen] = useState(false);
   const [transcriptSearchText, setTranscriptSearchText] = useState("");
   const [selectedTranscriptIds, setSelectedTranscriptIds] = useState<string[]>(
-    [],
+    []
   );
   const [isAttachingTranscripts, setIsAttachingTranscripts] = useState(false);
   const [detachingTranscriptId, setDetachingTranscriptId] = useState<
     string | null
   >(null);
   const [isExtractionPanelOpen, setIsExtractionPanelOpen] = useState(false);
-  const [extractionMode, setExtractionMode] = useState<ExtractionMode | null>(null);
-  const [preExtractionStep, setPreExtractionStep] = useState<"mode" | "guided" | "cost">(
-    "mode",
+  const [extractionMode, setExtractionMode] = useState<ExtractionMode | null>(
+    null
   );
-  const [guidedExtractionAxes, setGuidedExtractionAxes] = useState<AxisFormValue[]>(
-    [],
-  );
-  const [reviewArchetypes, setReviewArchetypes] = useState<ExtractionArchetypeState[]>(
-    [],
-  );
+  const [preExtractionStep, setPreExtractionStep] = useState<
+    "mode" | "guided" | "cost"
+  >("mode");
+  const [guidedExtractionAxes, setGuidedExtractionAxes] = useState<
+    AxisFormValue[]
+  >([]);
+  const [reviewArchetypes, setReviewArchetypes] = useState<
+    ExtractionArchetypeState[]
+  >([]);
   const [reviewProposedAxes, setReviewProposedAxes] = useState<
     ExtractionReviewAxisState[]
   >([]);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [extractionNotice, setExtractionNotice] = useState<string | null>(null);
   const [isStartingExtraction, setIsStartingExtraction] = useState(false);
-  const [isApplyingExtractionResults, setIsApplyingExtractionResults] = useState(false);
-  const [discardingArchetypeId, setDiscardingArchetypeId] = useState<string | null>(
-    null,
-  );
+  const [isApplyingExtractionResults, setIsApplyingExtractionResults] =
+    useState(false);
+  const [discardingArchetypeId, setDiscardingArchetypeId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (!config) {
@@ -236,11 +263,15 @@ export function PersonaConfigDetailPage({
     }
 
     const resolvedStudyId =
-      configVariantReview.selectedStudy?._id ?? configVariantReview.study?._id ?? undefined;
+      configVariantReview.selectedStudy?._id ??
+      configVariantReview.study?._id ??
+      undefined;
 
     const isCurrentValid =
       selectedReviewStudyId !== undefined &&
-      configVariantReview.studies.some((study) => study._id === selectedReviewStudyId);
+      configVariantReview.studies.some(
+        (study) => study._id === selectedReviewStudyId
+      );
 
     if (!isCurrentValid && resolvedStudyId !== selectedReviewStudyId) {
       onSearchChange({ selectedReviewStudyId: resolvedStudyId });
@@ -269,8 +300,8 @@ export function PersonaConfigDetailPage({
     if (
       extractionStatus === null ||
       extractionStatus === undefined ||
-      (extractionStatus.status !== "completed"
-        && extractionStatus.status !== "completed_with_failures")
+      (extractionStatus.status !== "completed" &&
+        extractionStatus.status !== "completed_with_failures")
     ) {
       return;
     }
@@ -282,8 +313,8 @@ export function PersonaConfigDetailPage({
         ? extractionStatus.guidedAxes
         : extractionStatus.proposedAxes.length > 0
           ? extractionStatus.proposedAxes
-          : config?.sharedAxes ?? []
-      ).map(axisToFormValue),
+          : (config?.sharedAxes ?? [])
+      ).map(axisToFormValue)
     );
     setReviewProposedAxes(
       extractionStatus.proposedAxes.map((axis, index) => ({
@@ -291,7 +322,7 @@ export function PersonaConfigDetailPage({
         axis: axisToFormValue(axis),
         isEditing: false,
         isRemoved: false,
-      })),
+      }))
     );
     setReviewArchetypes(
       extractionStatus.archetypes.map((archetype, index) => ({
@@ -303,25 +334,30 @@ export function PersonaConfigDetailPage({
         contributingTranscriptIds: archetype.contributingTranscriptIds,
         isEditing: false,
         isSelected: true,
-      })),
+      }))
     );
     setExtractionError(null);
     setExtractionNotice(
       extractionStatus.status === "completed_with_failures"
         ? "Extraction completed with partial results. Review the successful transcripts below."
-        : null,
+        : null
     );
-  }, [extractionStatus?.updatedAt, extractionStatus?.status, config?.sharedAxes]);
+  }, [
+    extractionStatus?.updatedAt,
+    extractionStatus?.status,
+    config?.sharedAxes,
+  ]);
 
   const resolvedStatus = optimisticStatus ?? config?.status;
   const isDraft = resolvedStatus === "draft";
   const syntheticUserList: SyntheticUserDoc[] = syntheticUsers ?? [];
   const hasActiveBatchGenerationRun =
-    batchGenerationRun?.status === "pending" || batchGenerationRun?.status === "running";
+    batchGenerationRun?.status === "pending" ||
+    batchGenerationRun?.status === "running";
   const canSuggestAxes =
     draftForm.name.trim().length > 0 && draftForm.context.trim().length > 0;
   const selectedSuggestionCount = suggestedAxes.filter(
-    (suggestion) => suggestion.isSelected,
+    (suggestion) => suggestion.isSelected
   ).length;
   const axisLibraryList = axisDefinitions ?? [];
   const canManageConfigTranscripts =
@@ -331,19 +367,25 @@ export function PersonaConfigDetailPage({
       return draftForm.sharedAxes.map(axisFormToPayload);
     }
 
-    return isDraft ? draftForm.sharedAxes.map(axisFormToPayload) : config.sharedAxes;
+    return isDraft
+      ? draftForm.sharedAxes.map(axisFormToPayload)
+      : config.sharedAxes;
   }, [draftForm.sharedAxes, isDraft, config]);
   const publishedStatusHelp =
     isDraft && hasActiveBatchGenerationRun
       ? "Cannot publish while batch generation is in progress."
-      : isDraft && syntheticUsers !== undefined && syntheticUserList.length === 0
-      ? "Add at least one synthetic user before publishing this persona configuration."
-      : null;
+      : isDraft &&
+          syntheticUsers !== undefined &&
+          syntheticUserList.length === 0
+        ? "Add at least one synthetic user before publishing this persona configuration."
+        : null;
   const attachedTranscriptIds = new Set(
-    (configTranscripts ?? []).map((configTranscript) => String(configTranscript.transcriptId)),
+    (configTranscripts ?? []).map((configTranscript) =>
+      String(configTranscript.transcriptId)
+    )
   );
   const attachableTranscripts = (transcriptLibrary ?? []).filter(
-    (transcript) => !attachedTranscriptIds.has(String(transcript._id)),
+    (transcript) => !attachedTranscriptIds.has(String(transcript._id))
   );
   const filteredAttachableTranscripts = useMemo(() => {
     const normalizedSearch = transcriptSearchText.trim().toLowerCase();
@@ -361,16 +403,18 @@ export function PersonaConfigDetailPage({
       ]
         .join(" ")
         .toLowerCase()
-        .includes(normalizedSearch),
+        .includes(normalizedSearch)
     );
   }, [attachableTranscripts, transcriptSearchText]);
   const canOpenExtraction =
-    isDraft && canManageConfigTranscripts && (configTranscripts?.length ?? 0) > 0;
+    isDraft &&
+    canManageConfigTranscripts &&
+    (configTranscripts?.length ?? 0) > 0;
   const selectedExtractionArchetypeCount = reviewArchetypes.filter(
-    (archetype) => archetype.isSelected,
+    (archetype) => archetype.isSelected
   ).length;
   const activeReviewProposedAxes = reviewProposedAxes.filter(
-    (axis) => !axis.isRemoved,
+    (axis) => !axis.isRemoved
   );
   const extractionSharedAxes =
     extractionMode === "auto_discover" && activeReviewProposedAxes.length > 0
@@ -381,8 +425,8 @@ export function PersonaConfigDetailPage({
       ? "processing"
       : extractionStatus?.status === "failed"
         ? "failed"
-        : extractionStatus?.status === "completed"
-          || extractionStatus?.status === "completed_with_failures"
+        : extractionStatus?.status === "completed" ||
+            extractionStatus?.status === "completed_with_failures"
           ? "results"
           : preExtractionStep;
   const extractionButtonLabel =
@@ -395,7 +439,7 @@ export function PersonaConfigDetailPage({
     (configTranscripts ?? []).map((configTranscript) => [
       String(configTranscript.transcriptId),
       configTranscript.transcript.originalFilename,
-    ]),
+    ])
   );
 
   async function handleSaveDraft(event: React.FormEvent<HTMLFormElement>) {
@@ -422,14 +466,16 @@ export function PersonaConfigDetailPage({
 
       setSaveMessage("Draft changes saved.");
     } catch (error) {
-      setActionError(getErrorMessage(error, "Could not update persona configuration."));
+      setActionError(
+        getErrorMessage(error, "Could not update persona configuration.")
+      );
     } finally {
       setIsSavingDraft(false);
     }
   }
 
   async function handleCreateSyntheticUser(
-    event: React.FormEvent<HTMLFormElement>,
+    event: React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
@@ -448,7 +494,9 @@ export function PersonaConfigDetailPage({
           name: syntheticUserForm.name,
           summary: syntheticUserForm.summary,
           axes: config.sharedAxes,
-          evidenceSnippets: parseEvidenceSnippets(syntheticUserForm.evidenceText),
+          evidenceSnippets: parseEvidenceSnippets(
+            syntheticUserForm.evidenceText
+          ),
           ...(syntheticUserForm.notes.trim()
             ? { notes: syntheticUserForm.notes.trim() }
             : {}),
@@ -460,7 +508,7 @@ export function PersonaConfigDetailPage({
       setSaveMessage("Synthetic user added.");
     } catch (error) {
       setActionError(
-        getErrorMessage(error, "Could not create synthetic user."),
+        getErrorMessage(error, "Could not create synthetic user.")
       );
     } finally {
       setIsSavingSyntheticUser(false);
@@ -469,7 +517,12 @@ export function PersonaConfigDetailPage({
 
   async function handleUpdateSyntheticUser(
     syntheticUserId: Id<"syntheticUsers">,
-    patch: { name: string; summary: string; evidenceSnippets: string[]; notes: string },
+    patch: {
+      name: string;
+      summary: string;
+      evidenceSnippets: string[];
+      notes: string;
+    }
   ) {
     if (!config) return;
 
@@ -484,12 +537,16 @@ export function PersonaConfigDetailPage({
           name: patch.name,
           summary: patch.summary,
           evidenceSnippets: patch.evidenceSnippets,
-          ...(patch.notes.trim() ? { notes: patch.notes.trim() } : { notes: "" }),
+          ...(patch.notes.trim()
+            ? { notes: patch.notes.trim() }
+            : { notes: "" }),
         },
       });
       setSaveMessage("Synthetic user updated.");
     } catch (error) {
-      setActionError(getErrorMessage(error, "Could not update synthetic user."));
+      setActionError(
+        getErrorMessage(error, "Could not update synthetic user.")
+      );
     } finally {
       setIsSavingSyntheticUser(false);
     }
@@ -497,7 +554,7 @@ export function PersonaConfigDetailPage({
 
   function handleRequestDeleteSyntheticUser(
     syntheticUserId: Id<"syntheticUsers">,
-    userName: string,
+    userName: string
   ) {
     setConfirmationState({
       kind: "delete_synthetic_user",
@@ -530,7 +587,9 @@ export function PersonaConfigDetailPage({
       } else if (confirmationState.kind === "delete_synthetic_user") {
         const deletedId = confirmationState.syntheticUserId;
         await deleteSyntheticUserMutation({ syntheticUserId: deletedId });
-        setSaveMessage(`Synthetic user "${confirmationState.userName}" deleted.`);
+        setSaveMessage(
+          `Synthetic user "${confirmationState.userName}" deleted.`
+        );
         if (detailSearch.selectedUserId === deletedId) {
           onSearchChange({ selectedUserId: undefined });
         }
@@ -538,7 +597,9 @@ export function PersonaConfigDetailPage({
 
       setConfirmationState(null);
     } catch (error) {
-      setActionError(getErrorMessage(error, "Could not complete the requested action."));
+      setActionError(
+        getErrorMessage(error, "Could not complete the requested action.")
+      );
     } finally {
       setIsConfirmingAction(false);
     }
@@ -552,7 +613,9 @@ export function PersonaConfigDetailPage({
     const trimmedDescription = draftForm.description.trim();
 
     if (trimmedDescription.length === 0) {
-      setSuggestionError("Add a short description before requesting suggestions.");
+      setSuggestionError(
+        "Add a short description before requesting suggestions."
+      );
       return;
     }
 
@@ -577,7 +640,7 @@ export function PersonaConfigDetailPage({
           axis: axisToFormValue(axis),
           isEditing: false,
           isSelected: true,
-        })),
+        }))
       );
       setIsSuggestionPanelOpen(true);
     } catch (error) {
@@ -592,8 +655,8 @@ export function PersonaConfigDetailPage({
       current.map((suggestion) =>
         suggestion.id === suggestionId
           ? { ...suggestion, isSelected: !suggestion.isSelected }
-          : suggestion,
-      ),
+          : suggestion
+      )
     );
   }
 
@@ -602,21 +665,21 @@ export function PersonaConfigDetailPage({
       current.map((suggestion) =>
         suggestion.id === suggestionId
           ? { ...suggestion, isEditing: !suggestion.isEditing }
-          : suggestion,
-      ),
+          : suggestion
+      )
     );
   }
 
   function handleSuggestionAxisChange(
     suggestionId: string,
-    nextAxis: AxisFormValue,
+    nextAxis: AxisFormValue
   ) {
     setSuggestedAxes((current) =>
       current.map((suggestion) =>
         suggestion.id === suggestionId
           ? { ...suggestion, axis: nextAxis }
-          : suggestion,
-      ),
+          : suggestion
+      )
     );
   }
 
@@ -639,7 +702,7 @@ export function PersonaConfigDetailPage({
 
     const mergeResult = mergeAxesIntoFormValue(
       draftForm.sharedAxes,
-      selectedSuggestions,
+      selectedSuggestions
     );
 
     if (mergeResult.addedCount === 0) {
@@ -670,7 +733,7 @@ export function PersonaConfigDetailPage({
     setSelectedLibraryAxisIds((current) =>
       current.includes(axisDefinitionId)
         ? current.filter((id) => id !== axisDefinitionId)
-        : [...current, axisDefinitionId],
+        : [...current, axisDefinitionId]
     );
   }
 
@@ -678,7 +741,7 @@ export function PersonaConfigDetailPage({
     setSelectedTranscriptIds((current) =>
       current.includes(transcriptId)
         ? current.filter((id) => id !== transcriptId)
-        : [...current, transcriptId],
+        : [...current, transcriptId]
     );
   }
 
@@ -691,12 +754,12 @@ export function PersonaConfigDetailPage({
   function handleImportAxisDefinitions() {
     const selectedAxisDefinitions = axisLibraryList
       .filter((axisDefinition) =>
-        selectedLibraryAxisIds.includes(String(axisDefinition._id)),
+        selectedLibraryAxisIds.includes(String(axisDefinition._id))
       )
       .map(axisToFormValue);
     const mergeResult = mergeAxesIntoFormValue(
       draftForm.sharedAxes,
-      selectedAxisDefinitions,
+      selectedAxisDefinitions
     );
 
     if (mergeResult.addedCount === 0) {
@@ -744,7 +807,7 @@ export function PersonaConfigDetailPage({
       setSaveMessage(
         selectedCount === 1
           ? "1 transcript attached to this persona configuration."
-          : `${selectedCount} transcripts attached to this persona configuration.`,
+          : `${selectedCount} transcripts attached to this persona configuration.`
       );
     } catch (error) {
       setActionError(getErrorMessage(error, "Could not attach transcripts."));
@@ -794,14 +857,14 @@ export function PersonaConfigDetailPage({
     setExtractionError(null);
     setExtractionNotice(null);
     setGuidedExtractionAxes(
-      draftForm.sharedAxes.length > 0 ? draftForm.sharedAxes : [emptyAxis()],
+      draftForm.sharedAxes.length > 0 ? draftForm.sharedAxes : [emptyAxis()]
     );
   }
 
   function handleContinueToExtractionCost() {
     const validationError = validateAxesForExtraction(
       guidedExtractionAxes,
-      "Define at least one axis before continuing.",
+      "Define at least one axis before continuing."
     );
 
     if (validationError !== null) {
@@ -822,7 +885,7 @@ export function PersonaConfigDetailPage({
     setExtractionMode(null);
     setPreExtractionStep("mode");
     setGuidedExtractionAxes(
-      draftForm.sharedAxes.length > 0 ? draftForm.sharedAxes : [emptyAxis()],
+      draftForm.sharedAxes.length > 0 ? draftForm.sharedAxes : [emptyAxis()]
     );
     setReviewArchetypes([]);
     setReviewProposedAxes([]);
@@ -839,7 +902,7 @@ export function PersonaConfigDetailPage({
     if (extractionMode === "guided") {
       const validationError = validateAxesForExtraction(
         guidedExtractionAxes,
-        "Define at least one axis before continuing.",
+        "Define at least one axis before continuing."
       );
 
       if (validationError !== null) {
@@ -850,7 +913,7 @@ export function PersonaConfigDetailPage({
 
     setExtractionError(null);
     setExtractionNotice(
-      "Transcript extraction started. Progress will continue even if you navigate away.",
+      "Transcript extraction started. Progress will continue even if you navigate away."
     );
     setIsStartingExtraction(true);
     setReviewArchetypes([]);
@@ -864,7 +927,9 @@ export function PersonaConfigDetailPage({
         : {}),
     })
       .catch((error: unknown) => {
-        setExtractionError(getErrorMessage(error, "Could not start transcript extraction."));
+        setExtractionError(
+          getErrorMessage(error, "Could not start transcript extraction.")
+        );
         setExtractionNotice(null);
       })
       .finally(() => {
@@ -874,12 +939,14 @@ export function PersonaConfigDetailPage({
 
   function handleGuidedAxisChange(index: number, nextAxis: AxisFormValue) {
     setGuidedExtractionAxes((current) =>
-      current.map((axis, axisIndex) => (axisIndex === index ? nextAxis : axis)),
+      current.map((axis, axisIndex) => (axisIndex === index ? nextAxis : axis))
     );
   }
 
   function handleRemoveGuidedAxis(index: number) {
-    setGuidedExtractionAxes((current) => current.filter((_axis, axisIndex) => axisIndex !== index));
+    setGuidedExtractionAxes((current) =>
+      current.filter((_axis, axisIndex) => axisIndex !== index)
+    );
   }
 
   function handleToggleReviewArchetypeSelection(archetypeId: string) {
@@ -887,8 +954,8 @@ export function PersonaConfigDetailPage({
       current.map((archetype) =>
         archetype.id === archetypeId
           ? { ...archetype, isSelected: !archetype.isSelected }
-          : archetype,
-      ),
+          : archetype
+      )
     );
   }
 
@@ -897,50 +964,50 @@ export function PersonaConfigDetailPage({
       current.map((archetype) =>
         archetype.id === archetypeId
           ? { ...archetype, isEditing: !archetype.isEditing }
-          : archetype,
-      ),
+          : archetype
+      )
     );
   }
 
   function handleReviewArchetypeChange(
     archetypeId: string,
-    patch: Partial<ExtractionArchetypeState>,
+    patch: Partial<ExtractionArchetypeState>
   ) {
     setReviewArchetypes((current) =>
       current.map((archetype) =>
-        archetype.id === archetypeId
-          ? { ...archetype, ...patch }
-          : archetype,
-      ),
+        archetype.id === archetypeId ? { ...archetype, ...patch } : archetype
+      )
     );
   }
 
   function handleToggleReviewAxisEdit(axisId: string) {
     setReviewProposedAxes((current) =>
       current.map((axis) =>
-        axis.id === axisId ? { ...axis, isEditing: !axis.isEditing } : axis,
-      ),
+        axis.id === axisId ? { ...axis, isEditing: !axis.isEditing } : axis
+      )
     );
   }
 
   function handleReviewAxisChange(axisId: string, nextAxis: AxisFormValue) {
     setReviewProposedAxes((current) =>
       current.map((axis) =>
-        axis.id === axisId ? { ...axis, axis: nextAxis } : axis,
-      ),
+        axis.id === axisId ? { ...axis, axis: nextAxis } : axis
+      )
     );
   }
 
   function handleReviewAxisRemovalToggle(axisId: string) {
     setReviewProposedAxes((current) =>
       current.map((axis) =>
-        axis.id === axisId ? { ...axis, isRemoved: !axis.isRemoved } : axis,
-      ),
+        axis.id === axisId ? { ...axis, isRemoved: !axis.isRemoved } : axis
+      )
     );
   }
 
   function handleMergeSelectedArchetypes() {
-    const selectedArchetypes = reviewArchetypes.filter((archetype) => archetype.isSelected);
+    const selectedArchetypes = reviewArchetypes.filter(
+      (archetype) => archetype.isSelected
+    );
 
     if (selectedArchetypes.length !== 2) {
       setExtractionError("Select exactly two archetypes before merging them.");
@@ -953,12 +1020,15 @@ export function PersonaConfigDetailPage({
       new Set([
         ...firstArchetype.axisValues.map((axisValue) => axisValue.key),
         ...secondArchetype.axisValues.map((axisValue) => axisValue.key),
-      ]),
+      ])
     ).map((axisKey) => {
       const leftValue =
-        firstArchetype.axisValues.find((axisValue) => axisValue.key === axisKey)?.value ?? 0;
+        firstArchetype.axisValues.find((axisValue) => axisValue.key === axisKey)
+          ?.value ?? 0;
       const rightValue =
-        secondArchetype.axisValues.find((axisValue) => axisValue.key === axisKey)?.value ?? 0;
+        secondArchetype.axisValues.find(
+          (axisValue) => axisValue.key === axisKey
+        )?.value ?? 0;
 
       return {
         key: axisKey,
@@ -973,7 +1043,7 @@ export function PersonaConfigDetailPage({
       new Set([
         ...firstArchetype.contributingTranscriptIds,
         ...secondArchetype.contributingTranscriptIds,
-      ]),
+      ])
     );
     const mergedArchetype: ExtractionArchetypeState = {
       id: `merged-${Date.now()}`,
@@ -989,7 +1059,8 @@ export function PersonaConfigDetailPage({
     setReviewArchetypes((current) => [
       ...current.filter(
         (archetype) =>
-          archetype.id !== firstArchetype.id && archetype.id !== secondArchetype.id,
+          archetype.id !== firstArchetype.id &&
+          archetype.id !== secondArchetype.id
       ),
       mergedArchetype,
     ]);
@@ -1002,7 +1073,7 @@ export function PersonaConfigDetailPage({
     }
 
     setReviewArchetypes((current) =>
-      current.filter((archetype) => archetype.id !== discardingArchetypeId),
+      current.filter((archetype) => archetype.id !== discardingArchetypeId)
     );
     setDiscardingArchetypeId(null);
   }
@@ -1012,10 +1083,12 @@ export function PersonaConfigDetailPage({
       return;
     }
 
-    const selectedArchetypes = reviewArchetypes.filter((archetype) => archetype.isSelected);
+    const selectedArchetypes = reviewArchetypes.filter(
+      (archetype) => archetype.isSelected
+    );
     const axisValidationError = validateAxesForExtraction(
       extractionSharedAxes,
-      "Keep at least one reviewed axis before applying transcript-derived personas.",
+      "Keep at least one reviewed axis before applying transcript-derived personas."
     );
 
     if (axisValidationError !== null) {
@@ -1055,21 +1128,21 @@ export function PersonaConfigDetailPage({
       setSaveMessage(
         selectedArchetypes.length === 1
           ? "Applied 1 transcript-derived synthetic user to this persona configuration."
-          : `Applied ${selectedArchetypes.length} transcript-derived synthetic users to this persona configuration.`,
+          : `Applied ${selectedArchetypes.length} transcript-derived synthetic users to this persona configuration.`
       );
     } catch (error) {
       setExtractionError(
-        getErrorMessage(error, "Could not apply transcript-derived synthetic users."),
+        getErrorMessage(
+          error,
+          "Could not apply transcript-derived synthetic users."
+        )
       );
     } finally {
       setIsApplyingExtractionResults(false);
     }
   }
 
-  if (
-    config === undefined
-    || viewerAccess === undefined
-  ) {
+  if (config === undefined || viewerAccess === undefined) {
     return (
       <LoadingCard
         title="Persona Configuration"
@@ -1086,7 +1159,8 @@ export function PersonaConfigDetailPage({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            This persona configuration either does not exist or belongs to another organization.
+            This persona configuration either does not exist or belongs to
+            another organization.
           </p>
           <Button asChild variant="outline">
             <Link to="/persona-configs">Back to Persona Configurations</Link>
@@ -1174,7 +1248,9 @@ export function PersonaConfigDetailPage({
               isProtoFormOpen={isProtoFormOpen}
               isSavingSyntheticUser={isSavingSyntheticUser}
               selectedUserId={detailSearch.selectedUserId}
-              onToggleProtoForm={() => setIsProtoFormOpen((current) => !current)}
+              onToggleProtoForm={() =>
+                setIsProtoFormOpen((current) => !current)
+              }
               onCreateSyntheticUser={handleCreateSyntheticUser}
               onUpdateSyntheticUser={handleUpdateSyntheticUser}
               onRequestDeleteSyntheticUser={handleRequestDeleteSyntheticUser}
@@ -1205,7 +1281,9 @@ export function PersonaConfigDetailPage({
               reviewArchetypes={reviewArchetypes}
               activeReviewProposedAxes={activeReviewProposedAxes}
               extractionSharedAxes={extractionSharedAxes}
-              selectedExtractionArchetypeCount={selectedExtractionArchetypeCount}
+              selectedExtractionArchetypeCount={
+                selectedExtractionArchetypeCount
+              }
               transcriptFilenameById={transcriptFilenameById}
               discardingArchetypeId={discardingArchetypeId}
               selectedTranscriptId={detailSearch.selectedTranscriptId}
@@ -1241,7 +1319,9 @@ export function PersonaConfigDetailPage({
             <GenerationWorkspace
               config={config}
               isDraft={isDraft}
-              canManageGeneration={viewerAccess?.permissions.canManagePersonaConfigs === true}
+              canManageGeneration={
+                viewerAccess?.permissions.canManagePersonaConfigs === true
+              }
               batchGenerationRun={batchGenerationRun ?? null}
               syntheticUsers={syntheticUsers}
               selectedGenerationUserId={detailSearch.selectedGenerationUserId}
@@ -1308,9 +1388,10 @@ export function PersonaConfigDetailPage({
   );
 }
 
-function generationHealthLabel(
-  run: BatchGenerationRunView | null,
-): { text: string; tone: "default" | "success" | "warning" | "destructive" } {
+function generationHealthLabel(run: BatchGenerationRunView | null): {
+  text: string;
+  tone: "default" | "success" | "warning" | "destructive";
+} {
   if (run === null) {
     return { text: "No runs", tone: "default" };
   }
@@ -1323,7 +1404,10 @@ function generationHealthLabel(
         tone: "warning",
       };
     case "completed":
-      return { text: `${run.completedCount}/${run.totalCount} completed`, tone: "success" };
+      return {
+        text: `${run.completedCount}/${run.totalCount} completed`,
+        tone: "success",
+      };
     case "partially_failed":
       return {
         text: `${run.completedCount} ok, ${run.failedCount} failed`,
@@ -1335,7 +1419,7 @@ function generationHealthLabel(
 }
 
 function generationHealthColor(
-  tone: "default" | "success" | "warning" | "destructive",
+  tone: "default" | "success" | "warning" | "destructive"
 ) {
   switch (tone) {
     case "success":
@@ -1421,8 +1505,8 @@ function OverviewWorkspace({
             <div className="space-y-1">
               <p className="text-sm font-medium">Axis generation</p>
               <p className="text-sm text-muted-foreground">
-                Generate new axes from persona configuration metadata or import reusable
-                ones from the shared library.
+                Generate new axes from persona configuration metadata or import
+                reusable ones from the shared library.
               </p>
             </div>
 
@@ -1454,8 +1538,8 @@ function OverviewWorkspace({
           <div aria-live="polite" className="space-y-2">
             {isSuggestingAxes ? (
               <p className="text-sm text-muted-foreground" role="status">
-                Generating axis suggestions from the current persona configuration
-                metadata...
+                Generating axis suggestions from the current persona
+                configuration metadata...
               </p>
             ) : null}
             {suggestionError ? (
@@ -1468,12 +1552,10 @@ function OverviewWorkspace({
           {isSuggestionPanelOpen ? (
             <div className="space-y-4 rounded-xl border border-dashed bg-card p-4">
               <div className="space-y-1">
-                <h4 className="text-lg font-semibold">
-                  Review suggested axes
-                </h4>
+                <h4 className="text-lg font-semibold">Review suggested axes</h4>
                 <p className="text-sm text-muted-foreground">
-                  Select the axes you want to add, edit any field inline,
-                  then apply the selected suggestions.
+                  Select the axes you want to add, edit any field inline, then
+                  apply the selected suggestions.
                 </p>
               </div>
 
@@ -1486,9 +1568,7 @@ function OverviewWorkspace({
                     onChange={(nextAxis) =>
                       onSuggestionAxisChange(suggestion.id, nextAxis)
                     }
-                    onToggleEdit={() =>
-                      onSuggestionEditToggle(suggestion.id)
-                    }
+                    onToggleEdit={() => onSuggestionEditToggle(suggestion.id)}
                     onToggleSelected={() =>
                       onSuggestionSelectionToggle(suggestion.id)
                     }
@@ -1520,390 +1600,148 @@ function OverviewWorkspace({
   ) : null;
 
   return (
-    <div data-uidotsh-pick="Overview layout" className="contents">
-      {/* ── Option 1: Stacked cards (current) ── */}
-      <div data-uidotsh-option="Stacked cards (current)" className="contents">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Orientation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <LocalSummaryValue label="Status" value={resolvedStatus} />
-                <LocalSummaryValue label="Version" value={`v${config.version}`} />
-                <LocalSummaryValue label="Shared axes" value={String(resolvedAxes.length)} />
-                <LocalSummaryValue label="Synthetic users" value={String(syntheticUserCount)} />
-                <LocalSummaryValue label="Transcripts" value={String(transcriptCount)} />
-                <div className="rounded-lg border bg-background p-4">
-                  <dt className="text-sm font-medium text-muted-foreground">Generation health</dt>
-                  <dd className={`mt-1 break-words text-sm font-medium ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</dd>
-                </div>
-              </dl>
-            </CardContent>
-          </Card>
-
-          {isDraft ? (
-            <Card>
-              <CardHeader><CardTitle>Metadata &amp; Shared Axes</CardTitle></CardHeader>
-              <CardContent>{draftFormBlock}</CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card>
-                <CardHeader><CardTitle>Metadata</CardTitle></CardHeader>
-                <CardContent>
-                  <dl className="grid gap-4 sm:grid-cols-2">
-                    <LocalSummaryValue label="Name" value={config.name} />
-                    <LocalSummaryValue label="Version" value={`v${config.version}`} />
-                    <LocalSummaryValue label="Description" value={config.description} />
-                    <LocalSummaryValue label="Context" value={config.context} />
-                  </dl>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader><CardTitle>Shared Axes</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {resolvedAxes.map((axis, index) => (
-                    <div key={`${axis.key}-${index}`} className="rounded-lg border bg-background p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium">{axis.label}</p>
-                          <p className="text-sm text-muted-foreground">{axis.key} · weight {axis.weight}</p>
-                        </div>
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{axis.description}</p>
-                      <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-                        <LocalSummaryValue label="Low anchor" value={axis.lowAnchor} />
-                        <LocalSummaryValue label="Mid anchor" value={axis.midAnchor} />
-                        <LocalSummaryValue label="High anchor" value={axis.highAnchor} />
-                      </dl>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          <Card>
-            <CardHeader><CardTitle>Audit Trail</CardTitle></CardHeader>
-            <CardContent className="grid gap-4">
-              <LocalSummaryValue label="Created by" value={config.createdBy} />
-              <LocalSummaryValue label="Last modified by" value={config.updatedBy ?? config.createdBy} />
-              <LocalSummaryValue label="Created at" value={formatTs(config.createdAt)} />
-              <LocalSummaryValue label="Last updated" value={formatTs(config.updatedAt)} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* ── Option 2: Two-column split ── */}
-      <div data-uidotsh-option="Two-column split" className="contents" hidden>
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          {/* Left sidebar — stats + audit */}
-          <div className="space-y-6">
-            <div className="rounded-xl border bg-card p-5">
-              <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">Quick stats</h3>
-              <dl className="mt-4 space-y-4">
-                {[
-                  { label: "Status", value: resolvedStatus },
-                  { label: "Version", value: `v${config.version}` },
-                  { label: "Shared axes", value: String(resolvedAxes.length) },
-                  { label: "Synthetic users", value: String(syntheticUserCount) },
-                  { label: "Transcripts", value: String(transcriptCount) },
-                ].map((stat) => (
-                  <div key={stat.label} className="flex items-baseline justify-between gap-3">
-                    <dt className="text-sm text-muted-foreground">{stat.label}</dt>
-                    <dd className="text-sm font-medium tabular-nums">{stat.value}</dd>
-                  </div>
-                ))}
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-sm text-muted-foreground">Gen. health</dt>
-                  <dd className={`text-sm font-medium ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="rounded-xl border bg-card p-5">
-              <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">Audit trail</h3>
-              <dl className="mt-4 space-y-3">
-                {[
-                  { label: "Created by", value: config.createdBy },
-                  { label: "Modified by", value: config.updatedBy ?? config.createdBy },
-                  { label: "Created", value: formatTs(config.createdAt) },
-                  { label: "Updated", value: formatTs(config.updatedAt) },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <dt className="text-sm text-muted-foreground">{item.label}</dt>
-                    <dd className="mt-0.5 text-sm font-medium">{item.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </div>
-
-          {/* Right main — metadata + axes */}
-          <div className="space-y-6">
-            {isDraft ? (
-              <Card>
-                <CardHeader><CardTitle>Metadata &amp; Shared Axes</CardTitle></CardHeader>
-                <CardContent>{draftFormBlock}</CardContent>
-              </Card>
-            ) : (
-              <>
-                <div className="rounded-xl border bg-card p-6">
-                  <h3 className="text-lg font-semibold tracking-tight">Metadata</h3>
-                  <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-                    <div>
-                      <dt className="text-sm font-medium text-muted-foreground">Name</dt>
-                      <dd className="mt-1 text-sm">{config.name}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-muted-foreground">Context</dt>
-                      <dd className="mt-1 text-sm">{config.context}</dd>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <dt className="text-sm font-medium text-muted-foreground">Description</dt>
-                      <dd className="mt-1 text-sm leading-6 text-pretty">{config.description}</dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <div className="rounded-xl border bg-card p-6">
-                  <h3 className="text-lg font-semibold tracking-tight">Shared Axes</h3>
-                  <div className="mt-4 divide-y divide-border/50">
-                    {resolvedAxes.map((axis, index) => (
-                      <div key={`split-${axis.key}-${index}`} className="py-4 first:pt-0 last:pb-0">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <p className="font-medium">{axis.label}</p>
-                          <p className="text-sm text-muted-foreground">{axis.key} · w{axis.weight}</p>
-                        </div>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{axis.description}</p>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                          <div className="rounded-md bg-muted/50 px-3 py-2">
-                            <p className="text-[0.6875rem] font-medium text-muted-foreground">Low</p>
-                            <p className="text-sm">{axis.lowAnchor}</p>
-                          </div>
-                          <div className="rounded-md bg-muted/50 px-3 py-2">
-                            <p className="text-[0.6875rem] font-medium text-muted-foreground">Mid</p>
-                            <p className="text-sm">{axis.midAnchor}</p>
-                          </div>
-                          <div className="rounded-md bg-muted/50 px-3 py-2">
-                            <p className="text-[0.6875rem] font-medium text-muted-foreground">High</p>
-                            <p className="text-sm">{axis.highAnchor}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Option 3: Flat sections with dividers ── */}
-      <div data-uidotsh-option="Flat sections" className="contents" hidden>
-        <div className="space-y-8">
-          {/* Inline stat strip */}
-          <dl className="flex flex-wrap gap-x-6 gap-y-2 border-b border-border/40 pb-6">
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      {/* Left sidebar — stats + audit */}
+      <div className="space-y-6">
+        <div className="rounded-xl border bg-card p-5">
+          <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">
+            Quick stats
+          </h3>
+          <dl className="mt-4 space-y-4">
             {[
               { label: "Status", value: resolvedStatus },
               { label: "Version", value: `v${config.version}` },
-              { label: "Axes", value: String(resolvedAxes.length) },
-              { label: "Users", value: String(syntheticUserCount) },
+              { label: "Shared axes", value: String(resolvedAxes.length) },
+              { label: "Synthetic users", value: String(syntheticUserCount) },
               { label: "Transcripts", value: String(transcriptCount) },
             ].map((stat) => (
-              <div key={stat.label} className="flex items-baseline gap-2">
+              <div
+                key={stat.label}
+                className="flex items-baseline justify-between gap-3"
+              >
                 <dt className="text-sm text-muted-foreground">{stat.label}</dt>
-                <dd className="text-sm font-semibold tabular-nums">{stat.value}</dd>
+                <dd className="text-sm font-medium tabular-nums">
+                  {stat.value}
+                </dd>
               </div>
             ))}
-            <div className="flex items-baseline gap-2">
-              <dt className="text-sm text-muted-foreground">Generation</dt>
-              <dd className={`text-sm font-semibold ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</dd>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-sm text-muted-foreground">Gen. health</dt>
+              <dd
+                className={`text-sm font-medium ${generationHealthColor(genHealth.tone)}`}
+              >
+                {genHealth.text}
+              </dd>
             </div>
           </dl>
+        </div>
 
-          {/* Metadata */}
-          {isDraft ? (
-            <div className="border-b border-border/40 pb-8">
-              <h3 className="text-lg font-semibold tracking-tight">Metadata &amp; Shared Axes</h3>
-              <div className="mt-4">{draftFormBlock}</div>
-            </div>
-          ) : (
-            <>
-              <div className="border-b border-border/40 pb-8">
-                <h3 className="text-lg font-semibold tracking-tight">Metadata</h3>
-                <dl className="mt-4 grid gap-x-12 gap-y-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Name</dt>
-                    <dd className="mt-1 text-sm">{config.name}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Context</dt>
-                    <dd className="mt-1 text-sm">{config.context}</dd>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <dt className="text-sm font-medium text-muted-foreground">Description</dt>
-                    <dd className="mt-1 max-w-[65ch] text-sm leading-6 text-pretty">{config.description}</dd>
-                  </div>
-                </dl>
+        <div className="rounded-xl border bg-card p-5">
+          <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">
+            Audit trail
+          </h3>
+          <dl className="mt-4 space-y-3">
+            {[
+              { label: "Created by", value: config.createdBy },
+              {
+                label: "Modified by",
+                value: config.updatedBy ?? config.createdBy,
+              },
+              { label: "Created", value: formatTs(config.createdAt) },
+              { label: "Updated", value: formatTs(config.updatedAt) },
+            ].map((item) => (
+              <div key={item.label}>
+                <dt className="text-sm text-muted-foreground">{item.label}</dt>
+                <dd className="mt-0.5 text-sm font-medium">{item.value}</dd>
               </div>
-
-              <div className="border-b border-border/40 pb-8">
-                <h3 className="text-lg font-semibold tracking-tight">Shared Axes</h3>
-                <div className="mt-4 space-y-5">
-                  {resolvedAxes.map((axis, index) => (
-                    <div key={`flat-${axis.key}-${index}`}>
-                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <p className="font-medium">{axis.label}</p>
-                        <span className="font-mono text-sm text-muted-foreground">{axis.key}</span>
-                        <span className="text-sm text-muted-foreground">· weight {axis.weight}</span>
-                      </div>
-                      <p className="mt-1 max-w-[65ch] text-sm leading-6 text-muted-foreground text-pretty">{axis.description}</p>
-                      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-                        <span><span className="text-muted-foreground">Low:</span> {axis.lowAnchor}</span>
-                        <span><span className="text-muted-foreground">Mid:</span> {axis.midAnchor}</span>
-                        <span><span className="text-muted-foreground">High:</span> {axis.highAnchor}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Audit trail — inline */}
-          <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-            <div>
-              <span className="text-muted-foreground">Created by </span>
-              <span className="font-medium">{config.createdBy}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Modified by </span>
-              <span className="font-medium">{config.updatedBy ?? config.createdBy}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Created </span>
-              <span className="font-medium">{formatTs(config.createdAt)}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Updated </span>
-              <span className="font-medium">{formatTs(config.updatedAt)}</span>
-            </div>
-          </div>
+            ))}
+          </dl>
         </div>
       </div>
 
-      {/* ── Option 4: Dense dashboard ── */}
-      <div data-uidotsh-option="Dense dashboard" className="contents" hidden>
-        <div className="space-y-6">
-          {/* Stats well */}
-          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border/50 sm:grid-cols-6">
-            {[
-              { label: "Status", value: resolvedStatus },
-              { label: "Version", value: `v${config.version}` },
-              { label: "Axes", value: String(resolvedAxes.length) },
-              { label: "Users", value: String(syntheticUserCount) },
-              { label: "Transcripts", value: String(transcriptCount) },
-            ].map((stat) => (
-              <div key={stat.label} className="bg-card px-4 py-3 text-center">
-                <p className="text-[0.6875rem] font-medium text-muted-foreground">{stat.label}</p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums">{stat.value}</p>
-              </div>
-            ))}
-            <div className="bg-card px-4 py-3 text-center">
-              <p className="text-[0.6875rem] font-medium text-muted-foreground">Generation</p>
-              <p className={`mt-0.5 text-sm font-semibold ${generationHealthColor(genHealth.tone)}`}>{genHealth.text}</p>
+      {/* Right main — metadata + axes */}
+      <div className="space-y-6">
+        {isDraft ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Metadata &amp; Shared Axes</CardTitle>
+            </CardHeader>
+            <CardContent>{draftFormBlock}</CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="rounded-xl border bg-card p-6">
+              <h3 className="text-lg font-semibold tracking-tight">Metadata</h3>
+              <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Name
+                  </dt>
+                  <dd className="mt-1 text-sm">{config.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Context
+                  </dt>
+                  <dd className="mt-1 text-sm">{config.context}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Description
+                  </dt>
+                  <dd className="mt-1 text-sm leading-6 text-pretty">
+                    {config.description}
+                  </dd>
+                </div>
+              </dl>
             </div>
-          </div>
 
-          {isDraft ? (
-            <Card>
-              <CardHeader><CardTitle>Metadata &amp; Shared Axes</CardTitle></CardHeader>
-              <CardContent>{draftFormBlock}</CardContent>
-            </Card>
-          ) : (
-            <>
-              {/* Metadata as horizontal DL */}
-              <div className="rounded-xl border bg-card">
-                <div className="border-b border-border/40 px-5 py-3">
-                  <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">Metadata</h3>
-                </div>
-                <dl className="grid gap-px bg-border/30 sm:grid-cols-2">
-                  {[
-                    { label: "Name", value: config.name },
-                    { label: "Context", value: config.context },
-                    { label: "Description", value: config.description, span: true },
-                  ].map((item) => (
-                    <div key={item.label} className={`bg-card px-5 py-3 ${"span" in item && item.span ? "sm:col-span-2" : ""}`}>
-                      <dt className="text-[0.6875rem] font-medium text-muted-foreground">{item.label}</dt>
-                      <dd className="mt-0.5 text-sm leading-6">{item.value}</dd>
+            <div className="rounded-xl border bg-card p-6">
+              <h3 className="text-lg font-semibold tracking-tight">
+                Shared Axes
+              </h3>
+              <div className="mt-4 divide-y divide-border/50">
+                {resolvedAxes.map((axis, index) => (
+                  <div
+                    key={`split-${axis.key}-${index}`}
+                    className="py-4 first:pt-0 last:pb-0"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="font-medium">{axis.label}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {axis.key} · w{axis.weight}
+                      </p>
                     </div>
-                  ))}
-                </dl>
-              </div>
-
-              {/* Axes as table */}
-              <div className="rounded-xl border bg-card">
-                <div className="border-b border-border/40 px-5 py-3">
-                  <h3 className="text-sm font-semibold tracking-tight text-muted-foreground">
-                    Shared Axes ({resolvedAxes.length})
-                  </h3>
-                </div>
-                <div className="divide-y divide-border/30">
-                  {resolvedAxes.map((axis, index) => (
-                    <div key={`dense-${axis.key}-${index}`} className="grid gap-3 px-5 py-4 lg:grid-cols-[1fr_1fr_1fr]">
-                      <div className="lg:col-span-3">
-                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <p className="text-sm font-medium">{axis.label}</p>
-                          <span className="font-mono text-[0.6875rem] text-muted-foreground">{axis.key}</span>
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground">w{axis.weight}</span>
-                        </div>
-                        {axis.description ? (
-                          <p className="mt-1 max-w-[55ch] text-sm leading-6 text-muted-foreground text-pretty">{axis.description}</p>
-                        ) : null}
-                      </div>
-                      <div className="rounded-md bg-muted/40 px-3 py-2">
-                        <p className="text-[0.6875rem] font-medium text-muted-foreground">Low</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {axis.description}
+                    </p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-md bg-muted/50 px-3 py-2">
+                        <p className="text-[0.6875rem] font-medium text-muted-foreground">
+                          Low
+                        </p>
                         <p className="text-sm">{axis.lowAnchor}</p>
                       </div>
-                      <div className="rounded-md bg-muted/40 px-3 py-2">
-                        <p className="text-[0.6875rem] font-medium text-muted-foreground">Mid</p>
+                      <div className="rounded-md bg-muted/50 px-3 py-2">
+                        <p className="text-[0.6875rem] font-medium text-muted-foreground">
+                          Mid
+                        </p>
                         <p className="text-sm">{axis.midAnchor}</p>
                       </div>
-                      <div className="rounded-md bg-muted/40 px-3 py-2">
-                        <p className="text-[0.6875rem] font-medium text-muted-foreground">High</p>
+                      <div className="rounded-md bg-muted/50 px-3 py-2">
+                        <p className="text-[0.6875rem] font-medium text-muted-foreground">
+                          High
+                        </p>
                         <p className="text-sm">{axis.highAnchor}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            </>
-          )}
-
-          {/* Audit as compact footer */}
-          <div className="rounded-xl border bg-card">
-            <div className="grid gap-px bg-border/30 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: "Created by", value: config.createdBy },
-                { label: "Modified by", value: config.updatedBy ?? config.createdBy },
-                { label: "Created", value: formatTs(config.createdAt) },
-                { label: "Updated", value: formatTs(config.updatedAt) },
-              ].map((item) => (
-                <div key={item.label} className="bg-card px-4 py-3">
-                  <p className="text-[0.6875rem] font-medium text-muted-foreground">{item.label}</p>
-                  <p className="mt-0.5 text-sm font-medium">{item.value}</p>
-                </div>
-              ))}
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
-

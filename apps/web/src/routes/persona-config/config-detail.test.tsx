@@ -697,10 +697,10 @@ describe("persona config detail workspaces", () => {
         "/persona-configs/config-1?tab=overview",
       ]);
 
-      expect(container.textContent).toContain("Orientation");
+      expect(container.textContent).toContain("Quick stats");
       expect(container.textContent).toContain("draft");
       expect(container.textContent).toContain("v3");
-      expect(container.textContent).toContain("Generation health");
+      expect(container.textContent).toContain("Gen. health");
     });
 
     it("shows metadata and shared axes editing form in draft mode", async () => {
@@ -751,9 +751,9 @@ describe("persona config detail workspaces", () => {
         "/persona-configs/config-1?tab=overview",
       ]);
 
-      expect(container.textContent).toContain("Audit Trail");
+      expect(container.textContent).toContain("Audit trail");
       expect(container.textContent).toContain("Created by");
-      expect(container.textContent).toContain("Last modified by");
+      expect(container.textContent).toContain("Modified by");
     });
   });
 
@@ -786,9 +786,7 @@ describe("persona config detail workspaces", () => {
       expect(listbox).not.toBeNull();
       expect(listbox?.getAttribute("aria-label")).toBe("Synthetic users");
 
-      const options = container.querySelectorAll(
-        '[data-uidotsh-option]:not([hidden]) [role="option"]'
-      );
+      const options = container.querySelectorAll('[role="option"]');
       expect(options).toHaveLength(2);
 
       // First user auto-selected
@@ -1189,10 +1187,9 @@ describe("persona config detail workspaces", () => {
         "/persona-configs/config-gen?tab=generation",
       ]);
 
-      expect(container.textContent).toContain("Generation Controls");
-      expect(container.textContent).toContain(
-        "2 axes x 3 levels = 9 synthetic users"
-      );
+      // Compact controls bar shows axes count, projected users, est. cost.
+      expect(container.textContent).toContain("est. cost");
+      expect(getButton(container, "Generate")).toBeDefined();
       expect(container.textContent).toContain("User Status");
     });
 
@@ -1456,7 +1453,7 @@ describe("persona config detail workspaces", () => {
       ]);
 
       const variantRows = container.querySelectorAll(
-        '[data-uidotsh-option]:not([hidden]) [data-testid="variant-row"]'
+        '[data-testid="variant-row"]'
       );
       expect(variantRows).toHaveLength(2);
 
@@ -1931,7 +1928,7 @@ describe("persona config detail workspaces", () => {
 
       // Shell and overview render (overview uses counts from config, not syntheticUsers directly)
       expect(container.textContent).toContain("Test Config");
-      expect(container.textContent).toContain("Orientation");
+      expect(container.textContent).toContain("Quick stats");
     });
   });
 
@@ -2028,7 +2025,7 @@ describe("persona config detail workspaces", () => {
 
       // Overview renders normally (no error fallback)
       expect(container.textContent).not.toContain("Something went wrong");
-      expect(container.textContent).toContain("Orientation");
+      expect(container.textContent).toContain("Quick stats");
 
       spy.mockRestore();
     });

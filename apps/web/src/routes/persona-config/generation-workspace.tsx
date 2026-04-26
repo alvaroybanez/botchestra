@@ -5,13 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -29,14 +22,17 @@ import {
 } from "../../../../../convex/batchGeneration/gridAnchors";
 import { MAX_SYNTHETIC_USERS_PER_CONFIG } from "../../../../../convex/personaConfig.constants";
 import type { PersonaConfigDetailSearch } from "@/router";
-import type { BatchGenerationRunView, PersonaConfigDoc, SyntheticUserDoc } from "./types";
-import { LoadingCard } from "./shared-ui";
+import type {
+  BatchGenerationRunView,
+  PersonaConfigDoc,
+  SyntheticUserDoc,
+} from "./types";
+import { DEFAULT_PAGE_SIZE, LoadingCard, PaginationFooter } from "./shared-ui";
 
 type SyntheticUserId = Id<"syntheticUsers">;
 type SharedAxis = Doc<"personaConfigs">["sharedAxes"][number];
 
 const DEFAULT_LEVEL_COUNT: GridLevelCount = 3;
-const LEVEL_OPTIONS: GridLevelCount[] = [3, 5, 7];
 
 const sourceTypeOrder: Record<SyntheticUserDoc["sourceType"], number> = {
   generated: 0,
@@ -81,12 +77,6 @@ function abbreviateAxisLabel(label: string) {
   const words = label.split(/\s+/);
   if (words.length <= 2) return label.slice(0, 18) + "...";
   return words.map((w) => w[0]?.toUpperCase() ?? "").join("");
-}
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
-  }).format(value);
 }
 
 function formatCurrency(value: number) {
@@ -142,26 +132,11 @@ function formatRunSummary(run: BatchGenerationRunView) {
 
 function buildLevelsPerAxis(
   axes: SharedAxis[],
-  current?: Record<string, GridLevelCount>,
+  current?: Record<string, GridLevelCount>
 ) {
   return Object.fromEntries(
-    axes.map((axis) => [axis.key, current?.[axis.key] ?? DEFAULT_LEVEL_COUNT]),
+    axes.map((axis) => [axis.key, current?.[axis.key] ?? DEFAULT_LEVEL_COUNT])
   ) as Record<string, GridLevelCount>;
-}
-
-function buildPreviewText(
-  totalUsers: number,
-  axisCount: number,
-  levelsPerAxis: Record<string, GridLevelCount>,
-) {
-  if (axisCount === 0) return "0 axes x 0 levels = 0 synthetic users";
-  const counts = Object.values(levelsPerAxis);
-  const unique = Array.from(new Set(counts));
-  if (unique.length <= 1) {
-    const n = unique[0] ?? DEFAULT_LEVEL_COUNT;
-    return `${axisCount} axes x ${n} levels = ${totalUsers} synthetic users`;
-  }
-  return `${axisCount} axes x mixed levels (${counts.join(" \u00b7 ")}) = ${totalUsers} synthetic users`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -173,146 +148,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-function GenerationControlsZone({
-  axes,
-  hasActiveRun,
-  levelsPerAxis,
-  generationValidation,
-  costEstimate,
-  isStarting,
-  onLevelsChange,
-  onStart,
-  error,
-  notice,
-}: {
-  axes: SharedAxis[];
-  hasActiveRun: boolean;
-  levelsPerAxis: Record<string, GridLevelCount>;
-  generationValidation: { valid: boolean; totalUsers: number; error?: string };
-  costEstimate: { estimatedTokens: number; estimatedCostUsd: number } | null;
-  isStarting: boolean;
-  onLevelsChange: (next: Record<string, GridLevelCount>) => void;
-  onStart: () => void;
-  error: string | null;
-  notice: string | null;
-}) {
-  return (
-    <div className="space-y-4 rounded-xl border bg-card p-5">
-      <div className="space-y-1">
-        <h3 className="font-medium">Generation Controls</h3>
-        <p className="text-sm text-muted-foreground">
-          Choose 3, 5, or 7 anchor positions for each shared axis, review the
-          cost estimate, then generate.
-        </p>
-      </div>
-
-      {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {notice ? (
-        <p className="text-sm text-emerald-700" role="status">
-          {notice}
-        </p>
-      ) : null}
-
-      {axes.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {axes.map((axis) => (
-            <div key={axis.key} className="rounded-lg border bg-background p-4">
-              <div className="space-y-2">
-                <div>
-                  <p className="font-medium">{axis.label}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {axis.lowAnchor} &rarr; {axis.highAnchor}
-                  </p>
-                </div>
-                <Select
-                  disabled={hasActiveRun}
-                  value={String(levelsPerAxis[axis.key] ?? DEFAULT_LEVEL_COUNT)}
-                  onValueChange={(v) =>
-                    onLevelsChange({
-                      ...levelsPerAxis,
-                      [axis.key]: Number(v) as GridLevelCount,
-                    })
-                  }
-                >
-                  <SelectTrigger
-                    aria-label={`${axis.label} levels`}
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="Select granularity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LEVEL_OPTIONS.map((n) => (
-                      <SelectItem key={`${axis.key}-${n}`} value={String(n)}>
-                        {n} levels
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed bg-background p-4">
-          <p className="text-sm leading-6 text-muted-foreground">
-            Add at least one shared axis before you generate synthetic users.
-          </p>
-        </div>
-      )}
-
-      <div className="grid gap-3 rounded-lg border border-dashed bg-background p-4 sm:grid-cols-2">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">Live count preview</p>
-          <p className="text-sm text-muted-foreground">
-            {buildPreviewText(
-              generationValidation.totalUsers,
-              axes.length,
-              levelsPerAxis,
-            )}
-          </p>
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium">Estimated cost</p>
-          {costEstimate ? (
-            <p className="text-sm text-muted-foreground">
-              {formatNumber(costEstimate.estimatedTokens)} tokens &middot;{" "}
-              {formatCurrency(costEstimate.estimatedCostUsd)}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Resolve the generation warning to see an estimate.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {!generationValidation.valid && generationValidation.error ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-          <p className="text-sm text-destructive">
-            {generationValidation.error}
-          </p>
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap justify-end gap-3">
-        <Button
-          disabled={
-            !generationValidation.valid || hasActiveRun || isStarting
-          }
-          onClick={onStart}
-          type="button"
-        >
-          {isStarting ? "Starting..." : "Confirm & Generate"}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 function RunProgressZone({ run }: { run: BatchGenerationRunView }) {
   return (
@@ -367,10 +202,12 @@ function UserStatusTableZone({
   onSelectUser: (id: string) => void;
 }) {
   const [searchText, setSearchText] = useState("");
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [currentPage, setCurrentPage] = useState(0);
 
   const axisLabelByKey = useMemo(
     () => new Map(axes.map((a) => [a.key, a.label])),
-    [axes],
+    [axes]
   );
 
   const visibleUsers = useMemo(() => {
@@ -382,7 +219,7 @@ function UserStatusTableZone({
     users = [...users].sort(
       (a, b) =>
         sourceTypeOrder[a.sourceType] - sourceTypeOrder[b.sourceType] ||
-        a.name.localeCompare(b.name),
+        a.name.localeCompare(b.name)
     );
 
     const normalizedSearch = searchText.trim().toLowerCase();
@@ -391,12 +228,27 @@ function UserStatusTableZone({
         (u) =>
           u.name.toLowerCase().includes(normalizedSearch) ||
           (u.summary ?? "").toLowerCase().includes(normalizedSearch) ||
-          (u.firstPersonBio ?? "").toLowerCase().includes(normalizedSearch),
+          (u.firstPersonBio ?? "").toLowerCase().includes(normalizedSearch)
       );
     }
 
     return users;
   }, [syntheticUsers, showAllSources, searchText]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleUsers.length / pageSize));
+
+  // Clamp current page when filters or page size shrink the result set.
+  useEffect(() => {
+    if (currentPage >= pageCount) {
+      setCurrentPage(Math.max(0, pageCount - 1));
+    }
+  }, [pageCount, currentPage]);
+
+  const pagedUsers = useMemo(
+    () =>
+      visibleUsers.slice(currentPage * pageSize, (currentPage + 1) * pageSize),
+    [visibleUsers, currentPage, pageSize]
+  );
 
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -404,7 +256,7 @@ function UserStatusTableZone({
     (event: React.KeyboardEvent) => {
       if (visibleUsers.length === 0) return;
       const currentIndex = visibleUsers.findIndex(
-        (u) => u._id === selectedUserId,
+        (u) => u._id === selectedUserId
       );
       let nextIndex: number | null = null;
 
@@ -428,16 +280,25 @@ function UserStatusTableZone({
         const nextUser = visibleUsers[nextIndex];
         if (nextUser) {
           onSelectUser(nextUser._id);
-          const rows = tableRef.current?.querySelectorAll("tr[data-user-row]");
-          rows?.[nextIndex]?.scrollIntoView({ block: "nearest" });
+          const targetPage = Math.floor(nextIndex / pageSize);
+          if (targetPage !== currentPage) {
+            setCurrentPage(targetPage);
+          }
+          const localIndex = nextIndex - targetPage * pageSize;
+          // Scroll on next tick so the row is rendered after page change.
+          window.requestAnimationFrame(() => {
+            const rows =
+              tableRef.current?.querySelectorAll("tr[data-user-row]");
+            rows?.[localIndex]?.scrollIntoView({ block: "nearest" });
+          });
         }
       }
     },
-    [visibleUsers, selectedUserId, onSelectUser],
+    [visibleUsers, selectedUserId, onSelectUser, pageSize, currentPage]
   );
 
   const generatedCount = syntheticUsers.filter(
-    (u) => u.sourceType === "generated",
+    (u) => u.sourceType === "generated"
   ).length;
   const totalCount = syntheticUsers.length;
 
@@ -506,7 +367,7 @@ function UserStatusTableZone({
                 </TableCell>
               </TableRow>
             ) : (
-              visibleUsers.map((user) => {
+              pagedUsers.map((user) => {
                 const canRegenerate =
                   showGenerationControls && user.sourceType === "generated";
                 const isRegenerating = regeneratingUserIds.includes(user._id);
@@ -519,7 +380,7 @@ function UserStatusTableZone({
                     data-user-row
                     className={cn(
                       "cursor-pointer transition-colors",
-                      isSelected && "bg-accent",
+                      isSelected && "bg-accent"
                     )}
                     onClick={() => onSelectUser(user._id)}
                   >
@@ -595,9 +456,16 @@ function UserStatusTableZone({
         </Table>
       </div>
 
-      <div className="text-xs text-muted-foreground">
-        {visibleUsers.length} of {totalCount} users
-      </div>
+      <PaginationFooter
+        pageSize={pageSize}
+        currentPage={currentPage}
+        pageCount={pageCount}
+        filteredCount={visibleUsers.length}
+        totalCount={totalCount}
+        itemLabel="users"
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
     </div>
   );
 }
@@ -615,7 +483,7 @@ interface GenerationWorkspaceProps {
   selectedGenerationUserId: string | undefined;
   onRegenerateUser: (syntheticUserId: SyntheticUserId) => Promise<unknown>;
   onStartGeneration: (
-    levelsPerAxis: Record<string, GridLevelCount>,
+    levelsPerAxis: Record<string, GridLevelCount>
   ) => Promise<unknown>;
   onSearchChange: (patch: Partial<PersonaConfigDetailSearch>) => void;
 }
@@ -631,13 +499,14 @@ function GenerationWorkspace(props: GenerationWorkspaceProps) {
   }
 
   return (
-    <GenerationWorkspaceInner
-      {...props as GenerationWorkspaceInnerProps}
-    />
+    <GenerationWorkspaceInner {...(props as GenerationWorkspaceInnerProps)} />
   );
 }
 
-type GenerationWorkspaceInnerProps = Omit<GenerationWorkspaceProps, "syntheticUsers"> & {
+type GenerationWorkspaceInnerProps = Omit<
+  GenerationWorkspaceProps,
+  "syntheticUsers"
+> & {
   syntheticUsers: SyntheticUserDoc[];
 };
 
@@ -688,7 +557,7 @@ function GenerationWorkspaceInner({
         midAnchor: a.midAnchor,
         highAnchor: a.highAnchor,
       })),
-    [axes],
+    [axes]
   );
 
   const generationValidation = useMemo(
@@ -696,9 +565,9 @@ function GenerationWorkspaceInner({
       validateGenerationConfig(
         generationAxes,
         levelsPerAxis,
-        MAX_SYNTHETIC_USERS_PER_CONFIG,
+        MAX_SYNTHETIC_USERS_PER_CONFIG
       ),
-    [generationAxes, levelsPerAxis],
+    [generationAxes, levelsPerAxis]
   );
 
   const costEstimate = generationValidation.valid
@@ -708,20 +577,19 @@ function GenerationWorkspaceInner({
   const failedGeneratedUsers = useMemo(
     () =>
       syntheticUsers.filter(
-        (u) =>
-          u.sourceType === "generated" && u.generationStatus === "failed",
+        (u) => u.sourceType === "generated" && u.generationStatus === "failed"
       ),
-    [syntheticUsers],
+    [syntheticUsers]
   );
 
   // Auto-select first generated user when no selection exists
   useEffect(() => {
     const generated = syntheticUsers.filter(
-      (u) => u.sourceType === "generated",
+      (u) => u.sourceType === "generated"
     );
     if (generated.length === 0) return;
     const current = syntheticUsers.find(
-      (u) => u._id === selectedGenerationUserId,
+      (u) => u._id === selectedGenerationUserId
     );
     if (!current && generated[0]) {
       onSearchChange({ selectedGenerationUserId: generated[0]._id });
@@ -732,7 +600,9 @@ function GenerationWorkspaceInner({
     if (!showControls || hasActiveRun || isStarting) return;
     if (!generationValidation.valid) {
       setGenerationError(
-        "error" in generationValidation ? generationValidation.error : "Invalid configuration",
+        "error" in generationValidation
+          ? generationValidation.error
+          : "Invalid configuration"
       );
       setGenerationNotice(null);
       return;
@@ -744,11 +614,11 @@ function GenerationWorkspaceInner({
     try {
       await onStartGeneration(levelsPerAxis);
       setGenerationNotice(
-        "Batch generation started. Progress will continue even if you navigate away.",
+        "Batch generation started. Progress will continue even if you navigate away."
       );
     } catch (err) {
       setGenerationError(
-        getErrorMessage(err, "Could not start batch generation."),
+        getErrorMessage(err, "Could not start batch generation.")
       );
     } finally {
       setIsStarting(false);
@@ -758,15 +628,13 @@ function GenerationWorkspaceInner({
   async function handleRegenerateUser(id: SyntheticUserId) {
     setGenerationError(null);
     setGenerationNotice(null);
-    setRegeneratingUserIds((cur) =>
-      cur.includes(id) ? cur : [...cur, id],
-    );
+    setRegeneratingUserIds((cur) => (cur.includes(id) ? cur : [...cur, id]));
     try {
       await onRegenerateUser(id);
       setGenerationNotice("Synthetic user regeneration queued.");
     } catch (err) {
       setGenerationError(
-        getErrorMessage(err, "Could not regenerate that synthetic user."),
+        getErrorMessage(err, "Could not regenerate that synthetic user.")
       );
     } finally {
       setRegeneratingUserIds((cur) => cur.filter((x) => x !== id));
@@ -788,74 +656,46 @@ function GenerationWorkspaceInner({
 
     try {
       const results = await Promise.allSettled(
-        failedIds.map((id) => onRegenerateUser(id)),
+        failedIds.map((id) => onRegenerateUser(id))
       );
       const succeeded = results.filter((r) => r.status === "fulfilled").length;
       const failures = results.filter(
-        (r): r is PromiseRejectedResult => r.status === "rejected",
+        (r): r is PromiseRejectedResult => r.status === "rejected"
       );
 
       if (failures.length === 0) {
         setGenerationNotice(
           succeeded === 1
             ? "Queued regeneration for 1 failed synthetic user."
-            : `Queued regeneration for ${succeeded} failed synthetic users.`,
+            : `Queued regeneration for ${succeeded} failed synthetic users.`
         );
       } else if (succeeded === 0) {
         const firstReason = failures[0]?.reason;
         setGenerationError(
           getErrorMessage(
             firstReason,
-            `All ${failures.length} retry attempts failed.`,
-          ),
+            `All ${failures.length} retry attempts failed.`
+          )
         );
       } else {
         setGenerationNotice(
-          `Queued regeneration for ${succeeded} of ${failedIds.length} synthetic users.`,
+          `Queued regeneration for ${succeeded} of ${failedIds.length} synthetic users.`
         );
         const firstReason = failures[0]?.reason;
         setGenerationError(
           getErrorMessage(
             firstReason,
-            `${failures.length} of ${failedIds.length} retry attempts failed.`,
-          ),
+            `${failures.length} of ${failedIds.length} retry attempts failed.`
+          )
         );
       }
     } finally {
       setIsRetryingFailed(false);
       setRegeneratingUserIds((cur) =>
-        cur.filter((id) => !failedIds.includes(id)),
+        cur.filter((id) => !failedIds.includes(id))
       );
     }
   }
-
-  const controlsZone = showControls ? (
-    <GenerationControlsZone
-      axes={axes}
-      hasActiveRun={hasActiveRun}
-      levelsPerAxis={levelsPerAxis}
-      generationValidation={generationValidation}
-      costEstimate={costEstimate}
-      isStarting={isStarting}
-      onLevelsChange={setLevelsPerAxis}
-      onStart={() => void handleStart()}
-      error={generationError}
-      notice={generationNotice}
-    />
-  ) : (
-    <>
-      {generationError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {generationError}
-        </p>
-      ) : null}
-      {generationNotice ? (
-        <p className="text-sm text-emerald-700" role="status">
-          {generationNotice}
-        </p>
-      ) : null}
-    </>
-  );
 
   const progressZone = batchGenerationRun ? (
     <RunProgressZone run={batchGenerationRun} />
@@ -875,111 +715,79 @@ function GenerationWorkspaceInner({
       onRegenerateUser={(id) => void handleRegenerateUser(id)}
       onRetryFailed={() => void handleRetryFailed()}
       selectedUserId={selectedGenerationUserId}
-      onSelectUser={(id) =>
-        onSearchChange({ selectedGenerationUserId: id })
-      }
+      onSelectUser={(id) => onSearchChange({ selectedGenerationUserId: id })}
     />
   );
 
   return (
-    <div data-uidotsh-pick="Generation layout" className="contents">
-      {/* ── Option 1: Stacked (current) ── */}
-      <div data-uidotsh-option="Stacked (current)" className="contents">
-        <div className="space-y-4">
-          {controlsZone}
-          {progressZone}
-          {tableZone}
-        </div>
-      </div>
-
-      {/* ── Option 2: Two-column ── */}
-      <div data-uidotsh-option="Two-column" className="contents" hidden>
-        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-          <div className="space-y-4">
-            {controlsZone}
+    <div className="space-y-4">
+      {showControls ? (
+        <div className="flex items-center gap-4 rounded-xl border bg-card px-5 py-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium">{axes.length}</span>
+            <span className="text-muted-foreground">axes</span>
           </div>
-          <div className="space-y-4">
-            {progressZone}
-            {tableZone}
+          <div className="h-4 w-px bg-border" />
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium">
+              {generationValidation.totalUsers}
+            </span>
+            <span className="text-muted-foreground">users</span>
           </div>
-        </div>
-      </div>
-
-      {/* ── Option 3: Compact controls ── */}
-      <div data-uidotsh-option="Compact controls" className="contents" hidden>
-        <div className="space-y-4">
-          {showControls ? (
-            <div className="flex items-center gap-4 rounded-xl border bg-card px-5 py-3">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium">{axes.length}</span>
-                <span className="text-muted-foreground">axes</span>
-              </div>
-              <div className="h-4 w-px bg-border" />
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium">{generationValidation.totalUsers}</span>
-                <span className="text-muted-foreground">users</span>
-              </div>
-              <div className="h-4 w-px bg-border" />
-              <div className="flex items-center gap-2 text-sm">
-                {costEstimate ? (
-                  <>
-                    <span className="font-medium">{formatCurrency(costEstimate.estimatedCostUsd)}</span>
-                    <span className="text-muted-foreground">est. cost</span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">No estimate</span>
-                )}
-              </div>
-              {generationError ? (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  <p className="text-sm text-destructive">{generationError}</p>
-                </>
-              ) : null}
-              {generationNotice ? (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  <p className="text-sm text-emerald-700">{generationNotice}</p>
-                </>
-              ) : null}
-              <div className="ml-auto">
-                <Button
-                  disabled={!generationValidation.valid || hasActiveRun || isStarting}
-                  onClick={() => void handleStart()}
-                  size="sm"
-                  type="button"
-                >
-                  {isStarting ? "Starting..." : "Generate"}
-                </Button>
-              </div>
-            </div>
-          ) : (
+          <div className="h-4 w-px bg-border" />
+          <div className="flex items-center gap-2 text-sm">
+            {costEstimate ? (
+              <>
+                <span className="font-medium">
+                  {formatCurrency(costEstimate.estimatedCostUsd)}
+                </span>
+                <span className="text-muted-foreground">est. cost</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">No estimate</span>
+            )}
+          </div>
+          {generationError ? (
             <>
-              {generationError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {generationError}
-                </p>
-              ) : null}
-              {generationNotice ? (
-                <p className="text-sm text-emerald-700" role="status">
-                  {generationNotice}
-                </p>
-              ) : null}
+              <div className="h-4 w-px bg-border" />
+              <p className="text-sm text-destructive">{generationError}</p>
             </>
-          )}
-          {progressZone}
-          {tableZone}
+          ) : null}
+          {generationNotice ? (
+            <>
+              <div className="h-4 w-px bg-border" />
+              <p className="text-sm text-emerald-700">{generationNotice}</p>
+            </>
+          ) : null}
+          <div className="ml-auto">
+            <Button
+              disabled={
+                !generationValidation.valid || hasActiveRun || isStarting
+              }
+              onClick={() => void handleStart()}
+              size="sm"
+              type="button"
+            >
+              {isStarting ? "Starting..." : "Generate"}
+            </Button>
+          </div>
         </div>
-      </div>
-
-      {/* ── Option 4: Controls below ── */}
-      <div data-uidotsh-option="Controls below" className="contents" hidden>
-        <div className="space-y-4">
-          {progressZone}
-          {tableZone}
-          {controlsZone}
-        </div>
-      </div>
+      ) : (
+        <>
+          {generationError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {generationError}
+            </p>
+          ) : null}
+          {generationNotice ? (
+            <p className="text-sm text-emerald-700" role="status">
+              {generationNotice}
+            </p>
+          ) : null}
+        </>
+      )}
+      {progressZone}
+      {tableZone}
     </div>
   );
 }
